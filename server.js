@@ -76,83 +76,7 @@ const dbGet = (sql, params) => {
 };
 
 // Function to check and alter the appointments table if needed (CRITICAL FIX)
-function alterAppointmentsTable() {
-    db.all("PRAGMA table_info(appointments)", (err, columns) => {
-        if (err) {
-            console.error("Error checking columns:", err.message);
-            return;
-        }
-        
-        const priceColumnExists = columns.some(col => col.name === 'price');
 
-        if (!priceColumnExists) {
-            console.log("Missing 'price' column in appointments table. Attempting to add...");
-            // Add the missing column with a NOT NULL constraint and a default value of 0
-            db.run("ALTER TABLE appointments ADD COLUMN price REAL NOT NULL DEFAULT 0", (alterErr) => {
-                if (alterErr) {
-                    console.error("Error adding 'price' column:", alterErr.message);
-                } else {
-                    console.log("Successfully added 'price' column to appointments table. Database schema is now correct.");
-                }
-            });
-        }
-    });
-}
-
-// Function to check and alter the users table to add strikes column
-function alterUsersTable() {
-    db.all("PRAGMA table_info(users)", (err, columns) => {
-        if (err) {
-            console.error("Error checking users table columns:", err.message);
-            return;
-        }
-        
-        const strikesColumnExists = columns.some(col => col.name === 'strikes');
-
-        if (!strikesColumnExists) {
-            console.log("Missing 'strikes' column in users table. Attempting to add...");
-            db.run("ALTER TABLE users ADD COLUMN strikes INTEGER NOT NULL DEFAULT 0", (alterErr) => {
-                if (alterErr) {
-                    console.error("Error adding 'strikes' column:", alterErr.message);
-                } else {
-                    console.log("Successfully added 'strikes' column to users table.");
-                }
-            });
-        }
-    });
-}
-
-// Function to check and alter the services table to add service_type column
-function alterServicesTable() {
-    db.all("PRAGMA table_info(services)", (err, columns) => {
-        if (err) {
-            console.error("Error checking services table columns:", err.message);
-            return;
-        }
-        
-        const serviceTypeColumnExists = columns.some(col => col.name === 'service_type');
-
-        if (!serviceTypeColumnExists) {
-            console.log("Missing 'service_type' column in services table. Attempting to add...");
-            // Add the missing column with a default value of 'main'
-            db.run("ALTER TABLE services ADD COLUMN service_type TEXT NOT NULL DEFAULT 'main'", (alterErr) => {
-                if (alterErr) {
-                    console.error("Error adding 'service_type' column:", alterErr.message);
-                } else {
-                    console.log("Successfully added 'service_type' column to services table.");
-                    // Update existing mask services to be add_ons
-                    db.run("UPDATE services SET service_type = 'add_on' WHERE name_ar LIKE '%ماسك%' OR name_ar LIKE '%تنظيف بشرة%'", (updateErr) => {
-                        if (updateErr) {
-                            console.error("Error updating mask services to add_on type:", updateErr.message);
-                        } else {
-                            console.log("Updated mask and facial services to add_on type.");
-                        }
-                    });
-                }
-            });
-        }
-    });
-}
 
 
 // Initialize database schema and insert master data
@@ -167,8 +91,10 @@ function initializeDb() {
             phone TEXT NOT NULL,
             gender TEXT NOT NULL,
             city TEXT NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            strikes INTEGER DEFAULT 0
         )`);
+        
         db.run(`CREATE TABLE IF NOT EXISTS salons (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             salon_name TEXT NOT NULL,
@@ -182,6 +108,7 @@ function initializeDb() {
             image_url TEXT,
             password TEXT NOT NULL
         )`);
+        
         db.run(`CREATE TABLE IF NOT EXISTS services (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name_ar TEXT NOT NULL,
@@ -189,27 +116,7 @@ function initializeDb() {
             gender TEXT NOT NULL,
             service_type TEXT NOT NULL DEFAULT 'main',
             UNIQUE(name_ar, gender)
-        )`, () => {
-             // Insert master services only if table is empty
-            db.get("SELECT COUNT(*) AS count FROM services", (err, row) => {
-                if (err) {
-                    console.error("Error counting services:", err.message);
-                    return;
-                }
-                if (row.count === 0) {
-                    const stmt = db.prepare("INSERT INTO services (name_ar, icon, gender, service_type) VALUES (?, ?, ?, ?)");
-                    Object.keys(MASTER_SERVICES).forEach(gender => {
-                        MASTER_SERVICES[gender].forEach(service => {
-                            stmt.run(service.name_ar, service.icon, gender, service.service_type);
-                        });
-                    });
-                    stmt.finalize();
-                    console.log("Master services initialized.");
-                }
-                // Check and add service_type column for existing tables
-                alterServicesTable();
-            });
-        });
+        )`);
 
         db.run(`CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -259,7 +166,6 @@ function initializeDb() {
             FOREIGN KEY (staff_id) REFERENCES staff(id)
         )`);
 
-        // 8. Appointments table (CRITICAL FIX: Price column added here and checked via ALTER)
         db.run(`CREATE TABLE IF NOT EXISTS appointments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             salon_id INTEGER NOT NULL,
@@ -270,14 +176,13 @@ function initializeDb() {
             end_time TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'Scheduled', -- Scheduled, Completed, Cancelled
             date_booked TEXT NOT NULL,
-            price REAL NOT NULL, 
+            price REAL NOT NULL,
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (staff_id) REFERENCES staff(id),
             FOREIGN KEY (service_id) REFERENCES services(id)
-        )`, alterAppointmentsTable);
+        )`);
 
-        // 9. Appointment Services Junction Table (for multiple services per appointment)
         db.run(`CREATE TABLE IF NOT EXISTS appointment_services (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             appointment_id INTEGER NOT NULL,
@@ -313,9 +218,6 @@ function initializeDb() {
 
         console.log("Database schema created successfully.");
     });
-    
-    // Check and add missing columns
-    alterUsersTable();
 }
 
 // Automatic appointment status update system
