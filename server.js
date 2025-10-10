@@ -1,10 +1,10 @@
 // Server.js - Salonni Application Backend
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Added CORS for development ease
 const crypto = require('crypto'); // Used for generating simple tokens/salts
+const db = require('./database'); // Import our database module
 
 const app = express();
 const PORT = process.env.PORT || 3001; 
@@ -39,15 +39,16 @@ const CITIES = [
     'دير البلح', 'الناصرة', 'حيفا', 'عكا', 'طبريا', 'صفد'
 ];
 
-// Database setup - Using a persistent file named 'saloony.db'
-const db = new sqlite3.Database('saloony.db', (err) => {
-    if (err) {
-        console.error("Error opening database:", err.message);
-    } else {
-        console.log("SQLite database connected successfully (saloony.db created/opened).");
-        initializeDb();
+// Initialize database schema
+(async () => {
+    try {
+        console.log("Database connected successfully.");
+        await initializeDb();
+    } catch (error) {
+        console.error("Database initialization failed:", error);
+        process.exit(1);
     }
-});
+})();
 
 // Helper function to hash passwords (simple simulation)
 function hashPassword(password) {
@@ -55,37 +56,22 @@ function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
 
-// Helper function to wrap db.all in a Promise (for async/await)
-const dbAll = (sql, params) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows);
-        });
-    });
-};
-
-// Helper function to wrap db.get in a Promise
-const dbGet = (sql, params) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) return reject(err);
-            resolve(row);
-        });
-    });
-};
+// Helper functions using our database module
+const dbAll = (sql, params = []) => db.query(sql, params);
+const dbGet = (sql, params = []) => db.get(sql, params);
 
 // Function to check and alter the appointments table if needed (CRITICAL FIX)
 
 
 
 // Initialize database schema and insert master data
-function initializeDb() {
+async function initializeDb() {
     console.log("Initializing database schema...");
-    db.serialize(() => {
-        // --- ALL TABLE CREATION CODE ---
-        db.run(`CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+    
+    try {
+        // Create all tables using our database module
+        await db.run(`CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             phone TEXT NOT NULL,
@@ -95,8 +81,8 @@ function initializeDb() {
             strikes INTEGER DEFAULT 0
         )`);
         
-        db.run(`CREATE TABLE IF NOT EXISTS salons (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS salons (
+            id SERIAL PRIMARY KEY,
             salon_name TEXT NOT NULL,
             owner_name TEXT NOT NULL,
             salon_phone TEXT NOT NULL,
@@ -109,8 +95,8 @@ function initializeDb() {
             password TEXT NOT NULL
         )`);
         
-        db.run(`CREATE TABLE IF NOT EXISTS services (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS services (
+            id SERIAL PRIMARY KEY,
             name_ar TEXT NOT NULL,
             icon TEXT NOT NULL,
             gender TEXT NOT NULL,
@@ -118,11 +104,11 @@ function initializeDb() {
             UNIQUE(name_ar, gender)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS reviews (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS reviews (
+            id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
-            rating INTEGER NOT NULL, -- 1 to 5
+            rating INTEGER NOT NULL,
             comment TEXT,
             date_posted TEXT NOT NULL,
             UNIQUE (salon_id, user_id),
@@ -130,70 +116,70 @@ function initializeDb() {
             FOREIGN KEY (user_id) REFERENCES users(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS salon_services (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS salon_services (
+            id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
             service_id INTEGER NOT NULL,
-            price REAL NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
             duration INTEGER NOT NULL,
             UNIQUE (salon_id, service_id),
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (service_id) REFERENCES services(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS staff (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS staff (
+            id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             FOREIGN KEY (salon_id) REFERENCES salons(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS schedules (
+        await db.run(`CREATE TABLE IF NOT EXISTS schedules (
             salon_id INTEGER PRIMARY KEY,
             opening_time TEXT NOT NULL,
             closing_time TEXT NOT NULL,
-            closed_days TEXT, -- JSON array of day indices (0=Sun, 6=Sat)
+            closed_days TEXT,
             FOREIGN KEY (salon_id) REFERENCES salons(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS breaks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS breaks (
+            id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
-            staff_id INTEGER, -- NULL for all staff
+            staff_id INTEGER,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (staff_id) REFERENCES staff(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS appointments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS appointments (
+            id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
             staff_id INTEGER,
             service_id INTEGER NOT NULL,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'Scheduled', -- Scheduled, Completed, Cancelled
+            status TEXT NOT NULL DEFAULT 'Scheduled',
             date_booked TEXT NOT NULL,
-            price REAL NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (staff_id) REFERENCES staff(id),
             FOREIGN KEY (service_id) REFERENCES services(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS appointment_services (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS appointment_services (
+            id SERIAL PRIMARY KEY,
             appointment_id INTEGER NOT NULL,
             service_id INTEGER NOT NULL,
-            price REAL NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
             FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
             FOREIGN KEY (service_id) REFERENCES services(id),
             UNIQUE(appointment_id, service_id)
         )`); 
         
-        db.run(`CREATE TABLE IF NOT EXISTS favorites (
+        await db.run(`CREATE TABLE IF NOT EXISTS favorites (
             user_id INTEGER NOT NULL,
             salon_id INTEGER NOT NULL,
             PRIMARY KEY (user_id, salon_id),
@@ -201,44 +187,71 @@ function initializeDb() {
             FOREIGN KEY (salon_id) REFERENCES salons(id)
         )`);
 
-        db.run(`CREATE TABLE IF NOT EXISTS schedule_modifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        await db.run(`CREATE TABLE IF NOT EXISTS schedule_modifications (
+            id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
-            mod_type TEXT NOT NULL, -- 'once' or 'recurring'
-            mod_date TEXT,          -- YYYY-MM-DD (for 'once')
-            mod_day_index INTEGER,  -- 0-6 (for 'recurring')
-            start_time TEXT,        -- HH:MM (for temporary closure/open)
-            end_time TEXT,          -- HH:MM
-            is_closed INTEGER NOT NULL, -- 1 for closed, 0 for custom time
+            mod_type TEXT NOT NULL,
+            mod_date TEXT,
+            mod_day_index INTEGER,
+            start_time TEXT,
+            end_time TEXT,
+            is_closed INTEGER NOT NULL,
             reason TEXT NOT NULL,
-            staff_id INTEGER,       -- NULL for all staff
+            staff_id INTEGER,
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (staff_id) REFERENCES staff(id)
         )`);
 
         console.log("Database schema created successfully.");
-    });
+        
+        // Insert master services if they don't exist
+        await insertMasterServices();
+        
+    } catch (error) {
+        console.error("Error initializing database:", error);
+        throw error;
+    }
+}
+
+// Insert master services into the database
+async function insertMasterServices() {
+    try {
+        for (const gender of ['men', 'women']) {
+            for (const service of MASTER_SERVICES[gender]) {
+                await db.run(
+                    `INSERT INTO services (name_ar, icon, gender, service_type) 
+                     VALUES ($1, $2, $3, $4) 
+                     ON CONFLICT (name_ar, gender) DO NOTHING`,
+                    [service.name_ar, service.icon, gender, service.service_type]
+                );
+            }
+        }
+        console.log("Master services inserted successfully.");
+    } catch (error) {
+        console.error("Error inserting master services:", error);
+    }
 }
 
 // Automatic appointment status update system
-function autoUpdateAppointmentStatuses() {
+async function autoUpdateAppointmentStatuses() {
     const now = new Date().toISOString();
     
-    // Find all scheduled appointments that have ended
-    const sql = `
-        UPDATE appointments 
-        SET status = 'Completed' 
-        WHERE status = 'Scheduled' 
-        AND end_time <= ?
-    `;
-    
-    db.run(sql, [now], function(err) {
-        if (err) {
-            console.error('Error auto-updating appointment statuses:', err.message);
-        } else if (this.changes > 0) {
-            console.log(`Auto-updated ${this.changes} appointments to Completed status`);
+    try {
+        // Find all scheduled appointments that have ended
+        const sql = `
+            UPDATE appointments 
+            SET status = 'Completed' 
+            WHERE status = 'Scheduled' 
+            AND end_time <= $1
+        `;
+        
+        const result = await db.run(sql, [now]);
+        if (result && result.rowCount > 0) {
+            console.log(`Auto-updated ${result.rowCount} appointments to Completed status`);
         }
-    });
+    } catch (error) {
+        console.error('Error auto-updating appointment statuses:', error);
+    }
 }
 
 // Run auto-update every 5 minutes
