@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صالوني - لوحة تحكم الصالون</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #F9FAFB; /* Very light gray */
+            padding-bottom: 64px; /* Space for the fixed bottom navigation */
+        }
+        /* New Uber-Inspired Colors */
+        .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
+        .text-secondary { color: #06C167; } /* Vibrant Teal-Green Accent */
+        .border-secondary { border-color: #06C167; }
+        .bg-secondary { background-color: #06C167; } /* Secondary background */
+        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); } /* Light transparent accent bg */
+        
+        .btn-action { 
+            background-color: #06C167; 
+            color: #1E293B; 
+            transition: all 0.2s; 
+            font-weight: 700; 
+            box-shadow: 0 4px 10px rgba(6, 193, 103, 0.3);
+        }
+        .btn-action:hover { background-color: #05ae5d; }
+        
+        /* Custom scrollbar for web view */
+        .scrollbar-hidden::-webkit-scrollbar { display: none; }
+        .scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Style for active nav item (Pill style) */
+        .nav-active {
+            color: #1E293B; /* Primary Dark */
+            background-color: #06C167; /* Secondary Teal-Green */
+            border-radius: 9999px; /* Full rounded pill */
+            box-shadow: 0 2px 8px rgba(6, 193, 103, 0.5);
+            padding: 8px 16px !important; /* Larger click area for active state */
+        }
+        .nav-item {
+             padding: 4px 12px; /* Standard padding for inactive state */
+        }
+
+        /* RTL input fix for consistency */
+        input[type="time"], input[type="number"], input[type="date"] { direction: ltr; }
+        
+        /* Style for selected closed days */
+        .day-selected {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            border-color: #ef4444;
+        }
+        /* Custom Message for empty states */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 0;
+            text-align: center;
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            color: #94A3B8; /* Slate gray */
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            color: #64748B; /* Slate gray text */
+            font-weight: 500;
+        }
+        
+        /* Confirmation Modal Styles */
+        #confirm-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 50;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-open-overlay {
+            display: flex !important;
+            opacity: 1 !important;
+        }
+        .modal-content-confirm {
+            background-color: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="min-h-screen flex flex-col">
+    <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center fixed top-0 w-full z-20">
+        <div class="flex items-center pl-8 pr-4">
+            <img src="/images/saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+        </div>
+        <div class="flex items-center">
+            <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
+                <i class="fas fa-sign-out-alt text-lg"></i>
+            </button>
+        </div>
+    </header>
+    
+    <main class="flex-grow p-4 pt-[60px] md:p-8">
+        <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
+        <div class="max-w-6xl mx-auto space-y-8">
+            
+            <div id="appointments-view" class="view-content">
+                <section class="bg-white p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">المواعيد</h2>
+                    <div class="flex space-x-2 space-x-reverse mb-4 border-b pb-2">
+                        <button class="tab-appointments px-3 py-1 font-bold text-sm rounded-xl text-white bg-primary-dark transition-all" data-filter="today">اليوم</button>
+                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="upcoming">القادمة</button>
+                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="past">السابقة</button>
+                    </div>
+
+                    <div id="appointments-list-container" class="space-y-3">
+                        <p class="text-gray-500 text-center py-4">جاري تحميل المواعيد...</p>
+                    </div>
+                </section>
+            </div>
+            
+            <div id="management-view" class="view-content hidden">
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">إدارة الصالون والجدول</h2>
+
+                <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">إدارة فريق العمل</h3>
+                    <form id="add-staff-form" class="flex gap-4 mb-6">
+                        <input type="text" id="staff-name-input" placeholder="اسم الموظف/الحلاق" required class="flex-grow p-3 border border-gray-300 rounded-xl text-right">
+                        <button type="submit" class="btn-action px-6 py-2 rounded-xl font-bold flex-shrink-0">
+                            <i class="fas fa-user-plus ml-1"></i> إضافة
+                        </button>
+                    </form>
+                    <div id="staff-list-container" class="space-y-3">
+                        <p class="text-gray-500 text-sm">سيظهر أعضاء الفريق هنا.</p>
+                    </div>
+                </section>
+
+                <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">أوقات العمل الأساسية</h3>
+                    
+                    <form id="schedule-form" class="space-y-4 mb-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">وقت الفتح (لكل الأيام)</label>
+                                <input type="time" id="opening-time-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">وقت الإغلاق (لكل الأيام)</label>
+                                <input type="time" id="closing-time-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">أيام العطلة الأسبوعية (اضغط للتحديد)</label>
+                            <div id="closed-days-container" class="flex flex-wrap gap-2 text-sm">
+                                </div>
+                        </div>
+
+                        <button type="submit" class="btn-action w-full py-3 rounded-xl font-bold mt-4">
+                            <i class="fas fa-save ml-1"></i> حفظ أوقات العمل
+                        </button>
+                    </form>
+
+                    <h4 class="text-lg font-bold text-primary-dark mt-8 mb-4 border-r-4 border-gray-400 pr-3">إضافة فترات استراحة (روتينية)</h4>
+                    <form id="add-break-form" class="space-y-4 p-4 border border-gray-200 rounded-xl">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">بداية الاستراحة</label>
+                                <input type="time" id="break-start-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">نهاية الاستراحة</label>
+                                <input type="time" id="break-end-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">تنطبق على:</label>
+                            <select id="break-staff-select" class="w-full p-3 border border-gray-300 rounded-lg appearance-none text-right">
+                                <option value="all">جميع العاملين</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn-action w-full py-3 rounded-xl font-bold">
+                            <i class="fas fa-pause-circle ml-1"></i> إضافة استراحة روتينية
+                        </button>
+                    </form>
+
+                    <h4 class="text-lg font-bold text-primary-dark mt-8 mb-4 border-r-4 border-gray-400 pr-3">الاستراحات الروتينية المضافة</h4>
+                    <div id="breaks-list-container" class="space-y-3">
+                        </div>
+
+                </section>
+                
+                <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-red-500 pr-3">تعديلات الجدول المخصصة (إجازات/تعديلات مؤقتة)</h3>
+
+                    <form id="add-modification-form" class="space-y-4 p-4 border border-gray-200 rounded-xl">
+                        
+                        <div class="flex space-x-4 space-x-reverse">
+                            <label class="flex items-center text-gray-700 font-medium">
+                                <input type="radio" name="mod_type" value="once" checked class="h-4 w-4 text-red-600 focus:ring-red-500 ml-2 mod-type-radio">
+                                تعديل لمرة واحدة (تاريخ محدد)
+                            </label>
+                            <label class="flex items-center text-gray-700 font-medium">
+                                <input type="radio" name="mod_type" value="recurring" class="h-4 w-4 text-red-600 focus:ring-red-500 ml-2 mod-type-radio">
+                                تعديل متكرر (يوم أسبوع محدد)
+                            </label>
+                        </div>
+
+                        <div id="once-mod-fields" class="space-y-4 border-t pt-4">
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700">التاريخ</label>
+                                <input type="date" id="mod-date-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+
+                        <div id="recurring-mod-fields" class="space-y-4 hidden border-t pt-4">
+                            <div class="relative">
+                                <label class="block text-sm font-medium text-gray-700">يوم الأسبوع</label>
+                                <select id="mod-day-index-select" class="w-full p-3 border border-gray-300 rounded-lg appearance-none text-right">
+                                    </select>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-4 space-x-reverse">
+                            <label class="flex items-center text-gray-700 font-medium">
+                                <input type="checkbox" id="mod-is-closed" class="h-4 w-4 text-red-600 focus:ring-red-500 ml-2">
+                                إغلاق اليوم كاملاً
+                            </label>
+                        </div>
+
+                        <div id="mod-time-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">وقت البدء</label>
+                                <input type="time" id="mod-start-time-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">وقت الانتهاء</label>
+                                <input type="time" id="mod-end-time-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">تنطبق على:</label>
+                            <select id="mod-staff-select" class="w-full p-3 border border-gray-300 rounded-lg appearance-none text-right">
+                                <option value="all">جميع العاملين</option>
+                            </select>
+                        </div>
+                        
+                        <div class="relative">
+                            <input type="text" id="mod-reason-input" placeholder="السبب (مثال: إجازة العيد)" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                            <i class="fas fa-tag text-lg text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        </div>
+
+                        <button type="submit" class="btn-action w-full py-3 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white">
+                            <i class="fas fa-calendar-times ml-1"></i> إضافة تعديل مؤقت
+                        </button>
+                    </form>
+
+                    <h4 class="text-lg font-bold text-primary-dark mt-8 mb-4 border-b pb-2">التعديلات المضافة</h4>
+                    <div id="modifications-list-container" class="space-y-3">
+                        </div>
+                </section>
+
+            </div>
+            
+            <div id="salon-view" class="view-content hidden">
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملف الصالون والخدمات</h2>
+
+                <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">المعلومات الأساسية</h3>
+                    <form id="salon-info-form" class="space-y-4" enctype="multipart/form-data">
+                        <div class="relative">
+                            <input type="text" id="info-salon-name" placeholder="اسم الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                        </div>
+                        
+                        <!-- Salon Image Upload -->
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-2 text-right">صورة الصالون <span class="text-red-500">*</span></label>
+                            <div class="flex items-center space-x-4 space-x-reverse">
+                                <div class="flex-1">
+                                    <input type="file" id="info-salon-image" accept="image/*" required class="w-full p-3 border border-gray-300 rounded-xl">
+                                </div>
+                                <div id="image-preview-container" class="w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50">
+                                    <img id="image-preview" class="w-full h-full object-cover rounded-xl hidden" alt="معاينة الصورة">
+                                    <i class="fas fa-image text-gray-400 text-2xl" id="image-placeholder"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 text-right">اختر صورة للصالون (مطلوب)</p>
+                        </div>
+                         <div class="relative">
+                            <input type="text" id="info-owner-name" placeholder="اسم المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                        </div>
+                        <div class="relative">
+                            <input type="tel" id="info-salon-phone" placeholder="هاتف الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="info-address" placeholder="العنوان" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                        </div>
+                        <div class="relative">
+                            <select id="info-city" required class="w-full p-3 border border-gray-300 rounded-xl appearance-none text-right">
+                                </select>
+                        </div>
+                        <div class="relative">
+                            <select id="info-gender-focus" required class="w-full p-3 border border-gray-300 rounded-xl appearance-none text-right">
+                                <option value="men">رجال</option>
+                                <option value="women">نساء</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-action w-full py-3 rounded-xl font-bold mt-4">
+                            <i class="fas fa-sync-alt ml-1"></i> تحديث المعلومات الأساسية
+                        </button>
+                    </form>
+                </section>
+
+
+                <section class="bg-white p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">إدارة خدمات الصالون</h3>
+                    <p class="text-gray-500 mb-6 border-r-4 border-secondary pr-3">اختر الخدمات التي تقدمها، ثم حدد السعر والوقت اللازم لكل خدمة.</p>
+                    
+                    <div id="services-list-container" class="space-y-4">
+                        <p class="text-gray-500 text-center py-4">جاري تحميل قائمة الخدمات...</p>
+                    </div>
+
+                    <button id="save-services-btn" class="btn-action w-full py-3 mt-8 rounded-xl text-lg font-bold">
+                        <i class="fas fa-save ml-2"></i> حفظ الخدمات والأسعار
+                    </button>
+                    <div id="services-message" class="mt-4 text-center font-medium"></div>
+                </section>
+            </div>
+            
+        </div>
+    </main>
+    
+    <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full p-1.5 flex justify-around shadow-2xl z-20">
+        <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
+            <i class="fas fa-clipboard-list text-xl"></i>
+            <span class="text-xs font-medium mt-1">المواعيد</span>
+        </button>
+        <button id="nav-management" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="management-view">
+            <i class="fas fa-calendar-alt text-xl"></i>
+            <span class="text-xs font-medium mt-1">الإدارة</span>
+        </button>
+        <button id="nav-salon" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="salon-view">
+            <i class="fas fa-store-alt text-xl"></i>
+            <span class="text-xs font-medium mt-1">الصالون</span>
+        </button>
+    </nav>
+</div>
+
+<div id="confirm-modal-overlay" class="fixed inset-0 z-50 transition-opacity">
+    <div class="modal-content-confirm">
+        <h3 class="text-xl font-bold text-primary-dark mb-4">تأكيد الإجراء</h3>
+        <p id="confirm-modal-message" class="text-gray-700 mb-6"></p>
+        <div class="flex justify-center space-x-4 space-x-reverse">
+            <button id="confirm-modal-cancel" class="px-6 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition">
+                إلغاء
+            </button>
+            <button id="confirm-modal-confirm" class="px-6 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition">
+                تأكيد الحذف
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Salon home page scripts loaded. Initializing dashboard...');
+
+    // --- State & Core Elements ---
+    let currentSalon = JSON.parse(localStorage.getItem('salonni_user')) || {};
+    const salonId = currentSalon.salonId;
+    let staffList = []; // Array to hold staff data
+    const daysOfWeekNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+    // Check for required data
+    if (!salonId) {
+        console.error('Salon ID not found. Redirecting to login.');
+        showMessage(document.getElementById('message-box'), 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.', false);
+        setTimeout(() => window.location.href = '/auth.html', 1500);
+        return;
+    }
+
+    const views = {
+        'management-view': document.getElementById('management-view'),
+        'appointments-view': document.getElementById('appointments-view'),
+        'salon-view': document.getElementById('salon-view'),
+    };
+    const messageBox = document.getElementById('message-box');
+
+    // --- DOM Element Variables (Consolidated) ---
+    const staffListContainer = document.getElementById('staff-list-container');
+    const addStaffForm = document.getElementById('add-staff-form');
+    const staffNameInput = document.getElementById('staff-name-input');
+    const breakStaffSelect = document.getElementById('break-staff-select');
+    
+    // Schedule/Breaks
+    const scheduleForm = document.getElementById('schedule-form');
+    const openingTimeInput = document.getElementById('opening-time-input');
+    const closingTimeInput = document.getElementById('closing-time-input');
+    const closedDaysContainer = document.getElementById('closed-days-container');
+    const addBreakForm = document.getElementById('add-break-form');
+    const breakStartInput = document.getElementById('break-start-input');
+    const breakEndInput = document.getElementById('break-end-input');
+    const breaksListContainer = document.getElementById('breaks-list-container');
+    
+    // Modifications 
+    const addModificationForm = document.getElementById('add-modification-form');
+    const modificationsListContainer = document.getElementById('modifications-list-container');
+    const modStaffSelect = document.getElementById('mod-staff-select'); 
+    const modDayIndexSelect = document.getElementById('mod-day-index-select');
+    const modTypeRadios = document.querySelectorAll('.mod-type-radio');
+    const onceModFields = document.getElementById('once-mod-fields');
+    const recurringModFields = document.getElementById('recurring-mod-fields');
+    const modIsClosedCheckbox = document.getElementById('mod-is-closed');
+    const modTimeFields = document.getElementById('mod-time-fields');
+    const modStartTimeInput = document.getElementById('mod-start-time-input');
+    const modEndTimeInput = document.getElementById('mod-end-time-input');
+    
+    // Salon Info/Services
+    const salonInfoForm = document.getElementById('salon-info-form');
+    const infoSalonName = document.getElementById('info-salon-name');
+    const infoOwnerName = document.getElementById('info-owner-name');
+    const infoSalonPhone = document.getElementById('info-salon-phone');
+    const infoAddress = document.getElementById('info-address');
+    const infoCity = document.getElementById('info-city');
+    const infoGenderFocus = document.getElementById('info-gender-focus');
+    const servicesListContainer = document.getElementById('services-list-container');
+    const saveServicesBtn = document.getElementById('save-services-btn');
+    const servicesMessage = document.getElementById('services-message');
+    
+    // Confirmation Modal Elements
+    const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
+    const confirmModalMessage = document.getElementById('confirm-modal-message');
+    const confirmModalConfirmBtn = document.getElementById('confirm-modal-confirm');
+    const confirmModalCancelBtn = document.getElementById('confirm-modal-cancel');
+
+
+    // --- Utility Functions ---
+
+    const showMessage = (element, message, isSuccess = true) => {
+        element.classList.remove('hidden'); 
+        element.textContent = message;
+        element.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto';
+        
+        element.classList.remove('bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'border-red-200', 'border-green-200');
+        
+        element.classList.add('border');
+        element.classList.add(...(isSuccess ? ['bg-green-100', 'text-green-700', 'border-green-200'] : ['bg-red-100', 'text-red-700', 'border-red-200']));
+        
+        setTimeout(() => { element.classList.add('hidden'); }, 5000);
+    };
+    
+    // NEW: Confirmation Modal Logic
+    let modalCallback = null;
+
+    const hideConfirmationModal = () => {
+        confirmModalOverlay.classList.remove('modal-open-overlay');
+        confirmModalOverlay.style.display = 'none';
+        confirmModalConfirmBtn.removeEventListener('click', modalCallback);
+    };
+    
+    confirmModalCancelBtn.addEventListener('click', hideConfirmationModal);
+    
+    const showConfirmationModal = (message, callback, confirmText = 'تأكيد الحذف') => {
+        confirmModalMessage.textContent = message;
+        confirmModalConfirmBtn.textContent = confirmText;
+        
+        // Clear previous event listener
+        if (modalCallback) {
+            confirmModalConfirmBtn.removeEventListener('click', modalCallback);
+        }
+
+        // Set new event listener
+        modalCallback = () => {
+            hideConfirmationModal();
+            callback();
+        };
+        confirmModalConfirmBtn.addEventListener('click', modalCallback);
+        
+        // Show modal
+        confirmModalOverlay.style.display = 'flex';
+        setTimeout(() => confirmModalOverlay.classList.add('modal-open-overlay'), 10);
+    };
+
+
+    const showView = async (viewId) => {
+        Object.values(views).forEach(view => view.classList.add('hidden'));
+        views[viewId].classList.remove('hidden');
+
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.classList.remove('nav-active', 'text-primary-dark', 'text-gray-500');
+            btn.classList.add('text-gray-500', 'hover:text-primary-dark');
+            if (btn.getAttribute('data-view') === viewId) {
+                btn.classList.add('nav-active', 'text-primary-dark');
+                btn.classList.remove('text-gray-500', 'hover:text-primary-dark');
+            }
+        });
+        
+        if (viewId === 'management-view') {
+            await loadStaff(); 
+            await loadSchedule();
+        } else if (viewId === 'appointments-view') {
+            await loadAppointments('today');
+        } else if (viewId === 'salon-view') {
+            await loadSalonInfo();
+            const genderFocus = currentSalon.gender_focus || 'men'; 
+            await loadServiceManagement(genderFocus);
+        }
+    };
+    
+    // --- Date/Time Utility ---
+    const formatAppointmentTime = (isoString) => {
+        const date = new Date(isoString);
+        const datePart = date.toLocaleDateString('ar', { year: 'numeric', month: 'numeric', day: 'numeric' });
+        const timePart = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+            .replace('AM', 'ص').replace('PM', 'م');
+            
+        return `${datePart} - ${timePart}`;
+    };
+
+    const formatTimeRange = (startTime, endTime) => {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        
+        const startTimePart = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+            .replace('AM', 'ص').replace('PM', 'م');
+        const endTimePart = end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+            .replace('AM', 'ص').replace('PM', 'م');
+            
+        return `${startTimePart} - ${endTimePart}`;
+    };
+    
+    const renderEmptyState = (container, text, icon) => {
+         container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas ${icon}"></i>
+                <p>${text}</p>
+            </div>
+        `;
+    };
+
+    // ===========================================
+    // SECTION 1: Appointments Logic 
+    // ===========================================
+    
+    const appointmentsListContainer = document.getElementById('appointments-list-container');
+    const tabAppointmentButtons = document.querySelectorAll('.tab-appointments');
+
+    const renderAppointmentCard = (appointment, filter) => {
+        console.log('DEBUG: Appointment data:', JSON.stringify(appointment, null, 2));
+        const isScheduled = appointment.status === 'Scheduled';
+        const isPast = filter === 'past';
+        
+        let statusClass = 'bg-gray-200 text-gray-700';
+        let statusText = 'غير معروف';
+        
+        if (appointment.status === 'Scheduled') {
+            statusClass = 'bg-secondary-soft text-secondary font-bold';
+            statusText = 'مؤكد';
+        } else if (appointment.status === 'Cancelled') {
+            statusClass = 'bg-red-100 text-red-700';
+            statusText = 'ملغي';
+        } else if (appointment.status === 'Completed') {
+            statusClass = 'bg-green-100 text-green-700';
+            statusText = 'منتهي';
+        } else if (appointment.status === 'Absent') {
+            statusClass = 'bg-orange-100 text-orange-700';
+            statusText = 'غائب';
+        }
+
+        // Check if 10 minutes have passed since appointment start time
+        const now = new Date();
+        const appointmentStartTime = new Date(appointment.start_time);
+        const tenMinutesAfterStart = new Date(appointmentStartTime.getTime() + 10 * 60 * 1000);
+        const canChangeStatus = now >= tenMinutesAfterStart;
+        
+        const actionButtons = (isScheduled && !isPast) ? `
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <label class="block text-sm font-medium text-gray-700 mb-2">تحديث حالة الموعد:</label>
+                ${canChangeStatus ? `
+                    <select class="w-full p-2 border border-gray-300 rounded-xl text-sm status-dropdown" data-id="${appointment.id}">
+                        <option value="">اختر الحالة...</option>
+                        <option value="Completed">تم الخدمة</option>
+                        <option value="Cancelled">إلغاء</option>
+                        <option value="Absent">غائب</option>
+                    </select>
+                ` : `
+                    <div class="w-full p-2 border border-gray-300 rounded-xl text-sm bg-gray-100 text-gray-500 text-center">
+                        يمكن تحديث الحالة بعد 10 دقائق من بداية الموعد
+                        <br>
+                        <small>متاح في: ${tenMinutesAfterStart.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</small>
+                    </div>
+                `}
+            </div>
+        ` : '';
+
+        return `
+            <div class="bg-white p-5 rounded-xl shadow-lg border-r-4 ${isScheduled ? 'border-secondary' : 'border-gray-300'} hover:shadow-xl transition-shadow" data-appointment-id="${appointment.id}">
+                <!-- Time and Status Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block bg-blue-100 text-blue-800 font-semibold px-4 py-2 rounded-lg text-base">
+                            <i class="fas fa-clock ml-1"></i> ${formatTimeRange(appointment.start_time, appointment.end_time)}
+                        </span>
+                    </div>
+                    <span class="text-xs font-bold px-3 py-2 rounded-lg ${statusClass} shadow-sm">${statusText}</span>
+                </div>
+                
+                <!-- Customer Info -->
+                <div class="bg-gray-50 p-3 rounded-lg mb-3">
+                    <p class="font-bold text-lg text-gray-800 mb-1">
+                        <i class="fas fa-user-circle ml-2 text-secondary"></i> ${appointment.user_name}
+                    </p>
+                    <p class="text-sm text-gray-600 mb-2">
+                        <i class="fas fa-phone ml-2 text-primary-dark/70"></i> ${appointment.user_phone}
+                    </p>
+                    ${appointment.staff_name ? `
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-user-tie ml-2 text-primary-dark/70"></i> مع: ${appointment.staff_name}
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            ${appointment.all_services && appointment.all_services.length > 0 ? 
+                                appointment.all_services.map(service => `
+                                    <span class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                                        <i class="fas fa-scissors ml-1"></i> ${service.name_ar}
+                                    </span>
+                                `).join('') : 
+                                `<span class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                                    <i class="fas fa-scissors ml-1"></i> ${appointment.service_name || 'خدمة غير محددة'}
+                                </span>`
+                            }
+                        </div>
+                    ` : `
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            ${appointment.all_services && appointment.all_services.length > 0 ? 
+                                appointment.all_services.map(service => `
+                                    <span class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                                        <i class="fas fa-scissors ml-1"></i> ${service.name_ar}
+                                    </span>
+                                `).join('') : 
+                                `<span class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                                    <i class="fas fa-scissors ml-1"></i> ${appointment.service_name || 'خدمة غير محددة'}
+                                </span>`
+                            }
+                        </div>
+                    `}
+                </div>
+                
+                ${actionButtons}
+            </div>
+        `;
+    };
+
+    const loadAppointments = async (filter) => {
+        appointmentsListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">جاري تحميل المواعيد...</p>';
+
+        tabAppointmentButtons.forEach(btn => {
+            btn.classList.remove('bg-primary-dark', 'text-white');
+            btn.classList.add('text-gray-500', 'bg-gray-200');
+            if (btn.getAttribute('data-filter') === filter) {
+                btn.classList.add('bg-primary-dark', 'text-white');
+                btn.classList.remove('text-gray-500', 'bg-gray-200');
+            }
+        });
+
+        try {
+            const response = await fetch(`/api/salon/appointments/${salonId}/${filter}`);
+            const data = await response.json();
+            
+            if (data.success && data.appointments.length > 0) {
+                appointmentsListContainer.innerHTML = data.appointments.map(appt => renderAppointmentCard(appt, filter)).join('');
+        
+        // Manually set service names after rendering
+        data.appointments.forEach(appt => {
+            const serviceNameElement = appointmentsListContainer.querySelector(`[data-appointment-id="${appt.id}"] .service-name-display`);
+            if (serviceNameElement && appt.service_name) {
+                serviceNameElement.textContent = appt.service_name;
+            }
+        });
+                attachAppointmentListeners(filter);
+            } else {
+                 let emptyText = '';
+                 let icon = '';
+                 if (filter === 'today') {
+                     emptyText = 'لا توجد مواعيد مقررة ليومك الحالي. استعد ليوم هادئ!';
+                     icon = 'fa-calendar-check';
+                 } else if (filter === 'upcoming') {
+                     emptyText = 'لا توجد حجوزات قادمة مؤكدة بعد. ابقَ على اطلاع!';
+                     icon = 'fa-bell';
+                 } else {
+                     emptyText = 'سجل مواعيدك السابقة يظهر فارغًا.';
+                     icon = 'fa-history';
+                 }
+                renderEmptyState(appointmentsListContainer, emptyText, icon);
+            }
+        } catch (error) {
+            console.error('Error loading appointments:', error);
+            showMessage(messageBox, 'فشل في جلب المواعيد من الخادم.', false);
+            renderEmptyState(appointmentsListContainer, 'فشل في جلب المواعيد من الخادم.', 'fa-server');
+        }
+    };
+    
+    const attachAppointmentListeners = (currentFilter) => {
+        document.querySelectorAll('.status-dropdown').forEach(dropdown => {
+            dropdown.addEventListener('change', (e) => {
+                const appointmentId = e.currentTarget.getAttribute('data-id');
+                const status = e.currentTarget.value;
+                if (status) {
+                    updateAppointmentStatus(appointmentId, status, currentFilter);
+                }
+            });
+        });
+    };
+    
+    const updateAppointmentStatus = async (appointmentId, status, currentFilter) => {
+        try {
+            const dropdown = document.querySelector(`.status-dropdown[data-id="${appointmentId}"]`);
+            if (dropdown) {
+                dropdown.disabled = true;
+                dropdown.style.opacity = '0.6';
+            }
+            
+            const response = await fetch(`/api/salon/appointment/status/${appointmentId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage(messageBox, data.message || 'تم تحديث حالة الموعد بنجاح.', true);
+                loadAppointments(currentFilter);
+            } else {
+                showMessage(messageBox, data.message || 'فشل في تحديث حالة الموعد.', false);
+                if (dropdown) {
+                    dropdown.disabled = false;
+                    dropdown.style.opacity = '1';
+                    dropdown.value = ''; // Reset dropdown
+                }
+            }
+
+        } catch (error) {
+            console.error('Error updating appointment status:', error);
+            showMessage(messageBox, 'خطأ في الشبكة أثناء تحديث الحالة.', false);
+            const dropdown = document.querySelector(`.status-dropdown[data-id="${appointmentId}"]`);
+            if (dropdown) {
+                dropdown.disabled = false;
+                dropdown.style.opacity = '1';
+                dropdown.value = ''; // Reset dropdown
+            }
+        }
+    };
+
+    tabAppointmentButtons.forEach(btn => {
+        btn.addEventListener('click', () => loadAppointments(btn.getAttribute('data-filter')));
+    });
+
+    // ===========================================
+    // SECTION 2: Management Logic (Staff, Schedule, Breaks, Modifications)
+    // ===========================================
+    
+    // --- Staff Management ---
+    const renderStaffList = (staff) => {
+        staffListContainer.innerHTML = staff.length > 0 ? '' : `
+            <div class="empty-state">
+                <i class="fas fa-users-slash"></i>
+                <p>لم تقم بإضافة أي موظفين بعد. أضف مختصيك الآن!</p>
+            </div>
+        `;
+        // Clear and repopulate break and modification staff dropdowns
+        breakStaffSelect.innerHTML = '<option value="all">جميع العاملين</option>';
+        modStaffSelect.innerHTML = '<option value="all">جميع العاملين</option>';
+
+        staff.forEach(s => {
+            const staffDiv = document.createElement('div');
+            staffDiv.className = 'flex justify-between items-center p-3 bg-gray-100 rounded-lg shadow-sm border border-gray-200';
+            staffDiv.innerHTML = `
+                <span class="font-medium text-primary-dark"><i class="fas fa-user-tag ml-2 text-secondary"></i> ${s.name}</span>
+                <button type="button" class="text-red-500 hover:text-red-700 text-sm delete-staff-btn p-1 rounded-full transition" data-id="${s.id}" data-name="${s.name}">
+                    <i class="fas fa-trash-alt"></i> حذف
+                </button>
+            `;
+            staffListContainer.appendChild(staffDiv);
+
+            // Populate dropdowns
+            const optionBreak = document.createElement('option');
+            optionBreak.value = s.id;
+            optionBreak.textContent = s.name;
+            breakStaffSelect.appendChild(optionBreak);
+            
+            const optionMod = document.createElement('option');
+            optionMod.value = s.id;
+            optionMod.textContent = s.name;
+            modStaffSelect.appendChild(optionMod);
+        });
+
+        document.querySelectorAll('.delete-staff-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const staffId = e.currentTarget.getAttribute('data-id');
+                const staffName = e.currentTarget.getAttribute('data-name');
+                showConfirmationModal(`هل أنت متأكد من حذف الموظف: ${staffName}؟ هذا الإجراء لا يمكن التراجع عنه.`, 
+                                    () => deleteStaffConfirmed(staffId),
+                                    'نعم، احذف الموظف');
+            });
+        });
+    };
+
+    const loadStaff = async () => {
+        try {
+            const response = await fetch(`/api/salon/staff/${salonId}`);
+            const data = await response.json();
+            if (data.success) {
+                staffList = data.staff;
+                renderStaffList(staffList);
+            } else {
+                showMessage(messageBox, 'فشل تحميل قائمة العاملين.', false);
+            }
+        } catch (error) {
+            console.error('Error loading staff:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        }
+    };
+    
+    const deleteStaffConfirmed = async (staffId) => {
+        try {
+            const response = await fetch(`/api/salon/staff/${staffId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                await loadStaff();
+                showMessage(messageBox, 'تم حذف الموظف بنجاح.', true);
+                await loadSchedule(); 
+            } else {
+                showMessage(messageBox, data.message || 'فشل حذف الموظف.', false);
+            }
+        } catch (error) {
+            console.error('Error deleting staff:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        }
+    };
+    
+    const addStaff = async (e) => {
+        e.preventDefault();
+        const name = staffNameInput.value.trim();
+        if (!name) return;
+
+        try {
+            const btn = e.submitter;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            const response = await fetch(`/api/salon/staff/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                staffNameInput.value = '';
+                await loadStaff();
+                showMessage(messageBox, 'تم إضافة الموظف بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل إضافة الموظف.', false);
+            }
+        } catch (error) {
+            console.error('Error adding staff:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        } finally {
+            addStaffForm.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-user-plus ml-1"></i> إضافة';
+            addStaffForm.querySelector('button[type="submit"]').disabled = false;
+        }
+    };
+
+    addStaffForm.addEventListener('submit', addStaff);
+
+
+    // --- Schedule & Breaks & Modifications Logic ---
+    
+    // Day Index Select for Recurring Modification
+    daysOfWeekNames.forEach((name, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = name;
+        modDayIndexSelect.appendChild(option);
+    });
+    
+    // Modification UI Toggles
+    modTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const isOnce = e.target.value === 'once';
+            onceModFields.classList.toggle('hidden', !isOnce);
+            recurringModFields.classList.toggle('hidden', isOnce);
+            document.getElementById('mod-date-input').required = isOnce;
+            modDayIndexSelect.required = !isOnce;
+        });
+    });
+
+    modIsClosedCheckbox.addEventListener('change', (e) => {
+        const isClosed = e.target.checked;
+        modTimeFields.classList.toggle('hidden', isClosed);
+        modStartTimeInput.required = !isClosed;
+        modEndTimeInput.required = !isClosed;
+        // Change button color to red for full closure
+        const modBtn = addModificationForm.querySelector('button[type="submit"]');
+        modBtn.classList.toggle('bg-red-600', isClosed);
+        modBtn.classList.toggle('hover:bg-red-700', isClosed);
+        modBtn.classList.toggle('btn-action', !isClosed);
+    });
+
+    const loadSchedule = async () => {
+        try {
+            const response = await fetch(`/api/salon/schedule/${salonId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const schedule = data.schedule || {};
+                openingTimeInput.value = schedule.opening_time || '09:00';
+                closingTimeInput.value = schedule.closing_time || '18:00';
+                renderClosedDays(schedule.closed_days || []);
+                renderBreaks(data.breaks || []);
+                renderModifications(data.modifications || []); 
+            } else {
+                openingTimeInput.value = '09:00';
+                closingTimeInput.value = '18:00';
+                renderClosedDays([]);
+                renderBreaks([]);
+                renderModifications([]); 
+            }
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+            showMessage(messageBox, 'فشل تحميل الجدول الزمني.', false);
+        }
+    };
+
+    const renderClosedDays = (closedDays) => {
+        const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        closedDaysContainer.innerHTML = '';
+        dayNames.forEach((name, index) => {
+            const isChecked = closedDays.includes(index);
+            
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = `day-${index}`;
+            input.value = index;
+            input.checked = isChecked;
+            input.className = 'hidden peer';
+
+            const label = document.createElement('label');
+            label.htmlFor = `day-${index}`;
+            label.className = `cursor-pointer px-3 py-2 rounded-full border transition-all duration-200 text-sm 
+                                ${isChecked ? 'day-selected' : 'bg-gray-200 text-gray-700 border-gray-300 hover:bg-gray-300'}`;
+            label.textContent = name;
+            
+            closedDaysContainer.appendChild(input);
+            closedDaysContainer.appendChild(label);
+
+            input.addEventListener('change', () => {
+                label.classList.toggle('day-selected');
+                label.classList.toggle('bg-gray-200');
+                label.classList.toggle('text-gray-700');
+            });
+        });
+    };
+    
+    const saveSchedule = async (e) => {
+        e.preventDefault();
+        const selectedDays = Array.from(document.querySelectorAll('#closed-days-container input:checked')).map(input => parseInt(input.value));
+        
+        const scheduleData = {
+            opening_time: openingTimeInput.value,
+            closing_time: closingTimeInput.value,
+            closed_days: selectedDays
+        };
+
+        try {
+            const btn = e.submitter;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ';
+            
+            const response = await fetch(`/api/salon/schedule/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(scheduleData),
+            });
+            const data = await response.json();
+            if (data.success) {
+                showMessage(messageBox, 'تم تحديث أوقات العمل بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل تحديث أوقات العمل.', false);
+            }
+        } catch (error) {
+            console.error('Error saving schedule:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        } finally {
+            scheduleForm.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-save ml-1"></i> حفظ أوقات العمل';
+            scheduleForm.querySelector('button[type="submit"]').disabled = false;
+        }
+    };
+    scheduleForm.addEventListener('submit', saveSchedule);
+    
+    const renderBreaks = (breaks) => {
+        breaksListContainer.innerHTML = breaks.length > 0 ? '' : `
+            <div class="empty-state p-4 border-gray-200 border-dashed border-2">
+                <i class="fas fa-mug-hot"></i>
+                <p>لم تُسجل فترات استراحة روتينية بعد.</p>
+            </div>
+        `;
+        breaks.forEach(b => {
+            const staff = staffList.find(s => s.id === b.staff_id);
+            const staffName = staff ? staff.name : 'جميع العاملين';
+            
+            const breakDiv = document.createElement('div');
+            breakDiv.className = 'flex justify-between items-center p-3 bg-red-50 rounded-lg border-r-4 border-red-400 shadow-sm';
+            breakDiv.innerHTML = `
+                <div class="space-y-1">
+                    <p class="font-medium text-red-800">${b.start_time} - ${b.end_time}</p>
+                    <p class="text-xs text-red-600">تنطبق على: ${staffName}</p>
+                </div>
+                <button type="button" class="text-red-500 hover:text-red-700 text-sm delete-break-btn p-1 rounded-full transition" data-id="${b.id}" data-staff="${staffName}">
+                    <i class="fas fa-times-circle"></i> حذف
+                </button>
+            `;
+            breaksListContainer.appendChild(breakDiv);
+        });
+
+        document.querySelectorAll('.delete-break-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const breakId = e.currentTarget.getAttribute('data-id');
+                const staffName = e.currentTarget.getAttribute('data-staff');
+                showConfirmationModal(`هل أنت متأكد من حذف فترة الاستراحة الروتينية للمختص: ${staffName}؟`, 
+                                    () => deleteBreakConfirmed(breakId));
+            });
+        });
+    };
+    
+    const deleteBreakConfirmed = async (breakId) => {
+        try {
+            const response = await fetch(`/api/salon/break/${breakId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                await loadSchedule();
+                showMessage(messageBox, 'تم حذف الاستراحة بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل حذف الاستراحة.', false);
+            }
+        } catch (error) {
+            console.error('Error deleting break:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        }
+    };
+    
+    addBreakForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const staffId = breakStaffSelect.value === 'all' ? null : parseInt(breakStaffSelect.value);
+        
+        const breakData = {
+            start_time: breakStartInput.value,
+            end_time: breakEndInput.value,
+            staff_id: staffId,
+        };
+
+        try {
+            const btn = e.submitter;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الإضافة';
+
+            const response = await fetch(`/api/salon/break/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(breakData),
+            });
+            const data = await response.json();
+            if (data.success) {
+                breakStartInput.value = '';
+                breakEndInput.value = '';
+                await loadSchedule();
+                showMessage(messageBox, 'تم إضافة الاستراحة بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل إضافة الاستراحة.', false);
+            }
+        } catch (error) {
+            console.error('Error adding break:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        } finally {
+             addBreakForm.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-pause-circle ml-1"></i> إضافة استراحة روتينية';
+             addBreakForm.querySelector('button[type="submit"]').disabled = false;
+        }
+    });
+
+    // --- NEW Modification Logic ---
+    const renderModifications = (modifications) => {
+        modificationsListContainer.innerHTML = modifications.length > 0 ? '' : `
+            <div class="empty-state p-4 border-gray-200 border-dashed border-2">
+                <i class="fas fa-calendar-times"></i>
+                <p>لا توجد تعديلات مؤقتة أو إجازات مجدولة حالياً.</p>
+            </div>
+        `;
+        modifications.forEach(mod => {
+            const staff = staffList.find(s => s.id === mod.staff_id);
+            const staffName = staff ? staff.name : 'جميع العاملين';
+            
+            let modDetails = '';
+            let typeColor = '';
+            
+            if (mod.mod_type === 'once') {
+                modDetails = `بتاريخ: ${mod.mod_date}`;
+                typeColor = 'border-blue-400 bg-blue-50';
+            } else {
+                modDetails = `كل: ${daysOfWeekNames[mod.mod_day_index]}`;
+                typeColor = 'border-orange-400 bg-orange-50';
+            }
+            
+            const timeInfo = mod.is_closed ? 
+                '<span class="font-bold text-red-600">مغلق بالكامل</span>' :
+                `سيعمل من ${mod.start_time} حتى ${mod.end_time}`;
+
+            const modDiv = document.createElement('div');
+            modDiv.className = `flex justify-between items-center p-3 rounded-lg border-r-4 shadow-sm ${typeColor}`;
+            modDiv.innerHTML = `
+                <div class="space-y-1">
+                    <p class="font-medium text-primary-dark">${mod.reason}</p>
+                    <p class="text-xs text-gray-700">${timeInfo} - ${modDetails}</p>
+                    <p class="text-xs text-gray-500">ينطبق على: ${staffName}</p>
+                </div>
+                <button type="button" class="text-red-500 hover:text-red-700 text-sm delete-mod-btn p-1 rounded-full transition" data-id="${mod.id}" data-reason="${mod.reason}">
+                    <i class="fas fa-trash-alt"></i> حذف
+                </button>
+            `;
+            modificationsListContainer.appendChild(modDiv);
+        });
+
+        document.querySelectorAll('.delete-mod-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modId = e.currentTarget.getAttribute('data-id');
+                const reason = e.currentTarget.getAttribute('data-reason');
+                showConfirmationModal(`هل أنت متأكد من حذف تعديل الجدول: "${reason}"؟`, 
+                                    () => deleteModificationConfirmed(modId));
+            });
+        });
+    };
+    
+    const addModification = async (e) => {
+        e.preventDefault();
+        
+        // FIX: Define btn at the beginning of the function
+        const btn = e.submitter; 
+
+        const modType = document.querySelector('input[name="mod_type"]:checked').value;
+        const isClosed = modIsClosedCheckbox.checked;
+        const staffId = modStaffSelect.value === 'all' ? null : parseInt(modStaffSelect.value);
+
+        let modData = {
+            salon_id: salonId,
+            mod_type: modType,
+            is_closed: isClosed,
+            reason: document.getElementById('mod-reason-input').value.trim(),
+            staff_id: staffId
+        };
+        
+        if (modType === 'once') {
+            modData.mod_date = document.getElementById('mod-date-input').value;
+            modData.mod_day_index = null;
+        } else {
+            modData.mod_day_index = parseInt(modDayIndexSelect.value);
+            modData.mod_date = null;
+        }
+
+        if (!isClosed) {
+            modData.start_time = modStartTimeInput.value;
+            modData.end_time = modEndTimeInput.value;
+        } else {
+            modData.start_time = null;
+            modData.end_time = null;
+        }
+
+        if (!modData.reason || (modType === 'once' && !modData.mod_date) || (modType === 'recurring' && modData.mod_day_index === undefined)) {
+            showMessage(messageBox, 'يرجى ملء جميع الحقول المطلوبة للتعديل.', false);
+            return;
+        }
+
+        try {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الإضافة';
+
+            const response = await fetch(`/api/salon/schedule/modification/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(modData),
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                addModificationForm.reset();
+                // Reset checkbox state for next entry
+                modIsClosedCheckbox.checked = false;
+                modTimeFields.classList.remove('hidden'); 
+                modStartTimeInput.required = true;
+                modEndTimeInput.required = true;
+                
+                await loadSchedule();
+                showMessage(messageBox, 'تم إضافة التعديل بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل إضافة التعديل.', false);
+            }
+        } catch (error) {
+            console.error('Error adding modification:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        } finally {
+            // FIX: The btn variable is now correctly defined and accessible here.
+            const isClosed = modIsClosedCheckbox.checked;
+            const defaultColor = isClosed ? 'bg-red-600 hover:bg-red-700 text-white' : 'btn-action';
+            btn.classList = `w-full py-3 rounded-xl font-bold ${defaultColor}`;
+            btn.innerHTML = '<i class="fas fa-calendar-times ml-1"></i> إضافة تعديل مؤقت';
+            btn.disabled = false;
+        }
+    };
+    
+    const deleteModificationConfirmed = async (modId) => {
+        try {
+            const response = await fetch(`/api/salon/schedule/modification/${modId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (data.success) {
+                await loadSchedule();
+                showMessage(messageBox, 'تم حذف التعديل بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل حذف التعديل.', false);
+            }
+        } catch (error) {
+            console.error('Error deleting modification:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        }
+    };
+    
+    addModificationForm.addEventListener('submit', addModification);
+
+
+    // ===========================================
+    // SECTION 3: Salon Profile & Services Logic
+    // ===========================================
+
+    // --- Salon Info ---
+    const populateCityDropdowns = async (selectedCity = null) => {
+        try {
+            const response = await fetch('/api/cities');
+            const cities = await response.json();
+            
+            infoCity.innerHTML = '<option value="" disabled selected>المدينة</option>';
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                if (city === selectedCity) {
+                    option.selected = true;
+                }
+                infoCity.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading cities:', error);
+            showMessage(messageBox, 'فشل تحميل قائمة المدن.', false);
+        }
+    };
+
+    const loadSalonInfo = async () => {
+        await populateCityDropdowns(currentSalon.city);
+
+        try {
+            const response = await fetch(`/api/salon/info/${salonId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const info = data.info;
+                infoSalonName.value = info.salon_name || '';
+                infoOwnerName.value = info.owner_name || '';
+                infoSalonPhone.value = info.salon_phone || '';
+                infoAddress.value = info.address || '';
+                infoGenderFocus.value = info.gender_focus || 'men';
+                
+                // Update local state and display name
+                currentSalon = { 
+                    ...currentSalon, 
+                    ...info, 
+                    salon_name: info.salon_name, 
+                    gender_focus: info.gender_focus,
+                };
+                localStorage.setItem('salonni_user', JSON.stringify(currentSalon));
+                
+                // Display existing image if available
+                if (info.image_url && info.image_url !== 'https://placehold.co/300x200/1a434e/ffffff?text=صورة+الصالون') {
+                    const imagePreview = document.getElementById('image-preview');
+                    const imagePreviewContainer = document.getElementById('image-preview-container');
+                    imagePreview.src = info.image_url;
+                    imagePreview.classList.remove('hidden');
+                    imagePreviewContainer.innerHTML = '';
+                    imagePreviewContainer.appendChild(imagePreview);
+                }
+            } else {
+                showMessage(messageBox, 'فشل تحميل معلومات الصالون.', false);
+            }
+        } catch (error) {
+            console.error('Error loading salon info:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        }
+    };
+
+    // --- Image Handling ---
+    const convertImageToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // Image preview functionality
+    const imageInput = document.getElementById('info-salon-image');
+    const imagePreview = document.getElementById('image-preview');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+
+    imageInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            try {
+                const base64Image = await convertImageToBase64(file);
+                imagePreview.src = base64Image;
+                imagePreview.classList.remove('hidden');
+                imagePreviewContainer.innerHTML = '';
+                imagePreviewContainer.appendChild(imagePreview);
+            } catch (error) {
+                console.error('Error converting image:', error);
+                showMessage(messageBox, 'خطأ في معالجة الصورة', false);
+            }
+        }
+    });
+
+    const saveSalonInfo = async (e) => {
+        e.preventDefault();
+        
+        // Handle image file - required if no existing image
+        let imageUrl = currentSalon.image_url; // Keep existing image by default
+        const imageFile = imageInput.files[0];
+        
+        // Check if image is required (no existing image or existing image is placeholder)
+        const hasExistingImage = imageUrl && imageUrl !== 'https://placehold.co/300x200/1a434e/ffffff?text=صورة+الصالون';
+        
+        if (imageFile) {
+            try {
+                imageUrl = await convertImageToBase64(imageFile);
+            } catch (error) {
+                console.error('Error converting image:', error);
+                showMessage(messageBox, 'خطأ في معالجة الصورة', false);
+                return;
+            }
+        } else if (!hasExistingImage) {
+            showMessage(messageBox, 'يرجى اختيار صورة للصالون', false);
+            return;
+        }
+        
+        const infoData = {
+            salon_name: infoSalonName.value,
+            owner_name: infoOwnerName.value,
+            salon_phone: infoSalonPhone.value,
+            owner_phone: currentSalon.owner_phone, 
+            address: infoAddress.value,
+            city: infoCity.value,
+            gender_focus: infoGenderFocus.value,
+            image_url: imageUrl 
+        };
+        
+        try {
+            const btn = e.submitter;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري التحديث';
+
+            const response = await fetch(`/api/salon/info/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(infoData),
+            });
+            const data = await response.json();
+            if (data.success) {
+                await loadSalonInfo(); 
+                showMessage(messageBox, 'تم تحديث المعلومات الأساسية بنجاح.', true);
+            } else {
+                showMessage(messageBox, data.message || 'فشل تحديث المعلومات.', false);
+            }
+        } catch (error) {
+            console.error('Error saving salon info:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        } finally {
+            salonInfoForm.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-sync-alt ml-1"></i> تحديث المعلومات الأساسية';
+            salonInfoForm.querySelector('button[type="submit"]').disabled = false;
+        }
+    };
+    
+    salonInfoForm.addEventListener('submit', saveSalonInfo);
+
+
+    // --- Service Management ---
+    const generateDurationOptions = (selectedDuration) => {
+        let options = '';
+        for (let min = 5; min <= 120; min += 5) {
+            options += `<option value="${min}" ${min === selectedDuration ? 'selected' : ''}>${min} دقيقة</option>`;
+        }
+        return options;
+    };
+
+    const renderServiceCards = (masterServices, salonServices) => {
+        servicesListContainer.innerHTML = '';
+        
+        if (!masterServices || masterServices.length === 0) {
+            renderEmptyState(servicesListContainer, `لا توجد خدمات رئيسية متاحة لهذه الفئة (${currentSalon.gender_focus === 'men' ? 'رجال' : 'نساء'}).`, 'fa-wrench');
+            return;
+        }
+
+        // Separate main services and add-ons
+        const mainServices = masterServices.filter(service => service.service_type === 'main');
+        const addOnServices = masterServices.filter(service => service.service_type === 'add_on');
+
+        // Render main services section
+        if (mainServices.length > 0) {
+            const mainHeader = document.createElement('div');
+            mainHeader.className = 'mb-4';
+            mainHeader.innerHTML = `
+                <h3 class="text-xl font-bold text-primary-dark mb-2">
+                    <i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية
+                </h3>
+                <p class="text-gray-600 text-sm">الخدمات التي تحتاج وقت محدد في الجدولة</p>
+            `;
+            servicesListContainer.appendChild(mainHeader);
+
+            mainServices.forEach(master => {
+                const current = salonServices.find(s => s.id === master.id) || {};
+                const isChecked = !!current.price || !!current.duration; 
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isChecked ? 'border-secondary bg-secondary-soft' : 'border-gray-200 bg-white'}`;
+                card.setAttribute('data-service-id', master.id);
+                card.setAttribute('data-service-type', master.service_type);
+
+                const initialPrice = current.price || 50;
+                const initialDuration = current.duration || 30;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <input type="checkbox" id="service-check-${master.id}" 
+                                   data-id="${master.id}" class="h-5 w-5 text-secondary rounded focus:ring-secondary service-checkbox" 
+                                   ${isChecked ? 'checked' : ''}>
+                            <label for="service-check-${master.id}" class="text-lg font-bold text-primary-dark cursor-pointer">
+                                <i class="fas ${master.icon} ml-2 text-secondary"></i> ${master.name_ar}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="details-inputs space-y-3 pt-3 border-t ${isChecked ? 'opacity-100' : 'hidden opacity-0'}" data-id="${master.id}">
+                        <div class="flex space-x-4 space-x-reverse">
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700">السعر (ILS)</label>
+                                <input type="number" data-id="${master.id}" data-type="price" 
+                                       value="${initialPrice}" min="5" step="5" required
+                                       class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700">المدة</label>
+                                <select data-id="${master.id}" data-type="duration" required
+                                        class="mt-1 w-full p-2 border border-gray-300 rounded-lg appearance-none text-right">
+                                    ${generateDurationOptions(initialDuration)}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                servicesListContainer.appendChild(card);
+            });
+        }
+
+        // Render add-ons section
+        if (addOnServices.length > 0) {
+            const addOnHeader = document.createElement('div');
+            addOnHeader.className = 'mb-4 mt-8';
+            addOnHeader.innerHTML = `
+                <h3 class="text-xl font-bold text-primary-dark mb-2">
+                    <i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات
+                </h3>
+                <p class="text-gray-600 text-sm">خدمات إضافية لا تحتاج وقت في الجدولة (المدة تلقائياً 0 دقيقة)</p>
+            `;
+            servicesListContainer.appendChild(addOnHeader);
+
+            addOnServices.forEach(master => {
+                const current = salonServices.find(s => s.id === master.id) || {};
+                const isChecked = !!current.price; // Only check price for add-ons
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isChecked ? 'border-orange-400 bg-orange-50' : 'border-gray-200 bg-white'}`;
+                card.setAttribute('data-service-id', master.id);
+                card.setAttribute('data-service-type', master.service_type);
+
+                const initialPrice = current.price || 25;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <input type="checkbox" id="service-check-${master.id}" 
+                                   data-id="${master.id}" class="h-5 w-5 text-orange-500 rounded focus:ring-orange-500 service-checkbox" 
+                                   ${isChecked ? 'checked' : ''}>
+                            <label for="service-check-${master.id}" class="text-lg font-bold text-primary-dark cursor-pointer">
+                                <i class="fas ${master.icon} ml-2 text-orange-500"></i> ${master.name_ar}
+                                <span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="details-inputs space-y-3 pt-3 border-t ${isChecked ? 'opacity-100' : 'hidden opacity-0'}" data-id="${master.id}">
+                        <div class="flex space-x-4 space-x-reverse">
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700">السعر (ILS)</label>
+                                <input type="number" data-id="${master.id}" data-type="price" 
+                                       value="${initialPrice}" min="5" step="5" required
+                                       class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-500">المدة (تلقائياً 0 دقيقة)</label>
+                                <input type="number" data-id="${master.id}" data-type="duration" 
+                                       value="0" readonly
+                                       class="mt-1 w-full p-2 border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                servicesListContainer.appendChild(card);
+            });
+        }
+
+        attachServiceListeners();
+    };
+
+    const attachServiceListeners = () => {
+        document.querySelectorAll('.service-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const serviceId = e.target.getAttribute('data-id');
+                const card = e.target.closest('[data-service-id]');
+                const serviceType = card.getAttribute('data-service-type');
+                const details = document.querySelector(`.details-inputs[data-id="${serviceId}"]`);
+                
+                if (e.target.checked) {
+                    card.classList.remove('border-gray-200', 'bg-white');
+                    if (serviceType === 'add_on') {
+                        card.classList.add('border-orange-400', 'bg-orange-50');
+                    } else {
+                        card.classList.add('border-secondary', 'bg-secondary-soft');
+                    }
+                    details.classList.remove('hidden');
+                    setTimeout(() => details.classList.remove('opacity-0'), 10); 
+                    
+                    details.querySelectorAll('input:not([readonly]), select').forEach(input => input.setAttribute('required', 'true'));
+                } else {
+                    card.classList.add('border-gray-200', 'bg-white');
+                    if (serviceType === 'add_on') {
+                        card.classList.remove('border-orange-400', 'bg-orange-50');
+                    } else {
+                        card.classList.remove('border-secondary', 'bg-secondary-soft');
+                    }
+                    details.classList.add('opacity-0');
+                    setTimeout(() => details.classList.add('hidden'), 300); 
+                    
+                    details.querySelectorAll('input, select').forEach(input => input.removeAttribute('required'));
+                }
+            });
+        });
+    };
+
+    const loadServiceManagement = async (genderFocus) => {
+        servicesListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">جاري تحميل قائمة الخدمات...</p>';
+        try {
+            const masterResponse = await fetch(`/api/services/master/${genderFocus}`);
+            const masterData = await masterResponse.json();
+            
+            const salonResponse = await fetch(`/api/salon/services/${salonId}`);
+            const salonData = await salonResponse.json();
+
+            if (masterData.success && salonData.success) {
+                renderServiceCards(masterData.services, salonData.services);
+            } else {
+                showMessage(servicesMessage, 'فشل تحميل الخدمات الرئيسية أو خدمات الصالون.', false);
+                renderEmptyState(servicesListContainer, 'فشل تحميل قائمة الخدمات.', 'fa-server');
+            }
+        } catch (error) {
+            console.error('Error loading service data:', error);
+            showMessage(servicesMessage, 'فشل الاتصال بـ API إدارة الخدمات.', false);
+            renderEmptyState(servicesListContainer, 'فشل تحميل قائمة الخدمات.', 'fa-server');
+        }
+    };
+
+    const saveServices = async () => {
+        const selectedServices = [];
+        let validationError = false;
+
+        document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
+            const serviceId = checkbox.getAttribute('data-id');
+            const card = checkbox.closest('[data-service-id]');
+            const serviceType = card.getAttribute('data-service-type');
+            const priceInput = document.querySelector(`.details-inputs[data-id="${serviceId}"] input[data-type="price"]`);
+            
+            let durationElement;
+            if (serviceType === 'add_on') {
+                // For add-ons, duration is an input field with value 0
+                durationElement = document.querySelector(`.details-inputs[data-id="${serviceId}"] input[data-type="duration"]`);
+            } else {
+                // For main services, duration is a select element
+                durationElement = document.querySelector(`.details-inputs[data-id="${serviceId}"] select[data-type="duration"]`);
+            }
+
+            const price = parseFloat(priceInput.value);
+            const duration = parseInt(durationElement.value);
+
+            // For add-ons, duration can be 0, for main services it must be > 0
+            if (isNaN(price) || price <= 0) {
+                showMessage(servicesMessage, `يرجى إدخال سعر صحيح للخدمة.`, false);
+                validationError = true;
+                return;
+            }
+
+            if (serviceType === 'main' && (isNaN(duration) || duration <= 0)) {
+                showMessage(servicesMessage, `يرجى إدخال مدة صحيحة للخدمة الأساسية.`, false);
+                validationError = true;
+                return;
+            }
+
+            selectedServices.push({
+                service_id: parseInt(serviceId),
+                price: price,
+                duration: serviceType === 'add_on' ? 0 : duration
+            });
+        });
+        
+        if (validationError) return;
+
+        if (selectedServices.length === 0) {
+            showMessage(servicesMessage, 'يرجى اختيار خدمة واحدة على الأقل للحفظ.', false);
+            return;
+        }
+
+        try {
+            saveServicesBtn.disabled = true;
+            saveServicesBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
+
+            const response = await fetch(`/api/salon/services/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ services: selectedServices })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage(servicesMessage, 'تم حفظ الخدمات بنجاح!', true);
+                loadServiceManagement(currentSalon.gender_focus);
+            } else {
+                showMessage(servicesMessage, data.message || 'فشل في حفظ الخدمات.', false);
+            }
+        } catch (error) {
+            console.error('Save services error:', error);
+            showMessage(servicesMessage, 'خطأ في الشبكة أثناء عملية الحفظ.', false);
+        } finally {
+            saveServicesBtn.disabled = false;
+            saveServicesBtn.innerHTML = '<i class="fas fa-save ml-2"></i> حفظ الخدمات والأسعار';
+        }
+    };
+
+    saveServicesBtn.addEventListener('click', saveServices);
+    
+
+    // --- Initialization and Event Attachments ---
+    
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
+    });
+
+    showView('appointments-view');
+    
+    document.getElementById('logout-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('salonni_user');
+        localStorage.removeItem('salonni_token');
+        console.log("Salon logging out.");
+        window.location.href = '/auth.html';
+    });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صالوني - تسجيل الدخول وإنشاء حساب</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #152026; 
+            /* UPDATED PATH: images/auth.jpg */
+            background-image: url('/images/auth.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            /* Allow scrolling on the body if content overflows (good for mobile) */
+            overflow-y: auto; 
+            padding: 20px 0; /* Add padding top/bottom for mobile safety */
+        }
+        body::before {
+            content: '';
+            position: fixed; /* Ensures overlay covers the whole viewport even when scrolling */
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* REDUCED OVERLAY OPACITY (was 0.85, now 0.75) */
+            background: rgba(26, 67, 78, 0.75); 
+            z-index: 0;
+        }
+        /* Custom colors matching home pages theme */
+        .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
+        .text-primary-dark { color: #1E293B; }
+        .color-primary-dark { background-color: #1E293B; }
+        .text-secondary { color: #06C167; } /* Vibrant Teal-Green Accent */
+        .color-secondary-bg { background-color: #06C167; }
+        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); }
+        .color-accent-bg { background-color: rgba(6, 193, 103, 0.1); } /* Light secondary accent */
+        .btn-primary {
+            background-color: #06C167;
+            color: #1E293B;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(6, 193, 103, 0.4);
+        }
+        .btn-primary:hover {
+            background-color: #05ae5d;
+        }
+        .form-card {
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.95); /* Slightly transparent card */
+            backdrop-filter: blur(5px);
+            /* Set max height and enable internal scrolling for mobile responsiveness */
+            max-height: 95vh; 
+            overflow-y: auto;
+        }
+        
+        /* ------------------------------------------------------------- */
+        /* START: Input Styling - ALL ICONS ON LEFT FOR VISUAL CONSISTENCY */
+        /* ------------------------------------------------------------- */
+
+        /* Global Input Styling: Padding on the LEFT for the icon space */
+        input, select {
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+            /* Standard padding on the right for Arabic text */
+            padding-right: 1rem !important; 
+            /* Mandatory padding on the LEFT for the icon position (left-4) */
+            padding-left: 3rem !important; 
+            text-align: right;
+            /* Ensure even LTR content uses RTL alignment for visual symmetry (as requested) */
+            direction: rtl; 
+        }
+        /* Override for file input to fix custom styling in Tailwind */
+        input[type="file"] {
+             padding-left: 1rem !important;
+             text-align: right;
+        }
+        /* Fix LTR inputs */
+        input[type="email"], input[type="tel"] {
+             direction: ltr; /* Ensure LTR text direction for numbers/emails but RTL padding */
+        }
+
+
+        input:focus, select:focus {
+            border-color: #06C167;
+            box-shadow: 0 0 0 2px rgba(6, 193, 103, 0.5);
+        }
+
+        /* ------------------------------------------------------------- */
+        /* END: Input Styling */
+        /* ------------------------------------------------------------- */
+
+        /* Transition for switching between Login/Signup main containers */
+        .form-content-transition {
+            transition: opacity 0.3s ease-in-out;
+        }
+        /* Styling for the role switch buttons */
+        #role-user.bg-white, #role-salon.bg-white {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+
+<div id="auth-main-container" class="w-full max-w-lg mx-4 p-6 form-card rounded-3xl shadow-2xl transition-all duration-500 ease-in-out">
+    
+    <header class="text-center mb-8 flex flex-col items-center">
+        <!-- Clean Saloony Logo with transparent background -->
+        <img src="/images/saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/144x144/1a434e/ffffff?text=Logo';" alt="شعار صالوني" class="w-36 h-36 mb-6 object-contain object-center transition-transform duration-300 hover:scale-[1.02]">
+        <p id="app-subtitle" class="text-gray-600 text-lg font-medium">بوابة الجمال والأناقة في فلسطين.</p>
+    </header>
+
+    <!-- Message Box (Toast) -->
+    <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium" role="alert"></div>
+
+    <!-- Mode Switcher (Login/Signup) -->
+    <div class="flex p-1 mb-6 rounded-xl color-accent-bg/50 shadow-inner">
+        <button id="tab-login" class="flex-1 py-2 text-center text-sm font-bold rounded-xl transition-all duration-300" onclick="switchMode('login')">
+            <i class="fas fa-sign-in-alt text-lg ml-2"></i> تسجيل الدخول
+        </button>
+        <button id="tab-signup" class="flex-1 py-2 text-center text-sm font-bold rounded-xl transition-all duration-300" onclick="switchMode('signup')">
+            <i class="fas fa-user-plus text-lg ml-2"></i> إنشاء حساب
+        </button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form-container" class="form-content-transition">
+        <h2 class="text-2xl font-bold text-primary-dark mb-6 text-center">ابدأ يومك بحجز موعد</h2>
+        <form id="login-form" class="space-y-4">
+            
+            <div class="relative">
+                <input type="email" id="login-email" name="email" placeholder="البريد الإلكتروني" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="username">
+                <i class="fas fa-at text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            </div>
+            
+            <div class="relative">
+                <input type="password" id="login-password" name="password" placeholder="كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="current-password">
+                <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            </div>
+            
+            <label for="login-role" class="block text-sm font-medium text-gray-700 pt-2">سجل الدخول كـ:</label>
+            <div class="relative">
+                <select id="login-role" name="role" required class="w-full p-4 border border-gray-200 rounded-xl appearance-none">
+                    <option value="user">مستخدم (للحجز)</option>
+                    <option value="salon">صالون (لاستقبال الحجوزات)</option>
+                </select>
+                <i class="fas fa-users-cog text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            </div>
+
+            <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
+                <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل الدخول
+            </button>
+        </form>
+    </div>
+
+    <!-- Signup Form Container -->
+    <div id="signup-form-container" class="hidden form-content-transition">
+        <h2 class="text-2xl font-bold text-primary-dark mb-6 text-center">انضم إلينا في رحلتك!</h2>
+        
+        <!-- Role Switcher (User/Salon) -->
+        <div class="flex p-1 mb-4 rounded-xl color-primary-dark/10 shadow-inner">
+            <button id="role-user" class="flex-1 py-2 text-center text-sm font-bold rounded-xl transition-all duration-300" onclick="switchRole('user')">
+                <i class="fas fa-user text-lg ml-2"></i> مستخدم
+            </button>
+            <button id="role-salon" class="flex-1 py-2 text-center text-sm font-bold rounded-xl transition-all duration-300 text-gray-500" onclick="switchRole('salon')">
+                <i class="fas fa-store-alt text-lg ml-2"></i> صالون
+            </button>
+        </div>
+
+        <div id="signup-form-wrapper">
+            <!-- User Signup Form -->
+            <form id="user-signup-form" class="space-y-4 signup-form-stack"> 
+                <input type="hidden" name="user_type" value="user">
+                <div class="relative">
+                    <input type="text" id="user-name" name="name" placeholder="الاسم الكامل" required class="w-full p-4 border border-gray-200 rounded-xl">
+                    <i class="fas fa-user-circle text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                <div class="relative">
+                    <input type="email" id="user-email" name="email" placeholder="البريد الإلكتروني" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="off">
+                    <i class="fas fa-envelope-open-text text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                <div class="relative">
+                    <input type="tel" id="user-phone" name="phone" placeholder="رقم الهاتف (مثال: 059xxxxxxx)" required class="w-full p-4 border border-gray-200 rounded-xl">
+                    <i class="fas fa-phone text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                
+                <div class="flex space-x-2 space-x-reverse">
+                    <div class="relative flex-1">
+                        <select id="user-gender" name="gender" required class="w-full p-4 border border-gray-200 rounded-xl appearance-none">
+                            <option value="" disabled selected>الجنس</option>
+                            <option value="male">ذكر</option>
+                            <option value="female">أنثى</option>
+                        </select>
+                        <i class="fas fa-venus-mars text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+                    <div class="relative flex-1">
+                        <select id="user-city" name="city" required class="w-full p-4 border border-gray-200 rounded-xl appearance-none">
+                            <option value="" disabled selected>المدينة</option>
+                        </select>
+                        <i class="fas fa-city text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <input type="password" id="user-password" name="password" placeholder="كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="new-password">
+                    <i class="fas fa-key text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                <div class="relative">
+                    <input type="password" id="user-confirm-password" name="confirmPassword" placeholder="تأكيد كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="new-password">
+                    <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                
+                <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
+                    <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كمستخدم
+                </button>
+            </form>
+
+            <!-- Salon Signup Form -->
+            <form id="salon-signup-form" class="space-y-4 signup-form-stack hidden">
+                <input type="hidden" name="user_type" value="salon">
+                <div class="relative">
+                    <input type="text" id="salon-name" name="name" placeholder="اسم الصالون" required class="w-full p-4 border border-gray-200 rounded-xl">
+                    <i class="fas fa-store-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                <div class="relative">
+                    <input type="text" id="salon-owner-name" name="owner_name" placeholder="اسم المالك" required class="w-full p-4 border border-gray-200 rounded-xl">
+                    <i class="fas fa-id-card-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                
+                <div class="flex space-x-2 space-x-reverse">
+                    <div class="relative flex-1">
+                        <input type="tel" id="salon-phone" name="phone" placeholder="هاتف الصالون" required class="w-full p-4 border border-gray-200 rounded-xl">
+                        <i class="fas fa-phone-square-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+                    <div class="relative flex-1">
+                        <input type="tel" id="salon-owner-phone" name="owner_phone" placeholder="هاتف المالك" required class="w-full p-4 border border-gray-200 rounded-xl">
+                        <i class="fas fa-mobile-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <input type="email" id="salon-email" name="email" placeholder="البريد الإلكتروني للصالون" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="off">
+                    <i class="fas fa-envelope-open-text text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                <div class="relative">
+                    <input type="text" id="salon-address" name="address" placeholder="العنوان الكامل للصالون" required class="w-full p-4 border border-gray-200 rounded-xl">
+                    <i class="fas fa-map-marked-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                
+                <div class="relative">
+                    <select id="salon-city" name="city" required class="w-full p-4 border border-gray-200 rounded-xl appearance-none">
+                        <option value="" disabled selected>المدينة</option>
+                    </select>
+                    <i class="fas fa-city text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                
+                <div class="relative">
+                    <select id="salon-gender-focus" name="gender_focus" required class="w-full p-4 border border-gray-200 rounded-xl appearance-none">
+                        <option value="" disabled selected>الفئة المستهدفة</option>
+                        <option value="men">رجال</option>
+                        <option value="women">نساء</option>
+                    </select>
+                    <i class="fas fa-cut text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <label class="block text-sm font-medium text-gray-700 pt-2">صورة الصالون <span class="text-red-500">*</span>:</label>
+                <div class="relative">
+                    <input type="file" id="salon-image" name="image" accept="image/*" required class="w-full p-4 border border-gray-200 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-dark file:text-white hover:file:bg-primary-dark/80">
+                    <i class="fas fa-camera text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <div class="relative">
+                    <input type="password" id="salon-password" name="password" placeholder="كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="new-password">
+                    <i class="fas fa-key text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+                <div class="relative">
+                    <input type="password" id="salon-confirm-password" name="confirmPassword" placeholder="تأكيد كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="new-password">
+                    <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
+                    <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كصالون
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Feature Slide Modal -->
+<div id="feature-slide" class="fixed inset-0 color-primary-dark/95 flex flex-col justify-center items-center p-8 hidden z-20 transition-opacity duration-500 opacity-0">
+    <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl max-w-xl text-center">
+        <h2 class="text-4xl font-extrabold text-secondary mb-4">أهلاً بك في صالوني!</h2>
+        <p class="text-xl text-gray-600 mb-8">نشكرك على الانضمام. استعد للاستمتاع بالميزات التالية:</p>
+
+        <div class="space-y-6 mb-10 text-right">
+            <div class="flex items-start space-x-4 space-x-reverse">
+                <i class="fas fa-calendar-check text-4xl text-secondary flex-shrink-0 mt-1"></i>
+                <div>
+                    <h3 class="font-bold text-primary-dark text-lg">حجز المواعيد السهل</h3>
+                    <p class="text-gray-500 text-sm">شاهد الأوقات المتاحة واحجز موعدك بضغطة زر، 24/7.</p>
+                </div>
+            </div>
+            <div class="flex items-start space-x-4 space-x-reverse">
+                <i class="fas fa-map-pin text-4xl text-secondary flex-shrink-0 mt-1"></i>
+                <div>
+                    <h3 class="font-bold text-primary-dark text-lg">صالونات فلسطين بين يديك</h3>
+                    <p class="text-gray-500 text-sm">ابحث عن أفضل الصالونات القريبة منك في جميع المدن الفلسطينية.</p>
+                </div>
+            </div>
+            <div class="flex items-start space-x-4 space-x-reverse">
+                <i class="fas fa-star text-4xl text-secondary flex-shrink-0 mt-1"></i>
+                <div>
+                    <h3 class="font-bold text-primary-dark text-lg">تقييمات موثوقة</h3>
+                    <p class="text-gray-500 text-sm">اقرأ تقييمات العملاء الآخرين لتختار دائمًا الأفضل.</p>
+                </div>
+            </div>
+        </div>
+
+        <button id="start-now-btn" class="btn-primary w-full py-4 rounded-xl text-xl font-extrabold">
+            ابدأ رحلتك الآن
+        </button>
+    </div>
+</div>
+
+<script>
+class AuthManager {
+    constructor() {
+        this.currentMode = 'login';
+        this.currentRole = 'user';
+        this.init();
+    }
+
+    init() {
+        this.bindEvents();
+        this.populateCities();
+        this.setActiveTab('login');
+        this.setActiveRole('user');
+    }
+
+    bindEvents() {
+        // Form submissions
+        document.getElementById('login-form').addEventListener('submit', (e) => this.handleLogin(e));
+        document.getElementById('user-signup-form').addEventListener('submit', (e) => this.handleSignup(e));
+        document.getElementById('salon-signup-form').addEventListener('submit', (e) => this.handleSignup(e));
+        
+        // Password strength checking
+        document.getElementById('user-password').addEventListener('input', (e) => this.checkPasswordStrength(e.target));
+        document.getElementById('salon-password').addEventListener('input', (e) => this.checkPasswordStrength(e.target));
+        
+        // Feature slide button
+        document.getElementById('start-now-btn').addEventListener('click', () => this.hideFeatureSlide());
+    }
+
+    async populateCities() {
+        const userCitySelect = document.getElementById('user-city');
+        const salonCitySelect = document.getElementById('salon-city');
+
+        try {
+            const response = await fetch('/api/cities');
+            if (!response.ok) throw new Error('Failed to fetch cities');
+            
+            const cities = await response.json();
+            
+            // Function to render options
+            const renderOptions = (selectElement) => {
+                selectElement.innerHTML = '<option value="" disabled selected>المدينة</option>';
+                cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city;
+                    selectElement.appendChild(option);
+                });
+            };
+            
+            renderOptions(userCitySelect);
+            renderOptions(salonCitySelect);
+
+        } catch (error) {
+            console.error('Error populating cities:', error);
+            this.showToast('فشل تحميل قائمة المدن.', 'error');
+        }
+    }
+
+    checkPasswordStrength(passwordInput) {
+        const password = passwordInput.value;
+        let strengthIndicator = passwordInput.parentElement.querySelector('.password-strength');
+
+        if (!strengthIndicator) {
+             // Create and append the indicator if it doesn't exist
+            strengthIndicator = document.createElement('div');
+            strengthIndicator.className = 'password-strength mt-2 text-sm text-right';
+            passwordInput.parentElement.appendChild(strengthIndicator);
+        }
+        
+        let strength = 0;
+        let feedback = [];
+
+        if (password.length >= 8) strength++;
+        else feedback.push('8 أحرف على الأقل');
+
+        if (/[A-Z]/.test(password)) strength++;
+        else feedback.push('حرف كبير واحد');
+
+        if (/[a-z]/.test(password)) strength++;
+        else feedback.push('حرف صغير واحد');
+
+        if (/\d/.test(password)) strength++;
+        else feedback.push('رقم واحد');
+
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+        else feedback.push('رمز خاص واحد');
+
+        this.updatePasswordStrengthDisplay(strengthIndicator, strength, feedback);
+    }
+
+    updatePasswordStrengthDisplay(indicator, strength, feedback) {
+        // 5 levels of strength
+        const clampedStrength = Math.min(5, Math.max(0, strength));
+        const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
+        const labels = ['ضعيف جداً', 'ضعيف', 'متوسط', 'قوي', 'قوي جداً'];
+        
+        indicator.style.color = colors[clampedStrength] || colors[0];
+        indicator.textContent = clampedStrength > 0 ? labels[clampedStrength - 1] : 'كلمة مرور ضعيفة';
+        
+        if (feedback.length > 0 && clampedStrength < 4) {
+            indicator.textContent += ` - يحتاج: ${feedback.join(', ')}`;
+        } else if (clampedStrength >= 4) {
+             // Clear feedback if strong enough
+             indicator.textContent = labels[clampedStrength - 1];
+        } else if (clampedStrength === 0) {
+            indicator.textContent = 'أدخل كلمة مرور';
+            indicator.style.color = '#71717a'; // gray-600
+        }
+    }
+
+    async handleLogin(e) {
+        e.preventDefault();
+        
+        const loginData = {
+            email: document.getElementById('login-email').value,
+            password: document.getElementById('login-password').value,
+            role: document.getElementById('login-role').value
+        };
+
+        if (!loginData.email || !loginData.password || !loginData.role) {
+            this.showToast('يرجى ملء جميع الحقول المطلوبة', 'error');
+            return;
+        }
+
+        this.showLoadingSpinner(true, 'login');
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(loginData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showToast('تم تسجيل الدخول بنجاح!', 'success');
+                
+                // Store token and user object under a single key
+                localStorage.setItem('salonni_token', result.token);
+                localStorage.setItem('salonni_user', JSON.stringify(result.user));
+                
+                // Redirect based on role
+                setTimeout(() => {
+                    window.location.href = result.redirect;
+                }, 1500);
+            } else {
+                this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Login error:', error);
+            this.showToast('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.', 'error');
+        } finally {
+            this.showLoadingSpinner(false, 'login');
+        }
+    }
+
+    async handleSignup(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        const userType = formData.get('user_type');
+        
+        // Extract basic data
+        const signupData = {
+            name: formData.get('name'),
+            email: formData.get('email'),
+            password: formData.get('password'),
+            confirmPassword: formData.get('confirmPassword'),
+            phone: formData.get('phone'),
+            city: formData.get('city'),
+            user_type: userType
+        };
+
+        let currentButtonId = '';
+        
+        if (userType === 'user') {
+            signupData.gender = formData.get('gender');
+            currentButtonId = 'user-signup-form';
+        } else {
+            signupData.owner_name = formData.get('owner_name');
+            signupData.owner_phone = formData.get('owner_phone');
+            signupData.address = formData.get('address');
+            signupData.gender_focus = formData.get('gender_focus');
+            // Since User form has gender, we ensure we don't send a null gender for Salon signup.
+            signupData.gender = 'N/A'; // Salons don't need a personal gender field, use N/A or remove later.
+            
+            // Handle image file - now required
+            const imageFile = formData.get('image');
+            if (!imageFile || imageFile.size === 0) {
+                this.showToast('يرجى اختيار صورة للصالون', 'error');
+                return;
+            }
+            
+            try {
+                const base64Image = await this.convertImageToBase64(imageFile);
+                signupData.image_url = base64Image;
+            } catch (error) {
+                console.error('❌ Error converting image:', error);
+                this.showToast('خطأ في معالجة الصورة', 'error');
+                return;
+            }
+            currentButtonId = 'salon-signup-form';
+        }
+
+        // --- Validation ---
+        if (signupData.password !== signupData.confirmPassword) {
+            this.showToast('كلمات المرور غير متطابقة', 'error');
+            return;
+        }
+
+        // Basic check for empty required fields
+        const requiredFields = userType === 'user' ? ['name', 'email', 'password', 'phone', 'city', 'gender'] : 
+            ['name', 'owner_name', 'phone', 'owner_phone', 'email', 'address', 'city', 'gender_focus', 'password'];
+        
+        for (const field of requiredFields) {
+            if (!signupData[field] || String(signupData[field]).trim() === '' || signupData[field] === 'N/A') {
+                 // Skip check for image_url as it's optional/has placeholder
+                 if (field === 'image_url') continue;
+                 this.showToast(`يرجى ملء حقل ${form.querySelector(`[name="${field}"]`).placeholder || field}`, 'error');
+                 return;
+            }
+        }
+        
+        delete signupData.confirmPassword; // Don't send confirm password to API
+
+        this.showLoadingSpinner(true, currentButtonId);
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(signupData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showToast('تم إنشاء الحساب بنجاح!', 'success');
+                
+                // Store user object for immediate redirection
+                localStorage.setItem('salonni_user', JSON.stringify(result.user));
+                
+                // Show feature slide and handle navigation from there
+                this.showFeatureSlide();
+            } else {
+                this.showToast(result.message || 'خطأ في إنشاء الحساب', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Signup error:', error);
+            this.showToast('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.', 'error');
+        } finally {
+            this.showLoadingSpinner(false, currentButtonId);
+        }
+    }
+
+    convertImageToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    setActiveTab(mode) {
+        this.currentMode = mode;
+        
+        const loginTab = document.getElementById('tab-login');
+        const signupTab = document.getElementById('tab-signup');
+        const loginContainer = document.getElementById('login-form-container');
+        const signupContainer = document.getElementById('signup-form-container');
+
+        if (mode === 'login') {
+            loginTab.classList.add('bg-white', 'text-primary-dark', 'shadow-lg');
+            loginTab.classList.remove('text-gray-500');
+            signupTab.classList.remove('bg-white', 'text-primary-dark', 'shadow-lg');
+            signupTab.classList.add('text-gray-500');
+            
+            loginContainer.classList.remove('hidden');
+            signupContainer.classList.add('hidden');
+        } else {
+            signupTab.classList.add('bg-white', 'text-primary-dark', 'shadow-lg');
+            signupTab.classList.remove('text-gray-500');
+            loginTab.classList.remove('bg-white', 'text-primary-dark', 'shadow-lg');
+            loginContainer.classList.add('hidden');
+            
+            signupContainer.classList.remove('hidden');
+            loginContainer.classList.add('hidden');
+        }
+    }
+
+    setActiveRole(role) {
+        this.currentRole = role;
+        
+        const userBtn = document.getElementById('role-user');
+        const salonBtn = document.getElementById('role-salon');
+        const userForm = document.getElementById('user-signup-form');
+        const salonForm = document.getElementById('salon-signup-form');
+
+        if (role === 'user') {
+            userBtn.classList.add('bg-white', 'text-primary-dark', 'shadow-lg');
+            userBtn.classList.remove('text-gray-500');
+            salonBtn.classList.remove('bg-white', 'text-primary-dark', 'shadow-lg');
+            salonBtn.classList.add('text-gray-500');
+            
+            userForm.classList.remove('hidden');
+            salonForm.classList.add('hidden');
+        } else {
+            salonBtn.classList.add('bg-white', 'text-primary-dark', 'shadow-lg');
+            salonBtn.classList.remove('text-gray-500');
+            userBtn.classList.remove('bg-white', 'text-primary-dark', 'shadow-lg');
+            userBtn.classList.add('text-gray-500');
+            
+            salonForm.classList.remove('hidden');
+            userForm.classList.add('hidden');
+        }
+    }
+
+    showFeatureSlide() {
+        const slide = document.getElementById('feature-slide');
+        slide.classList.remove('hidden');
+        setTimeout(() => slide.classList.add('opacity-100'), 10);
+    }
+
+    hideFeatureSlide() {
+        const slide = document.getElementById('feature-slide');
+        slide.classList.remove('opacity-100');
+        
+        // Get user info from local storage
+        const user = JSON.parse(localStorage.getItem('salonni_user'));
+        
+        setTimeout(() => {
+            slide.classList.add('hidden');
+            // Redirect based on the last signup type stored in the user object
+            if (user && user.user_type === 'user') {
+                window.location.href = '/home_user.html';
+            } else if (user && user.user_type === 'salon') {
+                window.location.href = '/home_salon.html';
+            } else {
+                // Fallback to login if state is unclear
+                 window.location.href = '/auth.html';
+            }
+        }, 500);
+    }
+
+    showToast(message, type = 'info') {
+        const messageBox = document.getElementById('message-box');
+        messageBox.textContent = message;
+        messageBox.className = `p-3 mb-4 text-center rounded-xl font-medium`;
+
+        const baseClasses = ['p-3', 'mb-4', 'text-center', 'rounded-xl', 'font-medium'];
+        
+        if (type === 'success') {
+            messageBox.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200', ...baseClasses);
+        } else if (type === 'error') {
+            messageBox.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200', ...baseClasses);
+        } else {
+            messageBox.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-200', ...baseClasses);
+        }
+
+        messageBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+            messageBox.classList.add('hidden');
+        }, 5000);
+    }
+
+    showLoadingSpinner(show, formId = null) {
+        const form = formId ? document.getElementById(formId) : null;
+        const buttons = form ? form.querySelectorAll('button[type="submit"]') : document.querySelectorAll('button[type="submit"]');
+
+        buttons.forEach(button => {
+            if (show) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+            } else {
+                button.disabled = false;
+                // Restore original button text based on button context
+                if (button.closest('#login-form')) {
+                    button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل الدخول';
+                } else if (button.closest('#user-signup-form')) {
+                    button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كمستخدم';
+                } else if (button.closest('#salon-signup-form')) {
+                    button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كصالون';
+                }
+            }
+        });
+    }
+}
+
+// Global functions for onclick handlers
+function switchMode(mode) {
+    window.authManager.setActiveTab(mode);
+}
+
+function switchRole(role) {
+    window.authManager.setActiveRole(role);
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.authManager = new AuthManager();
+});
+</script>
+
+</body>
+</html>
