@@ -187,6 +187,7 @@ function initializeDb() {
             name_ar TEXT NOT NULL,
             icon TEXT NOT NULL,
             gender TEXT NOT NULL,
+            service_type TEXT NOT NULL DEFAULT 'main',
             UNIQUE(name_ar, gender)
         )`, () => {
              // Insert master services only if table is empty
@@ -205,7 +206,7 @@ function initializeDb() {
                     stmt.finalize();
                     console.log("Master services initialized.");
                 }
-                // Check and add service_type column
+                // Check and add service_type column for existing tables
                 alterServicesTable();
             });
         });
@@ -349,13 +350,13 @@ app.use(cors()); // Allow all CORS requests
 app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for image_url
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static files (Views, Images)
-app.use('/', express.static(path.join(__dirname, 'Views')));
-app.use('/images', express.static(path.join(__dirname, 'images')));
+// Serve static files (views, Images)
+app.use('/', express.static(path.join(__dirname, 'views')));
+app.use('/images', express.static(path.join(__dirname, 'Images')));
 
 // Root route redirects to the authentication page
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Views', 'auth.html'));
+    res.sendFile(path.join(__dirname, 'views', 'auth.html'));
 });
 
 // ===================================
