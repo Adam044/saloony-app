@@ -419,6 +419,13 @@
                                 </div>
                             </div>
                             <p class="text-xs text-gray-500 mt-1 text-right">اختر صورة للصالون (مطلوب عند التسجيل، اختياري للتحديث)</p>
+                            <!-- Centered Edit Trigger Below Image -->
+                            <div class="mt-4 flex justify-center">
+                                <button id="btn-edit-info-centered" type="button" class="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-dark inline-flex items-center shadow">
+                                    <i class="fas fa-edit ml-2"></i>
+                                    تعديل معلومات الصالون
+                                </button>
+                            </div>
                         </div>
                          <div class="relative">
                             <input type="text" id="info-owner-name" placeholder="اسم المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
@@ -499,7 +506,7 @@
     </nav>
 </div>
 
-<div id="confirm-modal-overlay" class="fixed inset-0 z-50 transition-opacity">
+<div id="confirm-modal-overlay" class="fixed inset-0 z-50 transition-opacity hidden">
     <div class="modal-content-confirm">
         <h3 class="text-xl font-bold text-primary-dark mb-4">تأكيد الإجراء</h3>
         <p id="confirm-modal-message" class="text-gray-700 mb-6"></p>
@@ -638,6 +645,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hook buttons
     if (btnEditInfo) {
         btnEditInfo.addEventListener('click', openEditModal);
+    }
+    // New centered trigger under image input
+    const btnEditInfoCentered = document.getElementById('btn-edit-info-centered');
+    if (btnEditInfoCentered) {
+        btnEditInfoCentered.addEventListener('click', openEditModal);
     }
     if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeEditModal);
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
@@ -850,6 +862,45 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    // Helper functions to format review dates consistently as dd/mm/yyyy
+    const formatDateDDMMYYYY = (dateInput) => {
+        if (!dateInput) return '--/--/----';
+        let d = null;
+        if (dateInput instanceof Date) {
+            d = dateInput;
+        } else if (typeof dateInput === 'string') {
+            let s = dateInput.trim();
+            // Handle 'YYYY-MM-DD'
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                s = `${s}T00:00:00`;
+            }
+            // Handle 'YYYY-MM-DD HH:MM(:SS)?'
+            else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?$/.test(s)) {
+                s = s.replace(' ', 'T');
+            }
+            d = new Date(s);
+        } else if (typeof dateInput === 'number') {
+            d = new Date(dateInput);
+        } else {
+            d = new Date(dateInput);
+        }
+        if (isNaN(d.getTime())) return '--/--/----';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+    const formatReviewDate = (dateString) => {
+        const formattedDate = formatDateDDMMYYYY(dateString);
+        return `
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                <i class="fas fa-calendar-alt text-secondary"></i>
+                ${formattedDate}
+            </span>
+        `;
+    };
+
     const renderSalonReviews = (reviews) => {
         const list = document.getElementById('reviews-list');
         const empty = document.getElementById('reviews-empty');
@@ -864,10 +915,14 @@ document.addEventListener('DOMContentLoaded', () => {
         list.innerHTML = reviews.map(r => `
             <div class="p-4 bg-gray-50 rounded-xl shadow-sm border border-gray-200">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-yellow-500 text-sm">${formatRatingStars(parseFloat(r.rating || 0))}</div>
-                    <span class="text-xs text-gray-500">${new Date(r.created_at).toLocaleDateString('ar-EG')}</span>
+                    <span class="inline-flex items-center gap-2 px-2 py-1 bg-gray-100 text-primary-dark rounded-full text-xs font-semibold">
+                        <i class="fas fa-user-circle text-secondary"></i>
+                        ${r.user_name || 'مستخدم'}
+                    </span>
+                    ${formatReviewDate(r.date_posted || r.created_at)}
                 </div>
-                <p class="text-sm text-gray-700">${(r.comment || '').trim() || 'بدون تعليق'}</p>
+                <div class="text-yellow-500 text-sm mb-2">${formatRatingStars(parseFloat(r.rating || 0))}</div>
+                <p class="text-sm text-gray-700"><i class="fas fa-comment ml-2 text-secondary"></i>${(r.comment || '').trim() || 'بدون تعليق'}</p>
             </div>
         `).join('');
     };
@@ -933,6 +988,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tenMinutesAfterStart = new Date(appointmentStartTime.getTime() + 10 * 60 * 1000);
         // Only allow status change if the appointment has started AND it is currently Scheduled
         const canChangeStatus = now >= tenMinutesAfterStart && appointment.status === 'Scheduled'; 
+        // Display helpers
+        const startDateDisplay = new Date(appointment.start_time).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+        const startTimeDisplay = new Date(appointment.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const availableAtDisplay = tenMinutesAfterStart.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
         
         const actionButtons = (filter !== 'past') ? `
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -945,9 +1004,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="Absent">غائب</option>
                     </select>
                 ` : `
-                    <div class="w-full p-2 border border-gray-300 rounded-xl text-sm bg-gray-100 text-gray-500 text-center">
-                        ${appointment.status === 'Scheduled' ? 'يمكن تحديث الحالة بعد 10 دقائق من بداية الموعد' : 'تم تحديد حالة هذا الموعد مسبقاً.'}
-                        ${appointment.status === 'Scheduled' ? `<br><small>متاح في: ${tenMinutesAfterStart.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</small>` : ''}
+                    <div class="w-full p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 text-center">
+                        ${appointment.status === 'Scheduled' 
+                            ? `
+                                <span class="inline-flex items-center gap-2 mb-1">
+                                    <i class="fas fa-info-circle text-gray-400"></i>
+                                    يمكن تحديث الحالة بعد 10 دقائق من بداية الموعد
+                                </span>
+                                <br />
+                                <small class="inline-flex items-center gap-2">
+                                    <i class="fas fa-clock text-gray-400"></i>
+                                    متاح في: ${availableAtDisplay}
+                                </small>
+                              `
+                            : 'تم تحديد حالة هذا الموعد مسبقاً.'}
                     </div>
                 `}
             </div>
@@ -955,11 +1025,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return `
             <div class="bg-white p-5 rounded-xl shadow-lg border-r-4 ${isScheduled ? 'border-secondary' : 'border-gray-300'} hover:shadow-xl transition-shadow" data-appointment-id="${appointment.id}">
-                <!-- Time and Status Header -->
+                <!-- Date/Time and Status Header -->
                 <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="inline-block bg-gray-100 text-gray-800 font-semibold px-4 py-2 rounded-lg text-base">
+                            <i class="fas fa-calendar-day ml-1"></i> ${startDateDisplay}
+                        </span>
                         <span class="inline-block bg-blue-100 text-blue-800 font-semibold px-4 py-2 rounded-lg text-base">
-                            <i class="fas fa-clock ml-1"></i> ${formatAppointmentTime(appointment.start_time)}
+                            <i class="fas fa-clock ml-1"></i> ${startTimeDisplay}
                         </span>
                     </div>
                     <span class="text-xs font-bold px-3 py-2 rounded-lg ${statusClass} shadow-sm">${statusText}</span>
@@ -2241,6 +2314,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     showView('salon-view');
+
+    // Ensure edit button is visible by default
+    if (btnEditInfo) {
+        btnEditInfo.classList.remove('hidden');
+        btnEditInfo.style.display = 'inline-flex';
+    }
     
     document.getElementById('logout-btn').addEventListener('click', (e) => {
         e.preventDefault();

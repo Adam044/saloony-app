@@ -1405,17 +1405,40 @@ function updateStarDisplay(rating) {
     });
 }
 
-// Helper function to format dates nicely
+// Helper functions to format dates cleanly
+function formatDateDDMMYYYY(dateInput) {
+    if (!dateInput) return '--/--/----';
+    let d = null;
+    if (dateInput instanceof Date) {
+        d = dateInput;
+    } else if (typeof dateInput === 'string') {
+        let s = dateInput.trim();
+        // Handle 'YYYY-MM-DD'
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+            s = `${s}T00:00:00`;
+        }
+        // Handle 'YYYY-MM-DD HH:MM(:SS)?'
+        else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?$/.test(s)) {
+            s = s.replace(' ', 'T');
+        }
+        d = new Date(s);
+    } else if (typeof dateInput === 'number') {
+        d = new Date(dateInput);
+    } else {
+        d = new Date(dateInput);
+    }
+    if (isNaN(d.getTime())) return '--/--/----';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
 function formatReviewDate(dateString) {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.getMonth() + 1; // getMonth() returns 0-11
-    const year = date.getFullYear();
-    const formattedDate = `${day}/${month}/${year}`;
-    
+    const formattedDate = formatDateDDMMYYYY(dateString);
     return `
-        <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-            <i class="fas fa-calendar-alt"></i>
+        <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+            <i class="fas fa-calendar-alt text-secondary"></i>
             ${formattedDate}
         </span>
     `;
@@ -2187,7 +2210,10 @@ async function loadSalonDetailView(salon) {
             reviewsSection.innerHTML = reviewsData.reviews.map(review => `
                 <div class="bg-gray-50 p-4 rounded-lg shadow-sm border-r-4 border-secondary">
                     <div class="flex justify-between items-center mb-2">
-                        <h4 class="font-bold text-primary-dark">${review.user_name}</h4>
+                        <span class="inline-flex items-center gap-2 px-2 py-1 bg-gray-100 text-primary-dark rounded-full text-xs font-semibold">
+                            <i class="fas fa-user-circle text-secondary"></i>
+                            ${review.user_name}
+                        </span>
                         <div class="flex items-center gap-2">
                             ${formatReviewDate(review.date_posted)}
                             ${review.user_id == currentUser.userId ? `
@@ -2203,7 +2229,7 @@ async function loadSalonDetailView(salon) {
                     <div class="mb-2">
                         ${formatRating(review.rating, 1)}
                     </div>
-                    <p class="text-sm text-gray-700 italic">"${review.comment}"</p>
+                    <p class="text-sm text-gray-700"><i class="fas fa-comment ml-2 text-secondary"></i>${(review.comment || '').trim() || 'بدون تعليق'}</p>
                 </div>
             `).join('');
         } else {
@@ -2866,12 +2892,7 @@ async function confirmBooking() {
     const localConfirmationData = {
         salonName: selectedSalon.salon_name, 
         staffName: finalStaff.name,
-        date: new Date(selectedDate).toLocaleDateString('ar-SA', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }),
+        date: formatDateDDMMYYYY(selectedDate),
         time: formatTime(selectedTime),
         price: totalPrice,
         services: selectedServices, 
