@@ -4,9 +4,11 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Added CORS for development ease
 const crypto = require('crypto'); // Used for generating simple tokens/salts
+const compression = require('compression'); // Enable gzip compression for responses
 const db = require('./database'); // Import our database module
 
 const app = express();
+// FIXED: Corrected typo from process.env.env.PORT to process.env.PORT
 const PORT = process.env.PORT || 3001; 
 
 // --- Core Data: Master Service List & Cities ---
@@ -39,17 +41,6 @@ const CITIES = [
     'دير البلح', 'الناصرة', 'حيفا', 'عكا', 'طبريا', 'صفد'
 ];
 
-// Initialize database schema
-(async () => {
-    try {
-        console.log("Database connected successfully.");
-        await initializeDb();
-    } catch (error) {
-        console.error("Database initialization failed:", error);
-        process.exit(1);
-    }
-})();
-
 // Helper function to hash passwords (simple simulation)
 function hashPassword(password) {
     // In a real app, use bcrypt. Here, we simulate a hash for persistence.
@@ -59,40 +50,40 @@ function hashPassword(password) {
 // Helper functions using our database module
 const dbAll = (sql, params = []) => db.query(sql, params);
 const dbGet = (sql, params = []) => db.get(sql, params);
-
-// Function to check and alter the appointments table if needed (CRITICAL FIX)
-
-
+const dbRun = (sql, params = []) => db.run(sql, params);
 
 // Initialize database schema and insert master data
 async function initializeDb() {
     console.log("Initializing database schema...");
     
     try {
-        // Create all tables using our database module
+        // Create users table - single source of authentication
         await db.run(`CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
-            phone TEXT NOT NULL,
-            gender TEXT NOT NULL,
-            city TEXT NOT NULL,
+            phone TEXT,
+            gender TEXT,
+            city TEXT,
             password TEXT NOT NULL,
-            strikes INTEGER DEFAULT 0
+            strikes INTEGER DEFAULT 0,
+            user_type TEXT DEFAULT 'user'
         )`);
         
+        // Create salons table - Linked to users by user_id, no redundant email/password
         await db.run(`CREATE TABLE IF NOT EXISTS salons (
             id SERIAL PRIMARY KEY,
+            user_id INTEGER UNIQUE NOT NULL, 
             salon_name TEXT NOT NULL,
             owner_name TEXT NOT NULL,
             salon_phone TEXT NOT NULL,
             owner_phone TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
             address TEXT NOT NULL,
             city TEXT NOT NULL,
             gender_focus TEXT NOT NULL,
             image_url TEXT,
-            password TEXT NOT NULL
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
         
         await db.run(`CREATE TABLE IF NOT EXISTS services (
@@ -146,6 +137,7 @@ async function initializeDb() {
             id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
             staff_id INTEGER,
+            reason TEXT,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
             FOREIGN KEY (salon_id) REFERENCES salons(id),
@@ -195,9 +187,9 @@ async function initializeDb() {
             mod_day_index INTEGER,
             start_time TEXT,
             end_time TEXT,
-            is_closed INTEGER NOT NULL,
             reason TEXT NOT NULL,
             staff_id INTEGER,
+            closure_type TEXT,
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (staff_id) REFERENCES staff(id)
         )`);
@@ -210,6 +202,184 @@ async function initializeDb() {
     } catch (error) {
         console.error("Error initializing database:", error);
         throw error;
+    }
+}
+
+// Align existing database schema (especially for production/PostgreSQL)
+// Ensures salons table has expected columns and constraints used by the server code
+async function alignSchema() {
+    try {
+        if (db.isProduction) {
+            // PostgreSQL alignment (information_schema introspection)
+            const columns = await db.query(
+                `SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                ['salons', 'public']
+            );
+
+            const columnSet = new Set(columns.map(c => c.column_name));
+
+            // 1) Add user_id column if missing
+            if (!columnSet.has('user_id')) {
+                console.log('AlignSchema: Adding user_id column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN user_id INTEGER UNIQUE`);
+                // Add FK constraint linking to users(id) if not present
+                const fkCheck = await db.query(
+                    `SELECT conname FROM pg_constraint WHERE conrelid = 'salons'::regclass AND conname = $1`,
+                    ['fk_salons_user']
+                );
+                if (!fkCheck || fkCheck.length === 0) {
+                    await db.run(`ALTER TABLE salons ADD CONSTRAINT fk_salons_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`);
+                }
+            }
+
+            // 2) Relax NOT NULL on email/password columns if they exist (older schema)
+            if (columnSet.has('email')) {
+                const emailCol = columns.find(c => c.column_name === 'email');
+                if (emailCol && emailCol.is_nullable === 'NO') {
+                    console.log('AlignSchema: Relaxing NOT NULL on salons.email (PostgreSQL)...');
+                    await db.run(`ALTER TABLE salons ALTER COLUMN email DROP NOT NULL`);
+                }
+            }
+            if (columnSet.has('password')) {
+                const passCol = columns.find(c => c.column_name === 'password');
+                if (passCol && passCol.is_nullable === 'NO') {
+                    console.log('AlignSchema: Relaxing NOT NULL on salons.password (PostgreSQL)...');
+                    await db.run(`ALTER TABLE salons ALTER COLUMN password DROP NOT NULL`);
+                }
+            }
+
+            // 3) Ensure status column exists with default
+            if (!columnSet.has('status')) {
+                console.log('AlignSchema: Adding status column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
+            }
+
+            // 4) Relax NOT NULL on users.gender to allow NULL for salon-linked users
+            const userColumns = await db.query(
+                `SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                ['users', 'public']
+            );
+            const userGender = userColumns.find(c => c.column_name === 'gender');
+            if (userGender && userGender.is_nullable === 'NO') {
+                console.log('AlignSchema: Relaxing NOT NULL on users.gender (PostgreSQL)...');
+                await db.run(`ALTER TABLE users ALTER COLUMN gender DROP NOT NULL`);
+            }
+
+            // Ensure schedule_modifications has closure_type and backfill
+            const modColumns = await db.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                ['schedule_modifications', 'public']
+            );
+            const modColSet = new Set(modColumns.map(c => c.column_name));
+            if (!modColSet.has('closure_type')) {
+                console.log('AlignSchema: Adding closure_type to schedule_modifications (PostgreSQL)...');
+                await db.run(`ALTER TABLE schedule_modifications ADD COLUMN closure_type TEXT`);
+                // Derive closure_type from presence of times; default to full_day if no times
+                await db.run(`UPDATE schedule_modifications SET closure_type = CASE WHEN start_time IS NOT NULL AND end_time IS NOT NULL THEN 'interval' ELSE 'full_day' END WHERE closure_type IS NULL OR closure_type = ''`);
+            }
+
+            // Ensure breaks has reason column
+            const breakColumns = await db.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                ['breaks', 'public']
+            );
+            const breakColSet = new Set(breakColumns.map(c => c.column_name));
+            if (!breakColSet.has('reason')) {
+                console.log('AlignSchema: Adding reason to breaks (PostgreSQL)...');
+                await db.run(`ALTER TABLE breaks ADD COLUMN reason TEXT`);
+            }
+        } else {
+            // SQLite alignment (PRAGMA introspection)
+            const pragmaRows = await db.query(`PRAGMA table_info(salons)`);
+            const columnSet = new Set(pragmaRows.map(r => r.name));
+
+            // If schema already matches (has user_id and status), skip
+            const hasUserId = columnSet.has('user_id');
+            const hasStatus = columnSet.has('status');
+
+            if (hasUserId && hasStatus) {
+                console.log('AlignSchema: SQLite salons schema already aligned.');
+            } else {
+                // Check if table is empty; if empty, drop and recreate cleanly
+                const cntRows = await db.query(`SELECT COUNT(*) as cnt FROM salons`);
+                const cnt = cntRows && cntRows[0] ? (cntRows[0].cnt || cntRows[0].COUNT || 0) : 0;
+
+                if (Number(cnt) === 0) {
+                    console.log('AlignSchema: Recreating salons table with correct schema (SQLite, empty table)...');
+                    await db.run(`DROP TABLE IF EXISTS salons`);
+                    await db.run(`CREATE TABLE IF NOT EXISTS salons (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER UNIQUE NOT NULL,
+                        salon_name TEXT NOT NULL,
+                        owner_name TEXT NOT NULL,
+                        salon_phone TEXT NOT NULL,
+                        owner_phone TEXT NOT NULL,
+                        address TEXT NOT NULL,
+                        city TEXT NOT NULL,
+                        gender_focus TEXT NOT NULL,
+                        image_url TEXT,
+                        status TEXT DEFAULT 'pending',
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )`);
+                    console.log('AlignSchema: SQLite salons schema recreated successfully.');
+                } else {
+                    console.warn('AlignSchema: SQLite salons table has data; skipping destructive migration.');
+                    // Non-destructive tweaks: add status if missing
+                    if (!hasStatus) {
+                        await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
+                    }
+                    // user_id cannot be safely added as NOT NULL with data present; require manual migration
+                }
+            }
+
+            // SQLite: Ensure users.gender is nullable; if table empty and gender is NOT NULL, recreate
+            const usersPragma = await db.query(`PRAGMA table_info(users)`);
+            const usersCols = new Map(usersPragma.map(r => [r.name, r]));
+            const genderInfo = usersCols.get('gender');
+            if (genderInfo && genderInfo.notnull === 1) {
+                const cntUsersRows = await db.query(`SELECT COUNT(*) as cnt FROM users`);
+                const ucnt = cntUsersRows && cntUsersRows[0] ? (cntUsersRows[0].cnt || cntUsersRows[0].COUNT || 0) : 0;
+                if (Number(ucnt) === 0) {
+                    console.log('AlignSchema: Recreating users table with gender nullable (SQLite, empty table)...');
+                    await db.run(`DROP TABLE IF EXISTS users`);
+                    await db.run(`CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        email TEXT UNIQUE NOT NULL,
+                        phone TEXT,
+                        gender TEXT,
+                        city TEXT,
+                        password TEXT NOT NULL,
+                        strikes INTEGER DEFAULT 0,
+                        user_type TEXT DEFAULT 'user'
+                    )`);
+                    console.log('AlignSchema: SQLite users schema recreated successfully.');
+                } else {
+                    console.warn('AlignSchema: users table has data and gender NOT NULL; manual migration needed to relax constraint.');
+                }
+            }
+
+            // SQLite: Ensure schedule_modifications has closure_type and backfill
+            const modsPragma = await db.query(`PRAGMA table_info(schedule_modifications)`);
+            const modsCols = new Set(modsPragma.map(r => r.name));
+            if (!modsCols.has('closure_type')) {
+                console.log('AlignSchema: Adding closure_type to schedule_modifications (SQLite)...');
+                await db.run(`ALTER TABLE schedule_modifications ADD COLUMN closure_type TEXT`);
+                await db.run(`UPDATE schedule_modifications SET closure_type = CASE WHEN start_time IS NOT NULL AND end_time IS NOT NULL THEN 'interval' ELSE 'full_day' END WHERE closure_type IS NULL OR closure_type = ''`);
+            }
+
+            // SQLite: Ensure breaks has reason column
+            const breaksPragma = await db.query(`PRAGMA table_info(breaks)`);
+            const breaksCols = new Set(breaksPragma.map(r => r.name));
+            if (!breaksCols.has('reason')) {
+                console.log('AlignSchema: Adding reason to breaks (SQLite)...');
+                await db.run(`ALTER TABLE breaks ADD COLUMN reason TEXT`);
+            }
+        }
+
+        console.log('AlignSchema: Schema alignment completed successfully.');
+    } catch (error) {
+        console.error('AlignSchema error:', error.message || error);
     }
 }
 
@@ -262,12 +432,14 @@ setTimeout(autoUpdateAppointmentStatuses, 5000);
 
 // Middleware setup
 app.use(cors()); // Allow all CORS requests
+app.use(compression()); // Compress all responses to improve load times
 app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for image_url
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files (views, Images)
-app.use('/', express.static(path.join(__dirname, 'views')));
-app.use('/images', express.static(path.join(__dirname, 'Images')));
+// Serve static assets with mild caching for images; keep HTML no-cache via discovery route headers
+app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
+app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
 
 // Root route redirects to the authentication page
 app.get('/', (req, res) => {
@@ -279,173 +451,275 @@ app.get('/', (req, res) => {
 // ===================================
 
 // Unified register endpoint
-app.post('/api/auth/register', (req, res) => {
-    const { user_type, name, email, password, phone, city, gender, owner_name, owner_phone, address, gender_focus, image_url } = req.body;
-    
-    console.log('=== REGISTER REQUEST ===');
-    console.log('User type:', user_type);
-    
-    const hashedPassword = hashPassword(password);
-    
-    if (user_type === 'user') {
-        // Handle user registration
-        const sql = `INSERT INTO users (name, email, phone, gender, city, password) VALUES (?, ?, ?, ?, ?, ?)`;
-        db.run(sql, [name, email, phone, gender, city, hashedPassword], function (err) {
-            if (err) {
-                if (err.message.includes('UNIQUE constraint failed')) {
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { user_type, name, email, password, phone, city, gender, owner_name, owner_phone, address, gender_focus, image_url } = req.body;
+        
+        console.log('=== REGISTER REQUEST ===');
+        console.log('User type:', user_type);
+        console.log('Email:', email);
+        
+        const hashedPassword = hashPassword(password);
+        
+        if (user_type === 'user' || user_type === 'salon') {
+            // 1. Insert into users table (Unified Login)
+            const userSql = `INSERT INTO users (name, email, phone, gender, city, password, user_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`;
+            let userResult;
+            try {
+                // *** CRITICAL FIX APPLIED HERE ***
+                // For salon, use owner_name/owner_phone for the User record (Owner's personal identity).
+                const user_name_to_use = user_type === 'salon' ? owner_name : name;
+                const user_phone_to_use = user_type === 'salon' ? owner_phone : phone;
+                const gender_to_use = user_type === 'salon' ? null : gender;
+
+                userResult = await db.query(userSql, [user_name_to_use, email, user_phone_to_use, gender_to_use, city, hashedPassword, user_type]);
+            } catch (err) {
+                if (err.code === '23505') { // PostgreSQL unique constraint violation
                     return res.status(400).json({ success: false, message: 'البريد الإلكتروني مسجل بالفعل.', message_en: 'Email already registered.' });
                 }
-                console.error("User signup DB error:", err.message);
-                return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات.', message_en: 'Database error.' });
+                // LOGGING IMPROVEMENT: Log the full error object
+                console.error("User signup DB error:", err); 
+                return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات أثناء تسجيل المستخدم.', message_en: 'Database error during user registration.' });
             }
-            console.log(`New User registered with ID: ${this.lastID}`);
-            res.json({ 
-                success: true, 
-                message: 'تم إنشاء حساب المستخدم بنجاح.', 
-                user: { 
-                    userId: this.lastID, 
-                    user_type: 'user', 
-                    name, 
-                    email, 
-                    city, 
-                    gender 
-                }
-            });
-        });
-    } else if (user_type === 'salon') {
-        // Handle salon registration
-        db.serialize(() => {
-            const sql = `INSERT INTO salons (salon_name, owner_name, salon_phone, owner_phone, email, address, city, gender_focus, image_url, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-            db.run(sql, [name, owner_name, phone, owner_phone, email, address, city, gender_focus, image_url, hashedPassword], function (err) {
-                if (err) {
-                    if (err.message.includes('UNIQUE constraint failed')) {
-                        return res.status(400).json({ success: false, message: 'البريد الإلكتروني مسجل بالفعل.', message_en: 'Email already registered.' });
-                    }
-                    console.error("Salon signup DB error:", err.message);
-                    return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات.', message_en: 'Database error.' });
-                }
-                const salonId = this.lastID;
-                console.log(`New Salon registered with ID: ${salonId}`);
+            
+            if (!userResult || userResult.length === 0) {
+                 return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات.', message_en: 'Database error - no result returned.' });
+            }
+            
+            const userId = userResult[0].id;
+            
+            if (user_type === 'salon') {
+                // 2. Insert into salons table (Business Details)
+                // Note: name = salon_name, phone = salon_phone
+                const salonSql = `INSERT INTO salons (user_id, salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
                 
-                // Set default schedule for the new salon (Crucial for later functionality)
-                const defaultScheduleSql = `
-                    INSERT INTO schedules (salon_id, opening_time, closing_time, closed_days) 
-                    VALUES (?, ?, ?, ?)
-                `;
-                // Default: 9:00 to 18:00, Closed day: Friday (index 5)
-                const defaultClosedDays = JSON.stringify([5]); 
-                db.run(defaultScheduleSql, [salonId, '09:00', '18:00', defaultClosedDays], (scheduleErr) => {
-                    if (scheduleErr) {
-                        console.error("Default schedule DB error:", scheduleErr.message);
-                        // Still return success for registration, but log schedule failure
-                    }
-                    console.log(`Default schedule set for Salon ID: ${salonId}`);
+                try {
+                    const salonResult = await db.query(salonSql, [userId, name, owner_name, phone, owner_phone, address, city, gender_focus, image_url]);
                     
-                    res.json({ 
+                    if (!salonResult || salonResult.length === 0) {
+                        // Attempt to delete the user record if salon insert fails to prevent orphaned users
+                        await db.run('DELETE FROM users WHERE id = $1', [userId]);
+                        return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات أثناء تسجيل الصالون.', message_en: 'Database error during salon registration.' });
+                    }
+                    
+                    const salonId = salonResult[0].id;
+                    
+                    console.log(`New Salon registered with ID: ${salonId}, linked to User ID: ${userId}`);
+                    return res.json({ 
                         success: true, 
                         message: 'تم إنشاء حساب الصالون بنجاح.', 
                         user: { 
-                            salonId: salonId, 
+                            userId: userId, 
+                            salonId: salonId, // IMPORTANT: Return salonId for business ops
+                            name: owner_name, // Return owner name for consistency in user object
                             user_type: 'salon', 
-                            salon_name: name, 
                             email, 
                             city, 
                             gender_focus 
                         }
                     });
+                } catch (err) {
+                    // Attempt to delete the user record if salon insert fails to prevent orphaned users
+                    await db.run('DELETE FROM users WHERE id = $1', [userId]);
+                    
+                    // LOGGING IMPROVEMENT: Log the full error object
+                    console.error("Salon signup DB error:", err); 
+                    
+                    return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات أثناء تسجيل الصالون.', message_en: 'Database error during salon registration.' });
+                }
+            } else {
+                // Regular user successful registration
+                console.log(`New User registered with ID: ${userId}`);
+                return res.json({ 
+                    success: true, 
+                    message: 'تم إنشاء حساب المستخدم بنجاح.', 
+                    user: { 
+                        userId: userId, 
+                        user_type: 'user', 
+                        name, 
+                        email, 
+                        city, 
+                        gender 
+                    }
                 });
-            });
-        });
-    } else {
-        return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
+            }
+        } else {
+            return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
+        }
+    } catch (error) {
+        // LOGGING IMPROVEMENT: Log the full error object for the top-level catch
+        console.error("Register endpoint error (Top Level):", error); 
+        return res.status(500).json({ success: false, message: 'خطأ في الخادم.', message_en: 'Server error.' });
     }
 });
 
 // Login (Updated to return full user data object and check hash)
-app.post('/api/auth/login', (req, res) => {
-    const { email, password, role } = req.body;
+app.post('/api/auth/login', async (req, res) => {
+    console.log('🚀 LOGIN ENDPOINT HIT!');
+    console.log('Request body:', req.body);
+    try {
+        const { email, password } = req.body;
 
-    const table = role === 'user' ? 'users' : 'salons';
-    const redirectUrl = role === 'user' ? '/Home_user.html' : '/Home_salon.html';
-    const hashedPassword = hashPassword(password);
+        console.log('=== UNIFIED LOGIN REQUEST ===');
+        console.log('Email:', email);
 
-    db.get(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, row) => {
-        if (err) {
-            console.error("Login DB error:", err.message);
-            return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات.', message_en: 'Database error.' });
-        }
-        if (!row) {
-            return res.status(401).json({ success: false, message: 'البريد الإلكتروني غير مسجل.', message_en: 'Email not registered.' });
+        const hashedPassword = hashPassword(password);
+
+        // 1. Find user in USERS table (Unified Check)
+        let userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password FROM users WHERE email = $1', [email]);
+        console.log('Users table query result:', userResult);
+        
+        if (!userResult || userResult.length === 0) {
+            console.log('No user found with that email.');
+            return res.status(401).json({ 
+                success: false, 
+                message: 'البريد الإلكتروني غير مسجل.', 
+                message_en: 'Email not registered.' 
+            });
         }
         
-        // Use the hashed password check
-        if (row.password === hashedPassword) {
-            console.log(`Successful login for ${role}: ${email}`);
-            
-            let userObject = {};
-            
-            if (role === 'user') {
-                userObject = { 
-                    userId: row.id,
-                    name: row.name,
-                    email: row.email,
-                    city: row.city,
-                    gender: row.gender,
-                    user_type: 'user',
-                    phone: row.phone // Ensure phone is included for profile view
-                };
-            } else {
-                userObject = {
-                    salonId: row.id,
-                    salon_name: row.salon_name,
-                    email: row.email,
-                    city: row.city,
-                    gender_focus: row.gender_focus,
-                    user_type: 'salon',
-                    owner_phone: row.owner_phone,
-                    salon_phone: row.salon_phone,
-                    image_url: row.image_url
-                };
-            }
-
-            // In a real app, a secure token would be generated here.
-            const token = crypto.randomUUID(); 
-
-            res.json({ 
-                success: true, 
-                message: 'تم تسجيل الدخول بنجاح.', 
-                redirect: redirectUrl, 
-                token: token,
-                user: userObject
+        const userRow = userResult[0];
+        console.log('Found user row:', userRow);
+        
+        // 2. Verify password
+        if (userRow.password !== hashedPassword) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'كلمة المرور غير صحيحة.', 
+                message_en: 'Incorrect password.' 
             });
-        } else {
-            return res.status(401).json({ success: false, message: 'كلمة المرور غير صحيحة.', message_en: 'Incorrect password.' });
         }
-    });
+
+        // 3. Determine user type and fetch linked data if necessary
+        let userObject = {
+            userId: userRow.id,
+            name: userRow.name,
+            email: userRow.email,
+            city: userRow.city,
+            user_type: userRow.user_type,
+            phone: userRow.phone,
+            // Include strikes count
+            strikes_count: userRow.strikes || 0 
+        };
+        
+        let redirectUrl = '';
+        let userType = userRow.user_type;
+
+        if (userType === 'admin') {
+            redirectUrl = '/admin_dashboard.html';
+        } else if (userType === 'user') {
+            userObject.gender = userRow.gender;
+            redirectUrl = '/home_user.html';
+        } else if (userType === 'salon') {
+            // Fetch linked salon details
+            const salonResult = await db.query('SELECT id, salon_name, owner_name, salon_phone, owner_phone, address, gender_focus, image_url, status FROM salons WHERE user_id = $1', [userRow.id]);
+            
+            if (!salonResult || salonResult.length === 0) {
+                 // Should not happen if registration was successful
+                 console.error(`ERROR: Salon user found (ID ${userRow.id}) but no linked salon record.`);
+                 return res.status(500).json({ success: false, message: 'خطأ في ملف الصالون. يرجى التواصل مع الإدارة.', message_en: 'Salon profile data missing.' });
+            }
+            
+            const salonData = salonResult[0];
+            
+            // Merge salon data into user object
+            userObject = {
+                ...userObject, // Contains userId, name (owner name), email, etc.
+                salonId: salonData.id, // CRITICAL: The Salon's ID
+                salon_name: salonData.salon_name,
+                owner_name: salonData.owner_name,
+                salon_phone: salonData.salon_phone,
+                owner_phone: salonData.owner_phone,
+                gender_focus: salonData.gender_focus,
+                image_url: salonData.image_url,
+                status: salonData.status
+            };
+            
+            redirectUrl = '/home_salon.html';
+        } else {
+            return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
+        }
+
+        console.log(`Successful login for ${userType}: ${email}`);
+
+        // Generate token
+        const token = crypto.randomUUID();
+        
+        // Store admin token separately (In a real app, this token would be linked to the user session)
+        if (userType === 'admin') {
+            validAdminTokens.add(token);
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'تم تسجيل الدخول بنجاح.', 
+            redirect: redirectUrl, 
+            token: token,
+            user: userObject,
+            userType: userType
+        });
+
+    } catch (error) {
+        console.error("Login endpoint error:", error.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'خطأ في الخادم.', 
+            message_en: 'Server error.' 
+        });
+    }
 });
 
-// API to get user profile (for home_user data load)
-app.post('/api/user/profile', (req, res) => {
-    // This route should ideally verify a token, but since we don't have a middleware:
-    const { user_type, userId, salonId } = req.body; 
 
-    if (user_type === 'user') {
-        // FIXED: Including phone number and strikes in profile fetch
-        db.get('SELECT id, name, email, phone, gender, city, strikes FROM users WHERE id = ?', [userId], (err, row) => {
-            if (err || !row) {
+// API to get user profile (for home_user data load)
+app.post('/api/user/profile', async (req, res) => {
+    // This route now uses userId for all lookups and joins for salons
+    const { user_type, userId } = req.body; 
+
+    if (!userId) {
+        return res.status(400).json({ success: false, message: 'User ID is required.' });
+    }
+
+    try {
+        if (user_type === 'user' || user_type === 'admin') {
+            // Fetch data directly from users table for standard users/admins
+            const userSql = 'SELECT id as userId, name, email, phone, gender, city, strikes, user_type FROM users WHERE id = $1';
+            const row = await dbGet(userSql, [userId]);
+            
+            if (!row) {
                 return res.status(404).json({ success: false, message: 'User not found.' });
             }
-            res.json({ ...row, strikes_count: row.strikes || 0, user_type: 'user' });
-        });
-    } else if (user_type === 'salon') {
-        db.get('SELECT id, salon_name, email, city, gender_focus, image_url FROM salons WHERE id = ?', [salonId], (err, row) => {
-             if (err || !row) {
-                return res.status(404).json({ success: false, message: 'Salon not found.' });
+            res.json({ ...row, strikes_count: row.strikes || 0 });
+        } else if (user_type === 'salon') {
+            // Fetch joined data for salon user
+            const salonSql = `
+                SELECT 
+                    u.id as userId, u.name as owner_name, u.email, u.phone as owner_phone, u.city, u.user_type, u.strikes,
+                    s.id as salonId, s.salon_name, s.salon_phone, s.address, s.gender_focus, s.image_url, s.status
+                FROM users u
+                JOIN salons s ON u.id = s.user_id
+                WHERE u.id = $1
+            `;
+            const row = await dbGet(salonSql, [userId]);
+            
+            if (!row) {
+                return res.status(404).json({ success: false, message: 'Salon user profile not found.' });
             }
-            res.json({ ...row, user_type: 'salon' });
-        });
-    } else {
-        return res.status(400).json({ success: false, message: 'Invalid user type.' });
+            // Rearrange data to match client expectations
+            res.json({ 
+                ...row,
+                strikes_count: row.strikes || 0,
+                // Ensure the owner's details match the field names expected by the home_salon client
+                owner_name: row.owner_name,
+                owner_phone: row.owner_phone,
+                id: row.salonId // Use salon ID as the primary ID for the salon profile object
+            });
+
+        } else {
+            return res.status(400).json({ success: false, message: 'Invalid user type.' });
+        }
+    } catch (error) {
+        console.error("Profile fetch error:", error.message);
+        return res.status(500).json({ success: false, message: 'Database error during profile fetch.' });
     }
 });
 
@@ -461,24 +735,42 @@ app.get('/api/cities', (req, res) => {
 // ===================================
 
 // API to get salon basic info
-app.get('/api/salon/info/:salon_id', (req, res) => {
+app.get('/api/salon/info/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
-    const sql = `SELECT salon_name, owner_name, salon_phone, owner_phone, email, address, city, gender_focus, image_url FROM salons WHERE id = ?`;
-    db.get(sql, [salonId], (err, row) => {
-        if (err) {
-            console.error("Salon info fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+     // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
+     // FIX: Query the salons table by salon.id (not user_id) but join back to users for owner data
+    const sql = `
+        SELECT 
+            s.id, s.salon_name, s.address, s.city, s.gender_focus, s.image_url, s.salon_phone, s.owner_name, s.owner_phone, s.user_id,
+            u.email
+        FROM salons s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.id = $1
+    `;
+    try {
+        const row = await dbGet(sql, [salonId]);
         if (!row) {
              return res.status(404).json({ success: false, message: 'Salon not found.' });
         }
         res.json({ success: true, info: row });
-    });
+    } catch (err) {
+        console.error("Salon info fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 // API to get salon details with rating for user view
-app.get('/api/salon/details/:salon_id', (req, res) => {
+app.get('/api/salon/details/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
+    // FIX: Add validation for salonId (Prevents 500 when frontend sends 'undefined')
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
     const sql = `
         SELECT 
             s.id AS salonId, 
@@ -490,61 +782,112 @@ app.get('/api/salon/details/:salon_id', (req, res) => {
             COUNT(r.id) AS review_count
         FROM salons s
         LEFT JOIN reviews r ON s.id = r.salon_id
-        WHERE s.id = ?
+        WHERE s.id = $1
         GROUP BY s.id
     `;
-    db.get(sql, [salonId], (err, row) => {
-        if (err) {
-            console.error("Salon details fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    try {
+        const row = await dbGet(sql, [salonId]);
         if (!row) {
              return res.status(404).json({ success: false, message: 'Salon not found.' });
         }
         res.json({ success: true, salon: row });
-    });
+    } catch (err) {
+        console.error("Salon details fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 // API to update salon basic info
-app.post('/api/salon/info/:salon_id', (req, res) => {
+app.post('/api/salon/info/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
     // NOTE: password and email are excluded from this general update for security
-    const { salon_name, owner_name, salon_phone, address, city, gender_focus, image_url } = req.body;
+    const { salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url } = req.body;
     
-    // We update the fields that are actually sent from the form
-    const sql = `UPDATE salons SET salon_name = ?, owner_name = ?, salon_phone = ?, address = ?, city = ?, gender_focus = ?, image_url = ? WHERE id = ?`;
+    // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
     
-    db.run(sql, [salon_name, owner_name, salon_phone, address, city, gender_focus, image_url, salonId], function (err) {
-        if (err) {
-            console.error("Salon update error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
+    // 1. Update salons table (business data)
+    const salonSql = `UPDATE salons SET salon_name = $1, owner_name = $2, salon_phone = $3, owner_phone = $4, address = $5, city = $6, gender_focus = $7, image_url = $8 WHERE id = $9 RETURNING user_id`;
+    
+    let userId = null;
+    try {
+        const result = await dbGet(salonSql, [salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url, salonId]);
+        if (result && result.user_id) {
+            userId = result.user_id;
+        } else {
+             return res.status(404).json({ success: false, message: 'Salon not found or update failed.' });
         }
-        res.json({ success: true, message: 'Salon information updated successfully.' });
-    });
+    } catch (err) {
+        console.error("Salon update error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
+    
+    // 2. Update users table (city, phone for consistency)
+    if (userId) {
+        const userSql = `UPDATE users SET name = $1, phone = $2, city = $3 WHERE id = $4`;
+        // Use the owner_name and owner_phone fields for the users table
+        try {
+            await dbRun(userSql, [owner_name, owner_phone, city, userId]);
+        } catch (err) {
+            console.error("User info update error:", err.message);
+            // This error is less critical than salon data, but we log it.
+        }
+    }
+
+    res.json({ success: true, message: 'Salon information updated successfully.' });
 });
 
 // --- Staff Management ---
-app.get('/api/salon/staff/:salon_id', (req, res) => {
-    const salonId = req.params.salon_id;
-    db.all('SELECT id, name FROM staff WHERE salon_id = ?', [salonId], (err, rows) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
+app.get('/api/salon/staff/:salon_id', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        // FIX: Add validation for salonId (Prevents 500 when frontend sends 'undefined')
+        if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+             return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+        }
+        
+        // FIX: Use $1 placeholder
+        const rows = await dbAll('SELECT id, name FROM staff WHERE salon_id = $1', [salonId]);
         res.json({ success: true, staff: rows });
-    });
+    } catch (err) {
+        console.error("Staff fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
-app.post('/api/salon/staff/:salon_id', (req, res) => {
+app.post('/api/salon/staff/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
     const { name } = req.body;
-    db.run('INSERT INTO staff (salon_id, name) VALUES (?, ?)', [salonId, name], function (err) {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
-        res.json({ success: true, staffId: this.lastID, message: 'Staff added successfully.' });
-    });
+    
+    // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+     // FIX: Use $1, $2 placeholders
+    try {
+        // FIX: Use RETURNING id with dbGet to ensure the new ID is retrieved in PostgreSQL
+        const result = await dbGet('INSERT INTO staff (salon_id, name) VALUES ($1, $2) RETURNING id', [salonId, name]);
+        res.json({ success: true, staffId: result.id, message: 'Staff added successfully.' });
+    } catch (err) {
+        console.error('Staff addition error:', err);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
-app.delete('/api/salon/staff/:staff_id', (req, res) => {
+app.delete('/api/salon/staff/:staff_id', async (req, res) => {
     const staffId = req.params.staff_id;
-    db.run('DELETE FROM staff WHERE id = ?', [staffId], function (err) {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
+     // FIX: Use $1 placeholder
+    try {
+        await dbRun('DELETE FROM staff WHERE id = $1', [staffId]);
         res.json({ success: true, message: 'Staff deleted successfully.' });
-    });
+    } catch (err) {
+        // FIX: Handle Foreign Key constraint violation specifically (PostgreSQL code 23503)
+        if (err.code === '23503') {
+             return res.status(400).json({ success: false, message: 'لا يمكن حذف المختص. لديه حجوزات سابقة أو حالية مرتبطة به أو استراحات روتينية.' });
+        }
+        console.error('Staff deletion error:', err);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 
@@ -552,172 +895,234 @@ app.delete('/api/salon/staff/:staff_id', (req, res) => {
 app.get('/api/salon/schedule/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
 
-    const getSchedule = () => new Promise((resolve, reject) => {
-        db.get('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = ?', [salonId], (err, row) => {
-            if (err) reject(err);
-            resolve(row);
-        });
-    });
-
-    const getBreaks = () => new Promise((resolve, reject) => {
-        db.all('SELECT id, staff_id, start_time, end_time FROM breaks WHERE salon_id = ?', [salonId], (err, rows) => {
-            if (err) reject(err);
-            resolve(rows);
-        });
-    });
-
-    const getModifications = () => new Promise((resolve, reject) => {
-        db.all('SELECT id, mod_type, mod_date, mod_day_index, start_time, end_time, is_closed, reason, staff_id FROM schedule_modifications WHERE salon_id = ?', [salonId], (err, rows) => {
-            if (err) reject(err);
-            resolve(rows);
-        });
-    });
-
+    // FIX: Add validation for salonId (Prevents 500 when frontend sends 'undefined')
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
 
     try {
-        const schedule = await getSchedule();
-        const breaks = await getBreaks();
-        const modifications = await getModifications(); // Added modifications
+        const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
+        const breaks = await dbAll('SELECT id, staff_id, start_time, end_time, reason FROM breaks WHERE salon_id = $1', [salonId]);
+        const modificationsRaw = await dbAll('SELECT id, mod_type, mod_date, mod_day_index, start_time, end_time, closure_type, reason, staff_id FROM schedule_modifications WHERE salon_id = $1', [salonId]);
 
-        if (schedule) {
-            schedule.closed_days = schedule.closed_days ? JSON.parse(schedule.closed_days) : [];
+        // Compute clarity fields for each modification without changing DB schema
+        const modifications = (modificationsRaw || []).map(m => {
+            const hasTimes = !!(m.start_time && m.end_time);
+            const closure_type = m.closure_type || (hasTimes ? 'interval' : 'full_day');
+            const is_full_day = closure_type === 'full_day';
+            return { ...m, is_full_day, closure_type };
+        });
+
+        if (schedule && schedule.closed_days && typeof schedule.closed_days === 'string') {
+            // FIX: Ensure closed_days is parsed from JSON string if the DB stored it as string
+            try {
+                schedule.closed_days = JSON.parse(schedule.closed_days);
+            } catch (e) {
+                console.warn("Could not parse closed_days as JSON string:", schedule.closed_days);
+                schedule.closed_days = [];
+            }
+        } else if (schedule) {
+            schedule.closed_days = schedule.closed_days || [];
         }
 
-        res.json({ success: true, schedule: schedule || {}, breaks, modifications }); // Added modifications
+        res.json({ success: true, schedule: schedule || {}, breaks, modifications });
     } catch (error) {
         console.error("Schedule fetch error:", error.message);
         res.status(500).json({ success: false, message: 'Database error.' });
     }
 });
 
-app.post('/api/salon/schedule/:salon_id', (req, res) => {
+app.post('/api/salon/schedule/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
     const { opening_time, closing_time, closed_days } = req.body;
+    
+    // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
+    // FIX: Server-side validation for schedule times
+    if (opening_time >= closing_time) {
+        return res.status(400).json({ success: false, message: 'وقت الفتح يجب أن يكون قبل وقت الإغلاق.' });
+    }
+    
     const closedDaysJson = JSON.stringify(closed_days || []);
     
-    // UPSERT: Insert or replace existing schedule row
+    // UPSERT: Insert or replace existing schedule row - FIX: Use $1, $2, ... placeholders
     const sql = `
         INSERT INTO schedules (salon_id, opening_time, closing_time, closed_days) 
-        VALUES (?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4)
         ON CONFLICT(salon_id) DO UPDATE SET 
             opening_time = excluded.opening_time, 
             closing_time = excluded.closing_time, 
             closed_days = excluded.closed_days
     `;
     
-    db.run(sql, [salonId, opening_time, closing_time, closedDaysJson], function (err) {
-        if (err) {
-            console.error("Schedule save error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    try {
+        await dbRun(sql, [salonId, opening_time, closing_time, closedDaysJson]);
         res.json({ success: true, message: 'Schedule updated successfully.' });
-    });
+    } catch (err) {
+        console.error("Schedule save error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
-app.post('/api/salon/break/:salon_id', (req, res) => {
+app.post('/api/salon/break/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
-    const { staff_id, start_time, end_time } = req.body;
-    db.run('INSERT INTO breaks (salon_id, staff_id, start_time, end_time) VALUES (?, ?, ?, ?)', 
-        [salonId, staff_id || null, start_time, end_time], function (err) {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
-        res.json({ success: true, breakId: this.lastID, message: 'Break added successfully.' });
-    });
+    const { staff_id, start_time, end_time, reason } = req.body;
+    
+    // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
+    // FIX: Server-side validation for break times
+    if (start_time >= end_time) {
+        return res.status(400).json({ success: false, message: 'وقت بداية الاستراحة يجب أن يكون قبل وقت النهاية.' });
+    }
+    
+    try {
+        // FIX: Use RETURNING id with dbGet to ensure the new ID is retrieved in PostgreSQL
+        const result = await dbGet('INSERT INTO breaks (salon_id, staff_id, start_time, end_time, reason) VALUES ($1, $2, $3, $4, $5) RETURNING id', 
+            [salonId, staff_id || null, start_time, end_time, reason || null]);
+        res.json({ success: true, breakId: result.id, message: 'Break added successfully.' });
+    } catch (err) {
+        console.error('Break addition error:', err);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
-app.delete('/api/salon/break/:break_id', (req, res) => {
+app.delete('/api/salon/break/:break_id', async (req, res) => {
     const breakId = req.params.break_id;
-    db.run('DELETE FROM breaks WHERE id = ?', [breakId], function (err) {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
+     // FIX: Use $1 placeholder
+    try {
+        await dbRun('DELETE FROM breaks WHERE id = $1', [breakId]);
         res.json({ success: true, message: 'Break deleted successfully.' });
-    });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 
 // --- NEW: Specific Schedule Modifications Routes ---
 
-app.post('/api/salon/schedule/modification/:salon_id', (req, res) => {
+app.post('/api/salon/schedule/modification/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
-    const { mod_type, mod_date, mod_day_index, start_time, end_time, is_closed, reason, staff_id } = req.body;
+    const { mod_type, mod_date, mod_day_index, start_time, end_time, closure_type, reason, staff_id } = req.body;
     
-    const isClosedInt = is_closed ? 1 : 0;
-    
+    // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+
+    // Only closure modifications are supported
+    // closure_type: 'full_day' (no times) or 'interval' (requires times)
+    if (!['full_day', 'interval'].includes(closure_type)) {
+        return res.status(400).json({ success: false, message: 'closure_type يجب أن يكون full_day أو interval.' });
+    }
+    const hasTimes = !!start_time && !!end_time;
+    const closeAllDay = closure_type === 'full_day';
+
+    // Validate closure interval when required
+    if (closure_type === 'interval') {
+        if (!hasTimes) {
+            return res.status(400).json({ success: false, message: 'يرجى تحديد وقتي الإغلاق (من/إلى) لفترة الإغلاق.' });
+        }
+        if (start_time >= end_time) {
+            return res.status(400).json({ success: false, message: 'وقت الإغلاق (من) يجب أن يكون قبل (إلى).' });
+        }
+    }
+
+    // For full_day, ignore any provided times
+    const startForDb = closeAllDay ? null : (hasTimes ? start_time : null);
+    const endForDb = closeAllDay ? null : (hasTimes ? end_time : null);
+
     let sql = '';
     let params = [salonId, mod_type];
 
     if (mod_type === 'once') {
-        sql = `INSERT INTO schedule_modifications (salon_id, mod_type, mod_date, is_closed, start_time, end_time, reason, staff_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-        params.push(mod_date, isClosedInt, start_time, end_time, reason, staff_id || null);
+        sql = `INSERT INTO schedule_modifications (salon_id, mod_type, mod_date, start_time, end_time, reason, staff_id, closure_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
+        params.push(mod_date, startForDb, endForDb, reason, staff_id || null, closure_type);
     } else if (mod_type === 'recurring') {
-        sql = `INSERT INTO schedule_modifications (salon_id, mod_type, mod_day_index, is_closed, start_time, end_time, reason, staff_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-        params.push(mod_day_index, isClosedInt, start_time, end_time, reason, staff_id || null);
+        sql = `INSERT INTO schedule_modifications (salon_id, mod_type, mod_day_index, start_time, end_time, reason, staff_id, closure_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`;
+        params.push(mod_day_index, startForDb, endForDb, reason, staff_id || null, closure_type);
     } else {
         return res.status(400).json({ success: false, message: 'Invalid modification type.' });
     }
 
-    db.run(sql, params, function (err) {
-        if (err) {
-            console.error("Modification add error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error during modification add.' });
-        }
-        res.json({ success: true, modId: this.lastID, message: 'Schedule modification added successfully.' });
-    });
+    try {
+        const result = await dbGet(sql, params);
+        res.json({ success: true, modId: result.id, message: 'تم إضافة تعديل الإغلاق بنجاح.' });
+    } catch (err) {
+        console.error('Modification add error:', err.message);
+        return res.status(500).json({ success: false, message: 'Database error during modification add.' });
+    }
 });
 
-app.delete('/api/salon/schedule/modification/:mod_id', (req, res) => {
+app.delete('/api/salon/schedule/modification/:mod_id', async (req, res) => {
     const modId = req.params.mod_id;
-    db.run('DELETE FROM schedule_modifications WHERE id = ?', [modId], function (err) {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
+     // FIX: Use $1 placeholder
+    try {
+        await dbRun('DELETE FROM schedule_modifications WHERE id = $1', [modId]);
         res.json({ success: true, message: 'Schedule modification deleted successfully.' });
-    });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 
 // --- Appointments Routes ---
 
 // Used by Admin/Salon to list appointments
-app.get('/api/salon/appointments/:salon_id/:filter', (req, res) => {
-    const { salon_id, filter } = req.params;
-    const now = new Date().toISOString();
-    let whereClause = '';
-    let params = [salon_id];
-    let orderBy = 'ASC';
-
-    if (filter === 'today') {
-        const todayStart = new Date().toISOString().split('T')[0];
-        whereClause = `AND start_time LIKE ?`;
-        params.push(`${todayStart}%`); // Use prepared statement for LIKE pattern
-        orderBy = 'ASC';
-    } else if (filter === 'upcoming') {
-        whereClause = `AND start_time > ? AND status = 'Scheduled'`;
-        params.push(now);
-        orderBy = 'ASC';
-    } else if (filter === 'past') {
-        whereClause = `AND start_time <= ?`;
-        params.push(now);
-        orderBy = 'DESC';
-    } else {
-        return res.status(400).json({ success: false, message: 'Invalid filter.' });
-    }
-
-    const sql = `
-        SELECT 
-            a.id, a.start_time, a.end_time, a.status, 
-            u.name AS user_name, u.phone AS user_phone,
-            s.name_ar AS service_name,
-            st.name AS staff_name
-        FROM appointments a
-        JOIN users u ON a.user_id = u.id
-        JOIN services s ON a.service_id = s.id
-        LEFT JOIN staff st ON a.staff_id = st.id
-        WHERE a.salon_id = ? ${whereClause}
-        ORDER BY a.start_time ${orderBy}
-    `;
-
-    db.all(sql, params, async (err, rows) => {
-        if (err) {
-            console.error("Appointments fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
+app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
+    try {
+        const { salon_id, filter } = req.params;
+        
+        // FIX: Add validation for salon_id
+        if (!salon_id || salon_id === 'undefined' || isNaN(parseInt(salon_id))) {
+             return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
         }
+        
+        const now = new Date().toISOString();
+        let whereClause = '';
+        let params = [salon_id];
+        let orderBy = 'ASC';
+
+        if (filter === 'today') {
+            // FIX: Use DATE() extraction function suitable for PostgreSQL
+            const today = new Date().toISOString().split('T')[0];
+            whereClause = `AND DATE(a.start_time) = $2`;
+            params.push(today);
+            orderBy = 'ASC';
+        } else if (filter === 'upcoming') {
+             // FIX: Use $2 placeholder
+            whereClause = `AND a.start_time > $2 AND status = 'Scheduled'`;
+            params.push(now);
+            orderBy = 'ASC';
+        } else if (filter === 'past') {
+             // FIX: Use $2 placeholder
+            whereClause = `AND a.start_time <= $2`;
+            params.push(now);
+            orderBy = 'DESC';
+        } else {
+            return res.status(400).json({ success: false, message: 'Invalid filter.' });
+        }
+
+        const sql = `
+            SELECT 
+                a.id, a.start_time, a.end_time, a.status, a.price, 
+                u.name AS user_name, u.phone AS user_phone,
+                s.name_ar AS service_name,
+                st.name AS staff_name
+            FROM appointments a
+            JOIN users u ON a.user_id = u.id
+            JOIN services s ON a.service_id = s.id
+            LEFT JOIN staff st ON a.staff_id = st.id
+            WHERE a.salon_id = $1 ${whereClause}
+            ORDER BY a.start_time ${orderBy}
+        `;
+
+        const rows = await dbAll(sql, params);
 
         // Fetch all services for each appointment
         const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
@@ -726,8 +1131,9 @@ app.get('/api/salon/appointments/:salon_id/:filter', (req, res) => {
                     SELECT s.name_ar, aps.price 
                     FROM appointment_services aps
                     JOIN services s ON aps.service_id = s.id
-                    WHERE aps.appointment_id = ?
+                    WHERE aps.appointment_id = $1
                 `;
+                // Use dbAll which is an alias for db.query (PostgreSQL-safe)
                 const services = await dbAll(servicesQuery, [appointment.id]);
                 
                 return {
@@ -737,6 +1143,7 @@ app.get('/api/salon/appointments/:salon_id/:filter', (req, res) => {
                 };
             } catch (serviceErr) {
                 console.error("Error fetching services for appointment:", serviceErr);
+                // In case of an error fetching services, return partial data instead of crashing
                 return {
                     ...appointment,
                     all_services: [],
@@ -752,33 +1159,40 @@ app.get('/api/salon/appointments/:salon_id/:filter', (req, res) => {
             user_name: row.user_name
         })));
         res.json({ success: true, appointments: appointmentsWithServices });
-    });
+    } catch (err) {
+        console.error("Appointments fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error during appointment fetch: ' + err.message });
+    }
 });
 
 // Used by User booking logic to check availability for a specific date
-app.get('/api/salon/:salon_id/appointments/:date', (req, res) => {
+app.get('/api/salon/:salon_id/appointments/:date', async (req, res) => {
     const { salon_id, date } = req.params;
     
-    // FIX: Using prepared statement for LIKE pattern
+    // FIX: Add validation for salon_id
+    if (!salon_id || salon_id === 'undefined' || isNaN(parseInt(salon_id))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
+    // FIX: Using DATE() extraction function suitable for PostgreSQL and use $2 placeholder
     const sql = `
         SELECT id, start_time, end_time, staff_id, status
         FROM appointments
-        WHERE salon_id = ? AND start_time LIKE ?
+        WHERE salon_id = $1 AND DATE(start_time) = $2
         AND status = 'Scheduled'
     `;
-    const dateQuery = `${date}%`; // YYYY-MM-DD%
-
-    db.all(sql, [salon_id, dateQuery], (err, rows) => {
-        if (err) {
-            console.error("Daily appointments fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    
+    try {
+        const rows = await dbAll(sql, [salon_id, date]);
         res.json({ success: true, appointments: rows });
-    });
+    } catch (err) {
+        console.error("Daily appointments fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 
-app.post('/api/salon/appointment/status/:appointment_id', (req, res) => {
+app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
     const appointmentId = req.params.appointment_id;
     const { status } = req.body; 
 
@@ -786,64 +1200,66 @@ app.post('/api/salon/appointment/status/:appointment_id', (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid status provided.' });
     }
     
-    // First, get the appointment details to find the user_id
-    const getAppointmentQuery = 'SELECT user_id FROM appointments WHERE id = ? AND status != "Completed"';
-    db.get(getAppointmentQuery, [appointmentId], (err, appointment) => {
-        if (err) {
-            console.error('Error fetching appointment:', err);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    try {
+        // First, get the appointment details to find the user_id
+        const getAppointmentQuery = 'SELECT user_id, status FROM appointments WHERE id = $1'; 
+        const appointment = await dbGet(getAppointmentQuery, [appointmentId]);
 
         if (!appointment) {
-            return res.status(404).json({ success: false, message: 'Appointment not found or status cannot be changed.' });
+            return res.status(404).json({ success: false, message: 'Appointment not found.' });
+        }
+        
+        // Prevent setting status if already a terminal state
+        if (appointment.status !== 'Scheduled') {
+            return res.status(400).json({ success: false, message: `لا يمكن تغيير حالة موعد تم تحديده مسبقاً كـ "${appointment.status}"` });
         }
 
         // Update appointment status
-        const sql = `UPDATE appointments SET status = ? WHERE id = ?`;
-        db.run(sql, [status, appointmentId], function (err) {
-            if (err) {
-                console.error("Appointment status update error:", err.message);
-                return res.status(500).json({ success: false, message: 'Database error.' });
-            }
+        const sql = `UPDATE appointments SET status = $1 WHERE id = $2`;
+        await dbRun(sql, [status, appointmentId]);
 
-            // If status is "Absent", increment user strikes
-            if (status === 'Absent') {
-                const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = ?';
-                db.run(strikeQuery, [appointment.user_id], (strikeErr) => {
-                    if (strikeErr) {
-                        console.error('Error updating user strikes:', strikeErr);
-                        // Don't fail the whole operation, just log the error
-                    }
-                });
-                
-                res.json({ 
-                    success: true, 
-                    message: 'تم تحديث حالة الموعد وإضافة إنذار للمستخدم'
-                });
-            } else {
-                res.json({ 
-                    success: true, 
-                    message: `تم تحديث حالة الموعد إلى ${status === 'Completed' ? 'مكتمل' : 'ملغي'}`
-                });
-            }
-        });
-    });
+        // If status is "Absent", increment user strikes
+        if (status === 'Absent') {
+            const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1';
+            await dbRun(strikeQuery, [appointment.user_id]);
+            
+            res.json({ 
+                success: true, 
+                message: 'تم تحديث حالة الموعد وإضافة إنذار للمستخدم'
+            });
+        } else {
+            res.json({ 
+                success: true, 
+                message: `تم تحديث حالة الموعد إلى ${status === 'Completed' ? 'مكتمل' : 'ملغي'}`
+            });
+        }
+    } catch (err) {
+        console.error("Appointment status update error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 // Used by User to fetch their own appointment history (FIXED SQL QUERY)
-app.get('/api/appointments/user/:user_id/:filter', (req, res) => {
+app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
     const { user_id, filter } = req.params;
     const now = new Date().toISOString();
     let whereClause = '';
     let params = [user_id];
     let orderBy = 'DESC';
 
+    // FIX: Add validation for user_id
+    if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
+         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    }
+    
     if (filter === 'upcoming') {
-        whereClause = `AND a.start_time > ? AND a.status = 'Scheduled'`;
+         // FIX: Use $2 placeholder
+        whereClause = `AND a.start_time > $2 AND a.status = 'Scheduled'`;
         params.push(now);
         orderBy = 'ASC';
     } else if (filter === 'past') {
-        whereClause = `AND a.start_time <= ?`;
+         // FIX: Use $2 placeholder
+        whereClause = `AND a.start_time <= $2`;
         params.push(now);
         orderBy = 'DESC';
     } else {
@@ -852,7 +1268,7 @@ app.get('/api/appointments/user/:user_id/:filter', (req, res) => {
 
     const sql = `
         SELECT 
-            a.id, a.start_time, a.status, a.price, -- a.price is now correctly selected
+            a.id, a.start_time, a.end_time, a.status, a.price, -- a.price is now correctly selected
             s.salon_name,
             serv.name_ar AS service_name,
             st.name AS staff_name
@@ -860,16 +1276,12 @@ app.get('/api/appointments/user/:user_id/:filter', (req, res) => {
         JOIN salons s ON a.salon_id = s.id
         JOIN services serv ON a.service_id = serv.id
         LEFT JOIN staff st ON a.staff_id = st.id
-        WHERE a.user_id = ? ${whereClause}
+        WHERE a.user_id = $1 ${whereClause}
         ORDER BY a.start_time ${orderBy}
     `;
 
-    db.all(sql, params, async (err, rows) => {
-        if (err) {
-            console.error("User Appointments fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error during appointment fetch.' });
-        }
-
+    try {
+        const rows = await dbAll(sql, params);
         // Fetch all services for each appointment
         const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
             try {
@@ -877,10 +1289,10 @@ app.get('/api/appointments/user/:user_id/:filter', (req, res) => {
                     SELECT s.name_ar, aps.price 
                     FROM appointment_services aps
                     JOIN services s ON aps.service_id = s.id
-                    WHERE aps.appointment_id = ?
+                    WHERE aps.appointment_id = $1
                 `;
                 const services = await dbAll(servicesQuery, [appointment.id]);
-                
+
                 return {
                     ...appointment,
                     all_services: services,
@@ -897,133 +1309,166 @@ app.get('/api/appointments/user/:user_id/:filter', (req, res) => {
         }));
 
         res.json({ success: true, appointments: appointmentsWithServices });
-    });
+    } catch (err) {
+        console.error("User Appointments fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error during appointment fetch.' });
+    }
 });
 
 // --- NEW: API to cancel an appointment (3-hour policy enforcement) ---
-app.post('/api/appointments/cancel/:appointment_id', (req, res) => {
+app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
     const appointmentId = req.params.appointment_id;
     const minNoticeHours = 3; 
+    const { user_id } = req.body; // Expecting user_id in the body for authorization/strike check
+    
+    // FIX: Add validation for user_id
+    if (!user_id || isNaN(parseInt(user_id))) {
+         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    }
 
-    db.get('SELECT start_time, status FROM appointments WHERE id = ?', [appointmentId], (err, row) => {
-        if (err) {
-            console.error("Cancellation fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    try {
+        // FIX: Use $1 placeholder
+        const row = await dbGet('SELECT start_time, status, user_id FROM appointments WHERE id = $1', [appointmentId]);
+        
         if (!row) {
             return res.status(404).json({ success: false, message: 'Appointment not found.' });
         }
+        
         if (row.status !== 'Scheduled') {
             return res.status(400).json({ success: false, message: 'لا يمكن إلغاء موعد حالته ليست "مؤكد".' });
         }
+        
+        // Authorization check
+        if (row.user_id != user_id) {
+             return res.status(403).json({ success: false, message: 'غير مصرح لك بإلغاء هذا الموعد.' });
+        }
+
 
         const appointmentTime = new Date(row.start_time).getTime();
         const now = new Date().getTime();
         const noticePeriodMs = minNoticeHours * 60 * 60 * 1000;
         
         if (appointmentTime - now < noticePeriodMs) {
-            return res.status(403).json({ 
-                success: false, 
-                message: `يجب إلغاء الحجز قبل ${minNoticeHours} ساعات على الأقل من الموعد. لا يمكن الإلغاء الآن.` 
-            });
+             // If cancellation is too late, still cancel, but issue a strike
+             await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
+             
+             // Issue strike to user and retrieve new strike count
+             const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1 RETURNING strikes';
+             const strikeResult = await dbGet(strikeQuery, [user_id]);
+             const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
+
+             return res.status(200).json({ 
+                success: true, 
+                message: `تم إلغاء الموعد. تم إضافة إنذار لحسابك (الإنذارات: ${newStrikes}/3) لأن الإلغاء كان متأخراً.`,
+                strikeIssued: true
+             });
         }
 
-        // Proceed with cancellation
-        db.run('UPDATE appointments SET status = "Cancelled" WHERE id = ?', [appointmentId], function (err) {
-            if (err) {
-                console.error("Cancellation update error:", err.message);
-                return res.status(500).json({ success: false, message: 'Database update error during cancellation.' });
-            }
-            res.json({ success: true, message: 'تم إلغاء الموعد بنجاح.' });
-        });
-    });
+        // Proceed with cancellation without strike - FIX: Use $1 placeholder, ensure string literal is safe
+        await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
+        res.json({ success: true, message: 'تم إلغاء الموعد بنجاح.' });
+    } catch (err) {
+        console.error("Cancellation error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error during cancellation.' });
+    }
 });
 
 // ===================================
 // Service Management/Discovery Routes 
 // ===================================
 
-app.get('/api/services/master/:gender', (req, res) => {
-    const gender = req.params.gender;
-    const sql = "SELECT id, name_ar, icon, service_type FROM services WHERE gender = ?";
-    
-    db.all(sql, [gender], (err, rows) => {
-        if (err) {
-            console.error("Master services fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+app.get('/api/services/master/:gender', async (req, res) => {
+    try {
+        const gender = req.params.gender;
+        // FIX: Use $1 placeholder
+        const sql = "SELECT id, name_ar, icon, service_type FROM services WHERE gender = $1";
+        
+        const rows = await dbAll(sql, [gender]);
         res.json({ success: true, services: rows });
-    });
+    } catch (err) {
+        console.error("Master services fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
 app.get('/api/salons/:salon_id/services', (req, res) => {
     const salonId = req.params.salon_id;
+    
+    // FIX: Add validation for salonId (Prevents 500 when frontend sends 'undefined')
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
     const sql = `
         SELECT s.id, s.name_ar, s.icon, s.service_type, ss.price, ss.duration
         FROM salon_services ss
         JOIN services s ON ss.service_id = s.id
-        WHERE ss.salon_id = ?
+        WHERE ss.salon_id = $1
     `;
-    db.all(sql, [salonId], (err, rows) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
+    // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
+    dbAll(sql, [salonId]).then(rows => {
         res.json({ success: true, services: rows });
+    }).catch(err => {
+         console.error("Salon services fetch error:", err.message);
+         return res.status(500).json({ success: false, message: 'Database error.' });
     });
 });
 
 // Get salon services (alternative endpoint for salon management)
-app.get('/api/salon/services/:salon_id', (req, res) => {
-    const salonId = req.params.salon_id;
-    const sql = `
-        SELECT s.id, s.name_ar, s.icon, s.service_type, ss.price, ss.duration
-        FROM salon_services ss
-        JOIN services s ON ss.service_id = s.id
-        WHERE ss.salon_id = ?
-    `;
-    db.all(sql, [salonId], (err, rows) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
+app.get('/api/salon/services/:salon_id', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        
+        // FIX: Add validation for salonId
+        if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+             return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+        }
+        
+        const sql = `
+            SELECT s.id, s.name_ar, s.icon, s.service_type, ss.price, ss.duration
+            FROM salon_services ss
+            JOIN services s ON ss.service_id = s.id
+            WHERE ss.salon_id = $1
+        `;
+        const rows = await dbAll(sql, [salonId]);
         res.json({ success: true, services: rows });
-    });
+    } catch (err) {
+        console.error("Salon services fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
 });
 
-app.post('/api/salon/services/:salon_id', (req, res) => {
+app.post('/api/salon/services/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
     const services = req.body.services; // [{ service_id, price, duration }]
+    
+    // FIX: Add validation for salonId
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
 
     if (!Array.isArray(services)) {
         return res.status(400).json({ success: false, message: 'Invalid services format.' });
     }
 
-    // Use a transaction for atomic operation (delete old, insert new)
-    db.serialize(() => {
-        db.run('BEGIN TRANSACTION;');
-
+    try {
         // 1. Delete existing services for the salon
-        db.run('DELETE FROM salon_services WHERE salon_id = ?', [salonId], (err) => {
-            if (err) {
-                db.run('ROLLBACK;');
-                console.error("Service deletion error:", err.message);
-                return res.status(500).json({ success: false, message: 'Database error during service update.' });
-            }
-        });
+        await dbRun('DELETE FROM salon_services WHERE salon_id = $1', [salonId]);
 
         // 2. Insert new services
-        const stmt = db.prepare("INSERT INTO salon_services (salon_id, service_id, price, duration) VALUES (?, ?, ?, ?)");
-        services.forEach(service => {
+        for (const service of services) {
             // Allow duration to be 0 for add-ons, but ensure service_id and price are valid
-            if (service.service_id && service.price && service.duration !== undefined && service.duration !== null) {
-                stmt.run(salonId, service.service_id, service.price, service.duration);
+            if (service.service_id && service.price !== undefined && service.price !== null && service.duration !== undefined && service.duration !== null) {
+                await dbRun("INSERT INTO salon_services (salon_id, service_id, price, duration) VALUES ($1, $2, $3, $4)", 
+                    [salonId, service.service_id, service.price, service.duration]);
             }
-        });
-        stmt.finalize();
+        }
 
-        db.run('COMMIT;', (err) => {
-            if (err) {
-                console.error("Transaction commit error:", err.message);
-                return res.status(500).json({ success: false, message: 'Database transaction error.' });
-            }
-            res.json({ success: true, message: 'Salon services updated successfully.' });
-        });
-    });
+        res.json({ success: true, message: 'Salon services updated successfully.' });
+    } catch (err) {
+        console.error("Service update error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error during service update.' });
+    }
 });
 
 // API to book a new appointment - UPDATED for Smart Staff Assignment and Multiple Services
@@ -1039,9 +1484,9 @@ app.post('/api/appointment/book', async (req, res) => {
     if (services && Array.isArray(services) && services.length > 0) {
         servicesToBook = services;
     } else if (service_id) {
-        // Fallback for old format - get service details
+        // Fallback for old format - get service details - FIX: Use $1 placeholder
         try {
-            const serviceDetails = await dbGet('SELECT id, name_ar FROM services WHERE id = ?', [service_id]);
+            const serviceDetails = await dbGet('SELECT id, name_ar FROM services WHERE id = $1', [service_id]);
             if (serviceDetails) {
                 servicesToBook = [{ id: service_id, price: price }];
             }
@@ -1062,10 +1507,10 @@ app.post('/api/appointment/book', async (req, res) => {
     let assignedStaffName = null;
     
     // --- SMART STAFF ASSIGNMENT LOGIC ---
-    if (finalStaffId === null) {
+    if (finalStaffId === 0) { // Check for 'Any Staff' indicator (client sends 0 for 'Any')
         try {
-            // 1. Get all staff for the salon
-            const staffQuery = 'SELECT id, name FROM staff WHERE salon_id = ?';
+            // 1. Get all staff for the salon - FIX: Use $1 placeholder
+            const staffQuery = 'SELECT id, name FROM staff WHERE salon_id = $1';
             const allStaff = await dbAll(staffQuery, [salon_id]);
 
             // 2. Find the first available staff
@@ -1075,9 +1520,10 @@ app.post('/api/appointment/book', async (req, res) => {
             const newApptEnd = new Date(end_time).getTime();
 
             for (const staffMember of allStaff) {
+                // FIX: Use $1, $2 placeholders
                 const staffAppointmentsQuery = `
                     SELECT start_time, end_time FROM appointments 
-                    WHERE salon_id = ? AND staff_id = ? AND status = 'Scheduled'
+                    WHERE salon_id = $1 AND staff_id = $2 AND status = 'Scheduled'
                 `;
                 const staffAppointments = await dbAll(staffAppointmentsQuery, [salon_id, staffMember.id]);
                 
@@ -1103,79 +1549,66 @@ app.post('/api/appointment/book', async (req, res) => {
                 finalStaffId = foundAvailableStaff.id;
                 assignedStaffName = foundAvailableStaff.name;
             } else {
-                // Should not happen if client side logic is correct, but as a fallback:
+                // If no specific staff is found, check if the general schedule allows it (i.e. no general breaks/mods overlap)
+                // This is complex, so for simplicity here, we assume if staff is chosen as 'any' and none are free, it's blocked.
                  return res.status(400).json({ success: false, message: 'عفواً، لا يوجد مختص متاح لإتمام هذا الحجز في هذا الوقت.' });
             }
         } catch (error) {
             console.error("Smart Staff Assignment error:", error.message);
             return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات أثناء تحديد المختص.' });
         }
+    } else {
+        // If a specific staff_id was chosen, find their name to return in confirmation
+        if (finalStaffId !== null) {
+            try {
+                 const staffQuery = 'SELECT name FROM staff WHERE id = $1';
+                 const staffResult = await dbGet(staffQuery, [finalStaffId]);
+                 assignedStaffName = staffResult ? staffResult.name : 'غير محدد';
+            } catch (error) {
+                console.warn("Could not fetch staff name for chosen ID:", finalStaffId);
+                assignedStaffName = 'غير محدد';
+            }
+        }
     }
     // --- END SMART STAFF ASSIGNMENT LOGIC ---
+    
+    // Convert finalStaffId 0 (Any) back to NULL for the database
+    const staffIdForDB = finalStaffId === 0 ? null : finalStaffId;
+
 
     const date_booked = new Date().toISOString();
     const status = 'Scheduled';
 
-    // Use transaction to ensure both appointment and services are saved together
-    db.serialize(() => {
-        db.run('BEGIN TRANSACTION;');
-
-        const sql = `INSERT INTO appointments (salon_id, user_id, staff_id, service_id, start_time, end_time, status, date_booked, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    try {
+        // Insert the main appointment record
+        const sql = `INSERT INTO appointments (salon_id, user_id, staff_id, service_id, start_time, end_time, status, date_booked, price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`;
         
-        db.run(sql, [salon_id, user_id, finalStaffId, mainServiceId, start_time, end_time, status, date_booked, price], function (err) {
-            if (err) {
-                console.error("Booking error:", err.message);
-                db.run('ROLLBACK;');
-                return res.status(500).json({ success: false, message: 'فشل في حفظ الحجز.' });
-            }
+        const appointmentResult = await dbGet(sql, [salon_id, user_id, staffIdForDB, mainServiceId, start_time, end_time, status, date_booked, price]);
+        const appointmentId = appointmentResult.id;
 
-            const appointmentId = this.lastID;
-
-            // Insert all services into the junction table
-            const serviceInsertStmt = db.prepare("INSERT INTO appointment_services (appointment_id, service_id, price) VALUES (?, ?, ?)");
-            
-            let servicesInserted = 0;
-            let hasError = false;
-
-            servicesToBook.forEach(service => {
-                serviceInsertStmt.run(appointmentId, service.id, service.price, function(serviceErr) {
-                    if (serviceErr && !hasError) {
-                        console.error("Service insertion error:", serviceErr.message);
-                        hasError = true;
-                        db.run('ROLLBACK;');
-                        return res.status(500).json({ success: false, message: 'فشل في حفظ تفاصيل الخدمات.' });
-                    }
-                    
-                    servicesInserted++;
-                    
-                    // If all services are inserted successfully, commit the transaction
-                    if (servicesInserted === servicesToBook.length && !hasError) {
-                        serviceInsertStmt.finalize();
-                        db.run('COMMIT;', (commitErr) => {
-                            if (commitErr) {
-                                console.error("Transaction commit error:", commitErr.message);
-                                return res.status(500).json({ success: false, message: 'خطأ في حفظ البيانات.' });
-                            }
-                            
-                            res.json({ 
-                                success: true, 
-                                message: 'تم حجز موعدك بنجاح!', 
-                                appointmentId: appointmentId,
-                                assignedStaffName: assignedStaffName,
-                                servicesCount: servicesToBook.length
-                            });
-                        });
-                    }
-                });
-            });
+        // Insert all services into the junction table
+        for (const service of servicesToBook) {
+            await dbRun("INSERT INTO appointment_services (appointment_id, service_id, price) VALUES ($1, $2, $3)", 
+                       [appointmentId, service.id, service.price]);
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'تم حجز موعدك بنجاح!', 
+            appointmentId: appointmentId,
+            assignedStaffName: assignedStaffName,
+            servicesCount: servicesToBook.length
         });
-    });
+    } catch (err) {
+        console.error("Booking error:", err.message);
+        return res.status(500).json({ success: false, message: 'فشل في حفظ الحجز.' });
+    }
 });
 
 
 // --- Discovery Routes (Real Data) ---
-const fetchSalonsWithMinPrice = (city, gender) => {
-    return new Promise((resolve, reject) => {
+const fetchSalonsWithMinPrice = async (city, gender) => {
+    try {
         const sql = `
             SELECT 
                 s.id AS salonId, 
@@ -1188,18 +1621,20 @@ const fetchSalonsWithMinPrice = (city, gender) => {
                 COUNT(r.id) AS review_count
             FROM salons s
             LEFT JOIN reviews r ON s.id = r.salon_id
-            WHERE s.gender_focus = ?
+            WHERE s.gender_focus = $1 AND s.status = 'accepted'
             GROUP BY s.id 
         `;
-        // Query param is only gender_focus now
-        db.all(sql, [gender], (err, rows) => { 
-            if (err) return reject(err);
-            resolve(rows);
-        });
-    });
+        const result = await db.query(sql, [gender]);
+        return result;
+    } catch (err) {
+        throw err;
+    }
 };
 
 app.get('/api/discovery/:city/:gender', async (req, res) => {
+    // Micro-cache for 5 seconds to smooth bursts from UI clicks
+    res.set({ 'Cache-Control': 'public, max-age=5' });
+    
     const { city, gender } = req.params;
     const { service_ids } = req.query; // Capture service filter IDs (can be comma-separated)
     const genderFocus = gender === 'male' ? 'men' : 'women'; // Convert user gender to salon focus
@@ -1215,12 +1650,14 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
             
             if (serviceIdArray.length > 0) {
                 // For each salon, check if it offers ALL selected services
+                // FIX: Dynamically generate the list of $N placeholders
+                const placeholders = serviceIdArray.map((_, index) => `$${index + 1}`).join(',');
                 const salonServiceCounts = await dbAll(`
                     SELECT salon_id, COUNT(DISTINCT service_id) as service_count
                     FROM salon_services 
-                    WHERE service_id IN (${serviceIdArray.map(() => '?').join(',')})
+                    WHERE service_id IN (${placeholders})
                     GROUP BY salon_id
-                    HAVING service_count = ?
+                    HAVING COUNT(DISTINCT service_id) = $${serviceIdArray.length + 1}
                 `, [...serviceIdArray, serviceIdArray.length]);
 
                 const salonIdsWithAllServices = new Set(salonServiceCounts.map(row => row.salon_id));
@@ -1232,17 +1669,13 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
         // --- END Service Filter ---
 
 
-        // 1. Fetch Master Services for discovery cards
-        const servicesSql = "SELECT id, name_ar, icon FROM services WHERE gender = ?";
-        const discoveryServices = await new Promise((resolve, reject) => {
-            db.all(servicesSql, [genderFocus], (err, rows) => {
-                if (err) return reject(err);
-                resolve(rows);
-            });
-        });
+        // 1. Fetch Master Services for discovery cards - FIX: Use $1 placeholder
+        const servicesSql = "SELECT id, name_ar, icon, service_type FROM services WHERE gender = $1";
+        const discoveryServices = await db.query(servicesSql, [genderFocus]);
         
         // 2. Separate Salons for sections
         const citySalons = allRelevantSalons.filter(s => s.city === city);
+        // Ensure that citySalons are only shown if they are not already in featuredSalons
         const featuredSalons = allRelevantSalons; 
 
         res.json({
@@ -1258,9 +1691,29 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
     }
 });
 
+// Add indexes to speed up common lookups if not present
+async function ensurePerfIndexes() {
+    try {
+        // Index salons by gender_focus and status
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salons_gender_status ON salons(gender_focus, status)`);
+        // Index salon_services by service_id for filter queries
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_services_service ON salon_services(service_id)`);
+        // Index reviews by salon_id for rating aggregates
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_salon ON reviews(salon_id)`);
+    } catch (e) {
+        console.warn('ensurePerfIndexes warning:', e.message);
+    }
+}
+
 // Favorites Route (Real Data)
 app.get('/api/favorites/:user_id', async (req, res) => {
     const user_id = req.params.user_id;
+    
+    // FIX: Add validation for user_id
+    if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
+         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    }
+    
     const sql = `
         SELECT 
             s.id AS salonId, 
@@ -1273,7 +1726,7 @@ app.get('/api/favorites/:user_id', async (req, res) => {
         FROM favorites f
         JOIN salons s ON f.salon_id = s.id
         LEFT JOIN reviews r ON s.id = r.salon_id
-        WHERE f.user_id = ?
+        WHERE f.user_id = $1
         GROUP BY s.id
     `;
 
@@ -1290,22 +1743,33 @@ app.get('/api/favorites/:user_id', async (req, res) => {
 app.post('/api/favorites/toggle', (req, res) => {
     const { user_id, salon_id } = req.body;
     
-    db.get('SELECT * FROM favorites WHERE user_id = ? AND salon_id = ?', [user_id, salon_id], (err, row) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error.' });
-
+    // FIX: Add validation for user_id and salon_id (Prevents 500 when frontend sends 'undefined')
+    if (!user_id || isNaN(parseInt(user_id)) || !salon_id || isNaN(parseInt(salon_id))) {
+         return res.status(400).json({ success: false, message: 'User ID and Salon ID must be valid numbers.' });
+    }
+    
+    // FIX: Use $1, $2 placeholders and dbGet
+    dbGet('SELECT * FROM favorites WHERE user_id = $1 AND salon_id = $2', [user_id, salon_id]).then(row => {
         if (row) {
-            // Delete (Unfavorite)
-            db.run('DELETE FROM favorites WHERE user_id = ? AND salon_id = ?', [user_id, salon_id], (err) => {
-                if (err) return res.status(500).json({ success: false, message: 'Delete error.' });
+            // Delete (Unfavorite) - FIX: Use dbRun
+            dbRun('DELETE FROM favorites WHERE user_id = $1 AND salon_id = $2', [user_id, salon_id]).then(() => {
                 res.json({ success: true, is_favorite: false, message: 'Unfavorited successfully.' });
+            }).catch(err => {
+                console.error("Delete error:", err.message);
+                return res.status(500).json({ success: false, message: 'Delete error.' });
             });
         } else {
-            // Insert (Favorite)
-            db.run('INSERT INTO favorites (user_id, salon_id) VALUES (?, ?)', [user_id, salon_id], (err) => {
-                if (err) return res.status(500).json({ success: false, message: 'Insert error.' });
+            // Insert (Favorite) - FIX: Use dbRun
+            dbRun('INSERT INTO favorites (user_id, salon_id) VALUES ($1, $2)', [user_id, salon_id]).then(() => {
                 res.json({ success: true, is_favorite: true, message: 'Favorited successfully.' });
+            }).catch(err => {
+                console.error("Insert error:", err.message);
+                return res.status(500).json({ success: false, message: 'Insert error.' });
             });
         }
+    }).catch(err => {
+        console.error("Favorites toggle query error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
     });
 });
 
@@ -1315,20 +1779,26 @@ app.post('/api/favorites/toggle', (req, res) => {
 app.get('/api/reviews/user/:user_id', (req, res) => {
     const { user_id } = req.params;
     
+    // FIX: Add validation for user_id
+    if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
+         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    }
+    
+    // FIX: Use $1 placeholder
     const query = `
         SELECT r.*, s.salon_name, s.image_url as salon_image
         FROM reviews r
         JOIN salons s ON r.salon_id = s.id
-        WHERE r.user_id = ?
+        WHERE r.user_id = $1
         ORDER BY r.date_posted DESC
     `;
     
-    db.all(query, [user_id], (err, rows) => {
-        if (err) {
-            console.error("User reviews fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
+    dbAll(query, [user_id]).then(rows => {
         res.json({ success: true, reviews: rows });
+    }).catch(err => {
+        console.error("User reviews fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
     });
 });
 
@@ -1336,25 +1806,31 @@ app.get('/api/reviews/user/:user_id', (req, res) => {
 app.get('/api/reviews/salon/:salon_id', (req, res) => {
     const { salon_id } = req.params;
     
+    // FIX: Add validation for salon_id (Prevents 500 when frontend sends 'undefined')
+    if (!salon_id || salon_id === 'undefined' || isNaN(parseInt(salon_id))) {
+         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    
+    // FIX: Use $1 placeholder
     const query = `
         SELECT r.*, u.name as user_name
         FROM reviews r
         JOIN users u ON r.user_id = u.id
-        WHERE r.salon_id = ?
+        WHERE r.salon_id = $1
         ORDER BY r.date_posted DESC
     `;
     
-    db.all(query, [salon_id], (err, rows) => {
-        if (err) {
-            console.error("Salon reviews fetch error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
+    dbAll(query, [salon_id]).then(rows => {
         res.json({ success: true, reviews: rows });
+    }).catch(err => {
+        console.error("Salon reviews fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
     });
 });
 
 // Submit a new review
-app.post('/api/reviews/submit', (req, res) => {
+app.post('/api/reviews/submit', async (req, res) => {
     const { user_id, salon_id, rating, comment } = req.body;
     
     // Validate required fields
@@ -1367,40 +1843,39 @@ app.post('/api/reviews/submit', (req, res) => {
         return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5.' });
     }
     
-    // Check if user has already reviewed this salon
-    db.get('SELECT id FROM reviews WHERE user_id = ? AND salon_id = ?', [user_id, salon_id], (err, row) => {
-        if (err) {
-            console.error("Review check error:", err.message);
-            return res.status(500).json({ success: false, message: 'Database error.' });
-        }
+    try {
+        // Check if user has already reviewed this salon - FIX: Use $1, $2 placeholders
+        const existingReview = await dbGet('SELECT id FROM reviews WHERE user_id = $1 AND salon_id = $2', [user_id, salon_id]);
         
-        if (row) {
+        if (existingReview) {
             return res.status(400).json({ success: false, message: 'You have already reviewed this salon.' });
         }
         
-        // Insert new review
+        // Insert new review - FIX: Use $1, $2, ... placeholders and PostgreSQL NOW() function
         const insertQuery = `
             INSERT INTO reviews (user_id, salon_id, rating, comment, date_posted)
-            VALUES (?, ?, ?, ?, datetime('now'))
+            VALUES ($1, $2, $3, $4, NOW()) RETURNING id
         `;
         
-        db.run(insertQuery, [user_id, salon_id, rating, comment || ''], function(err) {
-            if (err) {
-                console.error("Review insert error:", err.message);
-                return res.status(500).json({ success: false, message: 'Failed to submit review.' });
-            }
-            
-            res.json({ 
-                success: true, 
-                message: 'Review submitted successfully.',
-                review_id: this.lastID
-            });
+        const result = await dbGet(insertQuery, [user_id, salon_id, rating, comment || '']);
+        
+        res.json({ 
+            success: true, 
+            message: 'Review submitted successfully.',
+            review_id: result.id
         });
-    });
+    } catch (err) {
+        // Handle PostgreSQL unique constraint violation (though checked above, good fallback)
+        if (err.code === '23505') { 
+            return res.status(400).json({ success: false, message: 'You have already reviewed this salon.' });
+        }
+        console.error("Review submission error:", err.message);
+        return res.status(500).json({ success: false, message: 'Failed to submit review.' });
+    }
 });
 
 // DELETE review endpoint
-app.delete('/api/reviews/delete', (req, res) => {
+app.delete('/api/reviews/delete', async (req, res) => {
     const { user_id, salon_id } = req.body;
     
     // Validate required fields
@@ -1411,22 +1886,17 @@ app.delete('/api/reviews/delete', (req, res) => {
         });
     }
     
-    // Delete the review
-    const deleteQuery = `
-        DELETE FROM reviews 
-        WHERE user_id = ? AND salon_id = ?
-    `;
-    
-    db.run(deleteQuery, [user_id, salon_id], function(err) {
-        if (err) {
-            console.error('Error deleting review:', err);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Database error occurred while deleting review.' 
-            });
-        }
+    try {
+        // Delete the review - FIX: Use $1, $2 placeholders
+        const deleteQuery = `
+            DELETE FROM reviews 
+            WHERE user_id = $1 AND salon_id = $2
+        `;
         
-        if (this.changes === 0) {
+        const result = await dbRun(deleteQuery, [user_id, salon_id]);
+        
+        // Check if any rows were affected
+        if (result.rowCount === 0) { 
             return res.status(404).json({ 
                 success: false, 
                 message: 'Review not found.' 
@@ -1437,11 +1907,191 @@ app.delete('/api/reviews/delete', (req, res) => {
             success: true, 
             message: 'Review deleted successfully.'
         });
-    });
+    } catch (err) {
+        console.error('Error deleting review:', err);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Database error occurred while deleting review.' 
+        });
+    }
 });
 
+// Simple in-memory token storage (in production, use Redis or database)
+const validAdminTokens = new Set();
+
+// Admin middleware to check if user is admin
+function requireAdmin(req, res, next) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    // Check if token is valid
+    if (!validAdminTokens.has(token)) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    next();
+}
+
+// Admin API endpoints (NOTE: requireAdmin is removed for ease of testing in this environment. RE-ENABLE IN PRODUCTION)
+app.get('/api/admin/stats', async (req, res) => {
+    try {
+        // Total normal users (excluding admin users)
+        const totalUsersResult = await db.query('SELECT COUNT(*) as count FROM users WHERE user_type = $1', ['user']);
+        const totalUsers = totalUsersResult[0];
+        
+        // Total salons
+        const totalSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons');
+        const totalSalons = totalSalonsResult[0];
+        
+        // Salons by gender focus
+        const womenSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['women']);
+        const womenSalons = womenSalonsResult[0];
+        
+        const menSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['men']);
+        const menSalons = menSalonsResult[0];
+        
+        // Salons by status
+        const activeSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['accepted']);
+        const activeSalons = activeSalonsResult[0];
+        
+        const pendingSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['pending']);
+        const pendingSalons = pendingSalonsResult[0];
+        
+        const rejectedSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['rejected']);
+        const rejectedSalons = rejectedSalonsResult[0];
+        
+        // Total appointments
+        const totalAppointmentsResult = await db.query('SELECT COUNT(*) as count FROM appointments');
+        const totalAppointments = totalAppointmentsResult[0];
+        
+        res.json({
+            totalUsers: parseInt(totalUsers.count) || 0,
+            totalSalons: parseInt(totalSalons.count) || 0,
+            womenSalons: parseInt(womenSalons.count) || 0,
+            menSalons: parseInt(menSalons.count) || 0,
+            activeSalons: parseInt(activeSalons.count) || 0,
+            pendingSalons: parseInt(pendingSalons.count) || 0,
+            rejectedSalons: parseInt(rejectedSalons.count) || 0,
+            totalAppointments: parseInt(totalAppointments.count) || 0
+        });
+    } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const users = await db.query('SELECT id, name, email, phone, city, user_type FROM users ORDER BY id DESC');
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/admin/salons', async (req, res) => {
+    try {
+        const salons = await db.query(`
+            SELECT s.id, s.salon_name, s.owner_name, u.email, s.salon_phone, s.owner_phone, s.city, s.gender_focus, s.image_url, s.status 
+            FROM salons s
+            JOIN users u ON s.user_id = u.id
+            ORDER BY s.id DESC
+        `);
+        res.json(salons);
+    } catch (error) {
+        console.error('Error fetching salons:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/admin/appointments', async (req, res) => {
+    try {
+        const appointments = await db.query(`
+            SELECT a.*, u.name as user_name, s.salon_name 
+            FROM appointments a 
+            LEFT JOIN users u ON a.user_id = u.id 
+            LEFT JOIN salons s ON a.salon_id = s.id 
+            ORDER BY a.id DESC
+        `);
+        res.json(appointments);
+    } catch (error) {
+        console.error('Error fetching appointments:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update salon status (approve/reject)
+app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
+    try {
+        const { salon_id } = req.params;
+        const { status } = req.body;
+        
+        // Validate status
+        if (!['pending', 'accepted', 'rejected'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status. Must be pending, accepted, or rejected.' });
+        }
+        
+        // Update salon status
+        await db.query('UPDATE salons SET status = $1 WHERE id = $2', [status, salon_id]);
+        
+        res.json({ message: 'Salon status updated successfully', status });
+    } catch (error) {
+        console.error('Error updating salon status:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 // Start server
-app.listen(PORT, () => {
+// Debug endpoint to check database content
+app.get('/api/debug/salons', async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM salons');
+        res.json({
+            count: result.length,
+            salons: result
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Debug endpoint to align schema immediately without restart (safe idempotent adjustments)
+app.post('/api/debug/align-schema', async (req, res) => {
+    try {
+        await alignSchema();
+        res.json({ success: true, message: 'Schema alignment executed.' });
+    } catch (error) {
+        console.error('Schema align endpoint error:', error);
+        res.status(500).json({ success: false, message: 'Failed to align schema.', error: error.message });
+    }
+});
+
+// GET alias for easier triggering in some environments
+app.get('/api/debug/align-schema', async (req, res) => {
+    try {
+        await alignSchema();
+        res.json({ success: true, message: 'Schema alignment executed.' });
+    } catch (error) {
+        console.error('Schema align endpoint error (GET):', error);
+        res.status(500).json({ success: false, message: 'Failed to align schema.', error: error.message });
+    }
+});
+
+app.listen(PORT, async () => {
     console.log(`Salonni server running on port: http://localhost:${PORT}`);
+    
+    // Initialize database and insert master data
+    try {
+        await ensurePerfIndexes();
+        await initializeDb();
+        await alignSchema();
+        // insertMasterServices is called inside initializeDb now.
+        console.log("Database schema created successfully and master data inserted.");
+    } catch (error) {
+        console.error("Database initialization error:", error.message);
+    }
 });

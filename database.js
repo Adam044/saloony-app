@@ -15,6 +15,7 @@ class Database {
             // PostgreSQL connection for production (Supabase)
             this.pool = new Pool({
                 connectionString: process.env.DATABASE_URL,
+                // Ensure SSL is handled correctly for Render/Supabase
                 ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
             });
             console.log('Connected to PostgreSQL database (Supabase)');
@@ -30,15 +31,18 @@ class Database {
         }
     }
 
-    // Unified query method that works with both SQLite and PostgreSQL
+    // Unified query method (for SELECT and INSERT...RETURNING)
     async query(sql, params = []) {
         return new Promise((resolve, reject) => {
             if (this.isProduction) {
                 // PostgreSQL query
                 this.pool.query(sql, params, (err, result) => {
                     if (err) {
+                        // CRITICAL FIX: Log the full PostgreSQL error for debugging
+                        console.error("PostgreSQL Query Error:", err.code, err.message, "SQL:", sql, "Params:", params);
                         reject(err);
                     } else {
+                        // Return the array of rows (for dbAll in server.js)
                         resolve(result.rows);
                     }
                 });
@@ -55,15 +59,18 @@ class Database {
         });
     }
 
-    // Get single row
+    // Get single row (for SELECT/INSERT...RETURNING 1 row)
     async get(sql, params = []) {
         return new Promise((resolve, reject) => {
             if (this.isProduction) {
                 // PostgreSQL query
                 this.pool.query(sql, params, (err, result) => {
                     if (err) {
+                        // CRITICAL FIX: Log the full PostgreSQL error for debugging
+                        console.error("PostgreSQL Get Error:", err.code, err.message, "SQL:", sql, "Params:", params);
                         reject(err);
                     } else {
+                        // Return the first row (used by dbGet in server.js)
                         resolve(result.rows[0] || null);
                     }
                 });
@@ -80,18 +87,22 @@ class Database {
         });
     }
 
-    // Run query (for INSERT, UPDATE, DELETE)
+    // Run query (for INSERT, UPDATE, DELETE without returning data, usually)
     async run(sql, params = []) {
         return new Promise((resolve, reject) => {
             if (this.isProduction) {
                 // PostgreSQL query
                 this.pool.query(sql, params, (err, result) => {
                     if (err) {
+                        // CRITICAL FIX: Log the full PostgreSQL error for debugging
+                        console.error("PostgreSQL Run Error:", err.code, err.message, "SQL:", sql, "Params:", params);
                         reject(err);
                     } else {
+                        // FIX: Ensure lastID is only returned if it's explicitly retrieved
                         resolve({
-                            lastID: result.insertId || null,
-                            changes: result.rowCount || 0
+                            lastID: result.rows && result.rows[0] && result.rows[0].id ? result.rows[0].id : null,
+                            changes: result.rowCount || 0,
+                            rowCount: result.rowCount || 0
                         });
                     }
                 });

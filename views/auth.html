@@ -41,7 +41,7 @@
         .color-primary-dark { background-color: #1E293B; }
         .text-secondary { color: #06C167; } /* Vibrant Teal-Green Accent */
         .color-secondary-bg { background-color: #06C167; }
-        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); }
+        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); } /* Light transparent accent bg */
         .color-accent-bg { background-color: rgba(6, 193, 103, 0.1); } /* Light secondary accent */
         .btn-primary {
             background-color: #06C167;
@@ -148,15 +148,6 @@
                 <input type="password" id="login-password" name="password" placeholder="كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="current-password">
                 <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
             </div>
-            
-            <label for="login-role" class="block text-sm font-medium text-gray-700 pt-2">سجل الدخول كـ:</label>
-            <div class="relative">
-                <select id="login-role" name="role" required class="w-full p-4 border border-gray-200 rounded-xl appearance-none">
-                    <option value="user">مستخدم (للحجز)</option>
-                    <option value="salon">صالون (لاستقبال الحجوزات)</option>
-                </select>
-                <i class="fas fa-users-cog text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-            </div>
 
             <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
                 <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل الدخول
@@ -244,13 +235,13 @@
                         <i class="fas fa-phone-square-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                     </div>
                     <div class="relative flex-1">
-                        <input type="tel" id="salon-owner-phone" name="owner_phone" placeholder="هاتف المالك" required class="w-full p-4 border border-gray-200 rounded-xl">
+                        <input type="tel" id="salon-owner-phone" name="owner_phone" placeholder="هاتف المالك (للتسجيل)" required class="w-full p-4 border border-gray-200 rounded-xl">
                         <i class="fas fa-mobile-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                     </div>
                 </div>
 
                 <div class="relative">
-                    <input type="email" id="salon-email" name="email" placeholder="البريد الإلكتروني للصالون" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="off">
+                    <input type="email" id="salon-email" name="email" placeholder="البريد الإلكتروني للصالون (للتسجيل)" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="off">
                     <i class="fas fa-envelope-open-text text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
                 <div class="relative">
@@ -281,7 +272,7 @@
                 </div>
 
                 <div class="relative">
-                    <input type="password" id="salon-password" name="password" placeholder="كلمة المرور" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="new-password">
+                    <input type="password" id="salon-password" name="password" placeholder="كلمة المرور (للتسجيل)" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="new-password">
                     <i class="fas fa-key text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
                 <div class="relative">
@@ -294,6 +285,21 @@
                 </button>
             </form>
         </div>
+    </div>
+</div>
+
+<!-- Pending Salon Modal -->
+<div id="pending-salon-modal" class="fixed inset-0 color-primary-dark/95 flex flex-col justify-center items-center p-8 hidden z-20 transition-opacity duration-500 opacity-0">
+    <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl max-w-xl text-center">
+        <i class="fas fa-clock text-6xl text-yellow-500 mb-6"></i>
+        <h2 class="text-4xl font-extrabold text-primary-dark mb-4">حسابك قيد المراجعة</h2>
+        <p class="text-xl text-gray-600 mb-6">شكراً لتسجيلك في صالوني! حسابك الآن قيد المراجعة من قبل فريقنا.</p>
+        <p class="text-lg text-gray-600 mb-6">سنقوم بالتحقق من بيانات صالونك وسنوافق على حسابك خلال 24-48 ساعة.</p>
+        <p class="text-sm text-gray-500 mb-8">يمكنك تسجيل الدخول والتنقل في التطبيق، لكن صالونك لن يظهر للمستخدمين حتى تتم الموافقة عليه.</p>
+        
+        <button id="pending-salon-btn" class="btn-primary w-full py-4 rounded-xl text-xl font-extrabold">
+            <i class="fas fa-check ml-2"></i> فهمت
+        </button>
     </div>
 </div>
 
@@ -360,6 +366,9 @@ class AuthManager {
         
         // Feature slide button
         document.getElementById('start-now-btn').addEventListener('click', () => this.hideFeatureSlide());
+        
+        // Pending salon modal button
+        document.getElementById('pending-salon-btn').addEventListener('click', () => this.hidePendingSalonModal());
     }
 
     async populateCities() {
@@ -393,6 +402,7 @@ class AuthManager {
     }
 
     checkPasswordStrength(passwordInput) {
+        // ... (Password strength logic remains the same)
         const password = passwordInput.value;
         let strengthIndicator = passwordInput.parentElement.querySelector('.password-strength');
 
@@ -447,13 +457,10 @@ class AuthManager {
     async handleLogin(e) {
         e.preventDefault();
         
-        const loginData = {
-            email: document.getElementById('login-email').value,
-            password: document.getElementById('login-password').value,
-            role: document.getElementById('login-role').value
-        };
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
 
-        if (!loginData.email || !loginData.password || !loginData.role) {
+        if (!email || !password) {
             this.showToast('يرجى ملء جميع الحقول المطلوبة', 'error');
             return;
         }
@@ -461,6 +468,11 @@ class AuthManager {
         this.showLoadingSpinner(true, 'login');
 
         try {
+            const loginData = {
+                email: email,
+                password: password
+            };
+
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -472,14 +484,28 @@ class AuthManager {
             if (response.ok) {
                 this.showToast('تم تسجيل الدخول بنجاح!', 'success');
                 
-                // Store token and user object under a single key
-                localStorage.setItem('salonni_token', result.token);
-                localStorage.setItem('salonni_user', JSON.stringify(result.user));
-                
-                // Redirect based on role
-                setTimeout(() => {
-                    window.location.href = result.redirect;
-                }, 1500);
+                // --- CRITICAL FIX: Handle unified user structure ---
+                if (result.userType === 'admin') {
+                    localStorage.setItem('adminToken', result.token);
+                    setTimeout(() => {
+                        window.location.href = '/admin_dashboard.html';
+                    }, 1500);
+                } else {
+                    // Store the unified user object which now contains userId and/or salonId
+                    localStorage.setItem('salonni_token', result.token);
+                    localStorage.setItem('salonni_user', JSON.stringify(result.user));
+                    
+                    // Redirect based on the user_type returned by the server
+                    if (result.user.user_type === 'salon') {
+                        setTimeout(() => {
+                            window.location.href = '/home_salon.html';
+                        }, 1500);
+                    } else if (result.user.user_type === 'user') {
+                         setTimeout(() => {
+                            window.location.href = '/home_user.html';
+                        }, 1500);
+                    }
+                }
             } else {
                 this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
             }
@@ -498,13 +524,13 @@ class AuthManager {
         const formData = new FormData(form);
         const userType = formData.get('user_type');
         
-        // Extract basic data
+        // Extract basic data (must be explicitly collected for server to handle the inserts)
         const signupData = {
-            name: formData.get('name'),
+            name: formData.get('name'), // User name or Salon Name
             email: formData.get('email'),
             password: formData.get('password'),
             confirmPassword: formData.get('confirmPassword'),
-            phone: formData.get('phone'),
+            phone: formData.get('phone'), // User phone or Salon phone
             city: formData.get('city'),
             user_type: userType
         };
@@ -515,14 +541,13 @@ class AuthManager {
             signupData.gender = formData.get('gender');
             currentButtonId = 'user-signup-form';
         } else {
+            // Salon specific fields (now mandatory to separate from general user fields)
             signupData.owner_name = formData.get('owner_name');
-            signupData.owner_phone = formData.get('owner_phone');
+            signupData.owner_phone = formData.get('owner_phone'); // CRITICAL: This is the phone used for the users table
             signupData.address = formData.get('address');
             signupData.gender_focus = formData.get('gender_focus');
-            // Since User form has gender, we ensure we don't send a null gender for Salon signup.
-            signupData.gender = 'N/A'; // Salons don't need a personal gender field, use N/A or remove later.
             
-            // Handle image file - now required
+            // Handle image file
             const imageFile = formData.get('image');
             if (!imageFile || imageFile.size === 0) {
                 this.showToast('يرجى اختيار صورة للصالون', 'error');
@@ -551,10 +576,18 @@ class AuthManager {
             ['name', 'owner_name', 'phone', 'owner_phone', 'email', 'address', 'city', 'gender_focus', 'password'];
         
         for (const field of requiredFields) {
-            if (!signupData[field] || String(signupData[field]).trim() === '' || signupData[field] === 'N/A') {
-                 // Skip check for image_url as it's optional/has placeholder
-                 if (field === 'image_url') continue;
-                 this.showToast(`يرجى ملء حقل ${form.querySelector(`[name="${field}"]`).placeholder || field}`, 'error');
+            const value = signupData[field];
+            if (value === undefined || value === null || String(value).trim() === '') {
+                 // Check if it's the image URL, which is handled separately
+                 if (field === 'image_url') continue; 
+                 
+                 let placeholder = form.querySelector(`[name="${field}"]`)?.placeholder || field;
+                 // Handle select elements that don't have a placeholder
+                 if (form.querySelector(`[name="${field}"]`)?.tagName === 'SELECT') {
+                      placeholder = form.querySelector(`[name="${field}"]`).options[0].textContent;
+                 }
+
+                 this.showToast(`يرجى ملء حقل ${placeholder}`, 'error');
                  return;
             }
         }
@@ -575,11 +608,15 @@ class AuthManager {
             if (response.ok) {
                 this.showToast('تم إنشاء الحساب بنجاح!', 'success');
                 
-                // Store user object for immediate redirection
+                // Store unified user object for immediate redirection
                 localStorage.setItem('salonni_user', JSON.stringify(result.user));
                 
-                // Show feature slide and handle navigation from there
-                this.showFeatureSlide();
+                // Show appropriate modal based on user type
+                if (result.user.user_type === 'salon') {
+                    this.showPendingSalonModal();
+                } else {
+                    this.showFeatureSlide();
+                }
             } else {
                 this.showToast(result.message || 'خطأ في إنشاء الحساب', 'error');
             }
@@ -654,6 +691,23 @@ class AuthManager {
         }
     }
 
+    showPendingSalonModal() {
+        const modal = document.getElementById('pending-salon-modal');
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('opacity-100'), 10);
+    }
+
+    hidePendingSalonModal() {
+        const modal = document.getElementById('pending-salon-modal');
+        modal.classList.remove('opacity-100');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            // FIX: Redirect to home_salon.html, the correct dashboard for salons
+            window.location.href = '/home_salon.html';
+        }, 500);
+    }
+
     showFeatureSlide() {
         const slide = document.getElementById('feature-slide');
         slide.classList.remove('hidden');
@@ -664,12 +718,11 @@ class AuthManager {
         const slide = document.getElementById('feature-slide');
         slide.classList.remove('opacity-100');
         
-        // Get user info from local storage
         const user = JSON.parse(localStorage.getItem('salonni_user'));
         
         setTimeout(() => {
             slide.classList.add('hidden');
-            // Redirect based on the last signup type stored in the user object
+            // FIX: Use user_type for redirect
             if (user && user.user_type === 'user') {
                 window.location.href = '/home_user.html';
             } else if (user && user.user_type === 'salon') {

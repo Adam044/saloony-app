@@ -20,7 +20,7 @@
         .text-secondary { color: #06C167; } /* Vibrant Teal-Green Accent */
         .border-secondary { border-color: #06C167; }
         .bg-secondary { background-color: #06C167; } /* Secondary background */
-        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); }
+        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); } /* Light transparent accent bg */
         .btn-secondary { 
             background-color: #06C167; 
             color: #1E293B; 
@@ -493,7 +493,7 @@
                     </button>
                 </h5>
                 <div id="detail-reviews-section" class="space-y-4">
-                    <div class="empty-state p-4">
+                    <div class="empty-state">
                         <i class="fas fa-star-half-alt"></i>
                         <p>لا توجد مراجعات بعد. كن أول من يقيّم!</p>
                     </div>
@@ -706,7 +706,7 @@
                     <i class="fas fa-trash ml-2"></i> حذف التقييم السابق
                 </button>
                 <button id="close-already-reviewed-btn" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
-                    إغلاق
+                    إلغاء
                 </button>
             </div>
         </div>
@@ -876,6 +876,7 @@ let pendingCancellation = null;
 // NEW: Review Modal State
 let currentReviewRating = 0; 
 let pendingDeleteReview = null;
+let currentReviewSalon = null; // Store salon object for review modals (added this line)
 let allMasterServices = []; // Store master services here for icons
 let allSalons = []; // Store all salons for filtering
 
@@ -1065,6 +1066,7 @@ function hideCancellationModal() {
 }
 
 function showReviewModal(salon) {
+    currentReviewSalon = salon; // Store for delete/check logic
     document.getElementById('review-salon-name').textContent = salon.salon_name;
     const modal = document.getElementById('review-modal');
     
@@ -1424,6 +1426,12 @@ function formatReviewDate(dateString) {
 // ---------------------------------------------
 
 async function loadSalonStaff(salonId, updateUI = true) {
+    // FIX: Add validation for salon ID
+    if (!salonId || isNaN(parseInt(salonId))) {
+        console.error("loadSalonStaff: Salon ID is missing or invalid.");
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/salon/staff/${salonId}`);
         if (!response.ok) throw new Error('Failed to load salon staff');
@@ -1472,11 +1480,17 @@ async function loadSalonStaff(salonId, updateUI = true) {
 
 
 async function loadUserAppointments(filter) {
-    // ... (Implementation of loadUserAppointments) ...
+    // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
     try {
         const container = document.getElementById('user-appointments-container');
         container.innerHTML = '<p class="text-gray-500 text-center py-8">جاري تحميل مواعيدك...</p>';
         
+        // FIX: Add validation for currentUser.userId
+        if (!currentUser || !currentUser.userId || isNaN(parseInt(currentUser.userId))) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p class="text-red-500">خطأ: بيانات المستخدم غير متوفرة أو غير صحيحة.</p></div>';
+            return;
+        }
+
         const response = await fetch(`/api/appointments/user/${currentUser.userId}/${filter}`);
         
         if (!response.ok) throw new Error('Failed to load appointments');
@@ -1484,7 +1498,6 @@ async function loadUserAppointments(filter) {
         const data = await response.json();
         const appointments = data.appointments || [];
         console.log('Appointments data:', appointments);
-        console.log('First appointment:', appointments[0]);
         const now = new Date().getTime();
         const threeHoursInMs = 3 * 60 * 60 * 1000;
         
@@ -1496,11 +1509,7 @@ async function loadUserAppointments(filter) {
         }
 
         container.innerHTML = appointments.map((appointment, index) => {
-            console.log(`Processing appointment ${index}:`, appointment);
-            if (!appointment) {
-                console.error(`Appointment ${index} is null or undefined`);
-                return '';
-            }
+            if (!appointment) return '';
             const statusClass = appointment.status === 'Scheduled' ? 'bg-secondary-soft text-secondary' :
                            appointment.status === 'Completed' ? 'bg-green-100 text-green-700' :
                            appointment.status === 'Absent' ? 'bg-orange-100 text-orange-700' :
@@ -1523,14 +1532,13 @@ async function loadUserAppointments(filter) {
                     return 0;
                 }
             })();
+            // CRITICAL FIX: Check if can cancel based on status AND time left
             const canCancel = appointment.status === 'Scheduled' && appointment.start_time && (appointmentTime - now >= threeHoursInMs);
             
             const formattedDate = (() => {
                 try {
                     if (!appointment.start_time || typeof appointment.start_time !== 'string') return 'غير محدد';
-                    console.log('Raw start_time for date:', appointment.start_time);
                     
-                    // Convert SQL datetime format to ISO format if needed
                     let dateString = appointment.start_time;
                     if (dateString.includes(' ') && !dateString.includes('T')) {
                         dateString = dateString.replace(' ', 'T');
@@ -1555,7 +1563,6 @@ async function loadUserAppointments(filter) {
                                     try {
                                         if (!appointment.start_time || typeof appointment.start_time !== 'string') return 'غير محدد';
                                         
-                                        // Handle both ISO format (with T) and SQL format (with space)
                                         let timePart;
                                         if (appointment.start_time.includes('T')) {
                                             timePart = appointment.start_time.split('T')[1];
@@ -1635,7 +1642,8 @@ async function loadUserAppointments(filter) {
             btn.addEventListener('click', (e) => {
                 const id = btn.dataset.id;
                 const startTime = btn.dataset.startTime;
-                cancelAppointment(id, startTime, filter);
+                // Use confirmCancellation to handle the modal logic instead of direct cancelAppointment API call
+                showCancellationModal(id, startTime, filter); 
             });
         });
 
@@ -1647,10 +1655,16 @@ async function loadUserAppointments(filter) {
 }
 
 async function loadUserFavorites() {
-    // ... (Implementation of loadUserFavorites) ...
+    // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
     try {
         const container = document.getElementById('favorites-list-container');
         container.innerHTML = '<p class="text-gray-500 text-center py-8 col-span-full">جاري تحميل المفضلة...</p>';
+        
+        // FIX: Add validation for currentUser.userId
+        if (!currentUser || !currentUser.userId || isNaN(parseInt(currentUser.userId))) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p class="text-red-500">خطأ: بيانات المستخدم غير متوفرة أو غير صحيحة.</p></div>';
+            return;
+        }
 
         const response = await fetch(`/api/favorites/${currentUser.userId}`);
         
@@ -1710,31 +1724,54 @@ function switchView(viewId) {
         loadUserAppointments('upcoming'); // Default filter
     } else if (viewId === 'favorites-view') {
         loadUserFavorites();
+    } else if (viewId === 'profile-view') {
+        // Ensure profile data is fresh
+        loadUserData(); 
     }
 }
 
 async function cancelAppointment(appointmentId, startTime, filter) {
+    // This function is now only responsible for validation before showing the modal.
+    // The actual cancellation logic is confirmCancellation.
     const appointmentTime = new Date(startTime).getTime();
     const now = new Date().getTime();
     const threeHoursInMs = 3 * 60 * 60 * 1000;
     
     if (appointmentTime - now < threeHoursInMs) {
-        displayMessage('لا يمكن إلغاء الموعد. يجب أن يتم الإلغاء قبل 3 ساعات على الأقل من وقت بدء الموعد.', 'error');
+        // Only show modal if cancellation is late, leading to a strike warning
+        showCancellationModal(appointmentId, startTime, filter); 
+    } else {
+        // If cancellation is early, proceed directly to confirmation/cancellation logic without strike warning message
+        await confirmCancellation(true);
+    }
+}
+
+// Function to handle the actual API call after confirmation
+async function confirmCancellation(isEarlyCancel = false) {
+    if (!pendingCancellation) {
+        hideCancellationModal();
         return;
     }
 
-    showCancellationModal(appointmentId, startTime, filter); 
-}
-
-async function confirmCancellation() {
-    if (!pendingCancellation) return;
-
     const { id: appointmentId, filter } = pendingCancellation;
+    
+    // FIX: Add validation for appointmentId and currentUser.userId
+    if (!appointmentId || isNaN(parseInt(appointmentId)) || !currentUser || !currentUser.userId) {
+        hideCancellationModal();
+        displayMessage('خطأ: فشل تحديد الموعد للإلغاء أو بيانات المستخدم غير متوفرة.', 'error');
+        return;
+    }
+
     const confirmBtn = document.getElementById('cancel-modal-confirm');
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الإلغاء';
+    
+    // Check if the button exists before trying to access its properties
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الإلغاء';
+    }
 
     try {
+        // CRITICAL FIX: Send user_id in the body
         const response = await fetch(`/api/appointments/cancel/${appointmentId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1745,8 +1782,12 @@ async function confirmCancellation() {
         
         if (response.ok && result.success) {
             hideCancellationModal();
-            displayMessage('تم إلغاء الموعد بنجاح.', 'success');
+            displayMessage(result.message || 'تم إلغاء الموعد بنجاح.', 'success');
             loadUserAppointments(filter);
+            // Refresh user data in case a strike was issued
+            if (result.strikeIssued) {
+                await loadUserData();
+            }
         } else {
             hideCancellationModal();
             displayMessage(result.message || 'فشل في إلغاء الموعد.', 'error');
@@ -1756,15 +1797,19 @@ async function confirmCancellation() {
         hideCancellationModal();
         displayMessage('حدث خطأ في الشبكة أثناء الإلغاء.', 'error');
     } finally {
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = 'نعم، قم بالإلغاء';
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = 'نعم، قم بالإلغاء';
+        }
     }
 }
 
 async function submitReview(e) {
     e.preventDefault();
-    if (!selectedSalon || currentReviewRating === 0) {
-        displayMessage('يرجى اختيار تقييم بالنجوم قبل الإرسال.', 'error');
+    
+    // FIX: Add validation for selectedSalon, currentUser.userId and currentReviewRating
+    if (!selectedSalon || !selectedSalon.salonId || currentReviewRating === 0 || !currentUser || !currentUser.userId) {
+        displayMessage('يرجى التأكد من اختيار الصالون والتقييم وتسجيل الدخول.', 'error');
         return;
     }
 
@@ -1781,7 +1826,8 @@ async function submitReview(e) {
     
     const reviewData = {
         salon_id: selectedSalon.salonId,
-        user_id: currentUser.userId,
+        // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
+        user_id: currentUser.userId, 
         rating: currentReviewRating,
         comment: comment,
     };
@@ -1818,39 +1864,29 @@ async function submitReview(e) {
 
 async function checkExistingReviewAndShow(salon) {
     try {
-        console.log('Checking existing reviews for salon:', salon.salonId, 'user:', currentUser.userId);
-        
-        if (!currentUser || !currentUser.userId) {
-            console.error('No current user or user ID found');
+        // CRITICAL FIX: Use currentUser.userId
+        if (!currentUser || !currentUser.userId || isNaN(parseInt(currentUser.userId))) {
             displayMessage('يرجى تسجيل الدخول أولاً', 'error');
             return;
         }
         
-        if (!salon || !salon.salonId) {
-            console.error('No salon or salon ID found');
+        if (!salon || !salon.salonId || isNaN(parseInt(salon.salonId))) {
             displayMessage('خطأ في تحديد الصالون', 'error');
             return;
         }
         
+        // CRITICAL FIX: Use currentUser.userId for API call
         const response = await fetch(`/api/reviews/user/${currentUser.userId}`);
         const result = await response.json();
         
-        console.log('Server response:', result);
-        
         if (response.ok && result.success) {
-            // Check if user has already reviewed this salon
             const existingReview = result.reviews.find(review => {
-                console.log('Comparing review salon_id:', review.salon_id, 'with current salon:', salon.salonId);
-                return review.salon_id == salon.salonId; // Use == for type flexibility
+                return review.salon_id == salon.salonId; 
             });
             
-            console.log('Existing review found:', existingReview);
-            
             if (existingReview) {
-                console.log('User has already reviewed this salon, showing already reviewed modal');
                 showAlreadyReviewedModal(salon);
             } else {
-                console.log('User has not reviewed this salon, showing review modal');
                 showReviewModal(salon);
             }
         } else {
@@ -1864,6 +1900,14 @@ async function checkExistingReviewAndShow(salon) {
 }
 
 async function deleteUserReview(salonId) {
+    
+    // FIX: Add validation for salonId and currentUser.userId
+    if (!salonId || isNaN(parseInt(salonId)) || !currentUser || !currentUser.userId) {
+        displayMessage('خطأ: فشل تحديد التقييم للحذف أو بيانات المستخدم غير متوفرة.', 'error');
+        hideDeleteReviewModal();
+        return;
+    }
+    
     try {
         const response = await fetch('/api/reviews/delete', {
             method: 'DELETE',
@@ -1871,7 +1915,8 @@ async function deleteUserReview(salonId) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                user_id: currentUser.userId,
+                // CRITICAL FIX: Use currentUser.userId
+                user_id: currentUser.userId, 
                 salon_id: salonId
             })
         });
@@ -1883,7 +1928,7 @@ async function deleteUserReview(salonId) {
             hideDeleteReviewModal();
             displayMessage('تم حذف تقييمك بنجاح!', 'success');
             // Refresh the data
-            if (selectedSalon) {
+            if (selectedSalon && selectedSalon.salonId == salonId) {
                 await loadSalonDetailView(selectedSalon);
             }
             if (currentView === 'profile-view') {
@@ -1919,6 +1964,19 @@ function renderServiceCard(service) {
 }
 
 function renderSalonCard(salon, cardType = 'detail') {
+    // Ensure we always have a valid salon id for data attributes (support Postgres lowercase alias)
+    const safeSalonId = (salon && (salon.salonId ?? salon.salonid ?? salon.id ?? salon.salon_id));
+    
+    // If no id is present, avoid rendering clickable card to prevent handler errors
+    if (!safeSalonId) {
+        return `
+            <div class="${cardType === 'minimal' ? 'scroll-item pl-4 w-72 flex-shrink-0' : ''} bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+                <div class="p-4">
+                    <p class="text-gray-500 text-sm">تعذر تحديد رقم الصالون.</p>
+                </div>
+            </div>
+        `;
+    }
     const isHorizontal = cardType === 'horizontal' || cardType === 'minimal';
     const cardClass = isHorizontal ? 'scroll-item pl-4 w-72 flex-shrink-0' : '';
     
@@ -1930,11 +1988,11 @@ function renderSalonCard(salon, cardType = 'detail') {
     if (cardType === 'minimal') {
          // Clean minimal card for City Salons section - logo and name only
          return `
-            <div class="flex flex-col items-center p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer salon-card" data-salon-id="${salon.salonId}" data-city="${salon.city}" data-address="${salon.address || ''}">
+            <div class="flex flex-col items-center p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer salon-card" data-salon-id="${safeSalonId}" data-city="${salon.city}" data-address="${salon.address || ''}" data-salon-name="${salon.salon_name}">
                 <img src="${imageUrl}" 
                     alt="${salon.salon_name}" 
                     onerror="this.onerror=null;this.src='https://placehold.co/80x80/F9FAFB/1E293B?text=صالون';"
-                    class="w-16 h-16 rounded-full object-cover">
+                    class="w-16 h-16 rounded-full object-cover" loading="lazy">
                 <h3 class="font-medium text-sm text-primary-dark text-center mt-2 leading-tight">${salon.salon_name}</h3>
             </div>
         `;
@@ -1942,14 +2000,14 @@ function renderSalonCard(salon, cardType = 'detail') {
 
     // Default 'detail' card type for featured/favorites
     return `
-        <div class="${cardClass} bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 salon-card border border-gray-100 cursor-pointer" data-salon-id="${salon.salonId}">
+        <div class="${cardClass} bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 salon-card border border-gray-100 cursor-pointer" data-salon-id="${safeSalonId}" data-salon-name="${salon.salon_name}" data-city="${salon.city}" data-address="${salon.address || ''}">
             <div class="relative">
                 <img src="${imageUrl}" 
                      alt="${salon.salon_name}" 
                      onerror="this.onerror=null;this.src='https://placehold.co/300x160/F9FAFB/1E293B?text=صالون';"
-                     class="w-full salon-card-image">
+                     class="w-full salon-card-image" loading="lazy">
                 <button class="favorite-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center hover:bg-white transition-all duration-200 shadow-md ${salon.is_favorite ? 'text-red-500' : 'text-gray-400'}" 
-                        data-salon-id="${salon.salonId}">
+                        data-salon-id="${safeSalonId}">
                     <i class="fas fa-heart"></i>
                 </button>
             </div>
@@ -1972,9 +2030,9 @@ function renderSalonCard(salon, cardType = 'detail') {
                 </div>
 
                 <div class="pt-2 border-t border-gray-100 flex justify-end">
-                    <button class="btn-secondary px-4 py-2 rounded-lg text-sm book-btn" data-salon-id="${salon.salonId}">
-                        احجز الآن
-                    </button>
+        <button class="btn-secondary px-4 py-2 rounded-lg text-sm book-btn" data-salon-id="${safeSalonId}">
+            احجز الآن
+        </button>
                 </div>
             </div>
         </div>
@@ -2023,11 +2081,20 @@ function renderUserReviews(reviews) {
 // ---------------------------------------------
 
 async function showSalonDetailModal(salon) {
-    // Prevent booking if strikes limit reached
+    // CRITICAL FIX: Ensure check relies on currentUser.strikes_count
     if (currentUser.strikes_count >= 3) {
         displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error');
         return;
     }
+    
+    // FIX: Add immediate validation check for salonId with safe fallback (include lowercase alias)
+    const salonIdSafe = (salon && (salon.salonId ?? salon.salonid ?? salon.id ?? salon.salon_id));
+    if (!salon || !salonIdSafe || isNaN(parseInt(salonIdSafe))) {
+        console.error("showSalonDetailModal: Invalid salon object or salonId is missing/undefined.");
+        displayMessage('خطأ: لم يتم تحديد الصالون بشكل صحيح.', 'error');
+        return;
+    }
+
 
     selectedSalon = salon;
     document.getElementById('modal-title').textContent = salon.salon_name;
@@ -2041,20 +2108,30 @@ async function showSalonDetailModal(salon) {
     
     showBookingStep(0); 
     
+    // FIX: Await all asynchronous content loads
     await loadSalonDetailView(salon);
     
-    salonScheduleData = await fetchSalonSchedule(salon.salonId);
-    await loadSalonStaff(salon.salonId, false); 
+    salonScheduleData = await fetchSalonSchedule(salonIdSafe);
+    await loadSalonStaff(salonIdSafe, false); 
 }
 
 async function loadSalonDetailView(salon) {
+    
+    // FIX: Add validation for salon ID (prevents 500 on /api/salon/details/undefined) and support lowercase alias
+    const salonIdSafe = (salon && (salon.salonId ?? salon.salonid ?? salon.id ?? salon.salon_id));
+    if (!salon || !salonIdSafe || isNaN(parseInt(salonIdSafe))) {
+        console.error("loadSalonDetailView: Invalid salon object or salonId is missing/undefined.");
+        displayMessage('خطأ: لم يتم تحديد الصالون بشكل صحيح.', 'error');
+        return; 
+    }
+    
     const detailHeader = document.getElementById('salon-detail-header');
     const servicesTagsContainer = document.getElementById('detail-services-tags');
     const reviewsSection = document.getElementById('detail-reviews-section');
     
     // Fetch complete salon details with rating
     try {
-        const salonDetailsResponse = await fetch(`/api/salon/details/${salon.salonId}`);
+        const salonDetailsResponse = await fetch(`/api/salon/details/${salonIdSafe}`);
         if (salonDetailsResponse.ok) {
             const salonDetailsData = await salonDetailsResponse.json();
             if (salonDetailsData.success) {
@@ -2067,7 +2144,9 @@ async function loadSalonDetailView(salon) {
         console.error('Error fetching salon details:', error);
     }
     
-    detailHeader.querySelector('#detail-image').src = salon.image_url || `https://placehold.co/128x128/ccc/333?text=${salon.salon_name[0]}`;
+    const detailImgEl = detailHeader.querySelector('#detail-image');
+    if (detailImgEl) { detailImgEl.setAttribute('loading', 'lazy'); }
+    detailImgEl.src = salon.image_url || `https://placehold.co/128x128/ccc/333?text=${salon.salon_name[0]}`;
     detailHeader.querySelector('#detail-name').textContent = salon.salon_name;
     detailHeader.querySelector('#detail-rating').innerHTML = formatRating(salon.avg_rating || 0, salon.review_count || 0);
 
@@ -2079,7 +2158,8 @@ async function loadSalonDetailView(salon) {
     servicesTagsContainer.innerHTML = '<p class="text-gray-500">جاري تحميل الخدمات...</p>';
     
     try {
-        const servicesResponse = await fetch(`/api/salons/${salon.salonId}/services`);
+        // FIX: Uses salon.salonId (prevents 500 on /api/salons/undefined/services)
+        const servicesResponse = await fetch(`/api/salons/${salonIdSafe}/services`);
         const data = servicesResponse.ok ? await servicesResponse.json() : { services: [] };
         
         if (data.services.length > 0) {
@@ -2099,7 +2179,8 @@ async function loadSalonDetailView(salon) {
         }
         
         // Load reviews for the salon (Assumed API endpoint)
-        const reviewsResponse = await fetch(`/api/reviews/salon/${salon.salonId}`);
+        // FIX: Uses salon.salonId (prevents 500 on /api/reviews/salon/undefined)
+        const reviewsResponse = await fetch(`/api/reviews/salon/${salonIdSafe}`);
         const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : { reviews: [] };
         
         if (reviewsData.reviews.length > 0) {
@@ -2109,9 +2190,9 @@ async function loadSalonDetailView(salon) {
                         <h4 class="font-bold text-primary-dark">${review.user_name}</h4>
                         <div class="flex items-center gap-2">
                             ${formatReviewDate(review.date_posted)}
-                            ${review.user_id === currentUser.id ? `
+                            ${review.user_id == currentUser.userId ? `
                                 <button class="delete-review-btn text-red-500 hover:text-red-700 transition-colors p-1 rounded" 
-                                        data-salon-id="${salon.salonId}" 
+                                        data-salon-id="${salonIdSafe}" 
                                         data-salon-name="${salon.salon_name}"
                                         title="حذف التقييم">
                                     <i class="fas fa-trash text-sm"></i>
@@ -2146,7 +2227,7 @@ async function loadDiscoveryData(serviceFilterId = null) {
     
     let url = `/api/discovery/${currentUser.city}/${currentUser.gender}`;
     if (activeServiceFilterId) {
-        url += `?service_id=${activeServiceFilterId}`;
+        url += `?service_ids=${activeServiceFilterId}`;
     }
     
     try {
@@ -2199,10 +2280,18 @@ async function loadDiscoveryData(serviceFilterId = null) {
 }
 
 async function toggleFavorite(salonId, button) {
+    // FIX: Add validation for salonId and currentUser.userId
+    if (!salonId || isNaN(parseInt(salonId)) || !currentUser || !currentUser.userId) {
+        console.error("toggleFavorite: Invalid salonId or missing userId.");
+        displayMessage('خطأ: تعذر تحديد الصالون أو بيانات المستخدم.', 'error');
+        return;
+    }
+    
     try {
         const response = await fetch('/api/favorites/toggle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
             body: JSON.stringify({ user_id: currentUser.userId, salon_id: salonId })
         });
         
@@ -2216,6 +2305,10 @@ async function toggleFavorite(salonId, button) {
         } else {
             button.classList.add('text-gray-400');
             button.classList.remove('text-red-500');
+            // If in favorites view, reload the list after unfavorite
+            if (currentView === 'favorites-view') {
+                loadUserFavorites();
+            }
         }
         
         displayMessage(result.is_favorite ? 'تم إضافة الصالون للمفضلة' : 'تم إزالة الصالون من المفضلة', 'success');
@@ -2228,6 +2321,7 @@ async function toggleFavorite(salonId, button) {
 
 async function loadUserData() {
     try {
+        // CRITICAL FIX: Use currentUser.userId for fetching profile data
         const response = await fetch('/api/user/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2242,10 +2336,10 @@ async function loadUserData() {
         }
 
         // Set mock/placeholder strikes count if not provided by backend
-        currentUser.strikes_count = currentUser.strikes_count === undefined ? 0 : parseInt(currentUser.strikes_count);
+        currentUser.strikes_count = currentUser.strikes_count === undefined ? (currentUser.strikes || 0) : parseInt(currentUser.strikes_count);
         
-
         // Update elements only if they exist
+        /*
         const userGenderDisplay = document.getElementById('user-gender-display');
         if (userGenderDisplay) {
             userGenderDisplay.textContent = currentUser.gender === 'male' ? 'صالونات رجالية' : 'صالونات نسائية';
@@ -2260,6 +2354,7 @@ async function loadUserData() {
         if (citySalonsTitle) {
             citySalonsTitle.textContent = currentUser.city;
         }
+        */
         
         document.getElementById('profile-name').textContent = currentUser.name;
         document.getElementById('profile-email').textContent = currentUser.email;
@@ -2274,14 +2369,15 @@ async function loadUserData() {
             displayMessage('لقد وصلت إلى حد الإنذارات (3/3). لا يمكنك حجز مواعيد جديدة.', 'error');
         }
 
-        
+        // CRITICAL FIX: Use currentUser.userId for favorites count
         const favResponse = await fetch(`/api/favorites/${currentUser.userId}`);
         if(favResponse.ok) {
             const favs = await favResponse.json();
             document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع ${favs.length} صالون`;
         }
         
-        // Load user's own reviews (Assumed API endpoint)
+        // Load user's own reviews
+        // CRITICAL FIX: Use currentUser.userId for reviews fetch
         const reviewsResponse = await fetch(`/api/reviews/user/${currentUser.userId}`);
         const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : { reviews: [] };
         renderUserReviews(reviewsData.reviews);
@@ -2295,16 +2391,23 @@ async function loadUserData() {
 
 
 function setupDiscoveryServiceListeners() {
+    // Debounce to prevent rapid consecutive reloads causing repeated server calls
+    let lastClickTs = 0;
+    const debounceMs = 250;
     document.querySelectorAll('.discovery-service-card').forEach(card => {
         card.addEventListener('click', (e) => {
+            const now = Date.now();
+            if (now - lastClickTs < debounceMs) {
+                e.preventDefault();
+                return;
+            }
+            lastClickTs = now;
             e.preventDefault();
             const serviceId = parseInt(card.dataset.serviceId);
             let filterId = null;
-            
             if (activeServiceFilterId !== serviceId) {
                 filterId = serviceId;
             }
-            
             loadDiscoveryData(filterId);
         });
     });
@@ -2312,11 +2415,15 @@ function setupDiscoveryServiceListeners() {
 
 function addSalonCardListeners() {
     document.querySelectorAll('.salon-card').forEach(card => {
+        // Skip cards missing data-salon-id to avoid invalid extractions
+        if (!card.hasAttribute('data-salon-id')) return;
         card.removeEventListener('click', handleSalonCardClick); 
         card.addEventListener('click', handleSalonCardClick);
     });
     
     document.querySelectorAll('.favorite-btn').forEach(btn => {
+        // Skip buttons missing data-salon-id to avoid invalid extractions
+        if (!btn.hasAttribute('data-salon-id')) return;
         btn.removeEventListener('click', handleFavoriteBtnClick);
         btn.addEventListener('click', handleFavoriteBtnClick);
     });
@@ -2325,7 +2432,16 @@ function addSalonCardListeners() {
 
 function handleFavoriteBtnClick(e) {
     e.stopPropagation();
-    const salonId = e.currentTarget.dataset.salonId;
+    // FIX: Use getAttribute to ensure robust retrieval, mitigating extraction issues
+    const salonId = e.currentTarget.getAttribute('data-salon-id');
+    
+    // FIX: Validate salonId before calling toggleFavorite
+    if (!salonId || isNaN(parseInt(salonId))) {
+        console.error("handleFavoriteBtnClick: Invalid salonId extracted from button.");
+        displayMessage('خطأ: تعذر تحديد الصالون لإضافته للمفضلة.', 'error');
+        return;
+    }
+    
     toggleFavorite(salonId, e.currentTarget);
 }
 
@@ -2334,29 +2450,39 @@ async function handleSalonCardClick(e) {
     if (e.target.closest('.favorite-btn')) return; 
 
     const salonCard = e.currentTarget;
-    const salonId = salonCard.dataset.salonId;
+    // FIX: Use getAttribute to ensure robust retrieval, mitigating extraction issues
+    const salonId = salonCard.getAttribute('data-salon-id');
+    
+    // FIX: Ensure salonId is valid before proceeding
+    if (!salonId || isNaN(parseInt(salonId))) {
+        console.error("handleSalonCardClick: Invalid salonId extracted from card.");
+        displayMessage('خطأ: تعذر تحديد الصالون لفتح التفاصيل.', 'error');
+        return;
+    }
     
     // Determine card type to extract data correctly
     const isMinimal = salonCard.hasAttribute('data-city');
     
-    let city, address;
+    let city, address, name;
 
     if (isMinimal) {
         // Data is stored directly on the minimal card's data attributes 
         city = salonCard.dataset.city || '';
         address = salonCard.dataset.address || '';
+        name = salonCard.dataset.salonName || '';
     } else {
         // Data is in the descriptive card's inner spans/hidden attributes
         const fullCityElement = salonCard.querySelector('[data-full-city]');
         const fullAddressElement = salonCard.querySelector('[data-full-address]');
         
-        city = fullCityElement ? fullCityElement.dataset.fullCity : '';
-        address = fullAddressElement ? fullAddressElement.dataset.fullAddress : '';
+        city = fullCityElement ? fullCityElement.dataset.fullCity : salonCard.dataset.city || '';
+        address = fullAddressElement ? fullAddressElement.dataset.fullAddress : salonCard.dataset.address || '';
+        name = salonCard.dataset.salonName || salonCard.querySelector('h3').textContent;
     }
     
     const salon = {
         salonId: salonId,
-        salon_name: salonCard.querySelector('h3').textContent,
+        salon_name: name,
         address: address, 
         city: city, 
         image_url: salonCard.querySelector('img').src,
@@ -2369,6 +2495,12 @@ async function handleSalonCardClick(e) {
 }
 
 async function fetchSalonSchedule(salonId) {
+    // FIX: Add validation for salon ID (prevents 500 on /api/salon/schedule/undefined)
+    if (!salonId || isNaN(parseInt(salonId))) {
+        console.error('fetchSalonSchedule: Salon ID is missing or invalid.');
+        return null;
+    }
+    
     try {
         const response = await fetch(`/api/salon/schedule/${salonId}`);
         if (!response.ok) throw new Error('Failed to load schedule');
@@ -2379,11 +2511,14 @@ async function fetchSalonSchedule(salonId) {
         }
         
         if (data.modifications) {
-             data.modifications = data.modifications.map(mod => ({
-                ...mod,
-                mod_day_index: mod.mod_day_index !== null ? parseInt(mod.mod_day_index) : null,
-                is_closed: parseInt(mod.is_closed) 
-            }));
+            data.modifications = data.modifications.map(mod => {
+    const closureType = mod.closure_type;
+                return {
+                    ...mod,
+                    mod_day_index: mod.mod_day_index !== null ? parseInt(mod.mod_day_index) : null,
+                    closure_type: closureType
+                };
+            });
         }
         
         return data;
@@ -2429,25 +2564,16 @@ function calculateTimeSlots(dateString) {
         (mod.mod_type === 'recurring' && mod.mod_day_index === dayOfWeek)
     );
 
-    // Check for complete day closures (is_closed = 1 with no specific times)
-    const completeDayClosures = applicableModifications.filter(mod => 
-        mod.is_closed === 1 && (!mod.start_time || !mod.end_time)
-    );
+    // Check for complete day closures using closure_type
+    const completeDayClosures = applicableModifications.filter(mod => mod.closure_type === 'full_day');
     if (completeDayClosures.length > 0) {
         console.log('Day is completely closed due to modification:', completeDayClosures[0]);
         return []; // No slots available - salon is closed all day
     }
 
-    // Handle custom hours modifications (is_closed = 0) - these override the entire day's schedule
-    const customHoursModifications = applicableModifications.filter(mod => mod.is_closed === 0);
-    if (customHoursModifications.length > 0) {
-        // Use the first custom hours modification to override normal schedule
-        const customMod = customHoursModifications[0];
-        effectiveOpenMinutes = timeToMinutes(customMod.start_time);
-        effectiveCloseMinutes = timeToMinutes(customMod.end_time);
-    }
+    // New behavior: No custom hours override. Only closures are applied.
 
-    // Note: Blocked time periods (is_closed = 1 with specific times) will be handled in the availability check loop
+    // Note: Blocked time periods (closure_type === 'interval') handled in availability check loop
     // They represent unavailable time ranges within the operating hours
     
     if (isToday) {
@@ -2473,9 +2599,9 @@ function calculateTimeSlots(dateString) {
             console.log(`Checking availability for staff ${staffId} at time ${currentTime}-${slotEndMinutes}`);
             console.log('Available appointments to check:', appointments);
             
-            // Check for blocked time periods from modifications (is_closed = 1 with specific times)
+            // Blocked time periods: closure intervals
             for (const mod of applicableModifications) {
-                if (mod.is_closed === 1 && mod.start_time && mod.end_time) {
+                if (mod.closure_type === 'interval' && mod.start_time && mod.end_time) {
                     // This is a blocked time period within the day (not a complete closure)
                     const modStart = timeToMinutes(mod.start_time);
                     const modEnd = timeToMinutes(mod.end_time);
@@ -2484,7 +2610,7 @@ function calculateTimeSlots(dateString) {
                     const staffMatch = modStaffId === 0 || parseInt(modStaffId) === staffId;
 
                     if (staffMatch && currentTime > modStart && currentTime <= modEnd) {
-                        console.log(`Slot ${currentTime}-${slotEndMinutes} blocked by modification ${modStart}-${modEnd}`);
+                        console.log(`Slot ${currentTime}-${slotEndMinutes} blocked by closure interval ${modStart}-${modEnd}`);
                         staffAvailable = false;
                         break;
                     }
@@ -2634,6 +2760,12 @@ function calculateTimeSlots(dateString) {
 async function loadTimeSlots() {
     document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full">جاري البحث عن أوقات متاحة...</p>';
 
+    // FIX: Add validation for salonId
+    if (!selectedSalon || !selectedSalon.salonId || isNaN(parseInt(selectedSalon.salonId))) {
+        document.getElementById('slots-grid').innerHTML = '<p class="text-red-500 col-span-full">خطأ: لم يتم تحديد الصالون.</p>';
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/salon/${selectedSalon.salonId}/appointments/${selectedDate}`);
         const data = await response.json();
@@ -2683,8 +2815,20 @@ function renderTimeSlots(slots) {
 
 
 async function confirmBooking() {
+    // CRITICAL FIX: Ensure check relies on currentUser.strikes_count
+    if (currentUser.strikes_count >= 3) {
+        displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error');
+        return;
+    }
+
     if (selectedServices.length === 0 || !selectedSalon || !selectedStaff || !selectedDate || !selectedTime) {
         displayMessage('يرجى التأكد من اختيار جميع متطلبات الحجز (خدمة، مختص، تاريخ، وقت).', 'error');
+        return;
+    }
+    
+    // FIX: Final validation check for critical IDs
+    if (!selectedSalon.salonId || !currentUser.userId || isNaN(parseInt(selectedSalon.salonId)) || isNaN(parseInt(currentUser.userId))) {
+        displayMessage('خطأ: بيانات الصالون أو المستخدم غير متوفرة لإتمام الحجز.', 'error');
         return;
     }
     
@@ -2737,7 +2881,8 @@ async function confirmBooking() {
     try {
         const bookingData = {
             salon_id: selectedSalon.salonId,
-            user_id: currentUser.userId,
+            // CRITICAL FIX: Use currentUser.userId
+            user_id: currentUser.userId, 
             staff_id: finalStaff.id, 
             service_id: mainService.id, // Keep for backward compatibility
             services: selectedServices.map(service => ({
@@ -2776,6 +2921,14 @@ async function confirmBooking() {
 
 
 async function loadSalonServices(salonId) {
+    // FIX: Add validation for salon ID (prevents 500 on /api/salons/undefined/services)
+    if (!salonId || isNaN(parseInt(salonId))) {
+        console.error("loadSalonServices: Salon ID is missing or invalid.");
+        document.getElementById('service-selection-container').innerHTML = 
+            '<p class="text-red-500 col-span-full">خطأ: لم يتم تحديد الصالون لتحميل الخدمات.</p>';
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/salons/${salonId}/services`);
         
@@ -2855,7 +3008,7 @@ function renderServiceSelection(services) {
                 <div class="flex items-center justify-between space-x-3 space-x-reverse">
                     <div class="flex-1">
                         <h4 class="font-bold text-primary-dark">${service.name_ar} 
-                            <span class="text-sm text-orange-600 font-normal">(إضافة)</span>
+                            <span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>
                         </h4>
                         <p class="text-sm text-orange-600">لا يحتاج وقت إضافي</p>
                     </div>
@@ -3046,7 +3199,9 @@ function initializeEventListeners() {
     document.getElementById('close-already-reviewed-btn').addEventListener('click', hideAlreadyReviewedModal);
     document.getElementById('delete-review-btn').addEventListener('click', () => {
         if (currentReviewSalon) {
-            deleteUserReview(currentReviewSalon.id);
+            // CRITICAL FIX: Pass salonId and Name to delete confirmation modal
+            showDeleteReviewModal(currentReviewSalon.salonId, currentReviewSalon.salon_name);
+            hideAlreadyReviewedModal(); // Hide the current modal
         }
     });
     
@@ -3071,12 +3226,11 @@ function initializeEventListeners() {
         hideFiltersModal();
     });
     
-
-    
     // Logout Modal Listeners
     document.getElementById('cancel-logout-btn').addEventListener('click', hideLogoutModal);
     document.getElementById('confirm-logout-btn').addEventListener('click', () => {
         localStorage.removeItem('salonni_user');
+        localStorage.removeItem('salonni_token');
         window.location.href = 'auth.html';
     });
     document.querySelectorAll('.star-rating i').forEach(star => {
@@ -3091,7 +3245,7 @@ function initializeEventListeners() {
 
     document.getElementById('next-step-1-btn').addEventListener('click', () => {
         showBookingStep(1);
-        if (selectedSalon) {
+        if (selectedSalon && selectedSalon.salonId) {
              loadSalonServices(selectedSalon.salonId);
         }
     });
@@ -3102,7 +3256,9 @@ function initializeEventListeners() {
 
     document.getElementById('next-step-2-btn').addEventListener('click', () => {
         showBookingStep(2);
-        loadSalonStaff(selectedSalon.salonId, true);
+        if (selectedSalon && selectedSalon.salonId) {
+            loadSalonStaff(selectedSalon.salonId, true);
+        }
     });
     
     document.getElementById('back-step-1-btn').addEventListener('click', () => {
@@ -3145,6 +3301,12 @@ function initializeEventListeners() {
             const btn = e.target.closest('.delete-review-btn');
             const salonId = btn.dataset.salonId;
             const salonName = btn.dataset.salonName;
+            
+            // FIX: Validate salonId before showing modal
+            if (!salonId || isNaN(parseInt(salonId))) {
+                 displayMessage('خطأ: فشل تحديد التقييم للحذف.', 'error');
+                 return;
+            }
             showDeleteReviewModal(salonId, salonName);
         }
     });
@@ -3162,9 +3324,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     currentUser = JSON.parse(storedUser);
     
-    if (currentUser.user_type === 'salon') {
-        console.error('User is salon, redirecting to salon dashboard.');
-        window.location.href = 'home_salon.html';
+    // CRITICAL FIX: Ensure only regular users ('user') proceed. Redirect salon/admin/missing ID.
+    if (!currentUser.userId || currentUser.user_type !== 'user') {
+        console.error('User is not a regular user or missing ID. Redirecting.');
+        // Redirect logic based on user_type if it exists, otherwise just back to auth
+        if (currentUser.user_type === 'salon') {
+             window.location.href = 'home_salon.html';
+        } else if (currentUser.user_type === 'admin') {
+             // Admin auth token check should handle this, but for safety:
+             window.location.href = 'admin_dashboard.html';
+        } else {
+             window.location.href = 'auth.html';
+        }
         return;
     }
 

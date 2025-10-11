@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS breaks (
     id SERIAL PRIMARY KEY,
     salon_id INTEGER NOT NULL,
     staff_id INTEGER, -- NULL for all staff
+    reason TEXT,      -- e.g., breakfast
     start_time TEXT NOT NULL,
     end_time TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -152,7 +153,7 @@ CREATE TABLE IF NOT EXISTS schedule_modifications (
     mod_day_index INTEGER,  -- 0-6 (for 'recurring')
     start_time TEXT,        -- HH:MM (for temporary closure/open)
     end_time TEXT,          -- HH:MM
-    is_closed INTEGER NOT NULL, -- 1 for closed, 0 for custom time
+    closure_type TEXT,      -- 'full_day' | 'interval' | 'legacy'
     reason TEXT NOT NULL,
     staff_id INTEGER,       -- NULL for all staff
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

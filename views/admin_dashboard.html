@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الإدارة - صالوني</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* Base Colors: Dark Slate Theme */
+        :root {
+            --color-bg-dark: #1A202C; /* Deep Slate Background */
+            --color-card-dark: #2D3748; /* Slightly lighter for cards */
+            --color-text-light: #EDF2F7;
+            --color-accent-blue: #4299E1; /* Primary Admin Color */
+            --color-success: #48BB78;
+            --color-danger: #F56565;
+            --color-pending: #ECC94B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--color-bg-dark);
+            min-height: 100vh;
+            color: var(--color-text-light);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* --- Header --- */
+        .header {
+            background-color: var(--color-card-dark);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: var(--color-accent-blue);
+            font-size: 2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: 700;
+        }
+
+        .logout-btn {
+            background-color: var(--color-danger);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            background-color: #E53E3E;
+        }
+
+        /* --- Stats Grid --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background-color: var(--color-card-dark);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            border-bottom: 4px solid var(--color-accent-blue);
+        }
+
+        .stat-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: var(--color-accent-blue);
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--color-text-light);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #A0AEC0;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* --- Salon List Section --- */
+        .section {
+            background-color: var(--color-card-dark);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-title {
+            color: var(--color-accent-blue);
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #4A5568;
+            padding-bottom: 10px;
+        }
+
+        .salon-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .salon-item {
+            background-color: #2D3748;
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+            border-left: 5px solid transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .salon-item:hover {
+            background-color: #4A5568;
+        }
+        
+        .salon-item.status-pending { border-left-color: var(--color-pending); }
+        .salon-item.status-accepted { border-left-color: var(--color-success); }
+        .salon-item.status-rejected { border-left-color: var(--color-danger); }
+
+
+        .salon-name {
+            font-weight: 600;
+            color: var(--color-text-light);
+            font-size: 1.1rem;
+        }
+
+        .salon-status {
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        .status-pending {
+            background-color: var(--color-pending);
+            color: var(--color-bg-dark);
+        }
+
+        .status-accepted {
+            background-color: var(--color-success);
+            color: white;
+        }
+
+        .status-rejected {
+            background-color: var(--color-danger);
+            color: white;
+        }
+
+        .view-btn {
+            background-color: var(--color-accent-blue);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(66, 153, 225, 0.4);
+            font-weight: 500;
+        }
+
+        .view-btn:hover {
+            transform: translateY(-1px);
+            background-color: #3182CE;
+        }
+        
+        /* --- Modals (General) --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal.is-visible {
+             display: flex;
+             opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--color-card-dark);
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: modalPopIn 0.3s ease-out;
+        }
+        
+        /* Confirmation Modal Specifics */
+        .confirmation-modal-content {
+             padding: 30px;
+             text-align: center;
+        }
+        
+        .confirmation-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        @keyframes modalPopIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            background-color: var(--color-accent-blue);
+            color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .close {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .info-tag {
+            background: #4A5568;
+            border-radius: 10px;
+            padding: 15px;
+            border-right: 4px solid var(--color-accent-blue);
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #A0AEC0;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            color: var(--color-text-light);
+            font-size: 1rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding: 20px;
+            background: #4A5568;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .action-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .accept-btn {
+            background-color: var(--color-success);
+            color: var(--color-bg-dark);
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .accept-btn:hover {
+            transform: translateY(-2px);
+            background-color: #38A169;
+        }
+
+        .reject-btn {
+            background-color: var(--color-danger);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
+        }
+
+        .reject-btn:hover {
+            transform: translateY(-2px);
+            background-color: #E53E3E;
+        }
+        
+        .pending-btn {
+             background-color: var(--color-pending);
+             color: var(--color-bg-dark);
+        }
+        .pending-btn:hover {
+             background-color: #D69E2E;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #A0AEC0;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+            color: var(--color-accent-blue);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .stat-card {
+                padding: 20px;
+            }
+
+            .section {
+                padding: 20px;
+            }
+
+            .salon-item {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .salon-item > div {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+            }
+
+            .action-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-user-shield"></i> لوحة تحكم الإدارة</h1>
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> تسجيل خروج
+            </button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-label">إجمالي المستخدمين</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="stat-number" id="totalSalons">-</div>
+                <div class="stat-label">إجمالي الصالونات</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                <div class="stat-number" id="totalAppointments">-</div>
+                <div class="stat-label">إجمالي المواعيد</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+                <div class="stat-number" id="pendingSalons">-</div>
+                <div class="stat-label">صالونات في الانتظار</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-store"></i>
+                إدارة الصالونات
+            </h2>
+            <div id="salonsList" class="salon-list">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>جاري تحميل الصالونات...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Salon Details Modal -->
+    <div id="salonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">تفاصيل الصالون</h3>
+                <button class="close" onclick="closeSalonModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="salonDetails" class="info-grid">
+                    <!-- Salon details will be populated here -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn accept-btn" onclick="showConfirmationModal('accepted')">
+                    <i class="fas fa-check"></i> قبول
+                </button>
+                <button class="action-btn reject-btn" onclick="showConfirmationModal('rejected')">
+                    <i class="fas fa-times"></i> رفض
+                </button>
+                <!-- Allow setting back to pending if needed -->
+                <button class="action-btn pending-btn" onclick="showConfirmationModal('pending')">
+                    <i class="fas fa-clock"></i> إعادة للانتظار
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation/Alert Modal (NEW) -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content confirmation-modal-content">
+            <h3 class="modal-title" id="confirmTitle">تأكيد الإجراء</h3>
+            <div class="modal-body p-0">
+                <p id="confirmMessage" class="text-lg mb-4 text-gray-300"></p>
+                <p id="salonNameConfirm" class="text-xl font-bold mb-6 text-color-accent-blue"></p>
+            </div>
+            <div class="confirmation-actions">
+                <button class="action-btn accept-btn" id="confirmActionBtn">تأكيد</button>
+                <button class="action-btn reject-btn" onclick="closeConfirmationModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        let currentSalonId = null;
+        let salonsData = [];
+        let pendingStatus = null; // To hold the status until confirmation
+
+        // --- UI & Modal Handlers ---
+
+        function showToast(message, isSuccess = true) {
+            // Simple toast implementation (can be replaced with a fancier library later)
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 25px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                background-color: ${isSuccess ? '#48BB78' : '#F56565'};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                transition: opacity 0.5s ease-out;
+                opacity: 0;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => { toast.style.opacity = '1'; }, 10);
+            setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+            setTimeout(() => { document.body.removeChild(toast); }, 3500);
+        }
+        
+        function showConfirmationModal(status) {
+            const salon = salonsData.find(s => s.id === currentSalonId);
+            if (!salon) return;
+            
+            pendingStatus = status;
+            
+            const actionText = status === 'accepted' ? 'قبول' : (status === 'rejected' ? 'رفض' : 'إعادة للانتظار');
+            
+            document.getElementById('confirmTitle').textContent = `تأكيد ${actionText}`;
+            document.getElementById('confirmMessage').textContent = `هل أنت متأكد من تغيير حالة الصالون إلى "${getStatusText(status)}؟"`;
+            document.getElementById('salonNameConfirm').textContent = salon.salon_name;
+            
+            const confirmActionBtn = document.getElementById('confirmActionBtn');
+            confirmActionBtn.textContent = actionText;
+            confirmActionBtn.className = `action-btn ${status}-btn`;
+            
+            // Re-bind click handler
+            confirmActionBtn.onclick = updateSalonStatusConfirmed;
+            
+            document.getElementById('confirmationModal').classList.add('is-visible');
+        }
+        
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').classList.remove('is-visible');
+            pendingStatus = null;
+        }
+
+
+        // --- Auth & Data Fetching ---
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                window.location.href = '/auth.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/auth.html';
+        }
+
+        // Fetch dashboard statistics
+        async function fetchStats() {
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch('/api/admin/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch stats');
+                
+                const stats = await response.json();
+                
+                document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+                document.getElementById('totalSalons').textContent = stats.totalSalons || 0;
+                document.getElementById('totalAppointments').textContent = stats.totalAppointments || 0;
+                document.getElementById('pendingSalons').textContent = stats.pendingSalons || 0;
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                // Fail silently or show generic network error
+            }
+        }
+
+        // Fetch salons data
+        async function fetchSalons() {
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch('/api/admin/salons', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) throw new Error('Failed to fetch salons');
+                
+                salonsData = await response.json();
+                displaySalons(salonsData);
+            } catch (error) {
+                console.error('Error fetching salons:', error);
+                document.getElementById('salonsList').innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p style="color: var(--color-danger)">خطأ في تحميل الصالونات</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Display salons
+        function displaySalons(salons) {
+            const salonsList = document.getElementById('salonsList');
+            
+            if (salons.length === 0) {
+                salonsList.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-store-slash"></i>
+                        <p>لا توجد صالونات</p>
+                    </div>
+                `;
+                return;
+            }
+
+            salonsList.innerHTML = salons.map(salon => `
+                <div class="salon-item status-${salon.status}">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="salon-name">${salon.salon_name}</span>
+                        <span class="salon-status status-${salon.status}">${getStatusText(salon.status)}</span>
+                    </div>
+                    <button class="view-btn" onclick="viewSalon(${salon.id})">
+                        <i class="fas fa-eye"></i> عرض التفاصيل
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Get status text in Arabic
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': 'في الانتظار',
+                'accepted': 'مقبول',
+                'rejected': 'مرفوض'
+            };
+            return statusMap[status] || status;
+        }
+
+        // View salon details
+        function viewSalon(salonId) {
+            const salon = salonsData.find(s => s.id === salonId);
+            if (!salon) return;
+
+            currentSalonId = salonId;
+            
+            const salonDetails = document.getElementById('salonDetails');
+            salonDetails.innerHTML = `
+                <div class="info-tag">
+                    <div class="info-label">اسم الصالون</div>
+                    <div class="info-value">${salon.salon_name}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">اسم المالك</div>
+                    <div class="info-value">${salon.owner_name}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">هاتف الصالون</div>
+                    <div class="info-value">${salon.salon_phone}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">هاتف المالك</div>
+                    <div class="info-value">${salon.owner_phone}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">المدينة</div>
+                    <div class="info-value">${salon.city}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">العنوان</div>
+                    <div class="info-value">${salon.address}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">النوع</div>
+                    <div class="info-value">${salon.gender_focus === 'men' ? 'رجال' : 'نساء'}</div>
+                </div>
+                <div class="info-tag">
+                    <div class="info-label">الحالة الحالية</div>
+                    <div class="info-value">
+                        <span class="salon-status status-${salon.status}">${getStatusText(salon.status)}</span>
+                    </div>
+                </div>
+                <!-- Adding image preview/link if available -->
+                ${salon.image_url ? `
+                <div class="info-tag" style="grid-column: 1 / -1;">
+                    <div class="info-label">صورة الصالون</div>
+                    <div class="info-value">
+                        <img src="${salon.image_url}" onerror="this.src='https://placehold.co/200x100/4A5568/EDF2F7?text=No+Image';" 
+                             style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px;">
+                    </div>
+                </div>
+                ` : ''}
+            `;
+
+            document.getElementById('salonModal').classList.add('is-visible');
+        }
+
+        // Close salon modal
+        function closeSalonModal() {
+            document.getElementById('salonModal').classList.remove('is-visible');
+            currentSalonId = null;
+        }
+
+        // Update salon status (Confirmed action)
+        async function updateSalonStatusConfirmed() {
+            if (!currentSalonId || !pendingStatus) return;
+
+            const status = pendingStatus;
+            
+            const confirmActionBtn = document.getElementById('confirmActionBtn');
+            const originalBtnText = confirmActionBtn.textContent;
+            confirmActionBtn.disabled = true;
+            confirmActionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/admin/salon/status/${currentSalonId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                if (!response.ok) throw new Error('Failed to update salon status');
+
+                // Update local data
+                const salonIndex = salonsData.findIndex(s => s.id === currentSalonId);
+                if (salonIndex !== -1) {
+                    salonsData[salonIndex].status = status;
+                }
+
+                // Refresh displays
+                displaySalons(salonsData);
+                fetchStats();
+                closeSalonModal();
+                closeConfirmationModal();
+
+                showToast(`تم ${getStatusText(status)} الصالون بنجاح`, true);
+            } catch (error) {
+                console.error('Error updating salon status:', error);
+                closeConfirmationModal();
+                showToast('حدث خطأ في تحديث حالة الصالون', false);
+            } finally {
+                confirmActionBtn.disabled = false;
+                confirmActionBtn.innerHTML = originalBtnText;
+            }
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const salonModal = document.getElementById('salonModal');
+            const confirmModal = document.getElementById('confirmationModal');
+            
+            if (event.target === salonModal) {
+                closeSalonModal();
+            }
+            if (event.target === confirmModal) {
+                closeConfirmationModal();
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            
+            fetchStats();
+            fetchSalons();
+        });
+    </script>
+</body>
+</html>

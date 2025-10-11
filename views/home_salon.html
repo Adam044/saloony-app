@@ -193,6 +193,10 @@
                                 <input type="time" id="break-end-input" required class="w-full p-3 border border-gray-300 rounded-lg">
                             </div>
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">سبب الاستراحة (اختياري)</label>
+                            <input type="text" id="break-reason-input" placeholder="مثال: فطور" class="w-full p-3 border border-gray-300 rounded-lg">
+                        </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700">تنطبق على:</label>
@@ -243,7 +247,7 @@
                             </div>
                         </div>
                         
-                        <div class="flex space-x-4 space-x-reverse">
+                        <div class="space-y-2">
                             <label class="flex items-center text-gray-700 font-medium">
                                 <input type="checkbox" id="mod-is-closed" class="h-4 w-4 text-red-600 focus:ring-red-500 ml-2">
                                 إغلاق اليوم كاملاً
@@ -252,12 +256,12 @@
 
                         <div id="mod-time-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">وقت البدء</label>
-                                <input type="time" id="mod-start-time-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-700">إغلاق من</label>
+                                <input type="time" id="mod-start-time-input" class="w-full p-3 border border-gray-300 rounded-lg">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">وقت الانتهاء</label>
-                                <input type="time" id="mod-end-time-input" required class="w-full p-3 border border-gray-300 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-700">إلى</label>
+                                <input type="time" id="mod-end-time-input" class="w-full p-3 border border-gray-300 rounded-lg">
                             </div>
                         </div>
 
@@ -285,12 +289,119 @@
 
             </div>
             
-            <div id="salon-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملف الصالون والخدمات</h2>
+                    <div id="salon-view" class="view-content">
+                        <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملف الصالون والخدمات</h2>
 
-                <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
-                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">المعلومات الأساسية</h3>
-                    <form id="salon-info-form" class="space-y-4" enctype="multipart/form-data">
+                        <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-primary-dark border-r-4 border-secondary pr-3">المعلومات الأساسية</h3>
+                                <div class="flex gap-2">
+                                    <button id="btn-edit-info" type="button" class="px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark inline-flex items-center">
+                                        <i class="fas fa-edit ml-1"></i> تعديل
+                                    </button>
+                                    <button id="btn-cancel-edit" type="button" class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 hidden">
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Edit Info Modal -->
+                            <div id="edit-info-modal" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden">
+                                <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-2xl mt-24 p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-lg font-bold text-primary-dark">تعديل معلومات الصالون</h4>
+                                        <button id="modal-close-btn" class="text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <form id="modal-salon-info-form" class="space-y-4">
+                                        <div class="relative">
+                                            <input type="text" id="modal-info-salon-name" placeholder="اسم الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
+                                            <i class="fas fa-store text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="text" id="modal-info-owner-name" placeholder="اسم المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
+                                            <i class="fas fa-user text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="tel" id="modal-info-salon-phone" placeholder="هاتف الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
+                                            <i class="fas fa-phone text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="tel" id="modal-info-owner-phone" placeholder="هاتف المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
+                                            <i class="fas fa-mobile-alt text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="text" id="modal-info-address" placeholder="العنوان" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
+                                            <i class="fas fa-location-dot text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <select id="modal-info-city" required class="w-full p-3 border border-gray-300 rounded-xl appearance-none text-right pr-10">
+                                            </select>
+                                            <i class="fas fa-city text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <select id="modal-info-gender-focus" required class="w-full p-3 border border-gray-300 rounded-xl appearance-none text-right pr-10">
+                                                <option value="men">رجال</option>
+                                                <option value="women">نساء</option>
+                                            </select>
+                                            <i class="fas fa-venus-mars text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                        </div>
+                                        <div class="flex gap-3 pt-2">
+                                            <button type="button" id="modal-cancel-btn" class="flex-1 px-4 py-3 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold">
+                                                <i class="fas fa-times ml-1"></i> إلغاء
+                                            </button>
+                                            <button type="submit" id="modal-save-btn" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark font-bold">
+                                                <i class="fas fa-save ml-1"></i> حفظ
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Readonly Display -->
+                            <div id="salon-info-display" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">اسم الصالون</span>
+                            <span id="disp-salon-name" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">اسم المالك</span>
+                            <span id="disp-owner-name" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">هاتف الصالون</span>
+                            <span id="disp-salon-phone" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">هاتف المالك</span>
+                            <span id="disp-owner-phone" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl md:col-span-2">
+                            <span class="text-gray-600">العنوان</span>
+                            <span id="disp-address" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">المدينة</span>
+                            <span id="disp-city" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">الفئة</span>
+                            <span id="disp-gender-focus" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <span class="text-gray-600">حالة الصالون</span>
+                            <span id="disp-status" class="font-bold text-primary-dark">...</span>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl md:col-span-2">
+                            <div class="w-20 h-20 border rounded-xl overflow-hidden bg-gray-100">
+                                <img id="disp-image" class="w-full h-full object-cover" src="https://placehold.co/80x80/ccc/333?text=S" alt="Salon Image">
+                            </div>
+                            <span class="text-gray-600">صورة الصالون</span>
+                        </div>
+                    </div>
+
+                    <form id="salon-info-form" class="space-y-4 hidden" enctype="multipart/form-data">
                         <div class="relative">
                             <input type="text" id="info-salon-name" placeholder="اسم الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
                         </div>
@@ -300,14 +411,14 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2 text-right">صورة الصالون <span class="text-red-500">*</span></label>
                             <div class="flex items-center space-x-4 space-x-reverse">
                                 <div class="flex-1">
-                                    <input type="file" id="info-salon-image" accept="image/*" required class="w-full p-3 border border-gray-300 rounded-xl">
+                                    <input type="file" id="info-salon-image" accept="image/*" class="w-full p-3 border border-gray-300 rounded-xl">
                                 </div>
                                 <div id="image-preview-container" class="w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50">
                                     <img id="image-preview" class="w-full h-full object-cover rounded-xl hidden" alt="معاينة الصورة">
                                     <i class="fas fa-image text-gray-400 text-2xl" id="image-placeholder"></i>
                                 </div>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1 text-right">اختر صورة للصالون (مطلوب)</p>
+                            <p class="text-xs text-gray-500 mt-1 text-right">اختر صورة للصالون (مطلوب عند التسجيل، اختياري للتحديث)</p>
                         </div>
                          <div class="relative">
                             <input type="text" id="info-owner-name" placeholder="اسم المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
@@ -315,6 +426,11 @@
                         <div class="relative">
                             <input type="tel" id="info-salon-phone" placeholder="هاتف الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
                         </div>
+                        <!-- FIX: ADD MISSING OWNER PHONE INPUT -->
+                        <div class="relative">
+                            <input type="tel" id="info-owner-phone" placeholder="هاتف المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                        </div>
+                        <!-- END FIX -->
                         <div class="relative">
                             <input type="text" id="info-address" placeholder="العنوان" required class="w-full p-3 border border-gray-300 rounded-xl text-right">
                         </div>
@@ -349,6 +465,16 @@
                     <div id="services-message" class="mt-4 text-center font-medium"></div>
                 </section>
             </div>
+
+            <!-- Reviews View -->
+            <div id="reviews-view" class="view-content hidden">
+                <section class="bg-white p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">مراجعات الصالون</h2>
+                    <div id="reviews-loading" class="text-gray-500 text-center py-4 hidden">جاري تحميل المراجعات...</div>
+                    <div id="reviews-empty" class="text-gray-500 text-center py-4 hidden">لا توجد مراجعات حتى الآن.</div>
+                    <div id="reviews-list" class="space-y-4"></div>
+                </section>
+            </div>
             
         </div>
     </main>
@@ -365,6 +491,10 @@
         <button id="nav-salon" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="salon-view">
             <i class="fas fa-store-alt text-xl"></i>
             <span class="text-xs font-medium mt-1">الصالون</span>
+        </button>
+        <button id="nav-reviews" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="reviews-view">
+            <i class="fas fa-star text-xl"></i>
+            <span class="text-xs font-medium mt-1">المراجعات</span>
         </button>
     </nav>
 </div>
@@ -390,26 +520,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State & Core Elements ---
     let currentSalon = JSON.parse(localStorage.getItem('salonni_user')) || {};
-    const salonId = currentSalon.salonId;
+    console.log('Current salon data from localStorage:', currentSalon);
+    
+    // CRITICAL FIX: Ensure we get BOTH the user ID (for profile fetch) and the salon ID (for business logic)
+    const userId = currentSalon.userId; // ID from users table
+    const salonId = currentSalon.salonId; // ID from salons table (used for nearly all calls below)
+    
+    console.log('User ID being used:', userId);
+    console.log('Salon ID being used:', salonId);
+    
+    // CRITICAL FIX: Session Check must rely on both IDs for a complete session
+    if (!userId || !salonId) {
+        console.error('No required user/salon ID found in localStorage. Redirecting to login.');
+        window.location.href = '/auth.html';
+        return;
+    }
     let staffList = []; // Array to hold staff data
     const daysOfWeekNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-    // Check for required data
-    if (!salonId) {
-        console.error('Salon ID not found. Redirecting to login.');
-        showMessage(document.getElementById('message-box'), 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.', false);
-        setTimeout(() => window.location.href = '/auth.html', 1500);
-        return;
-    }
-
-    const views = {
-        'management-view': document.getElementById('management-view'),
-        'appointments-view': document.getElementById('appointments-view'),
-        'salon-view': document.getElementById('salon-view'),
-    };
-    const messageBox = document.getElementById('message-box');
-
     // --- DOM Element Variables (Consolidated) ---
+    const messageBox = document.getElementById('message-box');
     const staffListContainer = document.getElementById('staff-list-container');
     const addStaffForm = document.getElementById('add-staff-form');
     const staffNameInput = document.getElementById('staff-name-input');
@@ -423,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addBreakForm = document.getElementById('add-break-form');
     const breakStartInput = document.getElementById('break-start-input');
     const breakEndInput = document.getElementById('break-end-input');
+    const breakReasonInput = document.getElementById('break-reason-input');
     const breaksListContainer = document.getElementById('breaks-list-container');
     
     // Modifications 
@@ -443,12 +574,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const infoSalonName = document.getElementById('info-salon-name');
     const infoOwnerName = document.getElementById('info-owner-name');
     const infoSalonPhone = document.getElementById('info-salon-phone');
+    // FIXED: Get new owner phone input
+    const infoOwnerPhone = document.getElementById('info-owner-phone');
     const infoAddress = document.getElementById('info-address');
     const infoCity = document.getElementById('info-city');
     const infoGenderFocus = document.getElementById('info-gender-focus');
     const servicesListContainer = document.getElementById('services-list-container');
     const saveServicesBtn = document.getElementById('save-services-btn');
     const servicesMessage = document.getElementById('services-message');
+    // Readonly display and edit toggle elements (moved earlier to avoid TDZ)
+    const salonInfoDisplay = document.getElementById('salon-info-display');
+    const btnEditInfo = document.getElementById('btn-edit-info');
+    const btnCancelEdit = document.getElementById('btn-cancel-edit');
     
     // Confirmation Modal Elements
     const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
@@ -456,8 +593,103 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmModalConfirmBtn = document.getElementById('confirm-modal-confirm');
     const confirmModalCancelBtn = document.getElementById('confirm-modal-cancel');
 
+    // Edit Info Modal Elements
+    const editInfoModal = document.getElementById('edit-info-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalSalonInfoForm = document.getElementById('modal-salon-info-form');
+    const modalInfoSalonName = document.getElementById('modal-info-salon-name');
+    const modalInfoOwnerName = document.getElementById('modal-info-owner-name');
+    const modalInfoSalonPhone = document.getElementById('modal-info-salon-phone');
+    const modalInfoOwnerPhone = document.getElementById('modal-info-owner-phone');
+    const modalInfoAddress = document.getElementById('modal-info-address');
+    const modalInfoCity = document.getElementById('modal-info-city');
+    const modalInfoGenderFocus = document.getElementById('modal-info-gender-focus');
 
-    // --- Utility Functions ---
+    const openEditModal = () => {
+        if (!editInfoModal) return;
+        // Populate modal inputs from currentSalon
+        modalInfoSalonName.value = currentSalon.salon_name || '';
+        modalInfoOwnerName.value = currentSalon.owner_name || '';
+        modalInfoSalonPhone.value = currentSalon.salon_phone || '';
+        modalInfoOwnerPhone.value = currentSalon.owner_phone || '';
+        modalInfoAddress.value = currentSalon.address || '';
+        // Populate cities
+        populateCityDropdowns(currentSalon.city).then(() => {
+            // Mirror selection into modal select
+            modalInfoCity.innerHTML = infoCity.innerHTML;
+            modalInfoCity.value = currentSalon.city || '';
+        }).catch(() => {
+            modalInfoCity.innerHTML = infoCity.innerHTML;
+            modalInfoCity.value = currentSalon.city || '';
+        });
+        modalInfoGenderFocus.value = currentSalon.gender_focus || 'men';
+
+        editInfoModal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    const closeEditModal = () => {
+        if (!editInfoModal) return;
+        editInfoModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    // Hook buttons
+    if (btnEditInfo) {
+        btnEditInfo.addEventListener('click', openEditModal);
+    }
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeEditModal);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
+
+    // Submit handler: reuse saveSalonInfo logic but from modal fields
+    if (modalSalonInfoForm) {
+        modalSalonInfoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const btn = e.submitter;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ';
+
+                const infoData = {
+                    salon_name: modalInfoSalonName.value,
+                    owner_name: modalInfoOwnerName.value,
+                    salon_phone: modalInfoSalonPhone.value,
+                    owner_phone: modalInfoOwnerPhone.value,
+                    address: modalInfoAddress.value,
+                    city: modalInfoCity.value,
+                    gender_focus: modalInfoGenderFocus.value,
+                    image_url: currentSalon.image_url // Keep existing image
+                };
+
+                const response = await fetch(`/api/salon/info/${salonId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(infoData),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadSalonInfo();
+                    showMessage(messageBox, 'تم حفظ التعديلات بنجاح.', true);
+                    closeEditModal();
+                } else {
+                    showMessage(messageBox, data.message || 'فشل حفظ التعديلات.', false);
+                }
+            } catch (error) {
+                console.error('Error saving modal info:', error);
+                showMessage(messageBox, 'خطأ في الشبكة.', false);
+            } finally {
+                const submitBtn = modalSalonInfoForm.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save ml-1"></i> حفظ';
+                }
+            }
+        });
+    }
+
+
+    // --- Utility Functions (Moved to Top) ---
 
     const showMessage = (element, message, isSuccess = true) => {
         element.classList.remove('hidden'); 
@@ -472,6 +704,15 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { element.classList.add('hidden'); }, 5000);
     };
     
+    // Continue with initialization only if both IDs are found
+    const views = {
+        'management-view': document.getElementById('management-view'),
+        'appointments-view': document.getElementById('appointments-view'),
+        'salon-view': document.getElementById('salon-view'),
+        'reviews-view': document.getElementById('reviews-view'),
+    };
+
+
     // NEW: Confirmation Modal Logic
     let modalCallback = null;
 
@@ -524,16 +765,25 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (viewId === 'appointments-view') {
             await loadAppointments('today');
         } else if (viewId === 'salon-view') {
+            console.log('=== SHOWING SALON VIEW ===');
             await loadSalonInfo();
+            console.log('loadSalonInfo() completed');
+            
             const genderFocus = currentSalon.gender_focus || 'men'; 
+            console.log('About to call loadServiceManagement with genderFocus:', genderFocus);
             await loadServiceManagement(genderFocus);
+            console.log('loadServiceManagement() completed');
+        } else if (viewId === 'reviews-view') {
+            await loadSalonReviews();
         }
     };
     
     // --- Date/Time Utility ---
     const formatAppointmentTime = (isoString) => {
         const date = new Date(isoString);
-        const datePart = date.toLocaleDateString('ar', { year: 'numeric', month: 'numeric', day: 'numeric' });
+        // Date part: Use full Arabic date for clarity in appointments list
+        const datePart = date.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+        // Time part: Convert to 12-hour format with Arab AM/PM
         const timePart = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
             .replace('AM', 'ص').replace('PM', 'م');
             
@@ -541,13 +791,38 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const formatTimeRange = (startTime, endTime) => {
-        const start = new Date(startTime);
-        const end = new Date(endTime);
+        // FIX: Handle both time strings (HH:MM) and full ISO strings
+        let start = startTime, end = endTime;
         
-        const startTimePart = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-            .replace('AM', 'ص').replace('PM', 'م');
-        const endTimePart = end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-            .replace('AM', 'ص').replace('PM', 'م');
+        if (startTime.includes(':') && startTime.length <= 5) {
+             // It's just a time string, append a date for locale conversion
+             start = `2000-01-01T${startTime}:00`;
+             end = `2000-01-01T${endTime}:00`;
+        } else if (startTime.includes(' ') && !startTime.includes('T')) {
+             // Handle YYYY-MM-DD HH:MM:SS format from server
+             start = startTime.replace(' ', 'T');
+             end = endTime.replace(' ', 'T');
+        }
+        
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        
+        // Simple time formatting using the Date object (only hours/minutes are needed for breaks/schedules)
+        const formatClockTime = (d) => {
+            // Get HH:MM part first
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            
+            // Convert to 12 hour format with Arabic AM/PM
+            const time12 = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+                            .replace('AM', 'ص').replace('PM', 'م');
+            
+            // For simple time ranges, we can return just the clock time
+            return time12;
+        }
+        
+        const startTimePart = formatClockTime(startDate);
+        const endTimePart = formatClockTime(endDate);
             
         return `${startTimePart} - ${endTimePart}`;
     };
@@ -558,7 +833,69 @@ document.addEventListener('DOMContentLoaded', () => {
                 <i class="fas ${icon}"></i>
                 <p>${text}</p>
             </div>
+         `;
+    };
+
+    // =============================
+    // Reviews Rendering and Loader
+    // =============================
+    const formatRatingStars = (rating) => {
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5;
+        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+        return `
+            ${'<i class="fas fa-star text-yellow-400"></i>'.repeat(fullStars)}
+            ${halfStar ? '<i class="fas fa-star-half-alt text-yellow-400"></i>' : ''}
+            ${'<i class="far fa-star text-yellow-400"></i>'.repeat(emptyStars)}
         `;
+    };
+
+    const renderSalonReviews = (reviews) => {
+        const list = document.getElementById('reviews-list');
+        const empty = document.getElementById('reviews-empty');
+        if (!list || !empty) return;
+
+        if (!reviews || reviews.length === 0) {
+            list.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+        list.innerHTML = reviews.map(r => `
+            <div class="p-4 bg-gray-50 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-yellow-500 text-sm">${formatRatingStars(parseFloat(r.rating || 0))}</div>
+                    <span class="text-xs text-gray-500">${new Date(r.created_at).toLocaleDateString('ar-EG')}</span>
+                </div>
+                <p class="text-sm text-gray-700">${(r.comment || '').trim() || 'بدون تعليق'}</p>
+            </div>
+        `).join('');
+    };
+
+    const loadSalonReviews = async () => {
+        const loading = document.getElementById('reviews-loading');
+        const list = document.getElementById('reviews-list');
+        const empty = document.getElementById('reviews-empty');
+        if (loading) loading.classList.remove('hidden');
+        if (list) list.innerHTML = '';
+        if (empty) empty.classList.add('hidden');
+
+        try {
+            const response = await fetch(`/api/reviews/salon/${salonId}`);
+            const data = await response.json();
+            if (data.success) {
+                renderSalonReviews(data.reviews || []);
+            } else {
+                showMessage(messageBox, data.message || 'فشل في جلب المراجعات.', false);
+                renderSalonReviews([]);
+            }
+        } catch (error) {
+            console.error('Error loading salon reviews:', error);
+            showMessage(messageBox, 'خطأ في الشبكة أثناء جلب المراجعات.', false);
+            renderSalonReviews([]);
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
     };
 
     // ===========================================
@@ -594,9 +931,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         const appointmentStartTime = new Date(appointment.start_time);
         const tenMinutesAfterStart = new Date(appointmentStartTime.getTime() + 10 * 60 * 1000);
-        const canChangeStatus = now >= tenMinutesAfterStart;
+        // Only allow status change if the appointment has started AND it is currently Scheduled
+        const canChangeStatus = now >= tenMinutesAfterStart && appointment.status === 'Scheduled'; 
         
-        const actionButtons = (isScheduled && !isPast) ? `
+        const actionButtons = (filter !== 'past') ? `
             <div class="mt-4 pt-4 border-t border-gray-200">
                 <label class="block text-sm font-medium text-gray-700 mb-2">تحديث حالة الموعد:</label>
                 ${canChangeStatus ? `
@@ -608,9 +946,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                 ` : `
                     <div class="w-full p-2 border border-gray-300 rounded-xl text-sm bg-gray-100 text-gray-500 text-center">
-                        يمكن تحديث الحالة بعد 10 دقائق من بداية الموعد
-                        <br>
-                        <small>متاح في: ${tenMinutesAfterStart.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</small>
+                        ${appointment.status === 'Scheduled' ? 'يمكن تحديث الحالة بعد 10 دقائق من بداية الموعد' : 'تم تحديد حالة هذا الموعد مسبقاً.'}
+                        ${appointment.status === 'Scheduled' ? `<br><small>متاح في: ${tenMinutesAfterStart.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</small>` : ''}
                     </div>
                 `}
             </div>
@@ -622,7 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-2">
                         <span class="inline-block bg-blue-100 text-blue-800 font-semibold px-4 py-2 rounded-lg text-base">
-                            <i class="fas fa-clock ml-1"></i> ${formatTimeRange(appointment.start_time, appointment.end_time)}
+                            <i class="fas fa-clock ml-1"></i> ${formatAppointmentTime(appointment.start_time)}
                         </span>
                     </div>
                     <span class="text-xs font-bold px-3 py-2 rounded-lg ${statusClass} shadow-sm">${statusText}</span>
@@ -639,7 +976,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${appointment.staff_name ? `
                         <p class="text-sm text-gray-600 mb-2">
                             <i class="fas fa-user-tie ml-2 text-primary-dark/70"></i> مع: ${appointment.staff_name}
+                        </p>` : ''}
+                        
+                        <p class="text-sm text-gray-600 mb-2">
+                            <i class="fas fa-dollar-sign ml-2 text-primary-dark/70"></i> السعر: ${parseFloat(appointment.price).toFixed(0)} شيكل
                         </p>
+                        
                         <div class="mt-2 flex flex-wrap gap-1">
                             ${appointment.all_services && appointment.all_services.length > 0 ? 
                                 appointment.all_services.map(service => `
@@ -652,20 +994,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </span>`
                             }
                         </div>
-                    ` : `
-                        <div class="mt-2 flex flex-wrap gap-1">
-                            ${appointment.all_services && appointment.all_services.length > 0 ? 
-                                appointment.all_services.map(service => `
-                                    <span class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
-                                        <i class="fas fa-scissors ml-1"></i> ${service.name_ar}
-                                    </span>
-                                `).join('') : 
-                                `<span class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
-                                    <i class="fas fa-scissors ml-1"></i> ${appointment.service_name || 'خدمة غير محددة'}
-                                </span>`
-                            }
-                        </div>
-                    `}
                 </div>
                 
                 ${actionButtons}
@@ -685,20 +1013,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // CRITICAL FIX: Use salonId for business-related API calls
         try {
             const response = await fetch(`/api/salon/appointments/${salonId}/${filter}`);
             const data = await response.json();
             
             if (data.success && data.appointments.length > 0) {
                 appointmentsListContainer.innerHTML = data.appointments.map(appt => renderAppointmentCard(appt, filter)).join('');
-        
-        // Manually set service names after rendering
-        data.appointments.forEach(appt => {
-            const serviceNameElement = appointmentsListContainer.querySelector(`[data-appointment-id="${appt.id}"] .service-name-display`);
-            if (serviceNameElement && appt.service_name) {
-                serviceNameElement.textContent = appt.service_name;
-            }
-        });
                 attachAppointmentListeners(filter);
             } else {
                  let emptyText = '';
@@ -820,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', (e) => {
                 const staffId = e.currentTarget.getAttribute('data-id');
                 const staffName = e.currentTarget.getAttribute('data-name');
-                showConfirmationModal(`هل أنت متأكد من حذف الموظف: ${staffName}؟ هذا الإجراء لا يمكن التراجع عنه.`, 
+                showConfirmationModal(`هل أنت متأكد من حذف الموظف: ${staffName}؟ هذا الإجراء لا يمكن التراجع عنه وقد يفشل لوجود مواعيد سابقة مرتبطة به.`, 
                                     () => deleteStaffConfirmed(staffId),
                                     'نعم، احذف الموظف');
             });
@@ -828,6 +1149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadStaff = async () => {
+        // CRITICAL FIX: Use salonId for business-related API calls
         try {
             const response = await fetch(`/api/salon/staff/${salonId}`);
             const data = await response.json();
@@ -852,7 +1174,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showMessage(messageBox, 'تم حذف الموظف بنجاح.', true);
                 await loadSchedule(); 
             } else {
-                showMessage(messageBox, data.message || 'فشل حذف الموظف.', false);
+                // Display specific error from backend (e.g., FK constraint)
+                showMessage(messageBox, data.message || 'فشل حذف الموظف. قد يكون مرتبطًا بحجوزات.', false);
             }
         } catch (error) {
             console.error('Error deleting staff:', error);
@@ -870,6 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
+            // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/staff/${salonId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -900,7 +1224,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Day Index Select for Recurring Modification
     daysOfWeekNames.forEach((name, index) => {
         const option = document.createElement('option');
-        option.value = index;
+        // FIX: Day index 0 should be Sunday, 6 is Saturday
+        option.value = index; 
         option.textContent = name;
         modDayIndexSelect.appendChild(option);
     });
@@ -912,23 +1237,34 @@ document.addEventListener('DOMContentLoaded', () => {
             onceModFields.classList.toggle('hidden', !isOnce);
             recurringModFields.classList.toggle('hidden', isOnce);
             document.getElementById('mod-date-input').required = isOnce;
-            modDayIndexSelect.required = !isOnce;
+            // FIX: Set/unset required on the select element itself
+            modDayIndexSelect.required = !isOnce; 
+            if(isOnce) modDayIndexSelect.removeAttribute('required'); else modDayIndexSelect.setAttribute('required', 'true');
         });
     });
 
     modIsClosedCheckbox.addEventListener('change', (e) => {
-        const isClosed = e.target.checked;
-        modTimeFields.classList.toggle('hidden', isClosed);
-        modStartTimeInput.required = !isClosed;
-        modEndTimeInput.required = !isClosed;
-        // Change button color to red for full closure
+        const isClosedFullDay = e.target.checked;
+        // Show interval fields when NOT closing all day; hide them for full-day closure
+        modTimeFields.classList.toggle('hidden', isClosedFullDay);
+        // Require times when creating an interval closure
+        modStartTimeInput.required = !isClosedFullDay;
+        modEndTimeInput.required = !isClosedFullDay;
+
+        if (isClosedFullDay) {
+            // For full-day closure, clear any times
+            modStartTimeInput.value = '';
+            modEndTimeInput.value = '';
+        }
+
         const modBtn = addModificationForm.querySelector('button[type="submit"]');
-        modBtn.classList.toggle('bg-red-600', isClosed);
-        modBtn.classList.toggle('hover:bg-red-700', isClosed);
-        modBtn.classList.toggle('btn-action', !isClosed);
+        modBtn.classList.toggle('bg-red-600', isClosedFullDay);
+        modBtn.classList.toggle('hover:bg-red-700', isClosedFullDay);
+        modBtn.classList.toggle('btn-action', !isClosedFullDay);
     });
 
     const loadSchedule = async () => {
+        // CRITICAL FIX: Use salonId for business-related API calls
         try {
             const response = await fetch(`/api/salon/schedule/${salonId}`);
             const data = await response.json();
@@ -937,7 +1273,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const schedule = data.schedule || {};
                 openingTimeInput.value = schedule.opening_time || '09:00';
                 closingTimeInput.value = schedule.closing_time || '18:00';
-                renderClosedDays(schedule.closed_days || []);
+                
+                // FIX: Ensure closed_days is an array before passing
+                const closedDaysArray = Array.isArray(schedule.closed_days) ? schedule.closed_days : (schedule.closed_days || []);
+                renderClosedDays(closedDaysArray);
+
                 renderBreaks(data.breaks || []);
                 renderModifications(data.modifications || []); 
             } else {
@@ -956,8 +1296,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderClosedDays = (closedDays) => {
         const dayNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
         closedDaysContainer.innerHTML = '';
+        
+        // Convert numbers in closedDays array to strings for includes check
+        const closedDayStrings = closedDays.map(String); 
+
         dayNames.forEach((name, index) => {
-            const isChecked = closedDays.includes(index);
+            const isChecked = closedDayStrings.includes(String(index));
             
             const input = document.createElement('input');
             input.type = 'checkbox';
@@ -985,11 +1329,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const saveSchedule = async (e) => {
         e.preventDefault();
+        const openingTime = openingTimeInput.value;
+        const closingTime = closingTimeInput.value;
+
+        // Client-side validation: Opening time must be before closing time
+        if (openingTime >= closingTime) {
+            showMessage(messageBox, 'وقت الفتح يجب أن يكون قبل وقت الإغلاق.', false);
+            return;
+        }
+
         const selectedDays = Array.from(document.querySelectorAll('#closed-days-container input:checked')).map(input => parseInt(input.value));
         
         const scheduleData = {
-            opening_time: openingTimeInput.value,
-            closing_time: closingTimeInput.value,
+            opening_time: openingTime,
+            closing_time: closingTime,
             closed_days: selectedDays
         };
 
@@ -998,6 +1351,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ';
             
+            // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/schedule/${salonId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1027,15 +1381,17 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         breaks.forEach(b => {
-            const staff = staffList.find(s => s.id === b.staff_id);
+            // FIX: Ensure staff_id is parsed correctly (can be null/string)
+            const staff = staffList.find(s => s.id === (b.staff_id ? parseInt(b.staff_id) : null));
             const staffName = staff ? staff.name : 'جميع العاملين';
             
             const breakDiv = document.createElement('div');
             breakDiv.className = 'flex justify-between items-center p-3 bg-red-50 rounded-lg border-r-4 border-red-400 shadow-sm';
             breakDiv.innerHTML = `
                 <div class="space-y-1">
-                    <p class="font-medium text-red-800">${b.start_time} - ${b.end_time}</p>
+                    <p class="font-medium text-red-800">${formatTimeRange(b.start_time, b.end_time)}</p>
                     <p class="text-xs text-red-600">تنطبق على: ${staffName}</p>
+                    ${b.reason ? `<p class="text-xs text-red-600">السبب: ${b.reason}</p>` : ''}
                 </div>
                 <button type="button" class="text-red-500 hover:text-red-700 text-sm delete-break-btn p-1 rounded-full transition" data-id="${b.id}" data-staff="${staffName}">
                     <i class="fas fa-times-circle"></i> حذف
@@ -1072,12 +1428,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     addBreakForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const startTime = breakStartInput.value;
+        const endTime = breakEndInput.value;
+        const reason = (breakReasonInput.value || '').trim();
+        
+        // Client-side validation: Start time must be before end time
+        if (startTime >= endTime) {
+            showMessage(messageBox, 'وقت بداية الاستراحة يجب أن يكون قبل وقت النهاية.', false);
+            return;
+        }
+
         const staffId = breakStaffSelect.value === 'all' ? null : parseInt(breakStaffSelect.value);
         
         const breakData = {
-            start_time: breakStartInput.value,
-            end_time: breakEndInput.value,
+            start_time: startTime,
+            end_time: endTime,
             staff_id: staffId,
+            reason: reason || null,
         };
 
         try {
@@ -1085,6 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الإضافة';
 
+            // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/break/${salonId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1094,6 +1462,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 breakStartInput.value = '';
                 breakEndInput.value = '';
+                breakReasonInput.value = '';
                 await loadSchedule();
                 showMessage(messageBox, 'تم إضافة الاستراحة بنجاح.', true);
             } else {
@@ -1117,7 +1486,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         modifications.forEach(mod => {
-            const staff = staffList.find(s => s.id === mod.staff_id);
+            // FIX: Ensure staff_id is parsed correctly (can be null/string)
+            const staff = staffList.find(s => s.id === (mod.staff_id ? parseInt(mod.staff_id) : null));
             const staffName = staff ? staff.name : 'جميع العاملين';
             
             let modDetails = '';
@@ -1127,19 +1497,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 modDetails = `بتاريخ: ${mod.mod_date}`;
                 typeColor = 'border-blue-400 bg-blue-50';
             } else {
-                modDetails = `كل: ${daysOfWeekNames[mod.mod_day_index]}`;
+                // FIX: Ensure mod_day_index is treated as number/string for lookup
+                const dayIndex = mod.mod_day_index !== null ? parseInt(mod.mod_day_index) : -1; 
+                modDetails = `كل: ${daysOfWeekNames[dayIndex] || 'يوم غير محدد'}`;
                 typeColor = 'border-orange-400 bg-orange-50';
             }
             
-            const timeInfo = mod.is_closed ? 
-                '<span class="font-bold text-red-600">مغلق بالكامل</span>' :
-                `سيعمل من ${mod.start_time} حتى ${mod.end_time}`;
+            // Use closure_type from API: 'full_day'|'interval'|'legacy'
+            const closureType = mod.closure_type;
+            const isFullDay = !!mod.is_full_day || closureType === 'full_day';
+            let timeInfo = '';
+            let badgeHtml = '';
+            if (closureType === 'full_day') {
+                timeInfo = '<span class="font-bold text-red-600">مغلق بالكامل</span>';
+                badgeHtml = '<span class="inline-block text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded ml-2">إغلاق كامل</span>';
+            } else if (closureType === 'interval') {
+                timeInfo = `إغلاق من ${formatTimeRange(mod.start_time, mod.end_time)}`;
+                badgeHtml = '<span class="inline-block text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded ml-2">إغلاق بفترة</span>';
+            } else {
+                timeInfo = `ساعات مخصصة (قديم): ${formatTimeRange(mod.start_time, mod.end_time)}`;
+                badgeHtml = '<span class="inline-block text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded ml-2">قديم</span>';
+            }
 
             const modDiv = document.createElement('div');
             modDiv.className = `flex justify-between items-center p-3 rounded-lg border-r-4 shadow-sm ${typeColor}`;
             modDiv.innerHTML = `
                 <div class="space-y-1">
-                    <p class="font-medium text-primary-dark">${mod.reason}</p>
+                    <p class="font-medium text-primary-dark">${mod.reason} ${badgeHtml}</p>
                     <p class="text-xs text-gray-700">${timeInfo} - ${modDetails}</p>
                     <p class="text-xs text-gray-500">ينطبق على: ${staffName}</p>
                 </div>
@@ -1167,13 +1551,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = e.submitter; 
 
         const modType = document.querySelector('input[name="mod_type"]:checked').value;
-        const isClosed = modIsClosedCheckbox.checked;
+        const isClosedFullDay = modIsClosedCheckbox.checked; // determines closure_type
         const staffId = modStaffSelect.value === 'all' ? null : parseInt(modStaffSelect.value);
 
         let modData = {
             salon_id: salonId,
             mod_type: modType,
-            is_closed: isClosed,
+            closure_type: isClosedFullDay ? 'full_day' : 'interval',
             reason: document.getElementById('mod-reason-input').value.trim(),
             staff_id: staffId
         };
@@ -1186,14 +1570,26 @@ document.addEventListener('DOMContentLoaded', () => {
             modData.mod_date = null;
         }
 
-        if (!isClosed) {
-            modData.start_time = modStartTimeInput.value;
-            modData.end_time = modEndTimeInput.value;
-        } else {
+        // Closure semantics:
+        // - If "إغلاق اليوم كاملاً" is checked => full-day closure (no times)
+        // - Otherwise => interval closure (times required)
+        if (isClosedFullDay) {
             modData.start_time = null;
             modData.end_time = null;
+        } else {
+            if (!modStartTimeInput.value || !modEndTimeInput.value) {
+                showMessage(messageBox, 'يرجى تحديد وقتي الإغلاق (من/إلى).', false);
+                return;
+            }
+            modData.start_time = modStartTimeInput.value;
+            modData.end_time = modEndTimeInput.value;
+            if (modData.start_time >= modData.end_time) {
+                showMessage(messageBox, 'وقت الإغلاق (من) يجب أن يكون قبل (إلى).', false);
+                return;
+            }
         }
 
+        // Basic validation check
         if (!modData.reason || (modType === 'once' && !modData.mod_date) || (modType === 'recurring' && modData.mod_day_index === undefined)) {
             showMessage(messageBox, 'يرجى ملء جميع الحقول المطلوبة للتعديل.', false);
             return;
@@ -1203,6 +1599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الإضافة';
 
+            // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/schedule/modification/${salonId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1227,10 +1624,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error adding modification:', error);
             showMessage(messageBox, 'خطأ في الشبكة.', false);
         } finally {
-            // FIX: The btn variable is now correctly defined and accessible here.
             const isClosed = modIsClosedCheckbox.checked;
             const defaultColor = isClosed ? 'bg-red-600 hover:bg-red-700 text-white' : 'btn-action';
-            btn.classList = `w-full py-3 rounded-xl font-bold ${defaultColor}`;
+            // Restore button classes to default state
+            btn.classList.remove('bg-red-600', 'hover:bg-red-700', 'text-white', 'btn-action');
+            btn.classList.add('w-full', 'py-3', 'rounded-xl', 'font-bold', isClosed ? 'bg-red-600' : 'btn-action', isClosed ? 'hover:bg-red-700' : 'hover:bg-green-600', 'text-white');
             btn.innerHTML = '<i class="fas fa-calendar-times ml-1"></i> إضافة تعديل مؤقت';
             btn.disabled = false;
         }
@@ -1281,39 +1679,155 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const loadSalonInfo = async () => {
-        await populateCityDropdowns(currentSalon.city);
+    // Readonly display and edit toggle elements (already declared above)
 
+    const dispSalonName = document.getElementById('disp-salon-name');
+    const dispOwnerName = document.getElementById('disp-owner-name');
+    const dispSalonPhone = document.getElementById('disp-salon-phone');
+    const dispOwnerPhone = document.getElementById('disp-owner-phone');
+    const dispAddress = document.getElementById('disp-address');
+    const dispCity = document.getElementById('disp-city');
+    const dispGenderFocus = document.getElementById('disp-gender-focus');
+    const dispStatus = document.getElementById('disp-status');
+    const dispImage = document.getElementById('disp-image');
+
+    const updateSalonInfoDisplay = (info) => {
+        const show = (el, val) => { el.textContent = (val && String(val).trim()) ? val : '...'; };
         try {
-            const response = await fetch(`/api/salon/info/${salonId}`);
-            const data = await response.json();
+            show(dispSalonName, info.salon_name);
+            show(dispOwnerName, info.owner_name);
+            show(dispSalonPhone, info.salon_phone);
+            show(dispOwnerPhone, info.owner_phone);
+            show(dispAddress, info.address);
+            show(dispCity, info.city);
+            dispGenderFocus.textContent = info.gender_focus === 'women' ? 'نساء' : 'رجال';
+            // Map backend status to user-facing Arabic labels
+            const statusMap = { accepted: 'نشط', pending: 'قيد الانتظار', rejected: 'مرفوض' };
+            if (dispStatus) {
+                const s = (info.status || '').toLowerCase();
+                dispStatus.textContent = statusMap[s] || 'غير معروف';
+            }
+            const fallbackInitial = (info.salon_name || 'S').charAt(0);
+            dispImage.src = (info.image_url && !info.image_url.includes('placehold.co'))
+                ? info.image_url
+                : `https://placehold.co/80x80/ccc/333?text=${fallbackInitial}`;
+        } catch (e) {
+            console.warn('Failed to update display:', e);
+        }
+    };
+
+    const setEditMode = (isEditing) => {
+        const displayEl = salonInfoDisplay;
+        const formEl = salonInfoForm;
+        const editBtnEl = btnEditInfo;
+        const cancelBtnEl = btnCancelEdit;
+
+        if (isEditing) {
+            if (displayEl) displayEl.classList.add('hidden');
+            if (formEl) formEl.classList.remove('hidden');
+            if (editBtnEl) editBtnEl.classList.add('hidden');
+            if (cancelBtnEl) cancelBtnEl.classList.remove('hidden');
+        } else {
+            if (displayEl) displayEl.classList.remove('hidden');
+            if (formEl) formEl.classList.add('hidden');
+            if (editBtnEl) editBtnEl.classList.remove('hidden');
+            if (cancelBtnEl) cancelBtnEl.classList.add('hidden');
+        }
+    };
+
+    // Toggle handlers
+    if (btnEditInfo) {
+        btnEditInfo.addEventListener('click', openEditModal);
+    }
+    if (btnCancelEdit) {
+        btnCancelEdit.addEventListener('click', () => {
+            // Reset form values to current saved state
+            if (currentSalon) {
+                infoSalonName.value = currentSalon.salon_name || '';
+                infoOwnerName.value = currentSalon.owner_name || '';
+                infoSalonPhone.value = currentSalon.salon_phone || '';
+                infoOwnerPhone.value = currentSalon.owner_phone || '';
+                infoAddress.value = currentSalon.address || '';
+                infoGenderFocus.value = currentSalon.gender_focus || 'men';
+                populateCityDropdowns(currentSalon.city);
+            }
+            setEditMode(false);
+        });
+    }
+
+    const loadSalonInfo = async () => {
+        // Fetch full profile info for update fields
+        console.log('=== LOAD SALON INFO CALLED ===');
+        if (!userId) {
+            console.error('ERROR: userId is null/undefined!');
+            return;
+        }
+        
+        try {
+            // CRITICAL FIX: Use the userId for the API call, as the server handles the join
+            const requestBody = { user_type: 'salon', userId: userId };
+            console.log('Sending request to /api/user/profile with body:', requestBody);
             
-            if (data.success) {
-                const info = data.info;
+            const response = await fetch('/api/user/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            const data = await response.json();
+            console.log('Profile API response data:', data);
+            
+            // Normalize keys from backend to handle different casings/aliases
+            const info = {
+                ...data,
+                userId: (data.userId !== undefined ? data.userId : (data.userid !== undefined ? data.userid : userId)),
+                salonId: (data.salonId !== undefined ? data.salonId : (data.salonid !== undefined ? data.salonid : (data.id !== undefined ? data.id : salonId)))
+            };
+            
+            // Proceed only if we have a valid salonId
+            if (info.salonId) {
+
+                await populateCityDropdowns(info.city);
+
+                // Populate all form fields correctly
                 infoSalonName.value = info.salon_name || '';
                 infoOwnerName.value = info.owner_name || '';
                 infoSalonPhone.value = info.salon_phone || '';
+                infoOwnerPhone.value = info.owner_phone || ''; 
                 infoAddress.value = info.address || '';
                 infoGenderFocus.value = info.gender_focus || 'men';
                 
-                // Update local state and display name
+                // Update local state (CRITICAL: Preserve both userId and salonId)
                 currentSalon = { 
                     ...currentSalon, 
                     ...info, 
+                    // Explicitly re-set/confirm primary IDs and core fields for safety
+                    userId: info.userId, 
+                    salonId: info.salonId, 
                     salon_name: info.salon_name, 
                     gender_focus: info.gender_focus,
+                    owner_phone: info.owner_phone, 
+                    image_url: info.image_url
                 };
                 localStorage.setItem('salonni_user', JSON.stringify(currentSalon));
                 
                 // Display existing image if available
-                if (info.image_url && info.image_url !== 'https://placehold.co/300x200/1a434e/ffffff?text=صورة+الصالون') {
-                    const imagePreview = document.getElementById('image-preview');
-                    const imagePreviewContainer = document.getElementById('image-preview-container');
+                const imagePreview = document.getElementById('image-preview');
+                const imagePlaceholder = document.getElementById('image-placeholder');
+
+                if (info.image_url && !info.image_url.includes('placehold.co')) {
                     imagePreview.src = info.image_url;
                     imagePreview.classList.remove('hidden');
-                    imagePreviewContainer.innerHTML = '';
-                    imagePreviewContainer.appendChild(imagePreview);
+                    if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+                } else {
+                    imagePreview.classList.add('hidden');
+                    if (imagePlaceholder) imagePlaceholder.classList.remove('hidden');
                 }
+
+                // Populate readonly display
+                updateSalonInfoDisplay(info);
+                // Ensure default mode is display
+                setEditMode(false);
             } else {
                 showMessage(messageBox, 'فشل تحميل معلومات الصالون.', false);
             }
@@ -1336,19 +1850,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Image preview functionality
     const imageInput = document.getElementById('info-salon-image');
     const imagePreview = document.getElementById('image-preview');
+    const imagePlaceholder = document.getElementById('image-placeholder');
     const imagePreviewContainer = document.getElementById('image-preview-container');
 
     imageInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
             try {
-                const base64Image = await convertImageToBase64(file);
-                imagePreview.src = base64Image;
+                // No need to convert to base64 for preview, direct object URL is faster
+                const url = URL.createObjectURL(file);
+                imagePreview.src = url;
                 imagePreview.classList.remove('hidden');
+                if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
+
+                // Ensure the preview container only shows the image
                 imagePreviewContainer.innerHTML = '';
                 imagePreviewContainer.appendChild(imagePreview);
             } catch (error) {
-                console.error('Error converting image:', error);
+                console.error('Error generating image preview:', error);
                 showMessage(messageBox, 'خطأ في معالجة الصورة', false);
             }
         }
@@ -1362,26 +1881,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const imageFile = imageInput.files[0];
         
         // Check if image is required (no existing image or existing image is placeholder)
-        const hasExistingImage = imageUrl && imageUrl !== 'https://placehold.co/300x200/1a434e/ffffff?text=صورة+الصالون';
+        const isDefaultPlaceholder = !imageUrl || imageUrl.includes('placehold.co');
         
         if (imageFile) {
             try {
+                // Only convert to base64 when submitting the form
                 imageUrl = await convertImageToBase64(imageFile);
             } catch (error) {
                 console.error('Error converting image:', error);
                 showMessage(messageBox, 'خطأ في معالجة الصورة', false);
                 return;
             }
-        } else if (!hasExistingImage) {
+        } else if (isDefaultPlaceholder) {
             showMessage(messageBox, 'يرجى اختيار صورة للصالون', false);
             return;
         }
         
+        // Collect all data for the update
         const infoData = {
             salon_name: infoSalonName.value,
             owner_name: infoOwnerName.value,
             salon_phone: infoSalonPhone.value,
-            owner_phone: currentSalon.owner_phone, 
+            owner_phone: infoOwnerPhone.value, 
             address: infoAddress.value,
             city: infoCity.value,
             gender_focus: infoGenderFocus.value,
@@ -1393,6 +1914,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري التحديث';
 
+            // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/info/${salonId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1400,8 +1922,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (data.success) {
+                // Reload info to update local state (currentSalon)
                 await loadSalonInfo(); 
                 showMessage(messageBox, 'تم تحديث المعلومات الأساسية بنجاح.', true);
+                
+                // If gender focus changed, reload service management
+                if (infoData.gender_focus !== currentSalon.gender_focus) {
+                    currentSalon.gender_focus = infoData.gender_focus; // Update locally immediately
+                    await loadServiceManagement(infoData.gender_focus);
+                }
+
+                // Return to display mode after successful save
+                setEditMode(false);
             } else {
                 showMessage(messageBox, data.message || 'فشل تحديث المعلومات.', false);
             }
@@ -1429,6 +1961,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderServiceCards = (masterServices, salonServices) => {
         servicesListContainer.innerHTML = '';
         
+        // FIX: Ensure salonServices are correctly mapped to master service IDs for lookup
+        const salonServicesMap = new Map();
+        salonServices.forEach(s => salonServicesMap.set(s.id, s));
+
         if (!masterServices || masterServices.length === 0) {
             renderEmptyState(servicesListContainer, `لا توجد خدمات رئيسية متاحة لهذه الفئة (${currentSalon.gender_focus === 'men' ? 'رجال' : 'نساء'}).`, 'fa-wrench');
             return;
@@ -1451,16 +1987,18 @@ document.addEventListener('DOMContentLoaded', () => {
             servicesListContainer.appendChild(mainHeader);
 
             mainServices.forEach(master => {
-                const current = salonServices.find(s => s.id === master.id) || {};
-                const isChecked = !!current.price || !!current.duration; 
+                const current = salonServicesMap.get(master.id) || {};
+                // FIX: Check if service exists in the map or if we have price/duration set
+                const isChecked = salonServicesMap.has(master.id); 
                 
                 const card = document.createElement('div');
                 card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isChecked ? 'border-secondary bg-secondary-soft' : 'border-gray-200 bg-white'}`;
                 card.setAttribute('data-service-id', master.id);
                 card.setAttribute('data-service-type', master.service_type);
 
-                const initialPrice = current.price || 50;
-                const initialDuration = current.duration || 30;
+                // FIX: Ensure initial values are extracted correctly or use sensible defaults
+                const initialPrice = current.price ? parseFloat(current.price) : 50;
+                const initialDuration = current.duration ? parseInt(current.duration) : 30;
 
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
@@ -1509,15 +2047,15 @@ document.addEventListener('DOMContentLoaded', () => {
             servicesListContainer.appendChild(addOnHeader);
 
             addOnServices.forEach(master => {
-                const current = salonServices.find(s => s.id === master.id) || {};
-                const isChecked = !!current.price; // Only check price for add-ons
+                const current = salonServicesMap.get(master.id) || {};
+                const isChecked = salonServicesMap.has(master.id); 
                 
                 const card = document.createElement('div');
                 card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isChecked ? 'border-orange-400 bg-orange-50' : 'border-gray-200 bg-white'}`;
                 card.setAttribute('data-service-id', master.id);
                 card.setAttribute('data-service-type', master.service_type);
 
-                const initialPrice = current.price || 25;
+                const initialPrice = current.price ? parseFloat(current.price) : 25;
 
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
@@ -1564,27 +2102,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const serviceType = card.getAttribute('data-service-type');
                 const details = document.querySelector(`.details-inputs[data-id="${serviceId}"]`);
                 
+                // Toggle card styling
+                card.classList.remove('border-secondary', 'bg-secondary-soft', 'border-orange-400', 'bg-orange-50');
+                card.classList.add(e.target.checked ? (serviceType === 'add_on' ? 'border-orange-400' : 'border-secondary') : 'border-gray-200');
+                card.classList.add(e.target.checked ? (serviceType === 'add_on' ? 'bg-orange-50' : 'bg-secondary-soft') : 'bg-white');
+
+                // Toggle visibility and required attributes of details
                 if (e.target.checked) {
-                    card.classList.remove('border-gray-200', 'bg-white');
-                    if (serviceType === 'add_on') {
-                        card.classList.add('border-orange-400', 'bg-orange-50');
-                    } else {
-                        card.classList.add('border-secondary', 'bg-secondary-soft');
-                    }
                     details.classList.remove('hidden');
+                    // Add a slight delay for transition effect
                     setTimeout(() => details.classList.remove('opacity-0'), 10); 
-                    
                     details.querySelectorAll('input:not([readonly]), select').forEach(input => input.setAttribute('required', 'true'));
                 } else {
-                    card.classList.add('border-gray-200', 'bg-white');
-                    if (serviceType === 'add_on') {
-                        card.classList.remove('border-orange-400', 'bg-orange-50');
-                    } else {
-                        card.classList.remove('border-secondary', 'bg-secondary-soft');
-                    }
                     details.classList.add('opacity-0');
                     setTimeout(() => details.classList.add('hidden'), 300); 
-                    
                     details.querySelectorAll('input, select').forEach(input => input.removeAttribute('required'));
                 }
             });
@@ -1592,13 +2123,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadServiceManagement = async (genderFocus) => {
+        console.log('Loading service management for genderFocus:', genderFocus, 'and salonId:', salonId);
         servicesListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">جاري تحميل قائمة الخدمات...</p>';
         try {
+            // Fetch Master services first
+            console.log('Fetching master services for gender:', genderFocus);
             const masterResponse = await fetch(`/api/services/master/${genderFocus}`);
+            console.log('Master services response status:', masterResponse.status);
             const masterData = await masterResponse.json();
+            console.log('Master services data:', masterData);
             
+            // Then fetch Salon's active services
+            // CRITICAL FIX: Use salonId for business-related API calls
+            console.log('Fetching salon services for salonId:', salonId);
             const salonResponse = await fetch(`/api/salon/services/${salonId}`);
+            console.log('Salon services response status:', salonResponse.status);
             const salonData = await salonResponse.json();
+            console.log('Salon services data:', salonData);
 
             if (masterData.success && salonData.success) {
                 renderServiceCards(masterData.services, salonData.services);
@@ -1621,29 +2162,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const serviceId = checkbox.getAttribute('data-id');
             const card = checkbox.closest('[data-service-id]');
             const serviceType = card.getAttribute('data-service-type');
+            
             const priceInput = document.querySelector(`.details-inputs[data-id="${serviceId}"] input[data-type="price"]`);
             
             let durationElement;
             if (serviceType === 'add_on') {
-                // For add-ons, duration is an input field with value 0
                 durationElement = document.querySelector(`.details-inputs[data-id="${serviceId}"] input[data-type="duration"]`);
             } else {
-                // For main services, duration is a select element
                 durationElement = document.querySelector(`.details-inputs[data-id="${serviceId}"] select[data-type="duration"]`);
             }
 
             const price = parseFloat(priceInput.value);
             const duration = parseInt(durationElement.value);
 
-            // For add-ons, duration can be 0, for main services it must be > 0
+            // Validation checks
             if (isNaN(price) || price <= 0) {
-                showMessage(servicesMessage, `يرجى إدخال سعر صحيح للخدمة.`, false);
+                showMessage(servicesMessage, `يرجى إدخال سعر صحيح (أكبر من صفر) للخدمة.`, false);
                 validationError = true;
                 return;
             }
 
             if (serviceType === 'main' && (isNaN(duration) || duration <= 0)) {
-                showMessage(servicesMessage, `يرجى إدخال مدة صحيحة للخدمة الأساسية.`, false);
+                showMessage(servicesMessage, `يرجى تحديد مدة صحيحة (أكبر من صفر) للخدمة الأساسية.`, false);
                 validationError = true;
                 return;
             }
@@ -1651,6 +2191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedServices.push({
                 service_id: parseInt(serviceId),
                 price: price,
+                // Duration for add-ons is always 0
                 duration: serviceType === 'add_on' ? 0 : duration
             });
         });
@@ -1666,6 +2207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveServicesBtn.disabled = true;
             saveServicesBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
 
+            // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/services/${salonId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1698,10 +2240,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
     });
 
-    showView('appointments-view');
+    showView('salon-view');
     
     document.getElementById('logout-btn').addEventListener('click', (e) => {
         e.preventDefault();
+        // Clear all user-related session data
         localStorage.removeItem('salonni_user');
         localStorage.removeItem('salonni_token');
         console.log("Salon logging out.");
