@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saloony</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/images/Saloony-app_icon.png" />
+  <meta name="theme-color" content="#1E293B" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #F9FAFB, #E5E7EB); font-family: 'Segoe UI', Tahoma, sans-serif; }
+    .splash { text-align: center; }
+    .logo { width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+    .logo img { width: 80px; height: 80px; }
+    .title { margin-top: 18px; font-weight: 900; letter-spacing: 0.5px; color: #1E293B; }
+    .dots { margin-top: 24px; display: flex; gap: 10px; justify-content: center; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #1E293B; opacity: 0.2; animation: pulse 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.2; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.2; } }
+  </style>
+</head>
+<body>
+  <div class="splash" aria-live="polite">
+    <div class="logo"><img src="/images/Saloony_logo.png" alt="Saloony" /></div>
+    <h1 class="title">صالوني</h1>
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  </div>
+  <script>
+    // Ensure SW is registered so standalone launch loads offline
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    }
+
+    // Small delay to show animation, then route based on stored user
+    setTimeout(() => {
+      try {
+        const raw = localStorage.getItem('salonni_user');
+        const user = raw ? JSON.parse(raw) : null;
+        const token = localStorage.getItem('salonni_token');
+        const adminToken = localStorage.getItem('adminToken');
+
+        if (adminToken) {
+          window.location.href = '/admin_dashboard.html';
+          return;
+        }
+
+        if (user && token) {
+          if (user.user_type === 'salon' && (user.salonId || user.salon_id || user.salonid)) {
+            window.location.href = '/home_salon.html';
+          } else if (user.user_type === 'user' && (user.userId || user.userid || user.id)) {
+            window.location.href = '/home_user.html';
+          } else {
+            window.location.href = '/auth.html';
+          }
+        } else {
+          window.location.href = '/auth.html';
+        }
+      } catch (e) {
+        window.location.href = '/auth.html';
+      }
+    }, 900);
+  </script>
+</body>
+</html>

@@ -7,11 +7,22 @@ const crypto = require('crypto'); // Used for generating simple tokens/salts
 const compression = require('compression'); // Enable gzip compression for responses
 const db = require('./database'); // Import our database module
 const nodemailer = require('nodemailer'); // Email sending for Contact Us
+const webPush = require('web-push'); // Web Push notifications
 require('dotenv').config(); // Load environment variables (.env)
 
 const app = express();
 // FIXED: Corrected typo from process.env.env.PORT to process.env.PORT
 const PORT = process.env.PORT || 3001; 
+
+// Configure Web Push VAPID details
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BOr2bZzWZ_placeholder_public_key_for_dev';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '9PZ_placeholder_private_key_for_dev';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@saloony.app';
+try {
+    webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+} catch (e) {
+    console.warn('WebPush VAPID setup warning:', e.message);
+}
 
 // --- Core Data: Master Service List & Cities ---
 const MASTER_SERVICES = {
@@ -172,6 +183,31 @@ async function initializeDb() {
             FOREIGN KEY (service_id) REFERENCES services(id),
             UNIQUE(appointment_id, service_id)
         )`); 
+        
+        // Push subscriptions table
+        await db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            salon_id INTEGER,
+            endpoint TEXT NOT NULL,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_active TIMESTAMP,
+            UNIQUE(endpoint),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+        )`);
+
+        // Reminders sent log to avoid duplicate sends
+        await db.run(`CREATE TABLE IF NOT EXISTS reminders_sent (
+            id SERIAL PRIMARY KEY,
+            appointment_id INTEGER NOT NULL,
+            reminder_type TEXT NOT NULL, -- e.g., 'upcoming_1h', 'upcoming_24h'
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(appointment_id, reminder_type),
+            FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+        )`);
         
         await db.run(`CREATE TABLE IF NOT EXISTS favorites (
             user_id INTEGER NOT NULL,
@@ -442,10 +478,162 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 // Serve static assets with mild caching for images; keep HTML no-cache via discovery route headers
 app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
 app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
+// Serve notification sounds
+app.use('/sounds', express.static(path.join(__dirname, 'Sounds'), { maxAge: '7d', etag: true }));
 
 // Root route serves landing page for PWA install and promo
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
+});
+
+// ===============================
+// Push Notification Endpoints
+// ===============================
+// Expose VAPID public key for clients
+app.get('/api/push/public-key', (req, res) => {
+    res.json({ success: true, publicKey: VAPID_PUBLIC_KEY });
+});
+
+// Subscribe endpoint: store subscription for a user or salon
+app.post('/api/push/subscribe', async (req, res) => {
+    try {
+        const { user_id, salon_id, subscription } = req.body;
+        if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+            return res.status(400).json({ success: false, message: 'Invalid subscription payload.' });
+        }
+
+        const endpoint = subscription.endpoint;
+        const p256dh = subscription.keys.p256dh;
+        const auth = subscription.keys.auth;
+
+        // Upsert by endpoint uniqueness
+        const existing = await dbGet('SELECT id FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+        if (existing) {
+            await dbRun('UPDATE push_subscriptions SET user_id = $1, salon_id = $2, p256dh = $3, auth = $4, last_active = CURRENT_TIMESTAMP WHERE id = $5', [user_id || null, salon_id || null, p256dh, auth, existing.id]);
+        } else {
+            await dbRun('INSERT INTO push_subscriptions (user_id, salon_id, endpoint, p256dh, auth, last_active) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)', [user_id || null, salon_id || null, endpoint, p256dh, auth]);
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Push subscribe error:', err.message);
+        res.status(500).json({ success: false, message: 'Failed to save subscription.' });
+    }
+});
+
+// Unsubscribe endpoint: remove subscription by endpoint
+app.post('/api/push/unsubscribe', async (req, res) => {
+    try {
+        const { endpoint } = req.body;
+        if (!endpoint) {
+            return res.status(400).json({ success: false, message: 'Endpoint is required.' });
+        }
+        await dbRun('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Push unsubscribe error:', err.message);
+        res.status(500).json({ success: false, message: 'Failed to remove subscription.' });
+    }
+});
+
+// Helper to send a push notification to all subscriptions for a user or salon
+async function sendPushToTargets({ user_id, salon_id, payload }) {
+    try {
+        let rows;
+        if (user_id) {
+            rows = await dbAll('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1', [user_id]);
+        } else if (salon_id) {
+            rows = await dbAll('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE salon_id = $1', [salon_id]);
+        } else {
+            return;
+        }
+        if (!rows || rows.length === 0) return;
+
+        const payloadStr = JSON.stringify(payload);
+        await Promise.all(rows.map(async (row) => {
+            const sub = {
+                endpoint: row.endpoint,
+                keys: { p256dh: row.p256dh, auth: row.auth }
+            };
+            try {
+                await webPush.sendNotification(sub, payloadStr);
+            } catch (err) {
+                // Cleanup gone subscriptions
+                if (err.statusCode === 404 || err.statusCode === 410) {
+                    try { await dbRun('DELETE FROM push_subscriptions WHERE endpoint = $1', [row.endpoint]); } catch (cleanupErr) {}
+                }
+                console.warn('Push send failed:', err.message);
+            }
+        }));
+    } catch (err) {
+        console.error('sendPushToTargets error:', err.message);
+    }
+}
+
+// ===================================
+// SSE: Real-time salon notifications
+// ===================================
+// Track connected SSE clients per salon
+const salonClients = new Map(); // Map<salonId, Set<res>>
+
+function addSalonClient(salonId, res) {
+    const key = String(salonId);
+    if (!salonClients.has(key)) salonClients.set(key, new Set());
+    salonClients.get(key).add(res);
+}
+
+function removeSalonClient(salonId, res) {
+    const key = String(salonId);
+    if (salonClients.has(key)) {
+        const set = salonClients.get(key);
+        set.delete(res);
+        if (set.size === 0) salonClients.delete(key);
+    }
+}
+
+function sendSalonEvent(salonId, eventType, payload) {
+    const key = String(salonId);
+    const clients = salonClients.get(key);
+    if (!clients || clients.size === 0) return;
+    const data = JSON.stringify({ type: eventType, salonId: Number(salonId), ...payload });
+    for (const res of clients) {
+        try {
+            res.write(`data: ${data}\n\n`);
+        } catch (e) {
+            // Best-effort: drop on error
+            removeSalonClient(salonId, res);
+        }
+    }
+}
+
+// SSE stream for a salon dashboard
+app.get('/api/salon/stream/:salon_id', (req, res) => {
+    const salonId = req.params.salon_id;
+    if (!salonId || isNaN(parseInt(salonId))) {
+        return res.status(400).end();
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    // Disable proxy buffering (useful on some hosts)
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    // Initial ping to establish stream on client
+    res.write(`event: connected\n`);
+    res.write(`data: ${JSON.stringify({ salonId: Number(salonId) })}\n\n`);
+
+    addSalonClient(salonId, res);
+
+    const heartbeat = setInterval(() => {
+        try { res.write(`: heartbeat\n\n`); } catch (e) { /* ignore */ }
+    }, 25000);
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        removeSalonClient(salonId, res);
+        try { res.end(); } catch (e) { /* ignore */ }
+    });
 });
 
 // ===================================
@@ -1410,7 +1598,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
 
     try {
         // FIX: Use $1 placeholder
-        const row = await dbGet('SELECT start_time, status, user_id FROM appointments WHERE id = $1', [appointmentId]);
+        const row = await dbGet('SELECT salon_id, start_time, status, user_id FROM appointments WHERE id = $1', [appointmentId]);
         
         if (!row) {
             return res.status(404).json({ success: false, message: 'Appointment not found.' });
@@ -1439,6 +1627,25 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              const strikeResult = await dbGet(strikeQuery, [user_id]);
              const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
 
+             // Emit SSE notification to salon dashboard
+             sendSalonEvent(row.salon_id, 'appointment_cancelled', {
+                appointmentId,
+                user_id,
+                start_time: row.start_time,
+                late: true,
+                strikes: newStrikes
+             });
+
+             // Push notify salon about late cancellation
+             await sendPushToTargets({
+                salon_id: row.salon_id,
+                payload: {
+                    title: 'إلغاء موعد متأخر',
+                    body: `المستخدم ${user_id} ألغى موعدًا قريبًا (${new Date(row.start_time).toLocaleString('ar-EG')}).`,
+                    url: '/home_salon.html#appointments'
+                }
+             });
+
              return res.status(200).json({ 
                 success: true, 
                 message: `تم إلغاء الموعد. تم إضافة إنذار لحسابك (الإنذارات: ${newStrikes}/3) لأن الإلغاء كان متأخراً.`,
@@ -1448,6 +1655,22 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
 
         // Proceed with cancellation without strike - FIX: Use $1 placeholder, ensure string literal is safe
         await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
+        // Emit SSE notification to salon dashboard
+        sendSalonEvent(row.salon_id, 'appointment_cancelled', {
+            appointmentId,
+            user_id,
+            start_time: row.start_time,
+            late: false
+        });
+        // Push notify salon about normal cancellation
+        await sendPushToTargets({
+            salon_id: row.salon_id,
+            payload: {
+                title: 'تم إلغاء موعد',
+                body: `المستخدم ${user_id} ألغى موعده بتاريخ ${new Date(row.start_time).toLocaleDateString('ar-EG')}.`,
+                url: '/home_salon.html#appointments'
+            }
+        });
         res.json({ success: true, message: 'تم إلغاء الموعد بنجاح.' });
     } catch (err) {
         console.error("Cancellation error:", err.message);
@@ -1674,6 +1897,38 @@ app.post('/api/appointment/book', async (req, res) => {
                        [appointmentId, service.id, service.price]);
         }
         
+        // Emit SSE notification to salon dashboard
+        sendSalonEvent(salon_id, 'appointment_booked', {
+            appointmentId,
+            user_id,
+            staff_id: staffIdForDB,
+            staff_name: assignedStaffName,
+            start_time,
+            end_time,
+            services_count: servicesToBook.length,
+            price
+        });
+
+        // Push notify salon of new booking
+        await sendPushToTargets({
+            salon_id,
+            payload: {
+                title: 'حجز جديد',
+                body: `تم حجز موعد جديد للمستخدم ${user_id} في ${new Date(start_time).toLocaleString('ar-EG')}.`,
+                url: '/home_salon.html#appointments'
+            }
+        });
+
+        // Push notify user of confirmation
+        await sendPushToTargets({
+            user_id,
+            payload: {
+                title: 'تأكيد الحجز',
+                body: `تم تأكيد موعدك في الصالون بتاريخ ${new Date(start_time).toLocaleString('ar-EG')}.`,
+                url: '/home_user.html#appointments'
+            }
+        });
+
         res.json({ 
             success: true, 
             message: 'تم حجز موعدك بنجاح!', 

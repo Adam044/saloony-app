@@ -134,6 +134,31 @@ CREATE TABLE IF NOT EXISTS appointment_services (
     UNIQUE(appointment_id, service_id)
 );
 
+-- 11b. Push Subscriptions table
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    salon_id INTEGER,
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_active TIMESTAMP,
+    UNIQUE(endpoint),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+);
+
+-- 11c. Reminders Sent table
+CREATE TABLE IF NOT EXISTS reminders_sent (
+    id SERIAL PRIMARY KEY,
+    appointment_id INTEGER NOT NULL,
+    reminder_type TEXT NOT NULL, -- e.g., 'upcoming_1h', 'upcoming_24h'
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(appointment_id, reminder_type),
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+);
+
 -- 11. Favorites table
 CREATE TABLE IF NOT EXISTS favorites (
     user_id INTEGER NOT NULL,

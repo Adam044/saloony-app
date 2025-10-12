@@ -4,7 +4,7 @@
   "description": "احجز موعدك بسهولة مع أفضل الصالونات",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/index.html",
+  "start_url": "/splash.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#152026",
