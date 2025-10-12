@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saloony-cache-v2';
+const CACHE_NAME = 'saloony-cache-v3';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -26,6 +26,20 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+  const url = new URL(req.url);
+
+  // Ensure root or index navigations go to splash to avoid index flash
+  if (req.mode === 'navigate') {
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      event.respondWith(
+        caches.match('/splash.html').then((cached) => {
+          return cached || fetch('/splash.html');
+        })
+      );
+      return;
+    }
+  }
+
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req).then((networkRes) => {

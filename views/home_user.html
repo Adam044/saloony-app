@@ -253,7 +253,7 @@
 <div class="min-h-screen flex flex-col">
     
     <!-- Header (Fixed at top) -->
-    <header id="app-header" class="bg-primary-dark shadow-lg p-2 flex justify-between items-center fixed top-0 w-full z-20 transition-colors">
+    <header id="app-header" class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20">
         <div class="flex items-center pl-8 pr-4">
             <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
         </div>
@@ -337,7 +337,7 @@
 
             <!-- 2. Appointments View -->
             <div id="appointments-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">مواعيدي</h2>
+                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">مواعيدي</h2>
                 <div class="flex space-x-4 space-x-reverse mb-6">
                     <button class="tab-appointments px-4 py-2 text-sm rounded-xl font-bold text-white bg-primary-dark transition-all" data-filter="upcoming">القادمة</button>
                     <button class="tab-appointments px-4 py-2 text-sm rounded-xl font-bold text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="past">السابقة</button>
@@ -349,7 +349,7 @@
 
             <!-- 3. Favorites View -->
             <div id="favorites-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">صالوناتي المفضلة</h2>
+                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">صالوناتي المفضلة</h2>
                 <div id="favorites-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <p class="text-gray-500 text-center py-8 col-span-full">جاري تحميل المفضلة...</p>
                 </div>
@@ -357,7 +357,7 @@
 
             <!-- 4. Profile View (Polished) -->
             <div id="profile-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملفي الشخصي</h2>
+                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملفي الشخصي</h2>
                 <div class="bg-white p-6 rounded-2xl shadow-xl space-y-4 border-t-4 border-secondary">
                     
                     <div class="flex items-center space-x-4 space-x-reverse pb-4 border-b border-gray-100">
@@ -419,7 +419,7 @@
     </main>
 
     <!-- Bottom Navigation Bar (Fixed for PWA feel) -->
-    <nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 w-full p-2 flex justify-around shadow-2xl z-20">
+    <nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 w-full p-2 pb-3 flex justify-around shadow-2xl z-20">
         <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
             <i class="fas fa-home text-xl"></i>
             <span class="text-xs font-bold mt-1">الرئيسية</span>
@@ -3461,35 +3461,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<script>
-  // Header scroll behavior: white background with bottom border when scrolled
-  document.addEventListener('DOMContentLoaded', function () {
-    const headerEl = document.getElementById('app-header');
-    const logoutBtn = document.getElementById('logout-btn');
-    if (!headerEl) return;
-    const applyScrolled = () => {
-      const scrolled = window.scrollY > 2;
-      if (scrolled) {
-        headerEl.classList.remove('bg-primary-dark', 'shadow-lg');
-        headerEl.classList.add('bg-white', 'border-b', 'border-gray-200');
-        if (logoutBtn) {
-          logoutBtn.classList.remove('text-white/80', 'hover:bg-white/10');
-          logoutBtn.classList.add('text-gray-700', 'hover:bg-gray-100');
-        }
-      } else {
-        headerEl.classList.add('bg-primary-dark', 'shadow-lg');
-        headerEl.classList.remove('bg-white', 'border-b', 'border-gray-200');
-        if (logoutBtn) {
-          logoutBtn.classList.add('text-white/80', 'hover:bg-white/10');
-          logoutBtn.classList.remove('text-gray-700', 'hover:bg-gray-100');
-        }
-      }
-    };
-    applyScrolled();
-    window.addEventListener('scroll', applyScrolled, { passive: true });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) applyScrolled(); });
-  });
-</script>
+<!-- Header is non-sticky now -->
 <!-- Notification Permission Modal -->
 <div id="notify-permission-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 text-right">

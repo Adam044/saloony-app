@@ -23,6 +23,22 @@
 </style>
 </head>
 <body class="flex flex-col min-h-screen">
+<script>
+  // Immediately route to splash to avoid landing page flash
+  (function() {
+    try {
+      // If launched as PWA or via start_url, go to splash directly
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      const isStartUrl = location.pathname === '/' || location.pathname === '/index.html';
+      if (isStandalone || isStartUrl) {
+        window.location.replace('/splash.html');
+      }
+    } catch (e) {
+      // Fail-safe
+      window.location.href = '/splash.html';
+    }
+  })();
+</script>
 
 <!-- Header (restored: fixed, centered, with background color) -->
 <header class="bg-[#152026] shadow-lg p-2 flex justify-between items-center fixed top-0 w-full z-20">

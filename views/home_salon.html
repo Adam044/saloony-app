@@ -109,7 +109,7 @@
 <body>
 
 <div class="min-h-screen flex flex-col">
-    <header id="app-header" class="bg-primary-dark shadow-lg p-2 flex justify-between items-center fixed top-0 w-full z-20 transition-colors">
+    <header id="app-header" class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20">
         <div class="flex items-center pl-8 pr-4">
             <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
         </div>
@@ -486,7 +486,7 @@
         </div>
     </main>
     
-    <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full p-1.5 flex justify-around shadow-2xl z-20">
+    <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full p-1.5 pb-3 flex justify-around shadow-2xl z-20">
         <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
             <i class="fas fa-clipboard-list text-xl"></i>
             <span class="text-xs font-medium mt-1">المواعيد</span>
@@ -778,13 +778,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationAudio = new Audio('/sounds/salon_notifications.wav');
     notificationAudio.preload = 'auto';
     let audioUnlocked = false;
-    const unlockAudio = () => {
+    let audioCtx = null;
+    const unlockAudio = async () => {
         if (audioUnlocked) return;
-        notificationAudio.play().then(() => {
+        try {
+            audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+        } catch (e) {}
+        try {
+            notificationAudio.muted = true;
+            notificationAudio.volume = 0;
+            await notificationAudio.play();
             notificationAudio.pause();
             notificationAudio.currentTime = 0;
-            audioUnlocked = true;
-        }).catch(() => { audioUnlocked = true; });
+            notificationAudio.muted = false;
+            notificationAudio.volume = 1;
+        } catch (e) {}
+        audioUnlocked = true;
     };
     document.addEventListener('click', unlockAudio, { once: true });
 
@@ -2566,34 +2578,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showModalIfNeeded();
   })();
 </script>
-<script>
-  // Header scroll behavior: white background with bottom border when scrolled
-  document.addEventListener('DOMContentLoaded', function () {
-    const headerEl = document.getElementById('app-header');
-    const logoutBtn = document.getElementById('logout-btn');
-    if (!headerEl) return;
-    const applyScrolled = () => {
-      const scrolled = window.scrollY > 2;
-      if (scrolled) {
-        headerEl.classList.remove('bg-primary-dark', 'shadow-lg');
-        headerEl.classList.add('bg-white', 'border-b', 'border-gray-200');
-        if (logoutBtn) {
-          logoutBtn.classList.remove('text-white/80', 'hover:bg-white/10');
-          logoutBtn.classList.add('text-gray-700', 'hover:bg-gray-100');
-        }
-      } else {
-        headerEl.classList.add('bg-primary-dark', 'shadow-lg');
-        headerEl.classList.remove('bg-white', 'border-b', 'border-gray-200');
-        if (logoutBtn) {
-          logoutBtn.classList.add('text-white/80', 'hover:bg-white/10');
-          logoutBtn.classList.remove('text-gray-700', 'hover:bg-gray-100');
-        }
-      }
-    };
-    applyScrolled();
-    window.addEventListener('scroll', applyScrolled, { passive: true });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) applyScrolled(); });
-  });
-</script>
+<!-- Header is non-sticky now -->
 </body>
 </html>

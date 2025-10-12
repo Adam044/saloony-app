@@ -481,9 +481,9 @@ app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d'
 // Serve notification sounds
 app.use('/sounds', express.static(path.join(__dirname, 'Sounds'), { maxAge: '7d', etag: true }));
 
-// Root route serves landing page for PWA install and promo
+// Root route should serve splash for PWA app launch
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'index.html'));
+    res.sendFile(path.join(__dirname, 'views', 'splash.html'));
 });
 
 // ===============================
