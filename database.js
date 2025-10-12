@@ -4,21 +4,23 @@ require('dotenv').config();
 
 class Database {
     constructor() {
-        this.isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL;
+        // Only use PostgreSQL if a DATABASE_URL is explicitly provided
+        this.isProduction = !!process.env.DATABASE_URL;
         this.db = null;
         this.pool = null;
         this.init();
     }
 
     init() {
-        if (this.isProduction) {
-            // PostgreSQL connection for production (Supabase)
+        const connectionString = process.env.DATABASE_URL;
+        if (connectionString) {
+            // PostgreSQL connection for production (Render/Supabase)
             this.pool = new Pool({
-                connectionString: process.env.DATABASE_URL,
+                connectionString,
                 // Ensure SSL is handled correctly for Render/Supabase
                 ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
             });
-            console.log('Connected to PostgreSQL database (Supabase)');
+            console.log('Using PostgreSQL via DATABASE_URL');
         } else {
             // SQLite connection for development
             this.db = new sqlite3.Database('saloony.db', (err) => {
@@ -28,6 +30,9 @@ class Database {
                     console.log('SQLite database connected successfully (saloony.db created/opened).');
                 }
             });
+            if (process.env.NODE_ENV === 'production') {
+                console.warn('DATABASE_URL not set. Falling back to SQLite in production.');
+            }
         }
     }
 
