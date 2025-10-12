@@ -877,6 +877,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Helper: show refresh banner when new events arrive
+    let refreshBanner;
+    const showRefreshBanner = () => {
+        if (!refreshBanner) {
+            refreshBanner = document.getElementById('refresh-banner');
+        }
+        if (refreshBanner) refreshBanner.classList.remove('hidden');
+    };
+
     // --- Real-time Notifications (SSE) ---
     try {
         const streamUrl = `/api/salon/stream/${salonId}`;
@@ -895,6 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof currentAppointmentsFilter !== 'undefined') {
                         loadAppointments(currentAppointmentsFilter);
                     }
+                    showRefreshBanner();
                 } else if (payload.type === 'appointment_cancelled') {
                     const lateNote = payload.late ? ' - إلغاء متأخر' : '';
                     const msg = `تم إلغاء موعد رقم ${payload.appointmentId}${lateNote}.`;
@@ -903,6 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof currentAppointmentsFilter !== 'undefined') {
                         loadAppointments(currentAppointmentsFilter);
                     }
+                    showRefreshBanner();
                 }
             } catch (err) {
                 console.warn('SSE parse error:', err);
@@ -1163,6 +1174,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const appointmentsListContainer = document.getElementById('appointments-list-container');
     const tabAppointmentButtons = document.querySelectorAll('.tab-appointments');
+
+    // Create refresh banner element if not present
+    (function ensureRefreshBanner() {
+        if (!document.getElementById('refresh-banner')) {
+            const banner = document.createElement('div');
+            banner.id = 'refresh-banner';
+            banner.className = 'hidden mx-4 my-2 p-3 rounded-xl bg-secondary-soft text-secondary font-bold flex items-center justify-between shadow';
+            banner.innerHTML = `
+                <span class="inline-flex items-center gap-2">
+                    <i class="fas fa-bell"></i>
+                    تم وصول تحديثات جديدة. انقر للتحديث.
+                </span>
+                <button id="refresh-banner-btn" class="px-3 py-1 rounded-lg bg-secondary text-white text-sm font-bold">تحديث الآن</button>
+            `;
+            const parent = appointmentsListContainer?.parentElement || document.querySelector('#appointments-view');
+            if (parent) parent.insertBefore(banner, appointmentsListContainer);
+            const btn = banner.querySelector('#refresh-banner-btn');
+            btn?.addEventListener('click', () => {
+                if (typeof currentAppointmentsFilter !== 'undefined') {
+                    loadAppointments(currentAppointmentsFilter);
+                }
+                banner.classList.add('hidden');
+            });
+        }
+    })();
 
     const renderAppointmentCard = (appointment, filter) => {
         console.log('DEBUG: Appointment data:', JSON.stringify(appointment, null, 2));

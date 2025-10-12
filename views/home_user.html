@@ -1883,6 +1883,18 @@ async function confirmCancellation(isEarlyCancel = false) {
             hideCancellationModal();
             displayMessage(result.message || 'تم إلغاء الموعد بنجاح.', 'success');
             loadUserAppointments(filter);
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                const sw = navigator.serviceWorker.controller || reg.active;
+                const notifTitle = 'تم إلغاء الموعد';
+                const notifBody = 'تم إلغاء موعدك بنجاح.';
+                if (sw) {
+                    sw.postMessage({ type: 'saloony-notify', title: notifTitle, body: notifBody, url: '/home_user.html#appointments' });
+                } else if ('Notification' in window && Notification.permission === 'granted') {
+                    reg.showNotification(notifTitle, { body: notifBody, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png' });
+                }
+                if (navigator.vibrate) navigator.vibrate(100);
+            } catch (e) { }
             // Refresh user data in case a strike was issued
             if (result.strikeIssued) {
                 await loadUserData();
@@ -3003,6 +3015,18 @@ async function confirmBooking() {
         
         hideBookingModal();
         showConfirmationModal(localConfirmationData); 
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sw = navigator.serviceWorker.controller || reg.active;
+            const notifTitle = 'تم تأكيد الحجز';
+            const notifBody = `تم حجز موعدك في ${selectedSalon.salon_name} بتاريخ ${formatDateDDMMYYYY(selectedDate)} الساعة ${formatTime(selectedTime)}.`;
+            if (sw) {
+                sw.postMessage({ type: 'saloony-notify', title: notifTitle, body: notifBody, url: '/home_user.html#appointments' });
+            } else if ('Notification' in window && Notification.permission === 'granted') {
+                reg.showNotification(notifTitle, { body: notifBody, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png' });
+            }
+            if (navigator.vibrate) navigator.vibrate(100);
+        } catch (e) { }
         
         if (currentView === 'appointments-view') {
             loadUserAppointments('upcoming');
