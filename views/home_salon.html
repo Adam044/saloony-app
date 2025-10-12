@@ -812,6 +812,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
+                // Log to console for debugging
+                console.debug('Salon push subscription saved for', { user_id: body.user_id, salon_id: body.salon_id });
             } catch (err) {
                 console.debug('Push subscription error:', err);
             }

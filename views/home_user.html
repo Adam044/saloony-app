@@ -985,6 +985,61 @@ async function notifyLocal({ title = 'Saloony', body = 'لديك إشعار جد
     } catch (e) {}
 }
 
+// Ensure Push subscription is created and saved server-side for the current user
+async function ensurePushSubscription() {
+  try {
+    if (!('serviceWorker' in navigator)) return false;
+    // Ensure SW registered
+    const regExisting = await navigator.serviceWorker.getRegistration();
+    if (!regExisting) {
+      try { await navigator.serviceWorker.register('/service-worker.js'); } catch (e) {}
+    }
+    const reg = await navigator.serviceWorker.ready;
+
+    // Request notification permission if not granted
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        try { await Notification.requestPermission(); } catch (e) {}
+      }
+      if (Notification.permission !== 'granted') {
+        // Permission denied or not granted; cannot subscribe for push
+        return false;
+      }
+    }
+
+    // Fetch VAPID public key from server
+    const pubRes = await fetch('/api/push/public-key');
+    const { publicKey } = await pubRes.json();
+    const vapidKey = publicKey || 'BEluXw4-FAKE-PLACEHOLDER-FALLBACK';
+    const toUint8Array = (base64String) => {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(base64);
+      const output = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+      return output;
+    };
+
+    // Get or create subscription
+    const existing = await reg.pushManager.getSubscription();
+    const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toUint8Array(vapidKey) });
+
+    // Persist to server with current user id
+    const body = {
+      user_id: currentUser?.userId || currentUser?.userid || currentUser?.id || null,
+      salon_id: null,
+      subscription: sub.toJSON()
+    };
+    await fetch('/api/push/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    return true;
+  } catch (e) {
+    console.debug('ensurePushSubscription failed:', e);
+    return false;
+  }
+}
+
 function formatTime(timeString) {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -2993,6 +3048,9 @@ async function confirmBooking() {
     const btn = document.getElementById('confirm-booking-btn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحجز...';
+
+    // Proactively ensure push subscription is created before booking triggers server-side push
+    try { await ensurePushSubscription(); } catch (e) {}
     
     const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0);
     const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
