@@ -7,6 +7,11 @@
 <link rel="icon" href="/images/Saloony-app_icon.png" type="image/png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#152026">
+<!-- iOS PWA meta -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="صالوني">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" sizes="180x180" href="/images/Saloony-app_icon.png">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
@@ -154,10 +159,23 @@
         deferredPrompt = e;
         if (installBtn) installBtn.style.display = 'inline-flex';
     });
+    // iOS Safari does not support beforeinstallprompt. Show guidance button.
+    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isIOS && !isStandalone && installBtn) {
+        installBtn.style.display = 'inline-flex';
+        installBtn.textContent = 'أضِف إلى الشاشة الرئيسية';
+    }
     installBtn.addEventListener('click', async () => {
         if (!deferredPrompt) {
             // If browser shows its own banner, this button may be unnecessary
-            alert('يرجى استخدام زر "أضِف إلى الشاشة الرئيسية" من المتصفح.');
+            const message = isIOS
+              ? (isSafari
+                    ? 'على iOS: افتح الموقع في Safari، ثم اضغط زر المشاركة واختر "أضِف إلى الشاشة الرئيسية".'
+                    : 'على iOS: الرجاء فتح الموقع في Safari ثم اضغط زر المشاركة واختر "أضِف إلى الشاشة الرئيسية".')
+              : 'يرجى استخدام زر "أضِف إلى الشاشة الرئيسية" من المتصفح.';
+            alert(message);
             return;
         }
         await deferredPrompt.prompt();
