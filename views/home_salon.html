@@ -126,7 +126,12 @@
             
             <div id="appointments-view" class="view-content">
                 <section class="bg-white p-6 rounded-2xl shadow-xl">
-                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">المواعيد</h2>
+                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3 text-center">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-clipboard-list"></i>
+                            المواعيد
+                        </span>
+                    </h2>
                     <div class="flex space-x-2 space-x-reverse mb-4 border-b pb-2">
                         <button class="tab-appointments px-3 py-1 font-bold text-sm rounded-xl text-white bg-primary-dark transition-all" data-filter="today">اليوم</button>
                         <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="upcoming">القادمة</button>
@@ -140,7 +145,12 @@
             </div>
             
             <div id="management-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">إدارة الصالون والجدول</h2>
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2 text-center">
+                    <span class="inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-calendar-alt"></i>
+                        إدارة الصالون والجدول
+                    </span>
+                </h2>
 
                 <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
                     <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">إدارة فريق العمل</h3>
@@ -290,7 +300,12 @@
             </div>
             
                     <div id="salon-view" class="view-content">
-                        <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملف الصالون والخدمات</h2>
+                        <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2 text-center">
+                            <span class="inline-flex items-center justify-center gap-2">
+                                <i class="fas fa-store"></i>
+                                ملف الصالون والخدمات
+                            </span>
+                        </h2>
 
                         <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
                             <div class="flex items-center justify-between mb-4">
@@ -459,7 +474,12 @@
 
 
                 <section class="bg-white p-6 rounded-2xl shadow-xl">
-                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">إدارة خدمات الصالون</h3>
+                    <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3 text-center">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-scissors"></i>
+                            إدارة خدمات الصالون
+                        </span>
+                    </h3>
                     <p class="text-gray-500 mb-6 border-r-4 border-secondary pr-3">اختر الخدمات التي تقدمها، ثم حدد السعر والوقت اللازم لكل خدمة.</p>
                     
                     <div id="services-list-container" class="space-y-4">
@@ -476,7 +496,12 @@
             <!-- Reviews View -->
             <div id="reviews-view" class="view-content hidden">
                 <section class="bg-white p-6 rounded-2xl shadow-xl">
-                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">مراجعات الصالون</h2>
+                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3 text-center">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-star"></i>
+                            مراجعات الصالون
+                        </span>
+                    </h2>
                     <div id="reviews-loading" class="text-gray-500 text-center py-4 hidden">جاري تحميل المراجعات...</div>
                     <div id="reviews-empty" class="text-gray-500 text-center py-4 hidden">لا توجد مراجعات حتى الآن.</div>
                     <div id="reviews-list" class="space-y-4"></div>
@@ -486,7 +511,7 @@
         </div>
     </main>
     
-    <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full p-1.5 pb-3 flex justify-around shadow-2xl z-20">
+<nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full p-1.5 pb-5 flex justify-around shadow-2xl z-20">
         <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
             <i class="fas fa-clipboard-list text-xl"></i>
             <span class="text-xs font-medium mt-1">المواعيد</span>
@@ -2463,10 +2488,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialization and Event Attachments ---
     
     document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
+        btn.addEventListener('click', (e) => {
+            const view = e.currentTarget.getAttribute('data-view');
+            showView(view);
+            const targetView = document.getElementById(view);
+            if (targetView) {
+                targetView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
     });
 
-    showView('salon-view');
+    showView('appointments-view');
 
     // Ensure edit button is visible by default
     if (btnEditInfo) {

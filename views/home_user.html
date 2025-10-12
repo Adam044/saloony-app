@@ -337,7 +337,12 @@
 
             <!-- 2. Appointments View -->
             <div id="appointments-view" class="view-content hidden">
-                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">مواعيدي</h2>
+                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2 text-center">
+                    <span class="inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-calendar-check"></i>
+                        مواعيدي
+                    </span>
+                </h2>
                 <div class="flex space-x-4 space-x-reverse mb-6">
                     <button class="tab-appointments px-4 py-2 text-sm rounded-xl font-bold text-white bg-primary-dark transition-all" data-filter="upcoming">القادمة</button>
                     <button class="tab-appointments px-4 py-2 text-sm rounded-xl font-bold text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="past">السابقة</button>
@@ -349,7 +354,12 @@
 
             <!-- 3. Favorites View -->
             <div id="favorites-view" class="view-content hidden">
-                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">صالوناتي المفضلة</h2>
+                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2 text-center">
+                    <span class="inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-heart"></i>
+                        صالوناتي المفضلة
+                    </span>
+                </h2>
                 <div id="favorites-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <p class="text-gray-500 text-center py-8 col-span-full">جاري تحميل المفضلة...</p>
                 </div>
@@ -357,7 +367,12 @@
 
             <!-- 4. Profile View (Polished) -->
             <div id="profile-view" class="view-content hidden">
-                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2">ملفي الشخصي</h2>
+                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2 text-center">
+                    <span class="inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-user"></i>
+                        ملفي الشخصي
+                    </span>
+                </h2>
                 <div class="bg-white p-6 rounded-2xl shadow-xl space-y-4 border-t-4 border-secondary">
                     
                     <div class="flex items-center space-x-4 space-x-reverse pb-4 border-b border-gray-100">
@@ -419,7 +434,7 @@
     </main>
 
     <!-- Bottom Navigation Bar (Fixed for PWA feel) -->
-    <nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 w-full p-2 pb-3 flex justify-around shadow-2xl z-20">
+<nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 w-full p-2 pb-5 flex justify-around shadow-2xl z-20">
         <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
             <i class="fas fa-home text-xl"></i>
             <span class="text-xs font-bold mt-1">الرئيسية</span>
@@ -3236,6 +3251,10 @@ function initializeEventListeners() {
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.addEventListener('click', () => {
             switchView(nav.dataset.view);
+            const targetView = document.getElementById(nav.dataset.view);
+            if (targetView) {
+                targetView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
     });
     
