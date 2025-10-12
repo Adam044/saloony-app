@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>تواصل معنا - صالوني</title>
+<link rel="icon" href="/images/Saloony-app_icon.png" type="image/png">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+  body { font-family: 'Tajawal', sans-serif; background: #152026; color: #fff; }
+  .card { background: #fff; color: #1E293B; border-radius: 1rem; box-shadow: 0 12px 28px rgba(0,0,0,0.18); }
+</style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+<!-- Header -->
+<header class="bg-[#152026] shadow-lg p-2 flex justify-center items-center fixed top-0 w-full z-20">
+  <div class="flex items-center">
+    <img src="/images/Saloony_logo.png" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+  </div>
+  
+</header>
+
+<main class="flex-1 pt-[72px] px-6">
+  <section class="max-w-3xl mx-auto">
+    <div class="card p-6">
+      <h1 class="text-3xl font-extrabold mb-2">تواصل معنا</h1>
+      <p class="text-gray-600 mb-6">أرسل لنا استفسارك أو ملاحظاتك وسنتواصل معك قريبًا.</p>
+
+      <form id="contactForm" class="space-y-4">
+        <div>
+          <label for="name" class="block text-sm font-bold text-gray-700 mb-1">الاسم</label>
+          <input id="name" name="name" type="text" required class="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#06C167]" placeholder="اسمك الكريم">
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-bold text-gray-700 mb-1">البريد الإلكتروني</label>
+          <input id="email" name="email" type="email" required class="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#06C167]" placeholder="example@email.com">
+        </div>
+        <div>
+          <label for="phone" class="block text-sm font-bold text-gray-700 mb-1">رقم الهاتف</label>
+          <input id="phone" name="phone" type="tel" class="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#06C167]" placeholder="05xxxxxxxx">
+        </div>
+        <div>
+          <label for="subject" class="block text-sm font-bold text-gray-700 mb-1">الموضوع</label>
+          <input id="subject" name="subject" type="text" required class="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#06C167]" placeholder="عنوان موجز">
+        </div>
+        <div>
+          <label for="message" class="block text-sm font-bold text-gray-700 mb-1">الرسالة</label>
+          <textarea id="message" name="message" rows="5" required class="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#06C167]" placeholder="اكتب رسالتك هنا..."></textarea>
+        </div>
+
+        <button type="submit" class="inline-flex items-center justify-center bg-[#06C167] text-[#1E293B] px-6 py-3 rounded-xl font-bold text-lg shadow-md hover:bg-[#05AE5D] transition">
+          إرسال
+        </button>
+      </form>
+
+      <div id="statusBox" class="mt-4 hidden p-3 rounded-xl"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="px-6 py-8 text-center text-white/60">
+  <p>© صالوني 2025</p>
+  <p class="mt-2"><a href="/" class="underline">العودة للصفحة الرئيسية</a></p>
+</footer>
+
+<script>
+  const form = document.getElementById('contactForm');
+  const statusBox = document.getElementById('statusBox');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusBox.classList.remove('hidden');
+    statusBox.className = 'mt-4 p-3 rounded-xl bg-yellow-50 text-yellow-700';
+    statusBox.textContent = 'جاري الإرسال...';
+
+    const payload = {
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      phone: form.phone.value.trim(),
+      subject: form.subject.value.trim(),
+      message: form.message.value.trim(),
+    };
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        statusBox.className = 'mt-4 p-3 rounded-xl bg-green-50 text-green-700';
+        statusBox.textContent = 'تم إرسال رسالتك بنجاح! سنرد عليك قريبًا.';
+        form.reset();
+      } else {
+        statusBox.className = 'mt-4 p-3 rounded-xl bg-red-50 text-red-700';
+        statusBox.textContent = data.error || 'تعذر إرسال الرسالة. حاول لاحقًا.';
+      }
+    } catch (err) {
+      statusBox.className = 'mt-4 p-3 rounded-xl bg-red-50 text-red-700';
+      statusBox.textContent = 'خطأ في الاتصال بالخادم.';
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "Saloony",
+  "short_name": "Saloony",
+  "description": "احجز موعدك بسهولة مع أفضل الصالونات",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#152026",
+  "theme_color": "#152026",
+  "icons": [
+    { "src": "/images/Saloony-app_icon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/images/Saloony-app_icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

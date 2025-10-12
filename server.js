@@ -6,6 +6,8 @@ const cors = require('cors'); // Added CORS for development ease
 const crypto = require('crypto'); // Used for generating simple tokens/salts
 const compression = require('compression'); // Enable gzip compression for responses
 const db = require('./database'); // Import our database module
+const nodemailer = require('nodemailer'); // Email sending for Contact Us
+require('dotenv').config(); // Load environment variables (.env)
 
 const app = express();
 // FIXED: Corrected typo from process.env.env.PORT to process.env.PORT
@@ -441,9 +443,89 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
 app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
 
-// Root route redirects to the authentication page
+// Root route serves landing page for PWA install and promo
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'auth.html'));
+    res.sendFile(path.join(__dirname, 'views', 'index.html'));
+});
+
+// ===================================
+// Contact Us
+// ===================================
+app.post('/api/contact', async (req, res) => {
+    try {
+        const { name, email, subject, message, phone } = req.body || {};
+
+        // Basic validation
+        if (!name || !email || !subject || !message) {
+            return res.status(400).json({ success: false, error: 'الرجاء تعبئة جميع الحقول.' });
+        }
+
+        const gmailUser = process.env.GMAIL_USER;
+        let gmailPass = process.env.GMAIL_APP_PASSWORD;
+        // Normalize app password if provided with spaces (Google displays with spaces)
+        if (gmailPass) gmailPass = gmailPass.replace(/\s+/g, '');
+
+        if (!gmailUser || !gmailPass) {
+            return res.status(500).json({ success: false, error: 'إعدادات البريد غير مكتملة على الخادم.' });
+        }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: gmailUser, pass: gmailPass },
+            pool: true,
+            maxConnections: 2,
+            maxMessages: 10,
+            secure: true,
+            requireTLS: true,
+            connectionTimeout: 15000,
+            greetingTimeout: 10000,
+            socketTimeout: 15000
+        });
+
+        // Verify transporter connectivity; surface clear error if failing
+        try {
+            await transporter.verify();
+        } catch (verifyErr) {
+            console.error('Nodemailer verify error:', verifyErr);
+            return res.status(503).json({ success: false, error: 'خدمة البريد غير متاحة مؤقتًا. حاول لاحقًا.' });
+        }
+
+        const toAddress = process.env.CONTACT_TO_EMAIL || gmailUser;
+        const fromName = process.env.CONTACT_FROM_NAME || 'Saloony Contact';
+
+        const phoneLineText = phone ? `\nهاتف: ${phone}` : '';
+        const phoneLineHtml = phone ? `<p><strong>رقم الهاتف:</strong> ${phone}</p>` : '';
+
+        const mailOptions = {
+            from: `${fromName} <${gmailUser}>`,
+            to: toAddress,
+            replyTo: email,
+            subject: `[سوال من الموقع] ${subject}`,
+            text: `اسم: ${name}\nبريد: ${email}${phoneLineText}\n\nرسالة:\n${message}`,
+            html: `
+                <div style="font-family: Tajawal, Arial, sans-serif; line-height:1.7; color:#0f172a">
+                  <h2 style="margin:0 0 8px">رسالة جديدة من صفحة التواصل</h2>
+                  <p><strong>الاسم:</strong> ${name}</p>
+                  <p><strong>البريد:</strong> ${email}</p>
+                  ${phoneLineHtml}
+                  <p><strong>الموضوع:</strong> ${subject}</p>
+                  <hr style="border:none;border-top:1px solid #e2e8f0; margin:12px 0" />
+                  <p>${message.replace(/\n/g, '<br/>')}</p>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        return res.json({ success: true, message: 'تم إرسال الرسالة بنجاح.' });
+    } catch (err) {
+        console.error('Contact form email send error:', err);
+        // Differentiate transient errors
+        const isTimeout = /ETIMEDOUT|timed out|Timeout/i.test(err && (err.code || err.message || ''));
+        const isAuth = /Invalid login|AUTH|invalid credentials/i.test(err && (err.response || err.message || ''));
+        const statusCode = isTimeout ? 503 : (isAuth ? 401 : 500);
+        const msg = isTimeout ? 'خدمة البريد غير متاحة مؤقتًا. حاول لاحقًا.' : (isAuth ? 'بيانات البريد غير صحيحة.' : 'فشل إرسال الرسالة. حاول لاحقًا.');
+        return res.status(statusCode).json({ success: false, error: msg });
+    }
 });
 
 // ===================================

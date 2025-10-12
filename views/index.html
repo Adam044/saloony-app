@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>صالوني - تطبيق الحجوزات</title>
+<link rel="icon" href="/images/Saloony-app_icon.png" type="image/png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#152026">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+    body { font-family: 'Tajawal', sans-serif; background: #152026; color: #fff; }
+    .feature-card { background: #fff; color: #1E293B; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .feature-card:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,0,0,0.18); }
+    .bg-hero { background-image: url('/images/auth.jpg'); }
+    .install-card { background: #ffffff; color: #1E293B; border-radius: 0.75rem; padding: 0.75rem 1rem; box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+</style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+<!-- Header (restored: fixed, centered, with background color) -->
+<header class="bg-[#152026] shadow-lg p-2 flex justify-between items-center fixed top-0 w-full z-20">
+    <a href="/contact.html" class="px-3 text-white/80 hover:text-white" title="تواصل معنا">
+        <i class="fa-solid fa-question-circle text-2xl"></i>
+    </a>
+    <div class="flex items-center">
+        <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+    </div>
+    <div class="w-10"></div>
+</header>
+
+<main class="flex-1 pt-[60px]">
+
+<!-- Hero Section -->
+<section class="relative bg-hero bg-cover bg-center min-h-[90vh] flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="relative text-center max-w-3xl px-6">
+        <h1 class="text-4xl sm:text-5xl font-extrabold mb-4">صالوني — حجز الصالون في ثوانٍ</h1>
+        <p class="text-white/90 text-lg sm:text-xl mb-8">تطبيق سريع وسهل للمستخدمين وأصحاب الصالونات.</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button id="installBtn" style="display:none" class="inline-flex items-center justify-center text-center bg-[#06C167] text-[#1E293B] px-6 py-3 rounded-xl font-bold text-lg shadow-md hover:bg-[#05AE5D] transition">تثبيت التطبيق</button>
+            <button id="learnMoreBtn" class="bg-white text-[#1E293B] px-6 py-3 rounded-xl font-bold text-lg shadow-md hover:bg-gray-100 transition">تعرف على صالوني</button>
+        </div>
+        <div class="mt-6 grid sm:grid-cols-2 gap-3 max-w-xl mx-auto">
+            <div class="install-card flex items-center gap-3">
+                <i class="fa-brands fa-apple text-2xl text-[#1E293B]"></i>
+                <p class="text-sm">iOS (16.4+): من Safari، اضغط مشاركة → أضف إلى الشاشة الرئيسية.</p>
+            </div>
+            <div class="install-card flex items-center gap-3">
+                <i class="fa-brands fa-android text-2xl text-[#06C167]"></i>
+                <p class="text-sm">Android: اضغط "تثبيت" أو من القائمة "أضِف إلى الشاشة الرئيسية".</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="max-w-6xl mx-auto px-6 py-16">
+    <div class="grid lg:grid-cols-2 gap-10">
+        <!-- Users -->
+        <div>
+            <h2 class="text-3xl font-extrabold mb-6 text-white">للمستخدمين</h2>
+            <div class="grid sm:grid-cols-2 gap-6">
+                <div class="feature-card flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#06C167]/20 text-[#06C167]"><i class="fa-solid fa-calendar-check"></i></span>
+                        <h3 class="font-bold text-lg">حجز سريع</h3>
+                    </div>
+                    <p class="text-gray-600">اختر الخدمة والموعد المناسب بثوانٍ وبواجهة بسيطة.</p>
+                </div>
+                <div class="feature-card flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#06C167]/20 text-[#06C167]"><i class="fa-solid fa-map-location-dot"></i></span>
+                        <h3 class="font-bold text-lg">اكتشاف الصالونات</h3>
+                    </div>
+                    <p class="text-gray-600">تصفّح حسب المدينة والتقييم وصور الصالونات.</p>
+                </div>
+                <div class="feature-card sm:col-span-2 flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#06C167]/20 text-[#06C167]"><i class="fa-solid fa-bell"></i></span>
+                        <h3 class="font-bold text-lg">إشعارات وتذكير</h3>
+                    </div>
+                    <p class="text-gray-600">تذكير بالمواعيد والعروض — اختيارية بالكامل.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Salons -->
+        <div>
+            <h2 class="text-3xl font-extrabold mb-6 text-white">لأصحاب الصالونات</h2>
+            <div class="grid sm:grid-cols-2 gap-6">
+                <div class="feature-card flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#06C167]/20 text-[#06C167]"><i class="fa-solid fa-clipboard-list"></i></span>
+                        <h3 class="font-bold text-lg">إدارة الحجوزات</h3>
+                    </div>
+                    <p class="text-gray-600">تنظيم المواعيد وإدارة الخدمات والموظفين بسهولة.</p>
+                </div>
+                <div class="feature-card flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#06C167]/20 text-[#06C167]"><i class="fa-solid fa-users"></i></span>
+                        <h3 class="font-bold text-lg">نمو العملاء</h3>
+                    </div>
+                    <p class="text-gray-600">وصول إلى مستخدمين أكثر مع تقييمات وصور جذابة.</p>
+                </div>
+                <div class="feature-card sm:col-span-2 flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#06C167]/20 text-[#06C167]"><i class="fa-solid fa-bullhorn"></i></span>
+                        <h3 class="font-bold text-lg">عروض وحملات</h3>
+                    </div>
+                    <p class="text-gray-600">شارك العروض الخاصة واشرِك عملاءك بسهولة.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<!-- Footer -->
+<footer class="px-6 py-8 text-center text-white/60 space-y-4">
+    <div>
+        <p class="mb-3">لديك أي استفسار؟</p>
+        <a href="/contact.html" class="inline-flex items-center gap-2 bg-white text-[#1E293B] px-5 py-2 rounded-xl font-bold shadow-md hover:bg-gray-100 transition">
+            <i class="fa-solid fa-envelope"></i>
+            تواصل معنا
+        </a>
+    </div>
+    <p>© صالوني 2025</p>
+    
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+<script>
+    // Standalone detection to skip landing page
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        window.location.href = '/home_user.html';
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js').catch(err => console.error('SW registration failed', err));
+        });
+    }
+
+    // Install prompt handling
+    let deferredPrompt;
+    const installBtn = document.getElementById('installBtn');
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Do not call preventDefault here to allow browser banner when eligible
+        deferredPrompt = e;
+        if (installBtn) installBtn.style.display = 'inline-flex';
+    });
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            // If browser shows its own banner, this button may be unnecessary
+            alert('يرجى استخدام زر "أضِف إلى الشاشة الرئيسية" من المتصفح.');
+            return;
+        }
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (choice.outcome === 'accepted') console.log('User accepted the install prompt');
+        else console.log('User dismissed the install prompt');
+    });
+
+    // Learn More button scroll
+    const learnMoreBtn = document.getElementById('learnMoreBtn');
+    if (learnMoreBtn) {
+        learnMoreBtn.addEventListener('click', () => {
+            const el = document.getElementById('features');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+</script>
+
+</body>
+</html>
