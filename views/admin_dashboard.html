@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم الإدارة - صالوني</title>
+    <script>
+        (function() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            if (!isStandalone) {
+                window.location.replace('/index.html');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
         /* Base Colors: Dark Slate Theme */
@@ -610,7 +618,7 @@
         // Logout function
         function logout() {
             localStorage.removeItem('adminToken');
-            window.location.href = '/auth.html';
+            window.location.replace('/auth.html');
         }
 
         // Fetch dashboard statistics

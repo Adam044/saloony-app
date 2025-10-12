@@ -33,34 +33,42 @@
       navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
 
-    // Small delay to show animation, then route based on stored user
-    setTimeout(() => {
-      try {
-        const raw = localStorage.getItem('salonni_user');
-        const user = raw ? JSON.parse(raw) : null;
-        const token = localStorage.getItem('salonni_token');
-        const adminToken = localStorage.getItem('adminToken');
+    // Centralized routing: only used for standalone/PWA launches
+    (function routeFromSplash() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      // Browser users should not hit splash unless explicitly navigated
+      // Keep quick animation for PWA then redirect
+      const proceed = () => {
+        try {
+          const raw = localStorage.getItem('salonni_user');
+          const user = raw ? JSON.parse(raw) : null;
+          const token = localStorage.getItem('salonni_token');
+          const adminToken = localStorage.getItem('adminToken');
 
-        if (adminToken) {
-          window.location.href = '/admin_dashboard.html';
-          return;
-        }
-
-        if (user && token) {
-          if (user.user_type === 'salon' && (user.salonId || user.salon_id || user.salonid)) {
-            window.location.href = '/home_salon.html';
-          } else if (user.user_type === 'user' && (user.userId || user.userid || user.id)) {
-            window.location.href = '/home_user.html';
-          } else {
-            window.location.href = '/auth.html';
+          if (adminToken) {
+            window.location.replace('/admin_dashboard.html');
+            return;
           }
-        } else {
-          window.location.href = '/auth.html';
+
+          if (user && token) {
+            if (user.user_type === 'salon' && (user.salonId || user.salon_id || user.salonid)) {
+              window.location.replace('/home_salon.html');
+            } else if (user.user_type === 'user' && (user.userId || user.userid || user.id)) {
+              window.location.replace('/home_user.html');
+            } else {
+              window.location.replace('/auth.html');
+            }
+          } else {
+            window.location.replace('/auth.html');
+          }
+        } catch (e) {
+          window.location.replace('/auth.html');
         }
-      } catch (e) {
-        window.location.href = '/auth.html';
-      }
-    }, 900);
+      };
+
+      // Shorter delay to minimize perceived splash time
+      setTimeout(proceed, isStandalone ? 700 : 0);
+    })();
   </script>
 </body>
 </html>

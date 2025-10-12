@@ -7,6 +7,21 @@
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        (function() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            if (!isStandalone) {
+                window.location.replace('/index.html');
+                return;
+            }
+            const token = localStorage.getItem('salonni_token');
+            const userRaw = localStorage.getItem('salonni_user');
+            const user = userRaw ? JSON.parse(userRaw) : null;
+            if (!token || !user || user.user_type !== 'user') {
+                window.location.replace('/auth.html');
+            }
+        })();
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
         body { 
@@ -3251,10 +3266,10 @@ function initializeEventListeners() {
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.addEventListener('click', () => {
             switchView(nav.dataset.view);
-            const targetView = document.getElementById(nav.dataset.view);
-            if (targetView) {
-                targetView.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            // Scroll to the absolute top of the page and reset zoom if needed
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            // Attempt to reset zoom using CSS transform removal if any view applied it
+            document.body.style.zoom = '100%';
         });
     });
     
@@ -3317,7 +3332,7 @@ function initializeEventListeners() {
     document.getElementById('confirm-logout-btn').addEventListener('click', () => {
         localStorage.removeItem('salonni_user');
         localStorage.removeItem('salonni_token');
-        window.location.href = 'auth.html';
+        window.location.replace('/auth.html');
     });
     document.querySelectorAll('.star-rating i').forEach(star => {
         star.addEventListener('click', (e) => {

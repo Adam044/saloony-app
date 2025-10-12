@@ -6,6 +6,11 @@
     <title>صالوني - تسجيل الدخول وإنشاء حساب</title>
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Removed standalone gating to prevent index/auth redirect loops -->
+    <script>
+        // Auth page should be accessible directly, including after logout.
+        // Splash/index handle routing for PWA vs web; no gating here.
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
         body {

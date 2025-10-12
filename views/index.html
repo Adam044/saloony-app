@@ -24,18 +24,15 @@
 </head>
 <body class="flex flex-col min-h-screen">
 <script>
-  // Immediately route to splash to avoid landing page flash
+  // If launched as PWA (standalone), go to splash immediately
   (function() {
     try {
-      // If launched as PWA or via start_url, go to splash directly
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      const isStartUrl = location.pathname === '/' || location.pathname === '/index.html';
-      if (isStandalone || isStartUrl) {
+      if (isStandalone) {
         window.location.replace('/splash.html');
       }
     } catch (e) {
-      // Fail-safe
-      window.location.href = '/splash.html';
+      // No-op; browser users should stay on index
     }
   })();
 </script>
@@ -194,10 +191,7 @@
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
 <script>
-    // Standalone detection to skip landing page
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        window.location.href = '/home_user.html';
-    }
+    // Standalone detection handled above; keep browser users on index
 
     // Register service worker
     if ('serviceWorker' in navigator) {

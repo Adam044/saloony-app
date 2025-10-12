@@ -7,6 +7,21 @@
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        (function() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            if (!isStandalone) {
+                window.location.replace('/index.html');
+                return;
+            }
+            const token = localStorage.getItem('salonni_token');
+            const userRaw = localStorage.getItem('salonni_user');
+            const user = userRaw ? JSON.parse(userRaw) : null;
+            if (!token || !user || user.user_type !== 'salon') {
+                window.location.replace('/auth.html');
+            }
+        })();
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
         body { 
@@ -131,6 +146,10 @@
                             <i class="fas fa-clipboard-list"></i>
                             المواعيد
                         </span>
+                        <button id="refresh-appointments-btn" class="ml-3 px-3 py-1 text-sm rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 inline-flex items-center gap-2" title="تحديث المواعيد">
+                            <i class="fas fa-sync-alt"></i>
+                            تحديث
+                        </button>
                     </h2>
                     <div class="flex space-x-2 space-x-reverse mb-4 border-b pb-2">
                         <button class="tab-appointments px-3 py-1 font-bold text-sm rounded-xl text-white bg-primary-dark transition-all" data-filter="today">اليوم</button>
@@ -807,19 +826,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const unlockAudio = async () => {
         if (audioUnlocked) return;
         try {
+            // Resume audio context without playing the notification sound file
             audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx && audioCtx.state === 'suspended') {
                 await audioCtx.resume();
             }
-        } catch (e) {}
-        try {
-            notificationAudio.muted = true;
-            notificationAudio.volume = 0;
-            await notificationAudio.play();
-            notificationAudio.pause();
-            notificationAudio.currentTime = 0;
-            notificationAudio.muted = false;
-            notificationAudio.volume = 1;
+            // Play a short, silent oscillator to unlock audio without audible output
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0; // silence
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.01);
         } catch (e) {}
         audioUnlocked = true;
     };
@@ -873,10 +892,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const staffLabel = payload.staff_name ? ` (${payload.staff_name})` : '';
                     const msg = `حجز جديد رقم ${payload.appointmentId}${staffLabel} في ${new Date(payload.start_time).toLocaleString('ar-EG')}`;
                     notify('حجز جديد', msg, true);
+                    // Auto-refresh appointments to reflect the new booking
+                    if (typeof currentAppointmentsFilter !== 'undefined') {
+                        loadAppointments(currentAppointmentsFilter);
+                    }
                 } else if (payload.type === 'appointment_cancelled') {
                     const lateNote = payload.late ? ' - إلغاء متأخر' : '';
                     const msg = `تم إلغاء موعد رقم ${payload.appointmentId}${lateNote}.`;
                     notify('إلغاء موعد', msg, false);
+                    // Auto-refresh appointments to reflect the cancellation
+                    if (typeof currentAppointmentsFilter !== 'undefined') {
+                        loadAppointments(currentAppointmentsFilter);
+                    }
                 }
             } catch (err) {
                 console.warn('SSE parse error:', err);
@@ -1252,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    let currentAppointmentsFilter = 'today';
     const loadAppointments = async (filter) => {
         appointmentsListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">جاري تحميل المواعيد...</p>';
 
@@ -1263,6 +1291,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.classList.remove('text-gray-500', 'bg-gray-200');
             }
         });
+        currentAppointmentsFilter = filter;
 
         // CRITICAL FIX: Use salonId for business-related API calls
         try {
@@ -1348,6 +1377,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tabAppointmentButtons.forEach(btn => {
         btn.addEventListener('click', () => loadAppointments(btn.getAttribute('data-filter')));
     });
+    const refreshBtn = document.getElementById('refresh-appointments-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => loadAppointments(currentAppointmentsFilter));
+    }
 
     // ===========================================
     // SECTION 2: Management Logic (Staff, Schedule, Breaks, Modifications)
@@ -2491,10 +2524,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', (e) => {
             const view = e.currentTarget.getAttribute('data-view');
             showView(view);
-            const targetView = document.getElementById(view);
-            if (targetView) {
-                targetView.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            // Scroll to the absolute top of the page (no section heading)
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
         });
     });
 
@@ -2512,7 +2543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('salonni_user');
         localStorage.removeItem('salonni_token');
         console.log("Salon logging out.");
-        window.location.href = '/auth.html';
+        window.location.replace('/auth.html');
     });
 });
 </script>
