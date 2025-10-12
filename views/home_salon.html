@@ -850,31 +850,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const sendSWNotification = async (title, body) => {
+    // Unified local notification helper
+    const notifyLocal = async ({ title = 'Saloony', body = 'لديك إشعار جديد', url = '/home_salon.html', isSuccess = true, tag = 'saloony' } = {}) => {
+        // In-app toast
+        showMessage(messageBox, body, !!isSuccess);
+        // Sound + vibration
+        playNotificationSound();
+        if (navigator.vibrate) navigator.vibrate(100);
+
+        // Service Worker notification
         try {
+            if (!('serviceWorker' in navigator)) return;
             const reg = await navigator.serviceWorker.ready;
             const sw = navigator.serviceWorker.controller || reg.active;
             if (sw) {
-                sw.postMessage({ type: 'saloony-notify', title, body, url: '/home_salon.html' });
-            }
-        } catch (e) {}
-    };
-
-    const notify = (title, body, isSuccess) => {
-        showMessage(messageBox, body, !!isSuccess);
-        playNotificationSound();
-        if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-                sendSWNotification(title, body);
-            } else if (Notification.permission !== 'denied') {
+                sw.postMessage({ type: 'saloony-notify', title, body, url, tag });
+            } else if ('Notification' in window && Notification.permission === 'granted') {
+                reg.showNotification(title, { body, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png', data: { url }, tag });
+            } else if ('Notification' in window && Notification.permission !== 'denied') {
                 Notification.requestPermission().then((res) => {
-                    if (res === 'granted') sendSWNotification(title, body);
+                    if (res === 'granted') {
+                        const ctrl = navigator.serviceWorker.controller || reg.active;
+                        if (ctrl) ctrl.postMessage({ type: 'saloony-notify', title, body, url, tag });
+                        else reg.showNotification(title, { body, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png', data: { url }, tag });
+                    }
                 }).catch(() => {});
             }
-        }
-        if (navigator.vibrate) {
-            navigator.vibrate(100);
-        }
+        } catch (e) {}
     };
 
     // Helper: show refresh banner when new events arrive
@@ -899,7 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (payload.type === 'appointment_booked') {
                     const staffLabel = payload.staff_name ? ` (${payload.staff_name})` : '';
                     const msg = `حجز جديد رقم ${payload.appointmentId}${staffLabel} في ${new Date(payload.start_time).toLocaleString('ar-EG')}`;
-                    notify('حجز جديد', msg, true);
+                    notifyLocal({ title: 'حجز جديد', body: msg, url: '/home_salon.html#appointments', isSuccess: true, tag: 'appointment_booked' });
                     // Auto-refresh appointments to reflect the new booking
                     if (typeof currentAppointmentsFilter !== 'undefined') {
                         loadAppointments(currentAppointmentsFilter);
@@ -908,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (payload.type === 'appointment_cancelled') {
                     const lateNote = payload.late ? ' - إلغاء متأخر' : '';
                     const msg = `تم إلغاء موعد رقم ${payload.appointmentId}${lateNote}.`;
-                    notify('إلغاء موعد', msg, false);
+                    notifyLocal({ title: 'إلغاء موعد', body: msg, url: '/home_salon.html#appointments', isSuccess: false, tag: 'appointment_cancelled' });
                     // Auto-refresh appointments to reflect the cancellation
                     if (typeof currentAppointmentsFilter !== 'undefined') {
                         loadAppointments(currentAppointmentsFilter);

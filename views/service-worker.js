@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saloony-cache-v3';
+const CACHE_NAME = 'saloony-cache-v4';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -42,32 +42,46 @@ self.addEventListener('fetch', (event) => {
 
 // Placeholder push event
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : { title: 'Saloony', body: 'لديك إشعار جديد', url: '/home_salon.html' };
-  const notificationData = { url: data.url || '/home_salon.html' };
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/images/Saloony-app_icon.png',
-      badge: '/images/Saloony-app_icon.png',
-      data: notificationData
-    })
-  );
+  let payload = { title: 'Saloony', body: 'لديك إشعار جديد', url: '/home_salon.html' };
+  try {
+    if (event.data) {
+      // Support both JSON and plain text payloads
+      try { payload = event.data.json(); }
+      catch { payload = { title: 'Saloony', body: event.data.text(), url: '/home_salon.html' }; }
+    }
+  } catch (e) {}
+
+  const targetUrl = payload.url || '/home_salon.html';
+  const options = {
+    body: payload.body || 'لديك إشعار جديد',
+    icon: '/images/Saloony-app_icon.png',
+    badge: '/images/Saloony-app_icon.png',
+    data: { url: targetUrl },
+    lang: 'ar',
+    dir: 'rtl',
+    tag: payload.tag || 'saloony',
+    renotify: true,
+    requireInteraction: false,
+    timestamp: Date.now()
+  };
+  event.waitUntil(self.registration.showNotification(payload.title || 'Saloony', options));
 });
 
 // Handle notification click to focus app or open relevant page
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification?.data?.url || '/home_salon.html';
+  const absoluteTarget = new URL(targetUrl, location.origin);
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        const url = new URL(client.url);
-        if (url.pathname === targetUrl.replace(location.origin, '')) {
+        const clientUrl = new URL(client.url);
+        if (clientUrl.pathname === absoluteTarget.pathname) {
           client.focus();
           return;
         }
       }
-      return clients.openWindow(targetUrl);
+      return clients.openWindow(absoluteTarget.href);
     })
   );
 });
@@ -78,14 +92,19 @@ self.addEventListener('message', (event) => {
   if (msg.type === 'saloony-notify') {
     const title = msg.title || 'Saloony';
     const body = msg.body || 'لديك إشعار جديد';
-    const data = { url: msg.url || '/home_salon.html' };
-    event.waitUntil(
-      self.registration.showNotification(title, {
-        body,
-        icon: '/images/Saloony-app_icon.png',
-        badge: '/images/Saloony-app_icon.png',
-        data
-      })
-    );
+    const targetUrl = msg.url || '/home_salon.html';
+    const options = {
+      body,
+      icon: '/images/Saloony-app_icon.png',
+      badge: '/images/Saloony-app_icon.png',
+      data: { url: targetUrl },
+      lang: 'ar',
+      dir: 'rtl',
+      tag: msg.tag || 'saloony',
+      renotify: true,
+      requireInteraction: false,
+      timestamp: Date.now()
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
   }
 });

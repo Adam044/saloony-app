@@ -934,6 +934,57 @@ function displayMessage(message, type = 'info') {
     }, 5000);
 }
 
+// Unified notification helpers (sound, vibration, SW notification)
+const notificationAudio = new Audio('/sounds/salon_notifications.wav');
+notificationAudio.preload = 'auto';
+let audioUnlocked = false;
+
+function unlockAudio() {
+    if (audioUnlocked) return;
+    notificationAudio.play().then(() => {
+        notificationAudio.pause();
+        notificationAudio.currentTime = 0;
+        audioUnlocked = true;
+    }).catch(() => {});
+}
+window.addEventListener('click', unlockAudio, { once: true });
+
+function playNotificationSound() {
+    if (!audioUnlocked) return;
+    try {
+        notificationAudio.currentTime = 0;
+        notificationAudio.play().catch(() => {});
+    } catch (e) {}
+}
+
+async function notifyLocal({ title = 'Saloony', body = 'لديك إشعار جديد', url = '/home_user.html', isSuccess = true, tag = 'saloony' } = {}) {
+    // In-app toast
+    displayMessage(body, isSuccess ? 'success' : 'error');
+    // Sound + vibration
+    playNotificationSound();
+    if (navigator.vibrate) navigator.vibrate(100);
+
+    // Service Worker notification
+    try {
+        if (!('serviceWorker' in navigator)) return;
+        const reg = await navigator.serviceWorker.ready;
+        const sw = navigator.serviceWorker.controller || reg.active;
+        if (sw) {
+            sw.postMessage({ type: 'saloony-notify', title, body, url, tag });
+        } else if ('Notification' in window && Notification.permission === 'granted') {
+            reg.showNotification(title, { body, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png', data: { url }, tag });
+        } else if ('Notification' in window && Notification.permission !== 'denied') {
+            Notification.requestPermission().then((res) => {
+                if (res === 'granted') {
+                    const ctrl = navigator.serviceWorker.controller || reg.active;
+                    if (ctrl) ctrl.postMessage({ type: 'saloony-notify', title, body, url, tag });
+                    else reg.showNotification(title, { body, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png', data: { url }, tag });
+                }
+            }).catch(() => {});
+        }
+    } catch (e) {}
+}
+
 function formatTime(timeString) {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -1006,6 +1057,17 @@ function resetBookingSteps() {
     document.getElementById('next-step-2-btn').disabled = true;
     document.getElementById('next-step-3-btn').disabled = true;
     document.getElementById('confirm-booking-btn').disabled = true;
+
+    // Ensure confirm button label is restored (includes final-price span)
+    const confirmBtn = document.getElementById('confirm-booking-btn');
+    if (confirmBtn) {
+        confirmBtn.innerHTML = 'تأكيد الحجز (<span id="final-price">...</span> شيكل)';
+    }
+    // Reset selected duration display
+    const durationEl = document.getElementById('selected-duration');
+    if (durationEl) {
+        durationEl.textContent = '--';
+    }
     
     document.getElementById('date-input').value = '';
     document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full">اختر تاريخًا أولاً.</p>';
@@ -1563,21 +1625,12 @@ async function loadUserAppointments(filter) {
 
         // Schedule local PWA reminders: start-of-day and 1 hour before
         try {
-            const reg = await navigator.serviceWorker.ready;
-            const sw = navigator.serviceWorker.controller || reg.active;
             const scheduleReminder = (title, body, ts) => {
                 // If the appointment is in the future, set a timer
                 const delay = ts - Date.now();
                 if (delay > 0 && delay < 30 * 24 * 60 * 60 * 1000) { // cap at 30 days
                     setTimeout(() => {
-                        try {
-                            if (sw) {
-                                sw.postMessage({ type: 'saloony-notify', title, body, url: '/home_user.html' });
-                            } else if (Notification && Notification.permission === 'granted') {
-                                reg.showNotification(title, { body, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png' });
-                            }
-                            if (navigator.vibrate) navigator.vibrate(100);
-                        } catch (e) {}
+                        notifyLocal({ title, body, url: '/home_user.html#appointments', isSuccess: true, tag: 'appointment_reminder' });
                     }, delay);
                 }
             };
@@ -1884,16 +1937,7 @@ async function confirmCancellation(isEarlyCancel = false) {
             displayMessage(result.message || 'تم إلغاء الموعد بنجاح.', 'success');
             loadUserAppointments(filter);
             try {
-                const reg = await navigator.serviceWorker.ready;
-                const sw = navigator.serviceWorker.controller || reg.active;
-                const notifTitle = 'تم إلغاء الموعد';
-                const notifBody = 'تم إلغاء موعدك بنجاح.';
-                if (sw) {
-                    sw.postMessage({ type: 'saloony-notify', title: notifTitle, body: notifBody, url: '/home_user.html#appointments' });
-                } else if ('Notification' in window && Notification.permission === 'granted') {
-                    reg.showNotification(notifTitle, { body: notifBody, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png' });
-                }
-                if (navigator.vibrate) navigator.vibrate(100);
+                notifyLocal({ title: 'تم إلغاء الموعد', body: 'تم إلغاء موعدك بنجاح.', url: '/home_user.html#appointments', isSuccess: true, tag: 'appointment_cancelled' });
             } catch (e) { }
             // Refresh user data in case a strike was issued
             if (result.strikeIssued) {
@@ -3016,16 +3060,9 @@ async function confirmBooking() {
         hideBookingModal();
         showConfirmationModal(localConfirmationData); 
         try {
-            const reg = await navigator.serviceWorker.ready;
-            const sw = navigator.serviceWorker.controller || reg.active;
             const notifTitle = 'تم تأكيد الحجز';
             const notifBody = `تم حجز موعدك في ${selectedSalon.salon_name} بتاريخ ${formatDateDDMMYYYY(selectedDate)} الساعة ${formatTime(selectedTime)}.`;
-            if (sw) {
-                sw.postMessage({ type: 'saloony-notify', title: notifTitle, body: notifBody, url: '/home_user.html#appointments' });
-            } else if ('Notification' in window && Notification.permission === 'granted') {
-                reg.showNotification(notifTitle, { body: notifBody, icon: '/images/Saloony-app_icon.png', badge: '/images/Saloony-app_icon.png' });
-            }
-            if (navigator.vibrate) navigator.vibrate(100);
+            notifyLocal({ title: notifTitle, body: notifBody, url: '/home_user.html#appointments', isSuccess: true, tag: 'appointment_booked' });
         } catch (e) { }
         
         if (currentView === 'appointments-view') {
@@ -3152,8 +3189,15 @@ function renderServiceSelection(services) {
         const mainServicesCount = selectedServices.filter(s => s.service_type === 'main').length;
         const addOnsCount = selectedServices.filter(s => s.service_type === 'add_on').length;
         
-        document.getElementById('selected-duration').textContent = totalDuration > 0 ? `${totalDuration} دقيقة` : '--';
-        document.getElementById('final-price').textContent = totalPrice > 0 ? totalPrice.toFixed(0) : '...';
+        // Null-safe updates to avoid errors if elements were temporarily missing
+        const durationEl = document.getElementById('selected-duration');
+        if (durationEl) {
+            durationEl.textContent = totalDuration > 0 ? `${totalDuration} دقيقة` : '--';
+        }
+        const priceEl = document.getElementById('final-price');
+        if (priceEl) {
+            priceEl.textContent = totalPrice > 0 ? totalPrice.toFixed(0) : '...';
+        }
         
         // Enable next step if at least one main service is selected
         document.getElementById('next-step-2-btn').disabled = mainServicesCount === 0;
