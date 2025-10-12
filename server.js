@@ -2423,11 +2423,34 @@ app.get('/api/debug/align-schema', async (req, res) => {
     }
 });
 
+// Lightweight health endpoint for production diagnostics
+app.get('/api/health', async (req, res) => {
+    const info = {
+        nodeEnv: process.env.NODE_ENV || 'undefined',
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        dbMode: db.isProduction ? 'postgres' : 'sqlite',
+    };
+    try {
+        // Simple connectivity check
+        const rows = await db.query('SELECT 1 as ok');
+        res.json({ success: true, env: info, db: { ok: true, rows } });
+    } catch (err) {
+        console.error('Health check DB error:', err.message);
+        res.status(500).json({ success: false, env: info, db: { ok: false, error: err.message } });
+    }
+});
+
 app.listen(PORT, async () => {
     console.log(`Salonni server running on port: http://localhost:${PORT}`);
     
     // Initialize database and insert master data
     try {
+        const ping = await db.ping();
+        if (ping.ok) {
+            console.log('DB ping ok at startup. now=', ping.now);
+        } else {
+            console.warn('DB ping failed at startup:', ping.error);
+        }
         await ensurePerfIndexes();
         await initializeDb();
         await alignSchema();

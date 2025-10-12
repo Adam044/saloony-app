@@ -18,7 +18,25 @@ class Database {
             this.pool = new Pool({
                 connectionString,
                 // Ensure SSL is handled correctly for Render/Supabase
-                ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+                ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                // Stabilize connections in serverless/managed environments
+                max: parseInt(process.env.PG_POOL_MAX || '10', 10),
+                idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT || '30000', 10),
+                connectionTimeoutMillis: parseInt(process.env.PG_CONN_TIMEOUT || '10000', 10),
+                keepAlive: true
+            });
+            // Pool diagnostics for production stability
+            this.pool.on('error', (err) => {
+                console.error('PostgreSQL Pool Error:', err.message);
+            });
+            this.pool.on('connect', () => {
+                console.log('PostgreSQL pool: client connected');
+            });
+            this.pool.on('acquire', () => {
+                // console.log('PostgreSQL pool: client acquired');
+            });
+            this.pool.on('remove', () => {
+                console.log('PostgreSQL pool: client removed');
             });
             console.log('Using PostgreSQL via DATABASE_URL');
         } else {
@@ -33,6 +51,15 @@ class Database {
             if (process.env.NODE_ENV === 'production') {
                 console.warn('DATABASE_URL not set. Falling back to SQLite in production.');
             }
+        }
+    }
+
+    async ping() {
+        try {
+            const rows = await this.query('SELECT NOW() as now');
+            return { ok: true, now: rows && rows[0] && rows[0].now };
+        } catch (err) {
+            return { ok: false, error: err.message };
         }
     }
 
