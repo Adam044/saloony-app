@@ -497,7 +497,12 @@ app.get('/api/push/public-key', (req, res) => {
 // Subscribe endpoint: store subscription for a user or salon
 app.post('/api/push/subscribe', async (req, res) => {
     try {
-        const { user_id, salon_id, subscription } = req.body;
+        const { user_id, salon_id } = req.body;
+        // Accept both new style { subscription } and legacy { endpoint, keys }
+        let subscription = req.body.subscription;
+        if (!subscription && req.body.endpoint && req.body.keys) {
+            subscription = { endpoint: req.body.endpoint, keys: req.body.keys };
+        }
         if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
             return res.status(400).json({ success: false, message: 'Invalid subscription payload.' });
         }

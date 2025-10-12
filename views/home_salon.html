@@ -799,14 +799,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     applicationServerKey: toUint8Array(vapidKey)
                 });
 
-                // Send to server
+                // Send to server in the expected format
                 const raw = localStorage.getItem('salonni_user');
                 const user = raw ? JSON.parse(raw) : {};
                 const body = {
-                    endpoint: sub.endpoint,
-                    keys: sub.toJSON().keys,
                     user_id: user.userId || user.userid || user.id || null,
-                    salon_id: user.salonId || user.salon_id || user.salonid || null
+                    salon_id: user.salonId || user.salon_id || user.salonid || null,
+                    subscription: sub.toJSON()
                 };
                 await fetch('/api/push/subscribe', {
                     method: 'POST',
@@ -2619,7 +2618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const user = raw ? JSON.parse(raw) : {};
             await fetch('/api/push/subscribe', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ endpoint: sub.endpoint, keys: sub.toJSON().keys, user_id: user.userId || user.id || null, salon_id: user.salonId || null })
+              body: JSON.stringify({ user_id: user.userId || user.id || null, salon_id: user.salonId || null, subscription: sub.toJSON() })
             });
           }
         }

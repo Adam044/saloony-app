@@ -3478,10 +3478,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 const body = {
-                    endpoint: sub.endpoint,
-                    keys: sub.toJSON().keys,
                     user_id: currentUser.userId || currentUser.userid || currentUser.id || null,
-                    salon_id: currentUser.salonId || currentUser.salon_id || currentUser.salonid || null
+                    salon_id: currentUser.salonId || currentUser.salon_id || currentUser.salonid || null,
+                    subscription: sub.toJSON()
                 };
                 await fetch('/api/push/subscribe', {
                     method: 'POST',
@@ -3562,7 +3561,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toUint8Array(vapidKey) });
             await fetch('/api/push/subscribe', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ endpoint: sub.endpoint, keys: sub.toJSON().keys, user_id: currentUser.userId || null, salon_id: null })
+              body: JSON.stringify({ user_id: currentUser.userId || null, salon_id: null, subscription: sub.toJSON() })
             });
           }
         }
