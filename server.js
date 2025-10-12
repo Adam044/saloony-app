@@ -504,6 +504,7 @@ app.post('/api/push/subscribe', async (req, res) => {
             subscription = { endpoint: req.body.endpoint, keys: req.body.keys };
         }
         if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+            console.warn('Subscribe rejected: invalid payload', { hasSub: !!subscription, endpoint: subscription?.endpoint, keys: subscription?.keys ? Object.keys(subscription.keys) : [] });
             return res.status(400).json({ success: false, message: 'Invalid subscription payload.' });
         }
 
@@ -515,8 +516,10 @@ app.post('/api/push/subscribe', async (req, res) => {
         const existing = await dbGet('SELECT id FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
         if (existing) {
             await dbRun('UPDATE push_subscriptions SET user_id = $1, salon_id = $2, p256dh = $3, auth = $4, last_active = CURRENT_TIMESTAMP WHERE id = $5', [user_id || null, salon_id || null, p256dh, auth, existing.id]);
+            console.log('Push subscription updated', { endpoint, user_id: user_id || null, salon_id: salon_id || null, id: existing.id });
         } else {
             await dbRun('INSERT INTO push_subscriptions (user_id, salon_id, endpoint, p256dh, auth, last_active) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)', [user_id || null, salon_id || null, endpoint, p256dh, auth]);
+            console.log('Push subscription inserted', { endpoint, user_id: user_id || null, salon_id: salon_id || null });
         }
 
         res.json({ success: true });
@@ -541,6 +544,25 @@ app.post('/api/push/unsubscribe', async (req, res) => {
     }
 });
 
+// Debug endpoint: list subscriptions by user or salon
+app.get('/api/debug/push-subscriptions', async (req, res) => {
+    try {
+        const { user_id, salon_id } = req.query;
+        let rows = [];
+        if (user_id) {
+            rows = await dbAll('SELECT id, user_id, salon_id, endpoint, last_active FROM push_subscriptions WHERE user_id = $1', [user_id]);
+        } else if (salon_id) {
+            rows = await dbAll('SELECT id, user_id, salon_id, endpoint, last_active FROM push_subscriptions WHERE salon_id = $1', [salon_id]);
+        } else {
+            rows = await dbAll('SELECT id, user_id, salon_id, endpoint, last_active FROM push_subscriptions ORDER BY id DESC LIMIT 50');
+        }
+        res.json({ success: true, count: rows.length, rows });
+    } catch (err) {
+        console.error('Debug list subscriptions error:', err.message);
+        res.status(500).json({ success: false, message: 'Failed to list subscriptions.' });
+    }
+});
+
 // Helper to send a push notification to all subscriptions for a user or salon
 async function sendPushToTargets({ user_id, salon_id, payload }) {
     try {
@@ -552,6 +574,7 @@ async function sendPushToTargets({ user_id, salon_id, payload }) {
         } else {
             return;
         }
+        console.log('sendPushToTargets: subscriptions found', { user_id: user_id || null, salon_id: salon_id || null, count: rows ? rows.length : 0 });
         if (!rows || rows.length === 0) return;
 
         const payloadStr = JSON.stringify(payload);
