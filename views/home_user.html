@@ -938,16 +938,28 @@ function displayMessage(message, type = 'info') {
 const notificationAudio = new Audio('/sounds/salon_notifications.wav');
 notificationAudio.preload = 'auto';
 let audioUnlocked = false;
+let audioCtx = null;
 
-function unlockAudio() {
+async function unlockAudio() {
     if (audioUnlocked) return;
-    notificationAudio.play().then(() => {
-        notificationAudio.pause();
-        notificationAudio.currentTime = 0;
-        audioUnlocked = true;
-    }).catch(() => {});
+    try {
+        // Resume audio context without playing the notification sound file
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx && audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+        // Play a short, silent oscillator to unlock audio without audible output
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = 0; // silence
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.01);
+    } catch (e) {}
+    audioUnlocked = true;
 }
-window.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('click', unlockAudio, { once: true });
 
 function playNotificationSound() {
     if (!audioUnlocked) return;
