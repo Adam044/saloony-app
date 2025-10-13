@@ -3739,8 +3739,8 @@ document.addEventListener('DOMContentLoaded', function() {
       <button id="notify-permission-later" class="py-2 px-4 rounded-xl border">لاحقًا</button>
     </div>
   </div>
-  </div>
-  <script>
+</div>
+<script>
   (function(){
     const modal = document.getElementById('notify-permission-modal');
     const enableBtn = document.getElementById('notify-permission-enable');
@@ -3810,62 +3810,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     showModalIfNeeded();
   })();
-  </script>
+</script>
 </body>
 </html>
-    // Socket.IO client for user real-time updates
-    try {
-      const socketScript = document.createElement('script');
-      socketScript.src = '/socket.io/socket.io.js';
-      socketScript.defer = true;
-      document.head.appendChild(socketScript);
-      socketScript.addEventListener('load', () => {
-        if (typeof io !== 'undefined') {
-          const socket = io({ transports: ['websocket', 'polling'] });
-          const userInfoRaw = localStorage.getItem('salonni_user');
-          let userId = null;
-          try {
-            const parsed = JSON.parse(userInfoRaw || '{}');
-            userId = parsed && (parsed.userId || parsed.id);
-          } catch (e) {}
-          if (userId) {
-            socket.emit('joinUser', userId);
-            socket.on('joinedUser', ({ room }) => {
-              console.log('Joined Socket.IO room:', room);
-            });
-            // New appointment created for this user
-            socket.on('newAppointment', (payload) => {
-              try {
-                const activeFilter = window.currentUserAppointmentsFilter || 'upcoming';
-                if (typeof loadUserAppointments === 'function') {
-                  loadUserAppointments(activeFilter);
-                }
-              } catch (e) { console.warn('socket newAppointment handler error:', e.message); }
-            });
-            // Appointment status changed (e.g., cancelled by salon)
-            socket.on('appointment_status_updated', (payload) => {
-              try {
-                const activeFilter = window.currentUserAppointmentsFilter || 'upcoming';
-                if (typeof loadUserAppointments === 'function') {
-                  loadUserAppointments(activeFilter);
-                }
-              } catch (e) { console.warn('socket appointment_status_updated handler error:', e.message); }
-            });
-          }
-          // Global time slot updates refresh visible slot lists if applicable
-          socket.on('time_slot_updated', (payload) => {
-            try {
-              if (typeof loadTimeSlots === 'function') {
-                const selectedSalon = window.selectedSalon || null;
-                const selectedDate = document.querySelector('#date-input')?.value || null;
-                if (selectedSalon && selectedDate) {
-                  loadTimeSlots(selectedSalon.id, selectedDate);
-                }
-              }
-            } catch (e) { console.warn('socket time_slot_updated handler error:', e.message); }
-          });
-        }
-      });
-    } catch (e) {
-      console.warn('Failed initializing Socket.IO on user page:', e.message);
-    }

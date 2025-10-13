@@ -2654,23 +2654,23 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.on('joinedSalon', ({ room }) => {
           console.log('Joined Socket.IO room:', room);
         });
-        // Server emits 'newBooking' with rich appointment data
-        socket.on('newBooking', (payload) => {
+        // When an appointment is booked, reload the list
+        socket.on('appointment_booked', (payload) => {
           try {
             if (typeof currentAppointmentsFilter !== 'undefined') {
               loadAppointments(currentAppointmentsFilter);
             }
             showRefreshBanner && showRefreshBanner();
-          } catch (e) { console.warn('socket newBooking handler error:', e.message); }
+          } catch (e) { console.warn('socket appointment_booked handler error:', e.message); }
         });
-        // Server emits 'appointment_status_updated' for cancellations or completions
-        socket.on('appointment_status_updated', (payload) => {
+        // When an appointment is cancelled, reload the list
+        socket.on('appointment_cancelled', (payload) => {
           try {
             if (typeof currentAppointmentsFilter !== 'undefined') {
               loadAppointments(currentAppointmentsFilter);
             }
             showRefreshBanner && showRefreshBanner();
-          } catch (e) { console.warn('socket appointment_status_updated handler error:', e.message); }
+          } catch (e) { console.warn('socket appointment_cancelled handler error:', e.message); }
         });
       }
     } catch (e) {
