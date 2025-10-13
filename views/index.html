@@ -72,7 +72,7 @@
         </div>
 
         <!-- iOS Install Guide Toggle -->
-        <button id="iosGuideToggle" class="mt-6 hidden bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
+        <button id="iosGuideToggle" class="mt-6 bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
             <i class="fa-brands fa-apple"></i>
             عرض خطوات التثبيت على iOS
             <i class="fa-solid fa-chevron-down"></i>
@@ -195,6 +195,23 @@
     
 </footer>
 
+<!-- iOS Non-Safari Guidance Modal -->
+<div id="iosBrowserModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 w-11/12 max-w-md text-[#1E293B]">
+        <div class="flex items-center gap-2 mb-3">
+            <i class="fa-brands fa-apple text-2xl"></i>
+            <h3 class="font-bold text-lg">افتح Safari لإكمال التثبيت</h3>
+        </div>
+        <p class="text-sm text-gray-600 mb-4">
+            يبدو أنك تستخدم متصفحًا غير Safari على iOS. يرجى فتح هذا الرابط في Safari ثم اتّبع خطوات "التثبيت" من زر المشاركة.
+        </p>
+        <div class="flex gap-3">
+            <button id="copyLinkBtn" class="bg-[#06C167] text-white px-4 py-2 rounded-md font-bold">نسخ الرابط</button>
+            <button id="closeIosBrowserModal" class="bg-gray-200 text-[#1E293B] px-4 py-2 rounded-md font-bold">متابعة</button>
+        </div>
+    </div>
+ </div>
+
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
 <script>
@@ -213,6 +230,9 @@
     const iosInstallGuide = document.getElementById('iosInstallGuide');
     const iosGuideToggle = document.getElementById('iosGuideToggle');
     const iosInstructionsImageContainer = document.getElementById('iosInstructionsImageContainer');
+    const iosBrowserModal = document.getElementById('iosBrowserModal');
+    const closeIosBrowserModal = document.getElementById('closeIosBrowserModal');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
     window.addEventListener('beforeinstallprompt', (e) => {
         // Do not call preventDefault here to allow browser banner when eligible
         deferredPrompt = e;
@@ -225,36 +245,55 @@
     if (isIOS && !isStandalone && installBtn) {
         installBtn.style.display = 'inline-flex';
         installBtn.textContent = 'تثبيت';
-        // Show collapsible toggle for iOS Safari; keep guide hidden by default
-        if (isSafari && iosGuideToggle) iosGuideToggle.classList.remove('hidden');
-        // Clicking the toggle expands/collapses the guide
-        if (iosGuideToggle && iosInstallGuide) {
-            iosGuideToggle.addEventListener('click', () => {
-                const isHidden = iosInstallGuide.classList.contains('hidden');
-                iosInstallGuide.classList.toggle('hidden');
-                const chevron = iosGuideToggle.querySelector('.fa-chevron-down');
-                if (chevron) chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-                iosGuideToggle.textContent = isHidden ? 'إخفاء خطوات التثبيت على iOS' : 'عرض خطوات التثبيت على iOS';
-                // Re-add icons since textContent replaced inner HTML
-                iosGuideToggle.innerHTML = `${isHidden ? '<i class=\"fa-brands fa-apple\"></i> إخفاء خطوات التثبيت على iOS <i class=\"fa-solid fa-chevron-up\"></i>' : '<i class=\"fa-brands fa-apple\"></i> عرض خطوات التثبيت على iOS <i class=\"fa-solid fa-chevron-down\"></i>'}`;
+    }
 
-                // Hide image when collapsing guide
-                if (!isHidden && iosInstructionsImageContainer) {
-                    iosInstructionsImageContainer.classList.add('hidden');
-                }
-            });
-            // Reveal the iOS instructions image when any step is pressed
-            const stepsGrid = iosInstallGuide.querySelector('.grid');
-            if (stepsGrid && iosInstructionsImageContainer) {
-                stepsGrid.querySelectorAll('.flex.flex-col').forEach(card => {
-                    card.style.cursor = 'pointer';
-                    card.addEventListener('click', () => {
-                        iosInstructionsImageContainer.classList.remove('hidden');
-                        iosInstructionsImageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    });
+    // Always enable iOS guide toggle and image reveal (only after step 3)
+    if (iosGuideToggle && iosInstallGuide) {
+        iosGuideToggle.addEventListener('click', () => {
+            const isHidden = iosInstallGuide.classList.contains('hidden');
+            iosInstallGuide.classList.toggle('hidden');
+            const chevron = iosGuideToggle.querySelector('.fa-chevron-down');
+            if (chevron) chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            iosGuideToggle.textContent = isHidden ? 'إخفاء خطوات التثبيت على iOS' : 'عرض خطوات التثبيت على iOS';
+            // Re-add icons since textContent replaced inner HTML
+            iosGuideToggle.innerHTML = `${isHidden ? '<i class="fa-brands fa-apple"></i> إخفاء خطوات التثبيت على iOS <i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-brands fa-apple"></i> عرض خطوات التثبيت على iOS <i class="fa-solid fa-chevron-down"></i>'}`;
+
+            // Hide image when collapsing guide
+            if (!isHidden && iosInstructionsImageContainer) {
+                iosInstructionsImageContainer.classList.add('hidden');
+            }
+        });
+        const stepsGrid = iosInstallGuide.querySelector('.grid');
+        if (stepsGrid && iosInstructionsImageContainer) {
+            const cards = stepsGrid.querySelectorAll('.flex.flex-col');
+            cards.forEach(card => { card.style.cursor = 'pointer'; });
+            if (cards[2]) {
+                cards[2].addEventListener('click', () => {
+                    iosInstructionsImageContainer.classList.remove('hidden');
+                    iosInstructionsImageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 });
             }
         }
+    }
+
+    // iOS users not in Safari: show guidance modal
+    if (isIOS && !isStandalone && !isSafari && iosBrowserModal) {
+        iosBrowserModal.classList.remove('hidden');
+    }
+    if (closeIosBrowserModal && iosBrowserModal) {
+        closeIosBrowserModal.addEventListener('click', () => {
+            iosBrowserModal.classList.add('hidden');
+        });
+    }
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(location.href);
+                alert('تم نسخ الرابط. افتح Safari وألصقه لبدء التثبيت.');
+            } catch (e) {
+                alert('لم يتم النسخ تلقائيًا. انسخ الرابط يدويًا من شريط العنوان.');
+            }
+        });
     }
     installBtn.addEventListener('click', async () => {
         if (!deferredPrompt) {
