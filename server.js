@@ -622,6 +622,72 @@ async function sendPushToTargets({ user_id, salon_id, payload }) {
 }
 
 // ===================================
+// SSE: Real-time salon notifications
+// ===================================
+// Track connected SSE clients per salon
+const salonClients = new Map(); // Map<salonId, Set<res>>
+
+function addSalonClient(salonId, res) {
+    const key = String(salonId);
+    if (!salonClients.has(key)) salonClients.set(key, new Set());
+    salonClients.get(key).add(res);
+}
+
+function removeSalonClient(salonId, res) {
+    const key = String(salonId);
+    if (salonClients.has(key)) {
+        const set = salonClients.get(key);
+        set.delete(res);
+        if (set.size === 0) salonClients.delete(key);
+    }
+}
+
+function sendSalonEvent(salonId, eventType, payload) {
+    const key = String(salonId);
+    const clients = salonClients.get(key);
+    if (!clients || clients.size === 0) return;
+    const data = JSON.stringify({ type: eventType, salonId: Number(salonId), ...payload });
+    for (const res of clients) {
+        try {
+            res.write(`data: ${data}\n\n`);
+        } catch (e) {
+            // Best-effort: drop on error
+            removeSalonClient(salonId, res);
+        }
+    }
+}
+
+// SSE stream for a salon dashboard
+app.get('/api/salon/stream/:salon_id', (req, res) => {
+    const salonId = req.params.salon_id;
+    if (!salonId || isNaN(parseInt(salonId))) {
+        return res.status(400).end();
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    // Disable proxy buffering (useful on some hosts)
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    // Initial ping to establish stream on client
+    res.write(`event: connected\n`);
+    res.write(`data: ${JSON.stringify({ salonId: Number(salonId) })}\n\n`);
+
+    addSalonClient(salonId, res);
+
+    const heartbeat = setInterval(() => {
+        try { res.write(`: heartbeat\n\n`); } catch (e) { /* ignore */ }
+    }, 25000);
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        removeSalonClient(salonId, res);
+        try { res.end(); } catch (e) { /* ignore */ }
+    });
+});
+
+// ===================================
 // Contact Us
 // ===================================
 app.post('/api/contact', async (req, res) => {
@@ -821,7 +887,7 @@ app.post('/api/auth/login', async (req, res) => {
         const hashedPassword = hashPassword(password);
 
         // 1. Find user in USERS table (Unified Check)
-        let userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE email = $1', [email]);
+        let userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password FROM users WHERE email = $1', [email]);
         console.log('Users table query result:', userResult);
         
         if (!userResult || userResult.length === 0) {
@@ -1038,7 +1104,7 @@ app.get('/api/salon/details/:salon_id', async (req, res) => {
         FROM salons s
         LEFT JOIN reviews r ON s.id = r.salon_id
         WHERE s.id = $1
-        GROUP BY s.id, s.salon_name, s.address, s.city, s.image_url
+        GROUP BY s.id
     `;
     try {
         const row = await dbGet(sql, [salonId]);
@@ -1344,9 +1410,9 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
         let orderBy = 'ASC';
 
         if (filter === 'today') {
-            // FIX: Use DATE() extraction function suitable for PostgreSQL/SQLite
+            // FIX: Use DATE() extraction function suitable for PostgreSQL
             const today = new Date().toISOString().split('T')[0];
-            whereClause = `AND SUBSTR(a.start_time, 1, 10) = $2 AND a.status = 'Scheduled'`; // Use SUBSTR for start_time YYYY-MM-DD
+            whereClause = `AND DATE(a.start_time) = $2`;
             params.push(today);
             orderBy = 'ASC';
         } else if (filter === 'upcoming') {
@@ -1360,25 +1426,15 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
             params.push(now);
             orderBy = 'DESC';
         } else {
-            // Include scheduled appointments for today in the filter query if we don't have a match.
-            // If the filter is 'today', we only show 'Scheduled'
-            if (filter === 'today') {
-                const today = new Date().toISOString().split('T')[0];
-                whereClause = `AND SUBSTR(a.start_time, 1, 10) = $2 AND a.status = 'Scheduled'`;
-                params.push(today);
-                orderBy = 'ASC';
-            } else {
-                return res.status(400).json({ success: false, message: 'Invalid filter.' });
-            }
+            return res.status(400).json({ success: false, message: 'Invalid filter.' });
         }
 
         const sql = `
             SELECT 
-                a.id, a.start_time, a.end_time, a.status, a.price, a.date_booked,
+                a.id, a.start_time, a.end_time, a.status, a.price, 
                 u.name AS user_name, u.phone AS user_phone,
                 s.name_ar AS service_name,
-                st.name AS staff_name,
-                a.user_id 
+                st.name AS staff_name
             FROM appointments a
             JOIN users u ON a.user_id = u.id
             JOIN services s ON a.service_id = s.id
@@ -1393,7 +1449,7 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
         const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
             try {
                 const servicesQuery = `
-                    SELECT s.id, s.name_ar, aps.price 
+                    SELECT s.name_ar, aps.price 
                     FROM appointment_services aps
                     JOIN services s ON aps.service_id = s.id
                     WHERE aps.appointment_id = $1
@@ -1417,6 +1473,12 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
             }
         }));
 
+        console.log("Appointments query result:", appointmentsWithServices.map(row => ({
+            id: row.id,
+            service_name: row.service_name,
+            services_names: row.services_names,
+            user_name: row.user_name
+        })));
         res.json({ success: true, appointments: appointmentsWithServices });
     } catch (err) {
         console.error("Appointments fetch error:", err.message);
@@ -1433,11 +1495,11 @@ app.get('/api/salon/:salon_id/appointments/:date', async (req, res) => {
          return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
     }
     
-    // FIX: Using SUBSTR for date extraction suitable for both PostgreSQL and SQLite
+    // FIX: Using DATE() extraction function suitable for PostgreSQL and use $2 placeholder
     const sql = `
         SELECT id, start_time, end_time, staff_id, status
         FROM appointments
-        WHERE salon_id = $1 AND SUBSTR(start_time, 1, 10) = $2
+        WHERE salon_id = $1 AND DATE(start_time) = $2
         AND status = 'Scheduled'
     `;
     
@@ -1460,8 +1522,8 @@ app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
     }
     
     try {
-        // First, get the appointment details to find the user_id and salon_id
-        const getAppointmentQuery = 'SELECT user_id, salon_id, status FROM appointments WHERE id = $1'; 
+        // First, get the appointment details to find the user_id
+        const getAppointmentQuery = 'SELECT user_id, status FROM appointments WHERE id = $1'; 
         const appointment = await dbGet(getAppointmentQuery, [appointmentId]);
 
         if (!appointment) {
@@ -1477,43 +1539,21 @@ app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
         const sql = `UPDATE appointments SET status = $1 WHERE id = $2`;
         await dbRun(sql, [status, appointmentId]);
 
-        let strikeIssued = false;
-        let newStrikes = null;
-
         // If status is "Absent", increment user strikes
         if (status === 'Absent') {
-            const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1 RETURNING strikes';
-            const strikeResult = await dbGet(strikeQuery, [appointment.user_id]);
-            newStrikes = strikeResult ? strikeResult.strikes : 0;
-            strikeIssued = true;
-        }
-
-        // --- REAL-TIME FIX: Notify Salon and User ---
-        if (io) {
-            const payload = {
-                appointmentId: Number(appointmentId),
-                newStatus: status,
-                strikeIssued: strikeIssued,
-                newStrikes: newStrikes
-            };
+            const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1';
+            await dbRun(strikeQuery, [appointment.user_id]);
             
-            // Notify the salon dashboard
-            io.to(`salon_${appointment.salon_id}`).emit('appointment_status_updated', payload);
-            
-            // Notify the user client
-            io.to(`user_${appointment.user_id}`).emit('appointment_status_updated', payload);
+            res.json({ 
+                success: true, 
+                message: 'تم تحديث حالة الموعد وإضافة إنذار للمستخدم'
+            });
+        } else {
+            res.json({ 
+                success: true, 
+                message: `تم تحديث حالة الموعد إلى ${status === 'Completed' ? 'مكتمل' : 'ملغي'}`
+            });
         }
-        // --- END REAL-TIME FIX ---
-
-        const message = strikeIssued 
-            ? `تم تحديث حالة الموعد وإضافة إنذار للمستخدم (الإنذارات: ${newStrikes}/3)` 
-            : `تم تحديث حالة الموعد إلى ${status === 'Completed' ? 'مكتمل' : 'ملغي'}`;
-
-        res.json({ 
-            success: true, 
-            message: message,
-            strikeIssued: strikeIssued
-        });
     } catch (err) {
         console.error("Appointment status update error:", err.message);
         return res.status(500).json({ success: false, message: 'Database error.' });
@@ -1549,8 +1589,8 @@ app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
 
     const sql = `
         SELECT 
-            a.id, a.start_time, a.end_time, a.status, a.price, 
-            s.salon_name, s.id as salon_id,
+            a.id, a.start_time, a.end_time, a.status, a.price, -- a.price is now correctly selected
+            s.salon_name,
             serv.name_ar AS service_name,
             st.name AS staff_name
         FROM appointments a
@@ -1567,7 +1607,7 @@ app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
         const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
             try {
                 const servicesQuery = `
-                    SELECT s.id, s.name_ar, aps.price 
+                    SELECT s.name_ar, aps.price 
                     FROM appointment_services aps
                     JOIN services s ON aps.service_id = s.id
                     WHERE aps.appointment_id = $1
@@ -1624,6 +1664,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              return res.status(403).json({ success: false, message: 'غير مصرح لك بإلغاء هذا الموعد.' });
         }
 
+
         const appointmentTime = new Date(row.start_time).getTime();
         const now = new Date().getTime();
         const noticePeriodMs = minNoticeHours * 60 * 60 * 1000;
@@ -1637,22 +1678,16 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              const strikeResult = await dbGet(strikeQuery, [user_id]);
              const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
 
-             // --- REAL-TIME FIX: Notify Salon and User ---
-             if (io) {
-                const payload = {
-                    appointmentId: Number(appointmentId),
-                    newStatus: 'Cancelled',
-                    strikeIssued: true,
-                    late: true,
-                    newStrikes: newStrikes,
-                    user_id: Number(user_id)
-                };
-                // Notify the salon dashboard
-                io.to(`salon_${row.salon_id}`).emit('appointment_status_updated', payload);
-                // Notify the user client to refresh their profile
-                io.to(`user_${user_id}`).emit('appointment_status_updated', payload);
-             }
-             // --- END REAL-TIME FIX ---
+             // Emit SSE notification to salon dashboard
+             sendSalonEvent(row.salon_id, 'appointment_cancelled', {
+                appointmentId,
+                user_id,
+                start_time: row.start_time,
+                late: true,
+                strikes: newStrikes
+             });
+             // Socket.IO emit for late cancellation
+             try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: true, strikes: newStrikes }); } } catch (e) { console.warn('socket late cancel emit error:', e.message); }
 
              // Push notify salon about late cancellation
              await sendPushToTargets({
@@ -1673,23 +1708,15 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
 
         // Proceed with cancellation without strike - FIX: Use $1 placeholder, ensure string literal is safe
         await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
-        
-        // --- REAL-TIME FIX: Notify Salon and User ---
-        if (io) {
-            const payload = {
-                appointmentId: Number(appointmentId),
-                newStatus: 'Cancelled',
-                strikeIssued: false,
-                late: false,
-                user_id: Number(user_id)
-            };
-            // Notify the salon dashboard
-            io.to(`salon_${row.salon_id}`).emit('appointment_status_updated', payload);
-            // Notify the user client
-            io.to(`user_${user_id}`).emit('appointment_status_updated', payload);
-        }
-        // --- END REAL-TIME FIX ---
-
+        // Emit SSE notification to salon dashboard
+        sendSalonEvent(row.salon_id, 'appointment_cancelled', {
+            appointmentId,
+            user_id,
+            start_time: row.start_time,
+            late: false
+        });
+        // Socket.IO emit for normal cancellation
+        try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: false }); } } catch (e) { console.warn('socket cancel emit error:', e.message); }
         // Push notify salon about normal cancellation
         await sendPushToTargets({
             salon_id: row.salon_id,
@@ -1925,46 +1952,19 @@ app.post('/api/appointment/book', async (req, res) => {
                        [appointmentId, service.id, service.price]);
         }
         
-        // --- REAL-TIME FIX: Fetch rich data for instant UI update ---
-        const richBookingQuery = `
-            SELECT 
-                a.id, a.start_time, a.end_time, a.status, a.price, a.date_booked,
-                u.name AS user_name, u.phone AS user_phone,
-                st.name AS staff_name,
-                a.user_id 
-            FROM appointments a
-            JOIN users u ON a.user_id = u.id
-            LEFT JOIN staff st ON a.staff_id = st.id
-            WHERE a.id = $1
-        `;
-        const richBookingData = await dbGet(richBookingQuery, [appointmentId]);
-
-        // Fetch all services for the single appointment
-        const servicesQuery = `
-            SELECT s.id, s.name_ar, aps.price 
-            FROM appointment_services aps
-            JOIN services s ON aps.service_id = s.id
-            WHERE aps.appointment_id = $1
-        `;
-        const allServices = await dbAll(servicesQuery, [appointmentId]);
-        
-        richBookingData.all_services = allServices;
-        richBookingData.services_names = allServices.map(s => s.name_ar).join(' + ');
-
-        if (io) {
-            // 1. Notify the salon dashboard (Room: salon_{salonId})
-            io.to(`salon_${salon_id}`).emit('newBooking', richBookingData); 
-            
-            // 2. Notify all user booking screens to re-check slots
-            io.emit('time_slot_updated', { 
-                salonId: Number(salon_id), 
-                date: start_time.split(' ')[0] 
-            });
-            
-            // 3. Notify the specific booking user (Room: user_{userId})
-            io.to(`user_${user_id}`).emit('newAppointment', { appointment: richBookingData }); 
-        }
-        // --- END REAL-TIME FIX ---
+        // Emit SSE notification to salon dashboard
+        sendSalonEvent(salon_id, 'appointment_booked', {
+            appointmentId,
+            user_id,
+            staff_id: staffIdForDB,
+            staff_name: assignedStaffName,
+            start_time,
+            end_time,
+            services_count: servicesToBook.length,
+            price
+        });
+        // Socket.IO emit to salon room for real-time update
+        try { if (io) { io.to(`salon_${salon_id}`).emit('appointment_booked', { appointmentId, user_id, staff_id: staffIdForDB, staff_name: assignedStaffName, start_time, end_time, services_count: servicesToBook.length, price }); } } catch (e) { console.warn('socket booked emit error:', e.message); }
 
         // Push notify salon of new booking
         await sendPushToTargets({
@@ -2016,7 +2016,7 @@ const fetchSalonsWithMinPrice = async (city, gender) => {
             FROM salons s
             LEFT JOIN reviews r ON s.id = r.salon_id
             WHERE s.gender_focus = $1 AND s.status = 'accepted'
-            GROUP BY s.id, s.salon_name, s.address, s.city, s.image_url, s.gender_focus
+            GROUP BY s.id 
         `;
         const result = await db.query(sql, [gender]);
         return result;
@@ -2094,8 +2094,6 @@ async function ensurePerfIndexes() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_services_service ON salon_services(service_id)`);
         // Index reviews by salon_id for rating aggregates
         await db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_salon ON reviews(salon_id)`);
-        // Index appointments by salon_id and start_time for quick lookups
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_appointments_salon_start ON appointments(salon_id, start_time)`);
     } catch (e) {
         console.warn('ensurePerfIndexes warning:', e.message);
     }
@@ -2123,7 +2121,7 @@ app.get('/api/favorites/:user_id', async (req, res) => {
         JOIN salons s ON f.salon_id = s.id
         LEFT JOIN reviews r ON s.id = r.salon_id
         WHERE f.user_id = $1
-        GROUP BY s.id, s.salon_name, s.address, s.city, s.image_url
+        GROUP BY s.id
     `;
 
     try {
@@ -2517,20 +2515,6 @@ try {
                 }
             } catch (e) {
                 console.warn('joinSalon handler error:', e.message);
-            }
-        });
-        
-        // Client should emit 'joinUser' with numeric userId
-        socket.on('joinUser', (userId) => {
-            try {
-                const uid = parseInt(userId);
-                if (!isNaN(uid)) {
-                    const room = `user_${uid}`;
-                    socket.join(room);
-                    socket.emit('joinedUser', { room });
-                }
-            } catch (e) {
-                console.warn('joinUser handler error:', e.message);
             }
         });
     });
