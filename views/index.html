@@ -72,7 +72,7 @@
         </div>
 
         <!-- iOS Install Guide Toggle -->
-        <button id="iosGuideToggle" class="mt-6 bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
+        <button id="iosGuideToggle" class="mt-6 hidden bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
             <i class="fa-brands fa-apple"></i>
             عرض خطوات التثبيت على iOS
             <i class="fa-solid fa-chevron-down"></i>
@@ -109,7 +109,7 @@
                 <!-- iOS Instructions Image: revealed on step click -->
                 <div id="iosInstructionsImageContainer" class="sm:col-span-3 hidden">
                     <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-md">
-                        <img src="/images/ios_instructions.png" alt="تعليمات تثبيت iOS" class="w-full h-auto object-contain" loading="lazy">
+                        <img src="/images/ios_instructions.png" alt="تعليمات تثبيت iOS" class="w-full h-auto max-h-72 object-contain rounded-lg" style="aspect-ratio: 16/9;" loading="lazy">
                         <div class="p-3 text-xs text-gray-600">صورة توضيحية لخطوات التثبيت على iOS.</div>
                     </div>
                 </div>
@@ -200,14 +200,13 @@
     <div class="bg-white rounded-xl p-6 w-11/12 max-w-md text-[#1E293B]">
         <div class="flex items-center gap-2 mb-3">
             <i class="fa-brands fa-apple text-2xl"></i>
-            <h3 class="font-bold text-lg">افتح Safari لإكمال التثبيت</h3>
+            <h3 class="font-bold text-lg">تابع في Safari لإكمال التثبيت</h3>
         </div>
         <p class="text-sm text-gray-600 mb-4">
             يبدو أنك تستخدم متصفحًا غير Safari على iOS. يرجى فتح هذا الرابط في Safari ثم اتّبع خطوات "التثبيت" من زر المشاركة.
         </p>
-        <div class="flex gap-3">
-            <button id="copyLinkBtn" class="bg-[#06C167] text-white px-4 py-2 rounded-md font-bold">نسخ الرابط</button>
-            <button id="closeIosBrowserModal" class="bg-gray-200 text-[#1E293B] px-4 py-2 rounded-md font-bold">متابعة</button>
+        <div class="flex">
+            <button id="openInSafariBtn" class="bg-[#06C167] text-white px-4 py-2 rounded-md font-bold w-full">متابعة في Safari</button>
         </div>
     </div>
  </div>
@@ -231,8 +230,7 @@
     const iosGuideToggle = document.getElementById('iosGuideToggle');
     const iosInstructionsImageContainer = document.getElementById('iosInstructionsImageContainer');
     const iosBrowserModal = document.getElementById('iosBrowserModal');
-    const closeIosBrowserModal = document.getElementById('closeIosBrowserModal');
-    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const openInSafariBtn = document.getElementById('openInSafariBtn');
     window.addEventListener('beforeinstallprompt', (e) => {
         // Do not call preventDefault here to allow browser banner when eligible
         deferredPrompt = e;
@@ -247,7 +245,13 @@
         installBtn.textContent = 'تثبيت';
     }
 
-    // Always enable iOS guide toggle and image reveal (only after step 3)
+    // Show iOS guide toggle only for iOS users
+    if (iosGuideToggle) {
+        if (isIOS) iosGuideToggle.classList.remove('hidden');
+        else iosGuideToggle.classList.add('hidden');
+    }
+
+    // Enable iOS guide toggle and image reveal (only after step 3)
     if (iosGuideToggle && iosInstallGuide) {
         iosGuideToggle.addEventListener('click', () => {
             const isHidden = iosInstallGuide.classList.contains('hidden');
@@ -280,19 +284,15 @@
     if (isIOS && !isStandalone && !isSafari && iosBrowserModal) {
         iosBrowserModal.classList.remove('hidden');
     }
-    if (closeIosBrowserModal && iosBrowserModal) {
-        closeIosBrowserModal.addEventListener('click', () => {
-            iosBrowserModal.classList.add('hidden');
-        });
-    }
-    if (copyLinkBtn) {
-        copyLinkBtn.addEventListener('click', async () => {
+    if (openInSafariBtn) {
+        openInSafariBtn.addEventListener('click', () => {
+            // iOS does not allow forcing Safari from another browser.
+            // We attempt to open a new tab and guide the user.
             try {
-                await navigator.clipboard.writeText(location.href);
-                alert('تم نسخ الرابط. افتح Safari وألصقه لبدء التثبيت.');
-            } catch (e) {
-                alert('لم يتم النسخ تلقائيًا. انسخ الرابط يدويًا من شريط العنوان.');
-            }
+                window.open(location.href, '_blank');
+            } catch (e) {}
+            iosBrowserModal.classList.add('hidden');
+            alert('إذا لم يُفتح Safari تلقائيًا، استخدم قائمة المتصفح واختر "فتح في Safari" لمتابعة التثبيت.');
         });
     }
     installBtn.addEventListener('click', async () => {

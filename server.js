@@ -563,6 +563,27 @@ app.get('/api/debug/push-subscriptions', async (req, res) => {
     }
 });
 
+// Test endpoint: send a sample push notification to a user or salon
+app.post('/api/push/test', async (req, res) => {
+    try {
+        const { user_id, salon_id, title, body, url, tag } = req.body || {};
+        if (!user_id && !salon_id) {
+            return res.status(400).json({ success: false, message: 'user_id أو salon_id مطلوب.' });
+        }
+        const payload = {
+            title: title || 'اختبار الإشعارات',
+            body: body || 'هذا إشعار تجريبي من Saloony.',
+            url: url || (user_id ? '/home_user.html' : '/home_salon.html'),
+            tag: tag || 'saloony-test'
+        };
+        await sendPushToTargets({ user_id, salon_id, payload });
+        res.json({ success: true, message: 'تم إرسال الإشعار التجريبي.' });
+    } catch (err) {
+        console.error('Push test error:', err.message);
+        res.status(500).json({ success: false, message: 'فشل إرسال الإشعار التجريبي.' });
+    }
+});
+
 // Helper to send a push notification to all subscriptions for a user or salon
 async function sendPushToTargets({ user_id, salon_id, payload }) {
     try {

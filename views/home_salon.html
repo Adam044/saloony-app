@@ -781,8 +781,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Fetch public key
                 const pubRes = await fetch('/api/push/public-key');
-                const { publicKey } = await pubRes.json();
-                const vapidKey = publicKey || 'BEluXw4-FAKE-PLACEHOLDER-FALLBACK';
+                const { publicKey, success } = await pubRes.json();
+                if (!success || !publicKey || publicKey.length < 30) return;
+                const vapidKey = publicKey;
 
                 const toUint8Array = (base64String) => {
                     const padding = '='.repeat((4 - base64String.length % 4) % 4);
