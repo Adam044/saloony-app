@@ -285,14 +285,42 @@
         iosBrowserModal.classList.remove('hidden');
     }
     if (openInSafariBtn) {
-        openInSafariBtn.addEventListener('click', () => {
+        openInSafariBtn.addEventListener('click', async () => {
             // iOS does not allow forcing Safari from another browser.
-            // We attempt to open a new tab and guide the user.
+            // To avoid confusing page refreshes, do not navigate/open new tabs.
+            // Instead, copy the current link and show clear instructions.
+            const url = location.href;
+            let copied = false;
             try {
-                window.open(location.href, '_blank');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(url);
+                    copied = true;
+                } else {
+                    const temp = document.createElement('textarea');
+                    temp.value = url;
+                    temp.setAttribute('readonly', '');
+                    temp.style.position = 'absolute';
+                    temp.style.left = '-9999px';
+                    document.body.appendChild(temp);
+                    temp.select();
+                    try { document.execCommand('copy'); copied = true; } catch (e) {}
+                    document.body.removeChild(temp);
+                }
             } catch (e) {}
-            iosBrowserModal.classList.add('hidden');
-            alert('إذا لم يُفتح Safari تلقائيًا، استخدم قائمة المتصفح واختر "فتح في Safari" لمتابعة التثبيت.');
+
+            const guidance = copied
+                ? 'تم نسخ الرابط. افتح تطبيق Safari ثم الصقه في شريط العنوان لمتابعة التثبيت.'
+                : `لا يمكن النسخ تلقائيًا. افتح Safari يدويًا ثم انتقل إلى هذا الرابط:\n${url}`;
+
+            // Keep the modal visible so the user can follow instructions without navigation.
+            // Optionally update the modal text for immediate feedback.
+            try {
+                const infoText = iosBrowserModal.querySelector('p');
+                if (infoText) infoText.textContent = guidance;
+                openInSafariBtn.textContent = copied ? 'تم النسخ ✓' : 'انسخ الرابط يدويًا';
+            } catch (e) {}
+
+            alert(guidance);
         });
     }
     installBtn.addEventListener('click', async () => {

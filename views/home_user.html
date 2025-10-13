@@ -1141,6 +1141,22 @@ function showBookingStep(stepIndex) {
     document.getElementById('step-3').classList.add('hidden');
     
     document.getElementById(`step-${stepIndex}`).classList.remove('hidden');
+    // Auto-refresh time slots when step 3 is visible
+    if (stepIndex === 3) {
+        if (!window.__userSlotsPollInterval) {
+            window.__userSlotsPollInterval = setInterval(() => {
+                const step3Visible = !document.getElementById('step-3').classList.contains('hidden');
+                if (step3Visible && selectedDate && selectedServices.length > 0 && selectedStaff) {
+                    loadTimeSlots();
+                }
+            }, 20000);
+        }
+    } else {
+        if (window.__userSlotsPollInterval) {
+            clearInterval(window.__userSlotsPollInterval);
+            window.__userSlotsPollInterval = null;
+        }
+    }
 }
 
 
@@ -1149,6 +1165,11 @@ function hideBookingModal() {
     document.body.classList.remove('modal-open');
     
     resetAllBookingState();
+    // Stop any running slots polling
+    if (window.__userSlotsPollInterval) {
+        clearInterval(window.__userSlotsPollInterval);
+        window.__userSlotsPollInterval = null;
+    }
 }
 
 function showConfirmationModal(bookingData) {
@@ -1932,11 +1953,27 @@ function switchView(viewId) {
     
     if (viewId === 'appointments-view') {
         loadUserAppointments('upcoming'); // Default filter
+        // Lightweight polling refresh every 30s while appointments view is active
+        if (!window.__userAppointmentsPollInterval) {
+            window.__userAppointmentsPollInterval = setInterval(() => {
+                if (currentView === 'appointments-view') {
+                    const filterBtn = document.querySelector('#appointments-view .tab-appointments.bg-primary-dark');
+                    const activeFilter = filterBtn ? filterBtn.getAttribute('data-filter') : 'upcoming';
+                    loadUserAppointments(activeFilter);
+                }
+            }, 30000);
+        }
     } else if (viewId === 'favorites-view') {
         loadUserFavorites();
     } else if (viewId === 'profile-view') {
         // Ensure profile data is fresh
         loadUserData(); 
+    }
+
+    // Stop appointments polling when leaving appointments view
+    if (viewId !== 'appointments-view' && window.__userAppointmentsPollInterval) {
+        clearInterval(window.__userAppointmentsPollInterval);
+        window.__userAppointmentsPollInterval = null;
     }
 }
 
@@ -2763,7 +2800,10 @@ function calculateTimeSlots(dateString) {
     const dayOfWeek = selectedDateObj.getDay(); 
     const todayString = now.toISOString().split('T')[0];
     const isToday = dateString === todayString;
-    const staffListExcludingAny = staffOptions.filter(s => s.id !== 0);
+    // Ensure staff ids are numeric to prevent comparison issues
+    const staffListExcludingAny = staffOptions
+        .map(s => ({...s, id: typeof s.id === 'string' ? parseInt(s.id) : s.id}))
+        .filter(s => s.id !== 0);
     
     if (!salonScheduleData || !salonScheduleData.schedule) return [];
 
@@ -2889,7 +2929,8 @@ function calculateTimeSlots(dateString) {
                         continue;
                     }
                     
-                    const apptStaffId = appt.staff_id || 0;
+                    // Normalize staff_id to a number to avoid strict equality mismatches
+                    const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
                     console.log(`Appointment: staff_id=${apptStaffId}, start=${apptStartMinutes}, end=${apptEndMinutes}, checking against staff=${staffId}`);
 
                     if (apptStaffId === staffId) {
@@ -3368,7 +3409,8 @@ function findAvailableStaff(startTimeMinutes, endTimeMinutes) {
                 continue;
             }
             
-            const apptStaffId = appt.staff_id || 0; 
+            // Normalize staff_id to a number to avoid strict equality mismatches
+            const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
 
             if (apptStaffId === staff.id) {
                  // Check for overlap using the proposed slot (startTimeMinutes to endTimeMinutes)
