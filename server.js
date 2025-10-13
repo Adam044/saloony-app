@@ -1,5 +1,6 @@
 // Server.js - Salonni Application Backend
 const express = require('express');
+const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Added CORS for development ease
@@ -11,6 +12,7 @@ const webPush = require('web-push'); // Web Push notifications
 require('dotenv').config(); // Load environment variables (.env)
 
 const app = express();
+let io; // Socket.IO instance (initialized after HTTP server creation)
 // FIXED: Corrected typo from process.env.env.PORT to process.env.PORT
 const PORT = process.env.PORT || 3001; 
 
@@ -1684,6 +1686,8 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
                 late: true,
                 strikes: newStrikes
              });
+             // Socket.IO emit for late cancellation
+             try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: true, strikes: newStrikes }); } } catch (e) { console.warn('socket late cancel emit error:', e.message); }
 
              // Push notify salon about late cancellation
              await sendPushToTargets({
@@ -1711,6 +1715,8 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
             start_time: row.start_time,
             late: false
         });
+        // Socket.IO emit for normal cancellation
+        try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: false }); } } catch (e) { console.warn('socket cancel emit error:', e.message); }
         // Push notify salon about normal cancellation
         await sendPushToTargets({
             salon_id: row.salon_id,
@@ -1957,6 +1963,8 @@ app.post('/api/appointment/book', async (req, res) => {
             services_count: servicesToBook.length,
             price
         });
+        // Socket.IO emit to salon room for real-time update
+        try { if (io) { io.to(`salon_${salon_id}`).emit('appointment_booked', { appointmentId, user_id, staff_id: staffIdForDB, staff_name: assignedStaffName, start_time, end_time, services_count: servicesToBook.length, price }); } } catch (e) { console.warn('socket booked emit error:', e.message); }
 
         // Push notify salon of new booking
         await sendPushToTargets({
@@ -2484,7 +2492,37 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-app.listen(PORT, async () => {
+// Create HTTP server and attach Socket.IO
+const server = http.createServer(app);
+try {
+    const { Server } = require('socket.io');
+    io = new Server(server, {
+        cors: {
+            origin: '*'
+        }
+    });
+
+    // Salon room join and basic connection logging
+    io.on('connection', (socket) => {
+        // Client should emit 'joinSalon' with numeric salonId
+        socket.on('joinSalon', (salonId) => {
+            try {
+                const sid = parseInt(salonId);
+                if (!isNaN(sid)) {
+                    const room = `salon_${sid}`;
+                    socket.join(room);
+                    socket.emit('joinedSalon', { room });
+                }
+            } catch (e) {
+                console.warn('joinSalon handler error:', e.message);
+            }
+        });
+    });
+} catch (e) {
+    console.warn('Socket.IO setup warning:', e.message);
+}
+
+server.listen(PORT, async () => {
     console.log(`Salonni server running on port: http://localhost:${PORT}`);
     
     // Initialize database and insert master data

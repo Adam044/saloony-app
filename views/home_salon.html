@@ -2640,6 +2640,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
+<!-- Socket.IO client for real-time updates -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  (function(){
+    try {
+      const raw = localStorage.getItem('salonni_user');
+      const user = raw ? JSON.parse(raw) : {};
+      const salonId = user.salonId || (window.currentSalon && window.currentSalon.salonId);
+      const socket = window.io ? io() : null;
+      if (socket && salonId) {
+        socket.emit('joinSalon', salonId);
+        socket.on('joinedSalon', ({ room }) => {
+          console.log('Joined Socket.IO room:', room);
+        });
+        // When an appointment is booked, reload the list
+        socket.on('appointment_booked', (payload) => {
+          try {
+            if (typeof currentAppointmentsFilter !== 'undefined') {
+              loadAppointments(currentAppointmentsFilter);
+            }
+            showRefreshBanner && showRefreshBanner();
+          } catch (e) { console.warn('socket appointment_booked handler error:', e.message); }
+        });
+        // When an appointment is cancelled, reload the list
+        socket.on('appointment_cancelled', (payload) => {
+          try {
+            if (typeof currentAppointmentsFilter !== 'undefined') {
+              loadAppointments(currentAppointmentsFilter);
+            }
+            showRefreshBanner && showRefreshBanner();
+          } catch (e) { console.warn('socket appointment_cancelled handler error:', e.message); }
+        });
+      }
+    } catch (e) {
+      console.warn('Socket.IO client init failed:', e.message);
+    }
+  })();
+</script>
 <!-- Notification Permission Modal -->
 <div id="notify-permission-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 text-right">

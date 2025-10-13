@@ -2865,7 +2865,7 @@ function calculateTimeSlots(dateString) {
                     const modStaffId = mod.staff_id || 0;
                     const staffMatch = modStaffId === 0 || parseInt(modStaffId) === staffId;
 
-                    if (staffMatch && currentTime > modStart && currentTime <= modEnd) {
+                    if (staffMatch && currentTime < modEnd && slotEndMinutes > modStart) {
                         console.log(`Slot ${currentTime}-${slotEndMinutes} blocked by closure interval ${modStart}-${modEnd}`);
                         staffAvailable = false;
                         break;
@@ -2892,7 +2892,9 @@ function calculateTimeSlots(dateString) {
             
             if (staffAvailable && appointments) {
                 for (const appt of appointments) {
-                    if (appt.status !== 'Scheduled' || !appt.start_time || !appt.end_time) continue;
+                    const statusStr = (appt.status || '').toLowerCase();
+                    const isBlocking = !['canceled', 'cancelled', 'completed', 'rejected', 'no_show', 'no show'].includes(statusStr);
+                    if (!isBlocking || !appt.start_time || !appt.end_time) continue;
 
                     let apptStartMinutes, apptEndMinutes;
                     try {
@@ -2953,7 +2955,52 @@ function calculateTimeSlots(dateString) {
             isAvailable = checkStaffAvailability(parseInt(selectedStaff.id));
         } else {
             if (staffListExcludingAny.length > 0) {
-                 isAvailable = staffListExcludingAny.some(staff => checkStaffAvailability(staff.id));
+                // When selecting "Any staff", a generic appointment (staff_id=0) still consumes capacity.
+                // Compute available staff count and subtract overlapping generic appointments to decide availability.
+                const availableStaffCount = staffListExcludingAny.reduce((count, staff) => count + (checkStaffAvailability(staff.id) ? 1 : 0), 0);
+
+                let genericOverlapCount = 0;
+                if (appointments && appointments.length > 0) {
+                    for (const appt of appointments) {
+                        const statusStr = (appt.status || '').toLowerCase();
+                        const isBlocking = !['canceled', 'cancelled', 'completed', 'rejected', 'no_show', 'no show'].includes(statusStr);
+                        if (!isBlocking || !appt.start_time || !appt.end_time) continue;
+
+                        // Only consider salon-level/unassigned appointments
+                        const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
+                        if (apptStaffId !== 0) continue;
+
+                        try {
+                            let startTimePart, endTimePart;
+                            if (typeof appt.start_time !== 'string' || typeof appt.end_time !== 'string') continue;
+                            if (appt.start_time.includes('T')) {
+                                startTimePart = appt.start_time.split('T')[1];
+                            } else if (appt.start_time.includes(' ')) {
+                                startTimePart = appt.start_time.split(' ')[1];
+                            } else {
+                                continue;
+                            }
+                            if (appt.end_time.includes('T')) {
+                                endTimePart = appt.end_time.split('T')[1];
+                            } else if (appt.end_time.includes(' ')) {
+                                endTimePart = appt.end_time.split(' ')[1];
+                            } else {
+                                continue;
+                            }
+                            if (!startTimePart || !endTimePart) continue;
+                            const apptStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
+                            const apptEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
+                            if (currentTime < apptEndMinutes && slotEndMinutes > apptStartMinutes) {
+                                genericOverlapCount++;
+                            }
+                        } catch (e) {
+                            console.error('Error processing generic appointment times:', e, appt);
+                            continue;
+                        }
+                    }
+                }
+
+                isAvailable = availableStaffCount > genericOverlapCount;
             }
             else if (staffListExcludingAny.length === 0) {
                 let overlapExists = false;
