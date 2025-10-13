@@ -106,6 +106,13 @@
                     </div>
                     <p class="mt-2 text-sm">اختر <strong>تثبيت</strong> لإنشاء التطبيق</p>
                 </div>
+                <!-- iOS Instructions Image: revealed on step click -->
+                <div id="iosInstructionsImageContainer" class="sm:col-span-3 hidden">
+                    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-md">
+                        <img src="/images/ios_instructions.png" alt="تعليمات تثبيت iOS" class="w-full h-auto object-contain" loading="lazy">
+                        <div class="p-3 text-xs text-gray-600">صورة توضيحية لخطوات التثبيت على iOS.</div>
+                    </div>
+                </div>
             </div>
             <p class="text-xs text-gray-600 mt-3">بعد التثبيت، افتح التطبيق من شاشة جهازك الرئيسية.</p>
         </div>
@@ -205,6 +212,7 @@
     const installBtn = document.getElementById('installBtn');
     const iosInstallGuide = document.getElementById('iosInstallGuide');
     const iosGuideToggle = document.getElementById('iosGuideToggle');
+    const iosInstructionsImageContainer = document.getElementById('iosInstructionsImageContainer');
     window.addEventListener('beforeinstallprompt', (e) => {
         // Do not call preventDefault here to allow browser banner when eligible
         deferredPrompt = e;
@@ -229,7 +237,23 @@
                 iosGuideToggle.textContent = isHidden ? 'إخفاء خطوات التثبيت على iOS' : 'عرض خطوات التثبيت على iOS';
                 // Re-add icons since textContent replaced inner HTML
                 iosGuideToggle.innerHTML = `${isHidden ? '<i class=\"fa-brands fa-apple\"></i> إخفاء خطوات التثبيت على iOS <i class=\"fa-solid fa-chevron-up\"></i>' : '<i class=\"fa-brands fa-apple\"></i> عرض خطوات التثبيت على iOS <i class=\"fa-solid fa-chevron-down\"></i>'}`;
+
+                // Hide image when collapsing guide
+                if (!isHidden && iosInstructionsImageContainer) {
+                    iosInstructionsImageContainer.classList.add('hidden');
+                }
             });
+            // Reveal the iOS instructions image when any step is pressed
+            const stepsGrid = iosInstallGuide.querySelector('.grid');
+            if (stepsGrid && iosInstructionsImageContainer) {
+                stepsGrid.querySelectorAll('.flex.flex-col').forEach(card => {
+                    card.style.cursor = 'pointer';
+                    card.addEventListener('click', () => {
+                        iosInstructionsImageContainer.classList.remove('hidden');
+                        iosInstructionsImageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    });
+                });
+            }
         }
     }
     installBtn.addEventListener('click', async () => {
