@@ -154,8 +154,9 @@
                     </h2>
                     <div class="flex space-x-2 space-x-reverse mb-4 border-b pb-2">
                         <button class="tab-appointments px-3 py-1 font-bold text-sm rounded-xl text-white bg-primary-dark transition-all" data-filter="today">اليوم</button>
-                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="upcoming">القادمة</button>
+                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="completed">المكتملة</button>
                         <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="past">السابقة</button>
+                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="cancelled">الملغاة</button>
                     </div>
 
                     <div id="appointments-list-container" class="space-y-3">
@@ -506,9 +507,7 @@
                         <p class="text-gray-500 text-center py-4">جاري تحميل قائمة الخدمات...</p>
                     </div>
 
-                    <button id="save-services-btn" class="btn-action w-full py-3 mt-8 rounded-xl text-lg font-bold">
-                        <i class="fas fa-save ml-2"></i> حفظ الخدمات والأسعار
-                    </button>
+                    <!-- Auto-save enabled: remove manual save button -->
                     <div id="services-message" class="mt-4 text-center font-medium"></div>
                 </section>
             </div>
@@ -903,23 +902,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!payload || !payload.type) return;
 
                 if (payload.type === 'appointment_booked') {
-                    const staffLabel = payload.staff_name ? ` (${payload.staff_name})` : '';
-                    const msg = `حجز جديد رقم ${payload.appointmentId}${staffLabel} في ${new Date(payload.start_time).toLocaleString('ar-EG')}`;
+                    const d = new Date(payload.start_time);
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    let h = d.getHours();
+                    const isAM = h < 12;
+                    h = h % 12 || 12;
+                    const suffix = isAM ? 'صباحًا' : 'مساءً';
+                    const msg = `لديك حجز جديد بتاريخ ${dd}/${mm}/${yyyy} على الساعة ${h} ${suffix}`;
                     notifyLocal({ title: 'حجز جديد', body: msg, url: '/home_salon.html#appointments', isSuccess: true, tag: 'appointment_booked' });
-                    // Auto-refresh appointments to reflect the new booking
+                    // Auto-refresh appointments silently to reflect the new booking
                     if (typeof currentAppointmentsFilter !== 'undefined') {
-                        loadAppointments(currentAppointmentsFilter);
+                        loadAppointments(currentAppointmentsFilter, { showLoading: false });
                     }
-                    showRefreshBanner();
                 } else if (payload.type === 'appointment_cancelled') {
-                    const lateNote = payload.late ? ' - إلغاء متأخر' : '';
-                    const msg = `تم إلغاء موعد رقم ${payload.appointmentId}${lateNote}.`;
+                    const d = new Date(payload.start_time);
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    let h = d.getHours();
+                    const isAM = h < 12;
+                    h = h % 12 || 12;
+                    const suffix = isAM ? 'صباحًا' : 'مساءً';
+                    const msg = `تم إلغاء موعد بتاريخ ${dd}/${mm}/${yyyy} على الساعة ${h} ${suffix}${payload.late ? ' (إلغاء متأخر)' : ''}`;
                     notifyLocal({ title: 'إلغاء موعد', body: msg, url: '/home_salon.html#appointments', isSuccess: false, tag: 'appointment_cancelled' });
-                    // Auto-refresh appointments to reflect the cancellation
+                    // Auto-refresh appointments silently to reflect the cancellation
                     if (typeof currentAppointmentsFilter !== 'undefined') {
-                        loadAppointments(currentAppointmentsFilter);
+                        loadAppointments(currentAppointmentsFilter, { showLoading: false });
                     }
-                    showRefreshBanner();
                 }
             } catch (err) {
                 console.warn('SSE parse error:', err);
@@ -936,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!window.__salonSsePollInterval) {
                 window.__salonSsePollInterval = setInterval(() => {
                     if (typeof currentAppointmentsFilter !== 'undefined') {
-                        loadAppointments(currentAppointmentsFilter);
+                        loadAppointments(currentAppointmentsFilter, { showLoading: false });
                     }
                 }, 15000);
             }
@@ -956,27 +967,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // NEW: Confirmation Modal Logic
     let modalCallback = null;
+    let pendingStatusDropdown = null; // used to revert selection on cancel
 
-    const hideConfirmationModal = () => {
+    const hideConfirmationModal = (opts = { resetOnHide: true }) => {
         confirmModalOverlay.classList.remove('modal-open-overlay');
         confirmModalOverlay.style.display = 'none';
-        confirmModalConfirmBtn.removeEventListener('click', modalCallback);
+        if (modalCallback) {
+            confirmModalConfirmBtn.removeEventListener('click', modalCallback);
+            modalCallback = null;
+        }
+        // If cancelling, revert dropdown selection
+        if (opts.resetOnHide && pendingStatusDropdown) {
+            pendingStatusDropdown.disabled = false;
+            pendingStatusDropdown.style.opacity = '1';
+            pendingStatusDropdown.value = '';
+            pendingStatusDropdown = null;
+        }
     };
     
-    confirmModalCancelBtn.addEventListener('click', hideConfirmationModal);
+    confirmModalCancelBtn.addEventListener('click', () => hideConfirmationModal({ resetOnHide: true }));
     
-    const showConfirmationModal = (message, callback, confirmText = 'تأكيد الحذف') => {
+    const showConfirmationModal = (message, callback, confirmText = 'تأكيد') => {
         confirmModalMessage.textContent = message;
         confirmModalConfirmBtn.textContent = confirmText;
         
         // Clear previous event listener
         if (modalCallback) {
             confirmModalConfirmBtn.removeEventListener('click', modalCallback);
+            modalCallback = null;
         }
 
         // Set new event listener
         modalCallback = () => {
-            hideConfirmationModal();
+            // Do not reset selection on confirm; proceed with callback
+            hideConfirmationModal({ resetOnHide: false });
             callback();
         };
         confirmModalConfirmBtn.addEventListener('click', modalCallback);
@@ -1247,7 +1271,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const startTimeDisplay = new Date(appointment.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
         const availableAtDisplay = tenMinutesAfterStart.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
         
-        const actionButtons = (filter !== 'past') ? `
+        const hideActions = (filter === 'past' || filter === 'completed' || appointment.status === 'Cancelled');
+        const actionButtons = (!hideActions) ? `
             <div class="mt-4 pt-4 border-t border-gray-200">
                 <label class="block text-sm font-medium text-gray-700 mb-2">تحديث حالة الموعد:</label>
                 ${canChangeStatus ? `
@@ -1329,8 +1354,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let currentAppointmentsFilter = 'today';
-    const loadAppointments = async (filter) => {
-        appointmentsListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">جاري تحميل المواعيد...</p>';
+    let appointmentsFetchController = null;
+    const loadAppointments = async (filter, opts = {}) => {
+        const showLoading = opts.showLoading !== false;
+        if (showLoading) {
+            appointmentsListContainer.innerHTML = '<p class="text-gray-500 text-center py-4">جاري تحميل المواعيد...</p>';
+        }
 
         tabAppointmentButtons.forEach(btn => {
             btn.classList.remove('bg-primary-dark', 'text-white');
@@ -1342,9 +1371,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         currentAppointmentsFilter = filter;
 
+        // Cancel any in-flight request to avoid race conditions
+        if (appointmentsFetchController) {
+            try { appointmentsFetchController.abort(); } catch (e) {}
+        }
+        appointmentsFetchController = new AbortController();
+        const { signal } = appointmentsFetchController;
+
         // CRITICAL FIX: Use salonId for business-related API calls
         try {
-            const response = await fetch(`/api/salon/appointments/${salonId}/${filter}`);
+            const response = await fetch(`/api/salon/appointments/${salonId}/${filter}`, { signal });
             const data = await response.json();
             
             if (data.success && data.appointments.length > 0) {
@@ -1358,18 +1394,27 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (filter === 'today') {
                      emptyText = 'لا توجد مواعيد مقررة ليومك الحالي. استعد ليوم هادئ!';
                      icon = 'fa-calendar-check';
-                 } else if (filter === 'upcoming') {
-                     emptyText = 'لا توجد حجوزات قادمة مؤكدة بعد. ابقَ على اطلاع!';
-                     icon = 'fa-bell';
-                 } else {
+                 } else if (filter === 'completed') {
+                     emptyText = 'لا توجد مواعيد مكتملة حتى الآن.';
+                     icon = 'fa-check-circle';
+                 } else if (filter === 'past') {
                      emptyText = 'سجل مواعيدك السابقة يظهر فارغًا.';
                      icon = 'fa-history';
+                 } else if (filter === 'cancelled') {
+                     emptyText = 'لا توجد مواعيد ملغاة حالياً.';
+                     icon = 'fa-ban';
+                 } else {
+                     emptyText = 'لا توجد مواعيد مطابقة لهذا الفلتر.';
+                     icon = 'fa-clipboard-list';
                  }
                 renderEmptyState(appointmentsListContainer, emptyText, icon);
                 const countEl = document.getElementById('appointments-count');
                 if (countEl) { countEl.textContent = '0'; countEl.classList.remove('hidden'); }
             }
         } catch (error) {
+            if (error && error.name === 'AbortError') {
+                return; // silently ignore
+            }
             console.error('Error loading appointments:', error);
             showMessage(messageBox, 'فشل في جلب المواعيد من الخادم.', false);
             renderEmptyState(appointmentsListContainer, 'فشل في جلب المواعيد من الخادم.', 'fa-server');
@@ -1384,7 +1429,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const appointmentId = e.currentTarget.getAttribute('data-id');
                 const status = e.currentTarget.value;
                 if (status) {
-                    updateAppointmentStatus(appointmentId, status, currentFilter);
+                    // For Completed or Absent, show confirmation modal
+                    if (status === 'Completed' || status === 'Absent') {
+                        pendingStatusDropdown = dropdown;
+                        const isAbsent = status === 'Absent';
+                        const message = isAbsent
+                            ? 'هل أنت متأكد من تحديد هذا الموعد كـ غائب؟ سيتم إضافة إنذار إلى حساب العميل.'
+                            : 'تأكيد إنهاء هذا الموعد كـ مكتمل؟';
+                        const confirmText = isAbsent ? 'تأكيد الغياب' : 'تأكيد الإنهاء';
+                        showConfirmationModal(message, () => {
+                            updateAppointmentStatus(appointmentId, status, currentFilter);
+                            // Clear pending after starting update
+                            pendingStatusDropdown = null;
+                        }, confirmText);
+                    } else {
+                        // For Cancelled or other statuses, proceed directly
+                        updateAppointmentStatus(appointmentId, status, currentFilter);
+                    }
                 }
             });
         });
@@ -2356,148 +2417,165 @@ document.addEventListener('DOMContentLoaded', () => {
             const mainHeader = document.createElement('div');
             mainHeader.className = 'mb-4';
             mainHeader.innerHTML = `
-                <h3 class="text-xl font-bold text-primary-dark mb-2">
+                <div class="flex items-center justify-between">
+                  <button id="btn-salon-more-main" class="py-2 px-4 rounded-xl border hover:bg-gray-100 font-bold text-primary-dark">
                     <i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية
-                </h3>
+                  </button>
+                </div>
                 <p class="text-gray-600 text-sm">الخدمات التي تحتاج وقت محدد في الجدولة</p>
             `;
             servicesListContainer.appendChild(mainHeader);
+            const mainList = document.createElement('div');
+            mainList.id = 'main-list-container';
+            servicesListContainer.appendChild(mainList);
 
-            mainServices.forEach(master => {
-                const current = salonServicesMap.get(master.id) || {};
-                // FIX: Check if service exists in the map or if we have price/duration set
-                const isChecked = salonServicesMap.has(master.id); 
-                
-                const card = document.createElement('div');
-                card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isChecked ? 'border-secondary bg-secondary-soft' : 'border-gray-200 bg-white'}`;
-                card.setAttribute('data-service-id', master.id);
-                card.setAttribute('data-service-type', master.service_type);
-
-                // FIX: Ensure initial values are extracted correctly or use sensible defaults
-                const initialPrice = current.price ? parseFloat(current.price) : 50;
-                const initialDuration = current.duration ? parseInt(current.duration) : 30;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center space-x-3 space-x-reverse">
-                            <input type="checkbox" id="service-check-${master.id}" 
-                                   data-id="${master.id}" class="h-5 w-5 text-secondary rounded focus:ring-secondary service-checkbox" 
-                                   ${isChecked ? 'checked' : ''}>
-                            <label for="service-check-${master.id}" class="text-lg font-bold text-primary-dark cursor-pointer">
-                                <i class="fas ${master.icon} ml-2 text-secondary"></i> ${master.name_ar}
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="details-inputs space-y-3 pt-3 border-t ${isChecked ? 'opacity-100' : 'hidden opacity-0'}" data-id="${master.id}">
-                        <div class="flex space-x-4 space-x-reverse">
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700">السعر (ILS)</label>
-                                <input type="number" data-id="${master.id}" data-type="price" 
-                                       value="${initialPrice}" min="5" step="5" required
-                                       class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700">المدة</label>
-                                <select data-id="${master.id}" data-type="duration" required
-                                        class="mt-1 w-full p-2 border border-gray-300 rounded-lg appearance-none text-right">
-                                    ${generateDurationOptions(initialDuration)}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                servicesListContainer.appendChild(card);
+            // Only render currently selected main services
+            const selectedMainServices = (Array.isArray(salonServices) ? salonServices : []).filter(s => s.service_type === 'main');
+            selectedMainServices.forEach(sel => {
+                const master = mainServices.find(ms => ms.id === (sel.id ?? sel.service_id));
+                if (!master) return;
+                ensureServiceCardRendered(master, parseFloat(sel.price), parseInt(sel.duration));
             });
         }
 
-        // Render add-ons section
+        // Render add-ons section (modal-only, no pre-rendered cards)
         if (addOnServices.length > 0) {
             const addOnHeader = document.createElement('div');
             addOnHeader.className = 'mb-4 mt-8';
             addOnHeader.innerHTML = `
-                <h3 class="text-xl font-bold text-primary-dark mb-2">
+                <div class="flex items-center justify-between">
+                  <button id="btn-salon-more-addons" class="py-2 px-4 rounded-xl border hover:bg-gray-100 font-bold text-primary-dark">
                     <i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات
-                </h3>
+                  </button>
+                </div>
                 <p class="text-gray-600 text-sm">خدمات إضافية لا تحتاج وقت في الجدولة (المدة تلقائياً 0 دقيقة)</p>
             `;
             servicesListContainer.appendChild(addOnHeader);
-
-            addOnServices.forEach(master => {
-                const current = salonServicesMap.get(master.id) || {};
-                const isChecked = salonServicesMap.has(master.id); 
-                
-                const card = document.createElement('div');
-                card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isChecked ? 'border-orange-400 bg-orange-50' : 'border-gray-200 bg-white'}`;
-                card.setAttribute('data-service-id', master.id);
-                card.setAttribute('data-service-type', master.service_type);
-
-                const initialPrice = current.price ? parseFloat(current.price) : 25;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center space-x-3 space-x-reverse">
-                            <input type="checkbox" id="service-check-${master.id}" 
-                                   data-id="${master.id}" class="h-5 w-5 text-orange-500 rounded focus:ring-orange-500 service-checkbox" 
-                                   ${isChecked ? 'checked' : ''}>
-                            <label for="service-check-${master.id}" class="text-lg font-bold text-primary-dark cursor-pointer">
-                                <i class="fas ${master.icon} ml-2 text-orange-500"></i> ${master.name_ar}
-                                <span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="details-inputs space-y-3 pt-3 border-t ${isChecked ? 'opacity-100' : 'hidden opacity-0'}" data-id="${master.id}">
-                        <div class="flex space-x-4 space-x-reverse">
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-700">السعر (ILS)</label>
-                                <input type="number" data-id="${master.id}" data-type="price" 
-                                       value="${initialPrice}" min="5" step="5" required
-                                       class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-sm font-medium text-gray-500">المدة (تلقائياً 0 دقيقة)</label>
-                                <input type="number" data-id="${master.id}" data-type="duration" 
-                                       value="0" readonly
-                                       class="mt-1 w-full p-2 border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500">
-                            </div>
-                        </div>
-                    </div>
-                `;
-                servicesListContainer.appendChild(card);
+            const addOnList = document.createElement('div');
+            addOnList.id = 'add-on-list-container';
+            servicesListContainer.appendChild(addOnList);
+            // Render only currently selected add-ons
+            const selectedAddOnServices = (Array.isArray(salonServices) ? salonServices : []).filter(s => s.service_type === 'add_on');
+            selectedAddOnServices.forEach(sel => {
+                const master = addOnServices.find(ms => ms.id === (sel.id ?? sel.service_id));
+                if (!master) return;
+                ensureServiceCardRendered(master, parseFloat(sel.price), 0);
             });
         }
 
         attachServiceListeners();
+
+        // Expose data for modal and wire triggers
+        window.masterServicesCache = masterServices;
+        window.salonServicesCache = salonServices;
+        document.getElementById('btn-salon-more-main')?.addEventListener('click', () => {
+            openSalonServicesExplorer('main');
+        });
+        document.getElementById('btn-salon-more-addons')?.addEventListener('click', () => {
+            openSalonServicesExplorer('add_on');
+        });
     };
 
     const attachServiceListeners = () => {
-        document.querySelectorAll('.service-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const serviceId = e.target.getAttribute('data-id');
-                const card = e.target.closest('[data-service-id]');
-                const serviceType = card.getAttribute('data-service-type');
-                const details = document.querySelector(`.details-inputs[data-id="${serviceId}"]`);
-                
-                // Toggle card styling
-                card.classList.remove('border-secondary', 'bg-secondary-soft', 'border-orange-400', 'bg-orange-50');
-                card.classList.add(e.target.checked ? (serviceType === 'add_on' ? 'border-orange-400' : 'border-secondary') : 'border-gray-200');
-                card.classList.add(e.target.checked ? (serviceType === 'add_on' ? 'bg-orange-50' : 'bg-secondary-soft') : 'bg-white');
-
-                // Toggle visibility and required attributes of details
-                if (e.target.checked) {
-                    details.classList.remove('hidden');
-                    // Add a slight delay for transition effect
-                    setTimeout(() => details.classList.remove('opacity-0'), 10); 
-                    details.querySelectorAll('input:not([readonly]), select').forEach(input => input.setAttribute('required', 'true'));
-                } else {
-                    details.classList.add('opacity-0');
-                    setTimeout(() => details.classList.add('hidden'), 300); 
-                    details.querySelectorAll('input, select').forEach(input => input.removeAttribute('required'));
+        // Wire remove buttons for any existing cards
+        document.querySelectorAll('.remove-service-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const card = e.currentTarget.closest('[data-service-id]');
+                if (card) {
+                    card.remove();
+                    scheduleAutoSave();
                 }
             });
         });
+
+        // Wire inputs to auto-save
+        document.querySelectorAll('.details-inputs input[data-type="price"], .details-inputs select[data-type="duration"], .details-inputs input[data-type="duration"]').forEach(input => {
+            ['input','change'].forEach(ev => input.addEventListener(ev, scheduleAutoSave));
+        });
     };
+
+    // --- Auto-save helpers ---
+    let autoSaveTimer = null;
+    const collectSelectedServicesFromDOM = () => {
+        const selected = [];
+        let hasError = false;
+        document.querySelectorAll('[data-service-id]').forEach(card => {
+            const serviceId = card.getAttribute('data-service-id');
+            const serviceType = card.getAttribute('data-service-type');
+            const priceInput = card.querySelector('.details-inputs input[data-type="price"]');
+            const durationElement = serviceType === 'add_on'
+                ? card.querySelector('.details-inputs input[data-type="duration"]')
+                : card.querySelector('.details-inputs select[data-type="duration"]');
+            const price = priceInput ? parseFloat(priceInput.value) : NaN;
+            const duration = durationElement ? parseInt(durationElement.value) : NaN;
+            if (isNaN(price) || price <= 0) {
+                showMessage(servicesMessage, 'يرجى إدخال سعر صحيح (أكبر من صفر).', false);
+                hasError = true;
+                return;
+            }
+            if (serviceType === 'main' && (isNaN(duration) || duration <= 0)) {
+                showMessage(servicesMessage, 'يرجى تحديد مدة صحيحة للخدمة الأساسية.', false);
+                hasError = true;
+                return;
+            }
+            selected.push({
+                service_id: parseInt(serviceId),
+                price,
+                duration: serviceType === 'add_on' ? 0 : duration,
+                service_type: serviceType
+            });
+        });
+        return { selected, hasError };
+    };
+
+    const showSavingMini = () => {
+        if (document.getElementById('saving-mini')) return;
+        const el = document.createElement('div');
+        el.id = 'saving-mini';
+        el.className = 'fixed bottom-4 right-4 z-50 bg-white rounded-xl shadow p-2 text-sm flex items-center';
+        el.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
+        document.body.appendChild(el);
+    };
+    const hideSavingMini = () => {
+        const el = document.getElementById('saving-mini');
+        if (el) el.remove();
+    };
+
+    const autoSaveServices = async () => {
+        const { selected, hasError } = collectSelectedServicesFromDOM();
+        if (hasError || selected.length === 0) { hideSavingMini(); return; }
+        try {
+            const response = await fetch(`/api/salon/services/${salonId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ services: selected })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                showMessage(servicesMessage, data.message || 'فشل في الحفظ التلقائي.', false);
+            } else {
+                // Reflect latest selection to cache (optional)
+                window.salonServicesCache = selected.map(s => ({ id: s.service_id, price: s.price, duration: s.duration, service_type: s.service_type }));
+                showMessage(servicesMessage, 'تم الحفظ تلقائيًا.', true);
+                setTimeout(() => { servicesMessage.textContent = ''; }, 1500);
+            }
+        } catch (e) {
+            console.error('Auto-save error:', e);
+            showMessage(servicesMessage, 'خطأ في الشبكة أثناء الحفظ التلقائي.', false);
+        } finally {
+            hideSavingMini();
+        }
+    };
+
+    const scheduleAutoSave = () => {
+        try {
+            if (autoSaveTimer) clearTimeout(autoSaveTimer);
+            showSavingMini();
+            autoSaveTimer = setTimeout(autoSaveServices, 800);
+        } catch (_) {}
+    };
+    // Expose debounced auto-save globally for external scripts
+    window.scheduleAutoSave = scheduleAutoSave;
 
     const loadServiceManagement = async (genderFocus) => {
         console.log('Loading service management for genderFocus:', genderFocus, 'and salonId:', salonId);
@@ -2535,24 +2613,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedServices = [];
         let validationError = false;
 
-        document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
-            const serviceId = checkbox.getAttribute('data-id');
-            const card = checkbox.closest('[data-service-id]');
+        document.querySelectorAll('[data-service-id]').forEach(card => {
+            const serviceId = card.getAttribute('data-service-id');
             const serviceType = card.getAttribute('data-service-type');
-            
-            const priceInput = document.querySelector(`.details-inputs[data-id="${serviceId}"] input[data-type="price"]`);
-            
-            let durationElement;
-            if (serviceType === 'add_on') {
-                durationElement = document.querySelector(`.details-inputs[data-id="${serviceId}"] input[data-type="duration"]`);
-            } else {
-                durationElement = document.querySelector(`.details-inputs[data-id="${serviceId}"] select[data-type="duration"]`);
-            }
 
-            const price = parseFloat(priceInput.value);
-            const duration = parseInt(durationElement.value);
+            const priceInput = card.querySelector('.details-inputs input[data-type="price"]');
+            const durationElement = serviceType === 'add_on'
+                ? card.querySelector('.details-inputs input[data-type="duration"]')
+                : card.querySelector('.details-inputs select[data-type="duration"]');
 
-            // Validation checks
+            const price = priceInput ? parseFloat(priceInput.value) : NaN;
+            const duration = durationElement ? parseInt(durationElement.value) : NaN;
+
             if (isNaN(price) || price <= 0) {
                 showMessage(servicesMessage, `يرجى إدخال سعر صحيح (أكبر من صفر) للخدمة.`, false);
                 validationError = true;
@@ -2568,7 +2640,6 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedServices.push({
                 service_id: parseInt(serviceId),
                 price: price,
-                // Duration for add-ons is always 0
                 duration: serviceType === 'add_on' ? 0 : duration
             });
         });
@@ -2581,8 +2652,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            saveServicesBtn.disabled = true;
-            saveServicesBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
+            // Show overlay while saving and reloading
+            const overlay = document.createElement('div');
+            overlay.id = 'saving-overlay';
+            overlay.className = 'fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50';
+            overlay.innerHTML = '<div class="bg-white rounded-2xl shadow-xl p-4 text-center"><i class="fas fa-spinner fa-spin ml-2"></i> جاري حفظ الخدمات...</div>';
+            document.body.appendChild(overlay);
+
+            if (saveServicesBtn) {
+                saveServicesBtn.disabled = true;
+                saveServicesBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
+            }
 
             // CRITICAL FIX: Use salonId for business-related API calls
             const response = await fetch(`/api/salon/services/${salonId}`, {
@@ -2595,7 +2675,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (data.success) {
                 showMessage(servicesMessage, 'تم حفظ الخدمات بنجاح!', true);
-                loadServiceManagement(currentSalon.gender_focus);
+                await loadServiceManagement(currentSalon.gender_focus);
             } else {
                 showMessage(servicesMessage, data.message || 'فشل في حفظ الخدمات.', false);
             }
@@ -2603,12 +2683,18 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Save services error:', error);
             showMessage(servicesMessage, 'خطأ في الشبكة أثناء عملية الحفظ.', false);
         } finally {
-            saveServicesBtn.disabled = false;
-            saveServicesBtn.innerHTML = '<i class="fas fa-save ml-2"></i> حفظ الخدمات والأسعار';
+            if (saveServicesBtn) {
+                saveServicesBtn.disabled = false;
+                saveServicesBtn.innerHTML = '<i class="fas fa-save ml-2"></i> حفظ الخدمات والأسعار';
+            }
+            const ov = document.getElementById('saving-overlay');
+            if (ov) ov.remove();
         }
     };
-
-    saveServicesBtn.addEventListener('click', saveServices);
+    // Manual save removed; guard listener
+    if (saveServicesBtn) {
+        saveServicesBtn.addEventListener('click', saveServices);
+    }
     
 
     // --- Initialization and Event Attachments ---
@@ -2639,6 +2725,214 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.replace('/auth.html');
     });
 });
+    // Global helper: generate 5–120 minute options for duration selects
+    function generateDurationOptions(selectedDuration) {
+      let options = '';
+      for (let min = 5; min <= 120; min += 5) {
+        options += `<option value="${min}" ${min === selectedDuration ? 'selected' : ''}>${min} دقيقة</option>`;
+      }
+      return options;
+    }
+    // Helper: ensure a service card exists; create dynamically if missing
+    function ensureServiceCardRendered(service, priceOverride, durationOverride) {
+      const existing = document.querySelector(`[data-service-id="${service.id}"]`);
+      if (existing) return existing;
+
+      const isAddOn = service.service_type === 'add_on';
+      const containerId = isAddOn ? 'add-on-list-container' : 'main-list-container';
+      const container = document.getElementById(containerId);
+      if (!container) return null;
+
+      const initialPrice = typeof priceOverride === 'number' ? priceOverride : (isAddOn ? 25 : 50);
+      const initialDuration = typeof durationOverride === 'number' ? durationOverride : (isAddOn ? 0 : 30);
+
+      const card = document.createElement('div');
+      card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isAddOn ? 'border-orange-400 bg-orange-50' : 'border-secondary bg-secondary-soft'}`;
+      card.setAttribute('data-service-id', service.id);
+      card.setAttribute('data-service-type', service.service_type);
+
+      const header = `
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center space-x-3 space-x-reverse">
+            <label class="text-lg font-bold text-primary-dark">
+              <i class="fas ${service.icon} ml-2 ${isAddOn ? 'text-orange-500' : 'text-secondary'}"></i> ${service.name_ar}
+              ${isAddOn ? '<span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>' : ''}
+            </label>
+          </div>
+          <button class="remove-service-btn py-1 px-3 rounded-xl border hover:bg-gray-100" data-id="${service.id}">
+            <i class="fas fa-trash-alt ml-2"></i>إزالة
+          </button>
+        </div>`;
+      const details = isAddOn ? `
+        <div class="details-inputs space-y-3 pt-3 border-t opacity-100" data-id="${service.id}">
+          <div class="flex space-x-4 space-x-reverse">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700">السعر (ILS)</label>
+              <input type="number" data-id="${service.id}" data-type="price" value="${initialPrice}" min="5" step="5" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-500">المدة (تلقائياً 0 دقيقة)</label>
+              <input type="number" data-id="${service.id}" data-type="duration" value="0" readonly class="mt-1 w-full p-2 border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500">
+            </div>
+          </div>
+        </div>` : `
+        <div class="details-inputs space-y-3 pt-3 border-t opacity-100" data-id="${service.id}">
+          <div class="flex space-x-4 space-x-reverse">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700">السعر (ILS)</label>
+              <input type="number" data-id="${service.id}" data-type="price" value="${initialPrice}" min="5" step="5" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700">المدة</label>
+              <select data-id="${service.id}" data-type="duration" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg appearance-none text-right">
+                ${generateDurationOptions(initialDuration)}
+              </select>
+            </div>
+          </div>
+        </div>`;
+      card.innerHTML = header + details;
+
+      container.appendChild(card);
+      // Wire remove button
+      const removeBtn = card.querySelector('.remove-service-btn');
+      removeBtn?.addEventListener('click', () => {
+        card.remove();
+        scheduleAutoSave();
+      });
+
+      // Wire inputs for auto-save
+      const priceInput = card.querySelector('input[data-type="price"]');
+      const durationInput = service.service_type === 'add_on'
+        ? card.querySelector('input[data-type="duration"]')
+        : card.querySelector('select[data-type="duration"]');
+      ['input','change'].forEach(ev => {
+        if (priceInput) priceInput.addEventListener(ev, scheduleAutoSave);
+        if (durationInput) durationInput.addEventListener(ev, scheduleAutoSave);
+      });
+      return card;
+    }
+</script>
+<script>
+// Shared services explorer for salon (search + category + inline price/duration + add)
+function openSalonServicesExplorer(prefCategory = 'all') {
+  const allServices = Array.isArray(window.masterServicesCache) ? window.masterServicesCache : [];
+  const current = new Map(
+    (Array.isArray(window.salonServicesCache) ? window.salonServicesCache : []).map(s => [s.id, s])
+  );
+  if (!allServices.length) return;
+
+  let modal = document.getElementById('salon-services-explorer-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'salon-services-explorer-modal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-2xl p-4 text-right">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center">
+            <i class="fas fa-search text-secondary ml-2 text-xl"></i>
+            <h3 class="text-lg font-bold text-primary-dark">إدارة الخدمات السريعة</h3>
+          </div>
+          <button id="salon-explorer-close" class="py-1 px-3 rounded-xl border">إغلاق</button>
+        </div>
+        <div class="flex items-center gap-2 mb-3">
+          <input id="salon-explorer-search" type="text" class="flex-1 border rounded-xl px-3 py-2" placeholder="ابحث باسم الخدمة...">
+          <select id="salon-explorer-category" class="border rounded-xl px-2 py-2">
+            <option value="all">الكل</option>
+            <option value="main">الأساسية</option>
+            <option value="add_on">الإضافات</option>
+          </select>
+        </div>
+        <div id="salon-explorer-list" class="max-h-96 overflow-y-auto space-y-2"></div>
+        <div class="mt-3 text-xs text-gray-500">يتم حفظ التغييرات تلقائيًا.</div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  const closeBtn = modal.querySelector('#salon-explorer-close');
+  const searchInput = modal.querySelector('#salon-explorer-search');
+  const categorySelect = modal.querySelector('#salon-explorer-category');
+  const listEl = modal.querySelector('#salon-explorer-list');
+
+  const renderList = () => {
+    const q = (searchInput.value || '').trim();
+    const cat = categorySelect.value;
+    const chosenIds = new Set(Array.from(document.querySelectorAll('[data-service-id]')).map(el => parseInt(el.getAttribute('data-service-id'))));
+    const filtered = allServices.filter(s => {
+      const matchesCat = cat === 'all' ? true : s.service_type === cat;
+      const matchesQuery = q ? (s.name_ar || '').includes(q) : true;
+      return matchesCat && matchesQuery && !chosenIds.has(s.id);
+    });
+
+    listEl.innerHTML = filtered.map(s => {
+      const price = (s.service_type === 'add_on' ? 25 : 50);
+      const duration = (s.service_type === 'add_on' ? 0 : 30);
+      const isAddOn = s.service_type === 'add_on';
+      return `
+        <div class="border rounded-xl p-3 flex items-center justify-between">
+          <div class="flex-1">
+            <div class="font-bold text-primary-dark">${s.name_ar}</div>
+            <div class="text-sm ${isAddOn ? 'text-orange-600' : 'text-gray-600'}">${isAddOn ? 'إضافة - بدون وقت' : 'خدمة أساسية'}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" class="w-24 p-2 border rounded-lg text-right" data-field="price" data-id="${s.id}" value="${price}" min="5" step="5" placeholder="السعر">
+            ${isAddOn
+              ? `<input type="number" class="w-20 p-2 border rounded-lg text-right bg-gray-100 text-gray-500" value="0" readonly>`
+              : `<select class="w-24 p-2 border rounded-lg text-right" data-field="duration" data-id="${s.id}">${[...Array(24)].map((_,i)=>{const v=(i+1)*5;return `<option value="${v}" ${v===duration?'selected':''}>${v} دقيقة</option>`}).join('')}</select>`
+            }
+            <button class="py-1.5 px-3 rounded-xl btn-action" data-action="add" data-id="${s.id}">إضافة</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Wire add buttons
+    listEl.querySelectorAll('button[data-action="add"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.getAttribute('data-id'));
+        const s = allServices.find(x => x.id === id);
+        if (!s) return;
+        const priceEl = listEl.querySelector(`input[data-field="price"][data-id="${id}"]`);
+        const durEl = listEl.querySelector(`select[data-field="duration"][data-id="${id}"]`);
+        const price = priceEl ? parseFloat(priceEl.value) : (s.service_type === 'add_on' ? 25 : 50);
+        const duration = s.service_type === 'add_on' ? 0 : (durEl ? parseInt(durEl.value) : 30);
+
+        // Ensure card exists (especially for add-ons) and reflect selection
+        let card = document.querySelector(`[data-service-id="${id}"]`);
+        if (!card) {
+          card = ensureServiceCardRendered(s, price, duration);
+        }
+        const details = card?.querySelector(`.details-inputs[data-id="${id}"]`);
+        const priceInput = details?.querySelector('input[data-type="price"]');
+        const durationInput = s.service_type === 'add_on'
+          ? details?.querySelector('input[data-type="duration"]')
+          : details?.querySelector('select[data-type="duration"]');
+        if (priceInput) priceInput.value = isNaN(price) ? (s.service_type === 'add_on' ? 25 : 50) : price;
+        if (durationInput) durationInput.value = s.service_type === 'add_on' ? 0 : (isNaN(duration) ? 30 : duration);
+        // Trigger auto-save after adding
+        scheduleAutoSave();
+
+        // Visual cue and ensure immediate visibility
+        if (card) {
+          try {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const oldShadow = card.style.boxShadow;
+            card.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.5)';
+            setTimeout(() => { card.style.boxShadow = oldShadow || ''; }, 700);
+          } catch (_) {}
+        }
+      });
+    });
+  };
+
+  modal.classList.remove('hidden');
+  categorySelect.value = ['main','add_on'].includes(prefCategory) ? prefCategory : 'all';
+  renderList();
+
+  closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  modal.addEventListener('click', (e) => { if (e.target.id === 'salon-services-explorer-modal') modal.classList.add('hidden'); });
+  searchInput.addEventListener('input', renderList);
+  categorySelect.addEventListener('change', renderList);
+}
 </script>
 <!-- Socket.IO client for real-time updates -->
 <script src="/socket.io/socket.io.js"></script>
@@ -2654,22 +2948,20 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.on('joinedSalon', ({ room }) => {
           console.log('Joined Socket.IO room:', room);
         });
-        // When an appointment is booked, reload the list
+        // When an appointment is booked, reload the list silently
         socket.on('appointment_booked', (payload) => {
           try {
             if (typeof currentAppointmentsFilter !== 'undefined') {
-              loadAppointments(currentAppointmentsFilter);
+              loadAppointments(currentAppointmentsFilter, { showLoading: false });
             }
-            showRefreshBanner && showRefreshBanner();
           } catch (e) { console.warn('socket appointment_booked handler error:', e.message); }
         });
-        // When an appointment is cancelled, reload the list
+        // When an appointment is cancelled, reload the list silently
         socket.on('appointment_cancelled', (payload) => {
           try {
             if (typeof currentAppointmentsFilter !== 'undefined') {
-              loadAppointments(currentAppointmentsFilter);
+              loadAppointments(currentAppointmentsFilter, { showLoading: false });
             }
-            showRefreshBanner && showRefreshBanner();
           } catch (e) { console.warn('socket appointment_cancelled handler error:', e.message); }
         });
       }

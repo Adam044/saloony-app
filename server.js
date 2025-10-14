@@ -27,28 +27,7 @@ try {
 }
 
 // --- Core Data: Master Service List & Cities ---
-const MASTER_SERVICES = {
-    'men': [
-        { name_ar: "قص شعر", icon: "fa-cut", service_type: "main" },
-        { name_ar: "لحية", icon: "fa-user-tie", service_type: "main" },
-        { name_ar: "صبغة شعر", icon: "fa-palette", service_type: "main" },
-        { name_ar: "كيراتين", icon: "fa-magic", service_type: "main" },
-        { name_ar: "تنظيف بشرة (ماسك)", icon: "fa-mask", service_type: "add_on" },
-        { name_ar: "ماسك مرطب", icon: "fa-tint", service_type: "add_on" },
-        { name_ar: "ماسك مقشر", icon: "fa-leaf", service_type: "add_on" }
-    ],
-    'women': [
-        { name_ar: "قص شعر", icon: "fa-cut", service_type: "main" },
-        { name_ar: "سشوار وتصفيف", icon: "fa-spray-can", service_type: "main" },
-        { name_ar: "مكياج", icon: "fa-paint-brush", service_type: "main" },
-        { name_ar: "تجميل أظافر (مناكير)", icon: "fa-hands-wash", service_type: "main" },
-        { name_ar: "كيراتين", icon: "fa-magic", service_type: "main" },
-        { name_ar: "تنظيف بشرة", icon: "fa-face-mask", service_type: "add_on" },
-        { name_ar: "ماسك مرطب", icon: "fa-tint", service_type: "add_on" },
-        { name_ar: "ماسك مقشر", icon: "fa-leaf", service_type: "add_on" },
-        { name_ar: "ماسك مغذي", icon: "fa-seedling", service_type: "add_on" }
-    ]
-};
+const MASTER_SERVICES = require('./services');
 
 const CITIES = [
     'القدس', 'رام الله', 'الخليل', 'نابلس', 'بيت لحم', 'غزة',
@@ -442,33 +421,16 @@ async function insertMasterServices() {
     }
 }
 
-// Automatic appointment status update system
+// Automatic appointment status update system (DISABLED)
+// Requirement: Do not auto-complete appointments. Status changes are manual.
 async function autoUpdateAppointmentStatuses() {
-    const now = new Date().toISOString();
-    
-    try {
-        // Find all scheduled appointments that have ended
-        const sql = `
-            UPDATE appointments 
-            SET status = 'Completed' 
-            WHERE status = 'Scheduled' 
-            AND end_time <= $1
-        `;
-        
-        const result = await db.run(sql, [now]);
-        if (result && result.rowCount > 0) {
-            console.log(`Auto-updated ${result.rowCount} appointments to Completed status`);
-        }
-    } catch (error) {
-        console.error('Error auto-updating appointment statuses:', error);
-    }
+    // Disabled: no automatic status updates.
+    return;
 }
 
-// Run auto-update every 5 minutes
-setInterval(autoUpdateAppointmentStatuses, 5 * 60 * 1000);
-
-// Run once on startup
-setTimeout(autoUpdateAppointmentStatuses, 5000);
+// Auto status updates disabled
+// setInterval(autoUpdateAppointmentStatuses, 5 * 60 * 1000);
+// setTimeout(autoUpdateAppointmentStatuses, 5000);
 
 // Middleware setup
 app.use(cors()); // Allow all CORS requests
@@ -1410,20 +1372,28 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
         let orderBy = 'ASC';
 
         if (filter === 'today') {
-            // FIX: Use DATE() extraction function suitable for PostgreSQL
+            // Only show Scheduled appointments for today; exclude Completed from today
             const today = new Date().toISOString().split('T')[0];
-            whereClause = `AND DATE(a.start_time) = $2`;
+            whereClause = `AND DATE(a.start_time) = $2 AND a.status = 'Scheduled'`;
             params.push(today);
             orderBy = 'ASC';
+        } else if (filter === 'completed') {
+            // Show all completed appointments regardless of date
+            whereClause = `AND a.status = 'Completed'`;
+            orderBy = 'DESC';
         } else if (filter === 'upcoming') {
-             // FIX: Use $2 placeholder
-            whereClause = `AND a.start_time > $2 AND status = 'Scheduled'`;
+            // Backward compatibility: upcoming shows only future scheduled
+            whereClause = `AND a.start_time > $2 AND a.status = 'Scheduled'`;
             params.push(now);
             orderBy = 'ASC';
         } else if (filter === 'past') {
-             // FIX: Use $2 placeholder
-            whereClause = `AND a.start_time <= $2`;
+            // Exclude cancelled and completed from past view
+            whereClause = `AND a.start_time <= $2 AND a.status <> 'Cancelled' AND a.status <> 'Completed'`;
             params.push(now);
+            orderBy = 'DESC';
+        } else if (filter === 'cancelled') {
+            // Show only cancelled appointments
+            whereClause = `AND a.status = 'Cancelled'`;
             orderBy = 'DESC';
         } else {
             return res.status(400).json({ success: false, message: 'Invalid filter.' });
@@ -1694,7 +1664,20 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
                 salon_id: row.salon_id,
                 payload: {
                     title: 'إلغاء موعد متأخر',
-                    body: `المستخدم ${user_id} ألغى موعدًا قريبًا (${new Date(row.start_time).toLocaleString('ar-EG')}).`,
+                    body: (() => {
+                        try {
+                            const d = new Date(row.start_time);
+                            const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+                            let h = d.getHours();
+                            const isAM = h < 12;
+                            h = h % 12 || 12;
+                            const suffix = isAM ? 'صباحًا' : 'مساءً';
+                            const time = `${h} ${suffix}`;
+                            return `تم إلغاء موعد قريب بتاريخ ${date} على الساعة ${time}`;
+                        } catch {
+                            return `تم إلغاء موعد قريب بتاريخ ${new Date(row.start_time).toLocaleDateString('ar-EG')} على الساعة ${new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+                        }
+                    })(),
                     url: '/home_salon.html#appointments'
                 }
              });
@@ -1717,12 +1700,28 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
         });
         // Socket.IO emit for normal cancellation
         try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: false }); } } catch (e) { console.warn('socket cancel emit error:', e.message); }
-        // Push notify salon about normal cancellation
+        // Push notify salon about normal cancellation (clean Arabic text, no user name)
+        const fmtDate = (() => {
+            try {
+                const d = new Date(row.start_time);
+                return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+            } catch { return new Date(row.start_time).toLocaleDateString('ar-EG'); }
+        })();
+        const fmtTime = (() => {
+            try {
+                const d = new Date(row.start_time);
+                let h = d.getHours();
+                const isAM = h < 12;
+                h = h % 12 || 12;
+                const suffix = isAM ? 'صباحًا' : 'مساءً';
+                return `${h} ${suffix}`;
+            } catch { return new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+        })();
         await sendPushToTargets({
             salon_id: row.salon_id,
             payload: {
                 title: 'تم إلغاء موعد',
-                body: `المستخدم ${user_id} ألغى موعده بتاريخ ${new Date(row.start_time).toLocaleDateString('ar-EG')}.`,
+                body: `تم إلغاء موعد بتاريخ ${fmtDate} على الساعة ${fmtTime}`,
                 url: '/home_salon.html#appointments'
             }
         });
@@ -1966,25 +1965,38 @@ app.post('/api/appointment/book', async (req, res) => {
         // Socket.IO emit to salon room for real-time update
         try { if (io) { io.to(`salon_${salon_id}`).emit('appointment_booked', { appointmentId, user_id, staff_id: staffIdForDB, staff_name: assignedStaffName, start_time, end_time, services_count: servicesToBook.length, price }); } } catch (e) { console.warn('socket booked emit error:', e.message); }
 
-        // Push notify salon of new booking
+        // Helper formatters for clean Arabic date/time in pushes
+        const formatArabicDate = (d) => {
+            try {
+                const date = new Date(d);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+            } catch { return new Date(d).toLocaleDateString('ar-EG'); }
+        };
+        const formatArabicTimeClean = (d) => {
+            try {
+                const date = new Date(d);
+                let h = date.getHours();
+                const isAM = h < 12;
+                h = h % 12 || 12; // 12-hour
+                const suffix = isAM ? 'صباحًا' : 'مساءً';
+                return `${h} ${suffix}`;
+            } catch { return new Date(d).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+        };
+
+        // Push notify salon of new booking (clean Arabic text, no user name)
         await sendPushToTargets({
             salon_id,
             payload: {
                 title: 'حجز جديد',
-                body: `تم حجز موعد جديد للمستخدم ${user_id} في ${new Date(start_time).toLocaleString('ar-EG')}.`,
+                body: `لديك حجز جديد بتاريخ ${formatArabicDate(start_time)} على الساعة ${formatArabicTimeClean(start_time)}`,
                 url: '/home_salon.html#appointments'
             }
         });
 
-        // Push notify user of confirmation
-        await sendPushToTargets({
-            user_id,
-            payload: {
-                title: 'تأكيد الحجز',
-                body: `تم تأكيد موعدك في الصالون بتاريخ ${new Date(start_time).toLocaleString('ar-EG')}.`,
-                url: '/home_user.html#appointments'
-            }
-        });
+        // Do NOT push notify user on booking; user sees confirmation modal in-app
 
         res.json({ 
             success: true, 

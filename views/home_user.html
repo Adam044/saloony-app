@@ -1744,8 +1744,10 @@ async function loadUserAppointments(filter) {
 
                 const salonName = appointment.salon_name || 'الصالون';
                 const title = 'تذكير الموعد';
-                scheduleReminder(title, `موعدك اليوم في ${salonName}.`, startOfDay);
-                scheduleReminder(title, `يبقى ساعة واحدة لموعدك في ${salonName}.`, oneHourBefore);
+                // 08:00 same-day reminder: friendly, clean Arabic
+                scheduleReminder(title, `موعدك اليوم في ${salonName}. لا تنسَ التحضير ✨`, startOfDay);
+                // 1 hour before: modern, dynamic style
+                scheduleReminder(title, `جاهز؟ يبقى ساعة لموعدك في ${salonName} ⏰🚀`, oneHourBefore);
             });
         } catch (e) {
             console.debug('Reminder scheduling skipped:', e);
@@ -3281,9 +3283,14 @@ function renderServiceSelection(services) {
     if (mainServices.length > 0) {
         html += `
             <div class="col-span-full mb-4">
-                <h3 class="text-xl font-bold text-primary-dark mb-2">
-                    <i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية
-                </h3>
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-primary-dark mb-2">
+                        <i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية
+                    </h3>
+                    <button id="btn-more-services-main" class="py-1.5 px-3 rounded-xl border hover:bg-gray-100">
+                        المزيد من الخدمات
+                    </button>
+                </div>
                 <p class="text-gray-600 text-sm">اختر الخدمات التي تحتاجها (تحتاج وقت محدد)</p>
             </div>
         `;
@@ -3310,9 +3317,14 @@ function renderServiceSelection(services) {
     if (addOnServices.length > 0) {
         html += `
             <div class="col-span-full mb-4 ${mainServices.length > 0 ? 'mt-8' : ''}">
-                <h3 class="text-xl font-bold text-primary-dark mb-2">
-                    <i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات
-                </h3>
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-primary-dark mb-2">
+                        <i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات
+                    </h3>
+                    <button id="btn-more-services-addons" class="py-1.5 px-3 rounded-xl border hover:bg-gray-100">
+                        المزيد من الإضافات
+                    </button>
+                </div>
                 <p class="text-gray-600 text-sm">خدمات إضافية (لا تحتاج وقت إضافي)</p>
             </div>
         `;
@@ -3409,6 +3421,18 @@ function renderServiceSelection(services) {
     });
     
     updateTotals(); 
+
+    // Expose for modal actions
+    window.availableSalonServices = services;
+    window.updateTotals = updateTotals;
+
+    // More options triggers
+    document.getElementById('btn-more-services-main')?.addEventListener('click', () => {
+        openServicesExplorer('main');
+    });
+    document.getElementById('btn-more-services-addons')?.addEventListener('click', () => {
+        openServicesExplorer('add_on');
+    });
 }
 
 function findAvailableStaff(startTimeMinutes, endTimeMinutes) {
@@ -3724,6 +3748,120 @@ document.addEventListener('DOMContentLoaded', function() {
         })();
     }
 });
+</script>
+<script>
+// Shared services explorer modal (search + category + add)
+function openServicesExplorer(prefCategory = 'all') {
+    const allServices = Array.isArray(window.availableSalonServices) ? window.availableSalonServices : [];
+    if (!allServices.length) return;
+
+    let modal = document.getElementById('services-explorer-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'services-explorer-modal';
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+        modal.innerHTML = `
+          <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-2xl p-4 text-right">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center">
+                <i class="fas fa-search text-secondary ml-2 text-xl"></i>
+                <h3 class="text-lg font-bold text-primary-dark">المزيد من الخدمات</h3>
+              </div>
+              <button id="services-explorer-close" class="py-1 px-3 rounded-xl border">إغلاق</button>
+            </div>
+            <div class="flex items-center gap-2 mb-3">
+              <input id="services-explorer-search" type="text" class="flex-1 border rounded-xl px-3 py-2"
+                     placeholder="ابحث باسم الخدمة...">
+              <select id="services-explorer-category" class="border rounded-xl px-2 py-2">
+                <option value="all">الكل</option>
+                <option value="main">الأساسية</option>
+                <option value="add_on">الإضافات</option>
+              </select>
+            </div>
+            <div id="services-explorer-list" class="max-h-96 overflow-y-auto space-y-2"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    const closeBtn = modal.querySelector('#services-explorer-close');
+    const searchInput = modal.querySelector('#services-explorer-search');
+    const categorySelect = modal.querySelector('#services-explorer-category');
+    const listEl = modal.querySelector('#services-explorer-list');
+
+    const renderList = () => {
+        const q = (searchInput.value || '').trim();
+        const cat = categorySelect.value;
+        const filtered = allServices.filter(s => {
+            const matchesCat = cat === 'all' ? true : s.service_type === cat;
+            const matchesQuery = q ? (s.name_ar || '').includes(q) : true;
+            return matchesCat && matchesQuery;
+        });
+
+        listEl.innerHTML = filtered.map(s => `
+            <div class="border rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-primary-dark">${s.name_ar}</div>
+                <div class="text-sm ${s.service_type === 'add_on' ? 'text-orange-600' : 'text-gray-600'}">
+                    ${s.service_type === 'add_on' ? 'إضافة - بدون وقت' : `${s.duration} دقيقة`} • ${s.price} شيكل
+                </div>
+              </div>
+              <button class="py-1.5 px-3 rounded-xl btn-action add-service-btn" data-id="${s.id}">إضافة</button>
+            </div>
+        `).join('');
+
+        listEl.querySelectorAll('.add-service-btn').forEach(btn => {
+            btn.addEventListener('click', () => addServiceById(parseInt(btn.dataset.id)));
+        });
+    };
+
+    const addServiceById = (id) => {
+        const s = allServices.find(x => x.id === id);
+        if (!s) return;
+
+        const existingIndex = selectedServices.findIndex(x => x.id === id);
+        if (existingIndex > -1) {
+            selectedServices.splice(existingIndex, 1);
+        } else {
+            selectedServices.push({
+                id: s.id,
+                name_ar: s.name_ar,
+                price: parseFloat(s.price),
+                duration: s.service_type === 'add_on' ? 0 : parseInt(s.duration),
+                service_type: s.service_type
+            });
+            selectedServices.sort((a, b) => a.id - b.id);
+        }
+
+        const card = document.querySelector(`[data-service-id="${id}"]`);
+        if (card) {
+            card.classList.toggle('checked');
+            if (s.service_type === 'add_on') {
+                if (card.classList.contains('checked')) {
+                    card.classList.add('bg-orange-50', 'border-orange-400');
+                } else {
+                    card.classList.remove('bg-orange-50', 'border-orange-400');
+                }
+            }
+        }
+
+        window.updateTotals && window.updateTotals();
+        if (!document.getElementById('step-3').classList.contains('hidden') && selectedDate) {
+            loadTimeSlots();
+        }
+    };
+
+    modal.classList.remove('hidden');
+    categorySelect.value = ['main', 'add_on'].includes(prefCategory) ? prefCategory : 'all';
+    renderList();
+
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'services-explorer-modal') modal.classList.add('hidden');
+    });
+    searchInput.addEventListener('input', renderList);
+    categorySelect.addEventListener('change', renderList);
+}
 </script>
 <!-- Header is non-sticky now -->
 <!-- Notification Permission Modal -->
