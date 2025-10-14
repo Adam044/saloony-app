@@ -41,6 +41,28 @@ function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+// Normalize phone numbers to a canonical form for duplicate checks and login.
+// Strategy:
+// - Remove all non-digits
+// - Strip leading international prefixes and country codes (00, +970, +972)
+// - Strip trunk leading zero
+// - Compare by last 9 digits (operator+subscriber), which unifies formats like:
+//   0594444403, +970594444403, +972594444403, 594444403
+function normalizePhoneNumber(input) {
+    if (!input) return '';
+    let digits = String(input).replace(/\D/g, '');
+    // Remove international call prefix like '00'
+    if (digits.startsWith('00')) digits = digits.replace(/^00+/, '');
+    // Remove common country codes used in our region
+    if (digits.startsWith('970')) digits = digits.slice(3);
+    else if (digits.startsWith('972')) digits = digits.slice(3);
+    // Remove local trunk prefix '0'
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    // Unify to last 9 digits
+    if (digits.length > 9) digits = digits.slice(-9);
+    return digits;
+}
+
 // Helper functions using our database module
 const dbAll = (sql, params = []) => db.query(sql, params);
 const dbGet = (sql, params = []) => db.get(sql, params);
@@ -747,14 +769,30 @@ app.post('/api/auth/register', async (req, res) => {
         if (user_type === 'user' || user_type === 'salon') {
             // 1. Insert into users table (Unified Login)
             const userSql = `INSERT INTO users (name, email, phone, gender, city, password, user_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`;
+            // Determine fields before duplicate checks
+            const user_name_to_use = user_type === 'salon' ? owner_name : name;
+            const user_phone_to_use = user_type === 'salon' ? owner_phone : phone;
+            const gender_to_use = user_type === 'salon' ? null : gender;
+
+            // Smart duplicate check on phone: compare normalized last 9 digits
+            try {
+                const normalizedPhone = normalizePhoneNumber(user_phone_to_use || '');
+                if (normalizedPhone) {
+                    const dup = await db.query(
+                        "SELECT id FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = $1 LIMIT 1",
+                        [normalizedPhone]
+                    );
+                    if (dup && dup.length > 0) {
+                        return res.status(400).json({ success: false, message: 'رقم الهاتف مسجل بالفعل.', message_en: 'Phone already registered.' });
+                    }
+                }
+            } catch (dupErr) {
+                console.error('Phone duplicate check error:', dupErr);
+                // Proceed without blocking if check fails unexpectedly
+            }
+
             let userResult;
             try {
-                // *** CRITICAL FIX APPLIED HERE ***
-                // For salon, use owner_name/owner_phone for the User record (Owner's personal identity).
-                const user_name_to_use = user_type === 'salon' ? owner_name : name;
-                const user_phone_to_use = user_type === 'salon' ? owner_phone : phone;
-                const gender_to_use = user_type === 'salon' ? null : gender;
-
                 userResult = await db.query(userSql, [user_name_to_use, email, user_phone_to_use, gender_to_use, city, hashedPassword, user_type]);
             } catch (err) {
                 if (err.code === '23505') { // PostgreSQL unique constraint violation
@@ -850,12 +888,16 @@ app.post('/api/auth/login', async (req, res) => {
 
         const hashedPassword = hashPassword(password);
 
-        // 1. Find user in USERS table by email OR phone
+        // 1. Find user in USERS table by email OR normalized phone
         let userResult;
         if (isEmail) {
             userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE email = $1', [input]);
         } else {
-            userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE phone = $1', [input]);
+            const normalizedIdentifier = normalizePhoneNumber(input);
+            userResult = await db.query(
+                "SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = $1",
+                [normalizedIdentifier]
+            );
         }
         console.log('Users table query result:', userResult);
         
