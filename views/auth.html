@@ -145,7 +145,7 @@
         <form id="login-form" class="space-y-4">
             
             <div class="relative">
-                <input type="email" id="login-email" name="email" placeholder="البريد الإلكتروني" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="username">
+                <input type="text" id="login-identifier" name="identifier" placeholder="البريد الإلكتروني أو رقم الهاتف" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="username">
                 <i class="fas fa-at text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
             </div>
             
@@ -462,10 +462,10 @@ class AuthManager {
     async handleLogin(e) {
         e.preventDefault();
         
-        const email = document.getElementById('login-email').value;
+        const identifier = document.getElementById('login-identifier').value.trim();
         const password = document.getElementById('login-password').value;
 
-        if (!email || !password) {
+        if (!identifier || !password) {
             this.showToast('يرجى ملء جميع الحقول المطلوبة', 'error');
             return;
         }
@@ -473,10 +473,10 @@ class AuthManager {
         this.showLoadingSpinner(true, 'login');
 
         try {
-            const loginData = {
-                email: email,
-                password: password
-            };
+            const isEmail = identifier.includes('@');
+            const loginData = { identifier, password };
+            if (isEmail) { loginData.email = identifier; }
+            else { loginData.phone = identifier; }
 
             const response = await fetch('/api/auth/login', {
                 method: 'POST',

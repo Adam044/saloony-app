@@ -841,23 +841,30 @@ app.post('/api/auth/login', async (req, res) => {
     console.log('🚀 LOGIN ENDPOINT HIT!');
     console.log('Request body:', req.body);
     try {
-        const { email, password } = req.body;
+        const { identifier, email, phone, password } = req.body;
 
         console.log('=== UNIFIED LOGIN REQUEST ===');
-        console.log('Email:', email);
+        const input = (identifier || email || phone || '').trim();
+        const isEmail = input.includes('@');
+        console.log('Identifier:', input);
 
         const hashedPassword = hashPassword(password);
 
-        // 1. Find user in USERS table (Unified Check)
-        let userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password FROM users WHERE email = $1', [email]);
+        // 1. Find user in USERS table by email OR phone
+        let userResult;
+        if (isEmail) {
+            userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE email = $1', [input]);
+        } else {
+            userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE phone = $1', [input]);
+        }
         console.log('Users table query result:', userResult);
         
         if (!userResult || userResult.length === 0) {
-            console.log('No user found with that email.');
+            console.log('No user found with that identifier.');
             return res.status(401).json({ 
                 success: false, 
-                message: 'البريد الإلكتروني غير مسجل.', 
-                message_en: 'Email not registered.' 
+                message: isEmail ? 'البريد الإلكتروني غير مسجل.' : 'رقم الهاتف غير مسجل.', 
+                message_en: isEmail ? 'Email not registered.' : 'Phone not registered.' 
             });
         }
         
@@ -923,7 +930,7 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
         }
 
-        console.log(`Successful login for ${userType}: ${email}`);
+        console.log(`Successful login for ${userType}: ${isEmail ? userRow.email : userRow.phone}`);
 
         // Generate token
         const token = crypto.randomUUID();

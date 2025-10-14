@@ -2718,11 +2718,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('logout-btn').addEventListener('click', (e) => {
         e.preventDefault();
-        // Clear all user-related session data
-        localStorage.removeItem('salonni_user');
-        localStorage.removeItem('salonni_token');
-        console.log("Salon logging out.");
-        window.location.replace('/auth.html');
+        // Use the unified confirmation modal for logout confirmation
+        showConfirmationModal('هل أنت متأكد من أنك تريد تسجيل الخروج؟', () => {
+            localStorage.removeItem('salonni_user');
+            localStorage.removeItem('salonni_token');
+            console.log('Salon logging out.');
+            window.location.replace('/auth.html');
+        }, 'تسجيل الخروج');
     });
 });
     // Global helper: generate 5–120 minute options for duration selects
