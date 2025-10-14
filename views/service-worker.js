@@ -28,16 +28,27 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const fetchPromise = fetch(req).then((networkRes) => {
-        const copy = networkRes.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-        return networkRes;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
-  );
+  // Network-only for API requests to avoid caching dynamic data
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(req).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for static assets and pages (GET only)
+  if (req.method === 'GET') {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        const fetchPromise = fetch(req).then((networkRes) => {
+          const copy = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          return networkRes;
+        }).catch(() => cached);
+        return cached || fetchPromise;
+      })
+    );
+  }
 });
 
 // Placeholder push event
