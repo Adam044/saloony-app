@@ -155,7 +155,7 @@
                     <div class="flex space-x-2 space-x-reverse mb-4 border-b pb-2">
                         <button class="tab-appointments px-3 py-1 font-bold text-sm rounded-xl text-white bg-primary-dark transition-all" data-filter="today">اليوم</button>
                         <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="completed">المكتملة</button>
-                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="past">السابقة</button>
+                        <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="upcoming">القادمة</button>
                         <button class="tab-appointments px-3 py-1 text-sm rounded-xl text-gray-500 bg-gray-200 hover:bg-gray-300 transition-all" data-filter="cancelled">الملغاة</button>
                     </div>
 
@@ -431,7 +431,7 @@
                         </div>
                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl md:col-span-2">
                             <div class="w-20 h-20 border rounded-xl overflow-hidden bg-gray-100">
-                                <img id="disp-image" class="w-full h-full object-cover" src="https://placehold.co/80x80/ccc/333?text=S" alt="Salon Image">
+                                <img id="disp-image" class="w-full h-full object-cover" src="https://placehold.co/80x80/ccc/333?text=S" alt="Salon Image" loading="lazy" decoding="async" width="80" height="80">
                             </div>
                             <span class="text-gray-600">صورة الصالون</span>
                         </div>
@@ -1397,9 +1397,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  } else if (filter === 'completed') {
                      emptyText = 'لا توجد مواعيد مكتملة حتى الآن.';
                      icon = 'fa-check-circle';
-                 } else if (filter === 'past') {
-                     emptyText = 'سجل مواعيدك السابقة يظهر فارغًا.';
-                     icon = 'fa-history';
+                 } else if (filter === 'upcoming') {
+                     emptyText = 'لا توجد مواعيد قادمة.';
+                     icon = 'fa-calendar-plus';
                  } else if (filter === 'cancelled') {
                      emptyText = 'لا توجد مواعيد ملغاة حالياً.';
                      icon = 'fa-ban';

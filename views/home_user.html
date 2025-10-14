@@ -488,7 +488,7 @@
                 
                 <!-- Salon Header -->
                 <div id="salon-detail-header" class="flex flex-col items-center text-center">
-                    <img id="detail-image" class="w-32 h-32 object-cover rounded-full shadow-lg mb-3" src="https://placehold.co/128x128/ccc/333?text=S" alt="Salon Image">
+                <img id="detail-image" class="w-32 h-32 object-cover rounded-full shadow-lg mb-3" src="https://placehold.co/128x128/ccc/333?text=S" alt="Salon Image" loading="lazy" decoding="async" width="128" height="128">
                     <h3 id="detail-name" class="text-2xl font-bold text-primary-dark">اسم الصالون</h3>
                     <div class="flex items-center space-x-3 space-x-reverse mt-2">
                         <p id="detail-rating" class="text-sm text-gray-600">...</p>
@@ -737,6 +737,33 @@
                 </button>
                 <button id="close-already-reviewed-btn" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
                     إلغاء
+                </button>
+            </div>
+        </div>
+</div>
+</div>
+
+<!-- Active Appointment Block Modal -->
+<div id="active-appointment-modal" class="confirmation-modal" style="display: none;">
+    <div class="confirmation-modal-content p-6">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">لديك موعد نشط مؤجّل</h3>
+            <button id="close-active-appointment-modal-btn" class="text-gray-500 hover:text-red-500 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="text-center space-y-4">
+            <div class="text-6xl mb-4">
+                <i class="fas fa-calendar-check text-secondary"></i>
+            </div>
+            <p class="text-lg text-gray-700">لا يمكنك حجز موعد جديد قبل إكمال موعدك الحالي.</p>
+            <p class="text-sm text-gray-600">يرجى إنهاء الموعد الحالي أو إلغاؤه أولاً.</p>
+            <div class="flex gap-3 justify-center mt-6">
+                <button id="active-modal-view-appointments" class="px-6 py-2 rounded-xl bg-primary-dark text-white font-bold hover:bg-gray-700 transition">
+                    <i class="fas fa-calendar ml-2"></i> الذهاب إلى مواعيدي
+                </button>
+                <button id="active-modal-dismiss" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
+                    إغلاق
                 </button>
             </div>
         </div>
@@ -1287,6 +1314,23 @@ function hideAlreadyReviewedModal() {
     currentReviewSalon = null;
 }
 
+// Active Appointment Block Modal Functions
+function showActiveAppointmentModal() {
+    const modal = document.getElementById('active-appointment-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('modal-open'), 10);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideActiveAppointmentModal() {
+    const modal = document.getElementById('active-appointment-modal');
+    if (!modal) return;
+    modal.classList.remove('modal-open');
+    document.body.style.overflow = 'auto';
+    setTimeout(() => modal.style.display = 'none', 300);
+}
+
 function showDeleteReviewModal(salonId, salonName) {
     pendingDeleteReview = { salonId, salonName };
     document.getElementById('delete-review-salon-name').textContent = salonName;
@@ -1702,7 +1746,11 @@ async function loadUserAppointments(filter) {
         if (!response.ok) throw new Error('Failed to load appointments');
         
         const data = await response.json();
-        const appointments = data.appointments || [];
+        // Adjust filtering client-side: 'past' should exclude Scheduled appointments entirely
+        let appointments = data.appointments || [];
+        if (filter === 'past') {
+            appointments = appointments.filter(a => (a?.status || '').toLowerCase() !== 'scheduled');
+        }
         console.log('Appointments data:', appointments);
         const now = new Date().getTime();
         const threeHoursInMs = 3 * 60 * 60 * 1000;
@@ -2256,7 +2304,7 @@ function renderSalonCard(salon, cardType = 'detail') {
                 <img src="${imageUrl}" 
                     alt="${salon.salon_name}" 
                     onerror="this.onerror=null;this.src='https://placehold.co/80x80/F9FAFB/1E293B?text=صالون';"
-                    class="w-16 h-16 rounded-full object-cover" loading="lazy">
+                    class="w-16 h-16 rounded-full object-cover" loading="lazy" decoding="async" fetchpriority="low" width="64" height="64">
                 <h3 class="font-medium text-sm text-primary-dark text-center mt-2 leading-tight">${salon.salon_name}</h3>
             </div>
         `;
@@ -2269,7 +2317,7 @@ function renderSalonCard(salon, cardType = 'detail') {
                 <img src="${imageUrl}" 
                      alt="${salon.salon_name}" 
                      onerror="this.onerror=null;this.src='https://placehold.co/300x160/F9FAFB/1E293B?text=صالون';"
-                     class="w-full salon-card-image" loading="lazy">
+                     class="w-full salon-card-image" style="aspect-ratio: 16 / 9;" loading="lazy" decoding="async" fetchpriority="low" width="300" height="160">
                 <button class="favorite-btn absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center hover:bg-white transition-all duration-200 shadow-md ${salon.is_favorite ? 'text-red-500' : 'text-gray-400'}" 
                         data-salon-id="${safeSalonId}">
                     <i class="fas fa-heart"></i>
@@ -3588,6 +3636,14 @@ function initializeEventListeners() {
         localStorage.removeItem('salonni_token');
         window.location.replace('/auth.html');
     });
+
+    // Active Appointment Block Modal Listeners
+    const closeActiveBtn = document.getElementById('close-active-appointment-modal-btn');
+    const dismissActiveBtn = document.getElementById('active-modal-dismiss');
+    const viewAppointmentsBtn = document.getElementById('active-modal-view-appointments');
+    if (closeActiveBtn) closeActiveBtn.addEventListener('click', hideActiveAppointmentModal);
+    if (dismissActiveBtn) dismissActiveBtn.addEventListener('click', hideActiveAppointmentModal);
+    if (viewAppointmentsBtn) viewAppointmentsBtn.addEventListener('click', () => { hideActiveAppointmentModal(); switchView('appointments-view'); });
     document.querySelectorAll('.star-rating i').forEach(star => {
         star.addEventListener('click', (e) => {
             currentReviewRating = parseInt(e.currentTarget.dataset.rating);
@@ -3598,7 +3654,22 @@ function initializeEventListeners() {
         star.addEventListener('mouseout', () => updateStarDisplay(currentReviewRating));
     });
 
-    document.getElementById('next-step-1-btn').addEventListener('click', () => {
+    document.getElementById('next-step-1-btn').addEventListener('click', async () => {
+        try {
+            const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
+            if (uid) {
+                const res = await fetch(`/api/appointments/user/${uid}/upcoming`);
+                const data = await res.json().catch(() => ({}));
+                if (data && data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
+                    showActiveAppointmentModal();
+                    return;
+                }
+            }
+        } catch (e) {
+            console.debug('Active appointment check failed:', e);
+            // Fail open: allow booking flow to proceed
+        }
+
         showBookingStep(1);
         if (selectedSalon && selectedSalon.salonId) {
              loadSalonServices(selectedSalon.salonId);
