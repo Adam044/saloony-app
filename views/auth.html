@@ -473,9 +473,9 @@ class AuthManager {
         // Phone format validation for login
         const isEmail = identifier.includes('@');
         if (!isEmail) {
-            const phonePattern = /^0[0-9]{8}$/;
+            const phonePattern = /^0[0-9]{9}$/;
             if (!phonePattern.test(identifier)) {
-                this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام بالضبط (مثال: 0594444403)', 'error');
                 return;
             }
         }
@@ -586,22 +586,22 @@ class AuthManager {
         }
 
         // Phone format validation
-        const phonePattern = /^0[0-9]{8}$/;
+        const phonePattern = /^0[0-9]{9}$/;
         
         if (userType === 'user') {
             if (signupData.phone && !phonePattern.test(signupData.phone)) {
-                this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام بالضبط (مثال: 0594444403)', 'error');
                 return;
             }
         } else {
             // For salon: owner_phone is required and must match format
             if (signupData.owner_phone && !phonePattern.test(signupData.owner_phone)) {
-                this.showToast('رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                this.showToast('رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 10 أرقام بالضبط (مثال: 0594444403)', 'error');
                 return;
             }
             // Salon phone is optional but if provided must match format
             if (signupData.phone && signupData.phone.trim() !== '' && !phonePattern.test(signupData.phone)) {
-                this.showToast('رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                this.showToast('رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 10 أرقام بالضبط (مثال: 0594444403)', 'error');
                 return;
             }
         }

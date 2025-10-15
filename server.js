@@ -47,10 +47,10 @@ async function verifyPassword(password, hashedPassword) {
     return await bcrypt.compare(password, hashedPassword);
 }
 
-// Validate phone number format (must start with 0 and be exactly 9 digits)
+// Validate phone number format (must start with 0 and be exactly 10 digits)
 function validatePhoneFormat(phone) {
     if (!phone) return true; // Allow empty for optional fields
-    const phonePattern = /^0[0-9]{8}$/;
+    const phonePattern = /^0[0-9]{9}$/;
     return phonePattern.test(phone);
 }
 
@@ -59,7 +59,7 @@ function validatePhoneFormat(phone) {
 // - Remove all non-digits
 // - Strip leading international prefixes and country codes (00, +970, +972)
 // - Strip trunk leading zero
-// - Compare by last 9 digits (operator+subscriber), which unifies formats like:
+// - Compare by last 10 digits (operator+subscriber), which unifies formats like:
 //   0594444403, +970594444403, +972594444403, 594444403
 function normalizePhoneNumber(input) {
     if (!input) return '';
@@ -71,8 +71,8 @@ function normalizePhoneNumber(input) {
     else if (digits.startsWith('972')) digits = digits.slice(3);
     // Remove local trunk prefix '0'
     if (digits.startsWith('0')) digits = digits.slice(1);
-    // Unify to last 9 digits
-    if (digits.length > 9) digits = digits.slice(-9);
+    // Unify to last 10 digits
+    if (digits.length > 10) digits = digits.slice(-10);
     return digits;
 }
 
@@ -781,8 +781,8 @@ app.post('/api/auth/register', async (req, res) => {
         if (user_type === 'user' && phone && !validatePhoneFormat(phone)) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
-                message_en: 'Phone number must start with 0 and be 9 digits' 
+                message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
+                message_en: 'Phone number must start with 0 and be 10 digits' 
             });
         }
         
@@ -790,15 +790,15 @@ app.post('/api/auth/register', async (req, res) => {
             if (phone && !validatePhoneFormat(phone)) {
                 return res.status(400).json({ 
                     success: false, 
-                    message: 'رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
-                    message_en: 'Salon phone number must start with 0 and be 9 digits' 
+                    message: 'رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
+                    message_en: 'Salon phone number must start with 0 and be 10 digits' 
                 });
             }
             if (owner_phone && !validatePhoneFormat(owner_phone)) {
                 return res.status(400).json({ 
                     success: false, 
-                    message: 'رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
-                    message_en: 'Owner phone number must start with 0 and be 9 digits' 
+                    message: 'رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
+                    message_en: 'Owner phone number must start with 0 and be 10 digits' 
                 });
             }
         }
@@ -813,12 +813,12 @@ app.post('/api/auth/register', async (req, res) => {
             const user_phone_to_use = user_type === 'salon' ? owner_phone : phone;
             const gender_to_use = user_type === 'salon' ? null : gender;
 
-            // Smart duplicate check on phone: compare normalized last 9 digits
+            // Smart duplicate check on phone: compare normalized last 10 digits
             try {
                 const normalizedPhone = normalizePhoneNumber(user_phone_to_use || '');
                 if (normalizedPhone) {
                     const dup = await db.query(
-                        "SELECT id FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = $1 LIMIT 1",
+                        "SELECT id FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $1 LIMIT 1",
                         [normalizedPhone]
                     );
                     if (dup && dup.length > 0) {
@@ -929,8 +929,8 @@ app.post('/api/auth/login', async (req, res) => {
         if (!isEmail && input && !validatePhoneFormat(input)) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
-                message_en: 'Phone number must start with 0 and be 9 digits' 
+                message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
+                message_en: 'Phone number must start with 0 and be 10 digits' 
             });
         }
 

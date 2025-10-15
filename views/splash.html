@@ -33,12 +33,131 @@
       navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
 
-    // Centralized routing: only used for standalone/PWA launches
-    (function routeFromSplash() {
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-      // Browser users should not hit splash unless explicitly navigated
-      // Keep quick animation for PWA then redirect
-      const proceed = () => {
+    // App readiness detection and preloading
+    class AppReadinessManager {
+      constructor() {
+        this.isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        this.minDisplayTime = 800; // Minimum splash display time
+        this.maxWaitTime = 5000; // Maximum wait time before forcing navigation
+        this.startTime = Date.now();
+        this.readinessChecks = [];
+        this.preloadPromises = [];
+      }
+
+      // Preload critical resources based on target page
+      preloadResources(targetUrl) {
+        const commonResources = [
+          'https://cdn.tailwindcss.com',
+          'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
+          'https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap'
+        ];
+
+        const pageSpecificResources = {
+          '/auth.html': ['/images/auth.jpg'],
+          '/home_user.html': [],
+          '/home_salon.html': [],
+          '/admin_dashboard.html': []
+        };
+
+        const resourcesToPreload = [
+          ...commonResources,
+          ...(pageSpecificResources[targetUrl] || [])
+        ];
+
+        resourcesToPreload.forEach(url => {
+          this.preloadPromises.push(this.preloadResource(url));
+        });
+      }
+
+      preloadResource(url) {
+        return new Promise((resolve) => {
+          if (url.endsWith('.css') || url.includes('fonts.googleapis.com')) {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'style';
+            link.href = url;
+            link.onload = () => resolve();
+            link.onerror = () => resolve(); // Don't block on errors
+            document.head.appendChild(link);
+          } else if (url.endsWith('.js')) {
+            const script = document.createElement('link');
+            script.rel = 'preload';
+            script.as = 'script';
+            script.href = url;
+            script.onload = () => resolve();
+            script.onerror = () => resolve();
+            document.head.appendChild(script);
+          } else if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = url;
+          } else {
+            // For other resources, just resolve immediately
+            resolve();
+          }
+        });
+      }
+
+      // Check if target page is ready to be displayed
+      async checkPageReadiness(targetUrl) {
+        // Create a hidden iframe to test if the page loads successfully
+        return new Promise((resolve) => {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.style.position = 'absolute';
+          iframe.style.left = '-9999px';
+          
+          const timeout = setTimeout(() => {
+            document.body.removeChild(iframe);
+            resolve(true); // Resolve even if timeout to prevent infinite loading
+          }, 2000);
+
+          iframe.onload = () => {
+            clearTimeout(timeout);
+            document.body.removeChild(iframe);
+            resolve(true);
+          };
+
+          iframe.onerror = () => {
+            clearTimeout(timeout);
+            document.body.removeChild(iframe);
+            resolve(true); // Still resolve to allow navigation
+          };
+
+          document.body.appendChild(iframe);
+          iframe.src = targetUrl;
+        });
+      }
+
+      // Wait for all readiness conditions
+      async waitForReadiness(targetUrl) {
+        const readinessPromises = [
+          // Wait for minimum display time
+          new Promise(resolve => setTimeout(resolve, this.minDisplayTime)),
+          // Wait for preloaded resources
+          Promise.allSettled(this.preloadPromises),
+          // Check page readiness
+          this.checkPageReadiness(targetUrl)
+        ];
+
+        // Race against maximum wait time
+        const maxWaitPromise = new Promise(resolve => 
+          setTimeout(() => resolve('timeout'), this.maxWaitTime)
+        );
+
+        try {
+          await Promise.race([
+            Promise.all(readinessPromises),
+            maxWaitPromise
+          ]);
+        } catch (error) {
+          console.warn('Readiness check failed, proceeding anyway:', error);
+        }
+      }
+
+      // Determine target URL based on user state
+      getTargetUrl() {
         try {
           const raw = localStorage.getItem('salonni_user');
           const user = raw ? JSON.parse(raw) : null;
@@ -46,29 +165,48 @@
           const adminToken = localStorage.getItem('adminToken');
 
           if (adminToken) {
-            window.location.replace('/admin_dashboard.html');
-            return;
+            return '/admin_dashboard.html';
           }
 
           if (user && token) {
             if (user.user_type === 'salon' && (user.salonId || user.salon_id || user.salonid)) {
-              window.location.replace('/home_salon.html');
+              return '/home_salon.html';
             } else if (user.user_type === 'user' && (user.userId || user.userid || user.id)) {
-              window.location.replace('/home_user.html');
-            } else {
-              window.location.replace('/auth.html');
+              return '/home_user.html';
             }
-          } else {
-            window.location.replace('/auth.html');
           }
+          
+          return '/auth.html';
         } catch (e) {
-          window.location.replace('/auth.html');
+          return '/auth.html';
         }
-      };
+      }
 
-      // Shorter delay to minimize perceived splash time
-      setTimeout(proceed, isStandalone ? 700 : 0);
-    })();
+      // Main navigation function
+      async navigate() {
+        const targetUrl = this.getTargetUrl();
+        
+        // Start preloading immediately
+        this.preloadResources(targetUrl);
+        
+        // For browser mode, navigate immediately
+        if (!this.isStandalone) {
+          window.location.replace(targetUrl);
+          return;
+        }
+
+        // For PWA mode, wait for readiness
+        await this.waitForReadiness(targetUrl);
+        window.location.replace(targetUrl);
+      }
+    }
+
+    // Initialize and start the readiness manager
+    const readinessManager = new AppReadinessManager();
+    readinessManager.navigate().catch(() => {
+      // Fallback navigation in case of any errors
+      window.location.replace('/auth.html');
+    });
   </script>
 </body>
 </html>
