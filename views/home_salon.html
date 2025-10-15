@@ -385,11 +385,12 @@
                                 </div>
                             </div>
 
-                            <!-- Readonly Display -->
+                            <!-- Editable Display -->
                             <div id="salon-info-display" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <!-- Editable Salon Name -->
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                             <span class="text-gray-600">اسم الصالون</span>
-                            <span id="disp-salon-name" class="font-bold text-primary-dark">...</span>
+                            <input type="text" id="editable-salon-name" class="font-bold text-primary-dark bg-transparent border-none outline-none text-right flex-1 ml-2 focus:bg-white focus:border focus:border-secondary focus:rounded px-2 py-1" placeholder="اسم الصالون">
                         </div>
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                             <span class="text-gray-600">اسم المالك</span>
@@ -419,12 +420,24 @@
                             <span class="text-gray-600">حالة الصالون</span>
                             <span id="disp-status" class="font-bold text-primary-dark">...</span>
                         </div>
+                        <!-- Editable Profile Picture -->
                         <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl md:col-span-2">
-                            <div class="w-20 h-20 border rounded-xl overflow-hidden bg-gray-100">
-                                <img id="disp-image" class="w-full h-full object-cover" src="https://placehold.co/80x80/ccc/333?text=S" alt="Salon Image" loading="lazy" decoding="async" width="80" height="80">
+                            <div class="relative w-20 h-20 border rounded-xl overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('editable-profile-image').click()">
+                                <img id="editable-profile-img" class="w-full h-full object-cover" src="https://placehold.co/80x80/ccc/333?text=S" alt="Salon Image" loading="lazy" decoding="async" width="80" height="80">
+                                <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all flex items-center justify-center">
+                                    <i class="fas fa-camera text-white opacity-0 hover:opacity-100 transition-opacity"></i>
+                                </div>
                             </div>
-                            <span class="text-gray-600">صورة الصالون</span>
+                            <input type="file" id="editable-profile-image" accept="image/*" class="hidden">
+                            <span class="text-gray-600">صورة الصالون (اضغط للتغيير)</span>
                         </div>
+                    </div>
+                    
+                    <!-- Save Button (Hidden by default, shown when changes are made) -->
+                    <div id="profile-save-container" class="hidden mb-4">
+                        <button id="save-profile-changes" class="btn-action w-full py-3 rounded-xl font-bold">
+                            <i class="fas fa-save ml-1"></i> حفظ التغييرات
+                        </button>
                     </div>
 
                     <form id="salon-info-form" class="space-y-4 hidden" enctype="multipart/form-data">
@@ -1808,11 +1821,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const openingTime = openingTimeInput.value;
         const closingTime = closingTimeInput.value;
 
-        // Client-side validation: Opening time must be before closing time
-        if (openingTime >= closingTime) {
-            showMessage(messageBox, 'وقت الفتح يجب أن يكون قبل وقت الإغلاق.', false);
-            return;
-        }
+        // Removed validation: Allow any opening/closing time combination (including overnight schedules like 9am-1am)
 
         const selectedDays = Array.from(document.querySelectorAll('#closed-days-container input:checked')).map(input => parseInt(input.value));
         
@@ -2170,7 +2179,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateSalonInfoDisplay = (info) => {
         const show = (el, val) => { el.textContent = (val && String(val).trim()) ? val : '...'; };
         try {
-            show(dispSalonName, info.salon_name);
+            // Update editable salon name input
+            const editableSalonName = document.getElementById('editable-salon-name');
+            if (editableSalonName) {
+                editableSalonName.value = info.salon_name || '';
+                editableSalonName.dataset.originalValue = info.salon_name || '';
+            }
+            
             show(dispOwnerName, info.owner_name);
             show(dispSalonPhone, info.salon_phone);
             show(dispOwnerPhone, info.owner_phone);
@@ -2184,9 +2199,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 dispStatus.textContent = statusMap[s] || 'غير معروف';
             }
             const fallbackInitial = (info.salon_name || 'S').charAt(0);
-            dispImage.src = (info.image_url && !info.image_url.includes('placehold.co'))
-                ? info.image_url
-                : `https://placehold.co/80x80/ccc/333?text=${fallbackInitial}`;
+            
+            // Update editable profile image
+            const editableProfileImg = document.getElementById('editable-profile-img');
+            if (editableProfileImg) {
+                editableProfileImg.src = (info.image_url && !info.image_url.includes('placehold.co'))
+                    ? info.image_url
+                    : `https://placehold.co/80x80/ccc/333?text=${fallbackInitial}`;
+                editableProfileImg.dataset.originalSrc = editableProfileImg.src;
+            }
         } catch (e) {
             console.warn('Failed to update display:', e);
         }
@@ -3135,6 +3156,128 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     showModalIfNeeded();
   })();
 </script>
+
+<!-- Inline Profile Editing Script -->
+<script>
+  // Inline editing functionality for salon name and profile picture
+  (function() {
+    let hasChanges = false;
+    const saveContainer = document.getElementById('profile-save-container');
+    const saveButton = document.getElementById('save-profile-changes');
+    const editableSalonName = document.getElementById('editable-salon-name');
+    const editableProfileImage = document.getElementById('editable-profile-image');
+    const editableProfileImg = document.getElementById('editable-profile-img');
+    
+    function showSaveButton() {
+      if (!hasChanges) {
+        hasChanges = true;
+        saveContainer.classList.remove('hidden');
+      }
+    }
+    
+    function hideSaveButton() {
+      hasChanges = false;
+      saveContainer.classList.add('hidden');
+    }
+    
+    // Monitor salon name changes
+    if (editableSalonName) {
+      editableSalonName.addEventListener('input', function() {
+        const originalValue = this.dataset.originalValue || '';
+        if (this.value.trim() !== originalValue.trim()) {
+          showSaveButton();
+        } else {
+          // Check if image also has no changes
+          const originalSrc = editableProfileImg?.dataset.originalSrc || '';
+          const currentSrc = editableProfileImg?.src || '';
+          if (currentSrc === originalSrc) {
+            hideSaveButton();
+          }
+        }
+      });
+    }
+    
+    // Monitor profile image changes
+    if (editableProfileImage) {
+      editableProfileImage.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            editableProfileImg.src = e.target.result;
+            showSaveButton();
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+    
+    // Save changes handler
+    if (saveButton) {
+      saveButton.addEventListener('click', async function() {
+        const messageBox = document.getElementById('message-box');
+        
+        try {
+          saveButton.disabled = true;
+          saveButton.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ...';
+          
+          const formData = new FormData();
+          const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
+          
+          // Add salon name if changed
+          const newName = editableSalonName.value.trim();
+          const originalName = editableSalonName.dataset.originalValue || '';
+          if (newName !== originalName.trim()) {
+            formData.append('salon_name', newName);
+          }
+          
+          // Add image if changed
+          const imageFile = editableProfileImage.files[0];
+          if (imageFile) {
+            formData.append('image', imageFile);
+          }
+          
+          formData.append('userId', user.userId || user.id);
+          formData.append('salonId', user.salonId);
+          
+          const response = await fetch('/api/salon/update-profile', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok) {
+            // Update stored user data
+            if (newName !== originalName.trim()) {
+              user.salon_name = newName;
+              editableSalonName.dataset.originalValue = newName;
+            }
+            
+            if (data.image_url) {
+              user.image_url = data.image_url;
+              editableProfileImg.dataset.originalSrc = data.image_url;
+            }
+            
+            localStorage.setItem('salonni_user', JSON.stringify(user));
+            
+            showMessage(messageBox, 'تم حفظ التغييرات بنجاح!', true);
+            hideSaveButton();
+          } else {
+            throw new Error(data.message || 'فشل في حفظ التغييرات');
+          }
+        } catch (error) {
+          console.error('Error saving profile changes:', error);
+          showMessage(messageBox, error.message || 'حدث خطأ أثناء حفظ التغييرات', false);
+        } finally {
+          saveButton.disabled = false;
+          saveButton.innerHTML = '<i class="fas fa-save ml-1"></i> حفظ التغييرات';
+        }
+      });
+    }
+  })();
+</script>
+
 <!-- Header is non-sticky now -->
 </body>
 </html>

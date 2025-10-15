@@ -101,33 +101,125 @@
 
       // Check if target page is ready to be displayed
       async checkPageReadiness(targetUrl) {
-        // Create a hidden iframe to test if the page loads successfully
-        return new Promise((resolve) => {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.style.position = 'absolute';
-          iframe.style.left = '-9999px';
+        // Wait for critical data to be loaded based on target page
+        if (targetUrl === '/home_salon.html') {
+          return this.waitForSalonDataReady();
+        } else if (targetUrl === '/home_user.html') {
+          return this.waitForUserDataReady();
+        } else if (targetUrl === '/admin_dashboard.html') {
+          return this.waitForAdminDataReady();
+        }
+        
+        // For auth.html and other pages, just check basic connectivity
+        return this.checkBasicConnectivity();
+      }
+
+      // Wait for salon page data to be ready
+      async waitForSalonDataReady() {
+        try {
+          const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
+          const salonId = user.salonId || user.salon_id || user.salonid;
           
-          const timeout = setTimeout(() => {
-            document.body.removeChild(iframe);
-            resolve(true); // Resolve even if timeout to prevent infinite loading
-          }, 2000);
+          if (!salonId) return true; // Skip if no salon ID
+          
+          // Test critical API endpoints that the salon page needs
+          const criticalAPIs = [
+            fetch(`/api/user/profile`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_type: 'salon', userId: user.userId || user.id })
+            }),
+            fetch(`/api/salon/appointments/${salonId}/today`),
+            fetch(`/api/salon/staff/${salonId}`)
+          ];
+          
+          // Wait for all critical APIs with timeout
+          await Promise.race([
+            Promise.allSettled(criticalAPIs),
+            new Promise(resolve => setTimeout(resolve, 3000)) // 3 second timeout
+          ]);
+          
+          return true;
+        } catch (error) {
+          console.warn('Salon data readiness check failed:', error);
+          return true; // Don't block navigation on errors
+        }
+      }
 
-          iframe.onload = () => {
-            clearTimeout(timeout);
-            document.body.removeChild(iframe);
-            resolve(true);
-          };
+      // Wait for user page data to be ready
+      async waitForUserDataReady() {
+        try {
+          const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
+          const userId = user.userId || user.userid || user.id;
+          
+          if (!userId) return true; // Skip if no user ID
+          
+          // Test critical API endpoints that the user page needs
+          const criticalAPIs = [
+            fetch(`/api/user/profile`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_type: 'user', userId: userId })
+            }),
+            fetch(`/api/appointments/user/${userId}/upcoming`),
+            fetch(`/api/favorites/${userId}`)
+          ];
+          
+          // Wait for all critical APIs with timeout
+          await Promise.race([
+            Promise.allSettled(criticalAPIs),
+            new Promise(resolve => setTimeout(resolve, 3000)) // 3 second timeout
+          ]);
+          
+          return true;
+        } catch (error) {
+          console.warn('User data readiness check failed:', error);
+          return true; // Don't block navigation on errors
+        }
+      }
 
-          iframe.onerror = () => {
-            clearTimeout(timeout);
-            document.body.removeChild(iframe);
-            resolve(true); // Still resolve to allow navigation
-          };
+      // Wait for admin dashboard data to be ready
+      async waitForAdminDataReady() {
+        try {
+          const adminToken = localStorage.getItem('adminToken');
+          if (!adminToken) return true;
+          
+          // Test critical admin API endpoints
+          const criticalAPIs = [
+            fetch('/api/admin/stats', {
+              headers: { 'Authorization': `Bearer ${adminToken}` }
+            }),
+            fetch('/api/admin/salons', {
+              headers: { 'Authorization': `Bearer ${adminToken}` }
+            })
+          ];
+          
+          // Wait for all critical APIs with timeout
+          await Promise.race([
+            Promise.allSettled(criticalAPIs),
+            new Promise(resolve => setTimeout(resolve, 3000)) // 3 second timeout
+          ]);
+          
+          return true;
+        } catch (error) {
+          console.warn('Admin data readiness check failed:', error);
+          return true; // Don't block navigation on errors
+        }
+      }
 
-          document.body.appendChild(iframe);
-          iframe.src = targetUrl;
-        });
+      // Basic connectivity check for auth and other pages
+      async checkBasicConnectivity() {
+        try {
+          // Simple connectivity test
+          await Promise.race([
+            fetch('/api/cities'), // Light endpoint that should always work
+            new Promise(resolve => setTimeout(resolve, 2000)) // 2 second timeout
+          ]);
+          return true;
+        } catch (error) {
+          console.warn('Basic connectivity check failed:', error);
+          return true; // Don't block navigation on connectivity issues
+        }
       }
 
       // Wait for all readiness conditions
