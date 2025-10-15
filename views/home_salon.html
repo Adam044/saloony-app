@@ -3168,6 +3168,26 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     const editableProfileImage = document.getElementById('editable-profile-image');
     const editableProfileImg = document.getElementById('editable-profile-img');
     
+    // Show message function
+    function showMessage(messageBox, message, isSuccess) {
+      if (!messageBox) return;
+      
+      messageBox.textContent = message;
+      messageBox.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto';
+      
+      if (isSuccess) {
+        messageBox.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
+      } else {
+        messageBox.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
+      }
+      
+      messageBox.classList.remove('hidden');
+      
+      setTimeout(() => {
+        messageBox.classList.add('hidden');
+      }, 5000);
+    }
+    
     function showSaveButton() {
       if (!hasChanges) {
         hasChanges = true;
@@ -3240,7 +3260,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
           formData.append('userId', user.userId || user.id);
           formData.append('salonId', user.salonId);
           
-          const response = await fetch('/api/salon/update-profile', {
+          const response = await fetch(`/api/salon/info/${user.salonId}`, {
             method: 'POST',
             body: formData
           });
