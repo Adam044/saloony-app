@@ -201,6 +201,14 @@
                             </div>
                         </div>
                         
+                        <!-- Hours Display -->
+                        <div id="hours-display" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                            <span class="text-sm text-blue-700 font-medium">
+                                <i class="fas fa-clock ml-1"></i>
+                                ساعات العمل: <span id="hours-count">0</span> ساعة
+                            </span>
+                        </div>
+                        
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">أيام العطلة الأسبوعية (اضغط للتحديد)</label>
                             <div id="closed-days-container" class="flex flex-wrap gap-2 text-sm">
@@ -341,54 +349,36 @@
                                 </div>
                             </div>
 
-                            <!-- Edit Info Modal -->
+                            <!-- Edit Image Modal -->
                             <div id="edit-info-modal" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden">
-                                <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-2xl mt-24 p-6">
+                                <div class="max-w-md mx-auto bg-white rounded-2xl shadow-2xl mt-24 p-6">
                                     <div class="flex items-center justify-between mb-4">
-                                        <h4 class="text-lg font-bold text-primary-dark">تعديل معلومات الصالون</h4>
+                                        <h4 class="text-lg font-bold text-primary-dark">تعديل صورة الصالون</h4>
                                         <button id="modal-close-btn" class="text-gray-500 hover:text-gray-700">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                     <form id="modal-salon-info-form" class="space-y-4">
+                                        <!-- Salon Image Upload -->
                                         <div class="relative">
-                                            <input type="text" id="modal-info-salon-name" placeholder="اسم الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
-                                            <i class="fas fa-store text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                        </div>
-                                        <div class="relative">
-                                            <input type="text" id="modal-info-owner-name" placeholder="اسم المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
-                                            <i class="fas fa-user text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                        </div>
-                                        <div class="relative">
-                                            <input type="tel" id="modal-info-salon-phone" placeholder="هاتف الصالون" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
-                                            <i class="fas fa-phone text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                        </div>
-                                        <div class="relative">
-                                            <input type="tel" id="modal-info-owner-phone" placeholder="هاتف المالك" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
-                                            <i class="fas fa-mobile-alt text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                        </div>
-                                        <div class="relative">
-                                            <input type="text" id="modal-info-address" placeholder="العنوان" required class="w-full p-3 border border-gray-300 rounded-xl text-right pr-10">
-                                            <i class="fas fa-location-dot text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                        </div>
-                                        <div class="relative">
-                                            <select id="modal-info-city" required class="w-full p-3 border border-gray-300 rounded-xl appearance-none text-right pr-10">
-                                            </select>
-                                            <i class="fas fa-city text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                        </div>
-                                        <div class="relative">
-                                            <select id="modal-info-gender-focus" required class="w-full p-3 border border-gray-300 rounded-xl appearance-none text-right pr-10">
-                                                <option value="men">رجال</option>
-                                                <option value="women">نساء</option>
-                                            </select>
-                                            <i class="fas fa-venus-mars text-primary-dark absolute left-3 top-1/2 -translate-y-1/2"></i>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2 text-right">صورة الصالون</label>
+                                            <div class="flex items-center space-x-4 space-x-reverse">
+                                                <div class="flex-1">
+                                                    <input type="file" id="modal-info-salon-image" accept="image/*" class="w-full p-3 border border-gray-300 rounded-xl">
+                                                </div>
+                                                <div id="modal-image-preview-container" class="w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50">
+                                                    <img id="modal-image-preview" class="w-full h-full object-cover rounded-xl hidden" alt="معاينة الصورة" loading="lazy" decoding="async">
+                                                    <i class="fas fa-image text-gray-400 text-2xl" id="modal-image-placeholder"></i>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1 text-right">اختر صورة جديدة للصالون (اختياري)</p>
                                         </div>
                                         <div class="flex gap-3 pt-2">
                                             <button type="button" id="modal-cancel-btn" class="flex-1 px-4 py-3 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold">
                                                 <i class="fas fa-times ml-1"></i> إلغاء
                                             </button>
                                             <button type="submit" id="modal-save-btn" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark font-bold">
-                                                <i class="fas fa-save ml-1"></i> حفظ
+                                                <i class="fas fa-save ml-1"></i> حفظ الصورة
                                             </button>
                                         </div>
                                     </form>
@@ -607,6 +597,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const breakReasonInput = document.getElementById('break-reason-input');
     const breaksListContainer = document.getElementById('breaks-list-container');
     
+    // Hours calculation functionality
+    const hoursDisplay = document.getElementById('hours-display');
+    
+    function calculateAndDisplayHours() {
+        const openingTime = openingTimeInput.value;
+        const closingTime = closingTimeInput.value;
+        
+        if (openingTime && closingTime) {
+            const openingMinutes = timeToMinutes(openingTime);
+            const closingMinutes = timeToMinutes(closingTime);
+            
+            let totalMinutes;
+            if (closingMinutes > openingMinutes) {
+                // Same day (e.g., 9:00 AM to 6:00 PM)
+                totalMinutes = closingMinutes - openingMinutes;
+            } else {
+                // Overnight (e.g., 10:00 PM to 2:00 AM)
+                totalMinutes = (24 * 60) - openingMinutes + closingMinutes;
+            }
+            
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            
+            if (totalMinutes === 0) {
+                hoursDisplay.innerHTML = '<p class="text-red-600 text-sm"><i class="fas fa-exclamation-triangle ml-1"></i>لا يمكن أن تكون ساعات العمل صفر</p>';
+                hoursDisplay.classList.remove('hidden');
+            } else {
+                const hoursText = hours > 0 ? `${hours} ساعة` : '';
+                const minutesText = minutes > 0 ? `${minutes} دقيقة` : '';
+                const timeText = [hoursText, minutesText].filter(Boolean).join(' و ');
+                
+                hoursDisplay.innerHTML = `<p class="text-green-600 text-sm"><i class="fas fa-clock ml-1"></i>ساعات العمل: ${timeText}</p>`;
+                hoursDisplay.classList.remove('hidden');
+            }
+        } else {
+            hoursDisplay.classList.add('hidden');
+        }
+    }
+    
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+    
+    // Add event listeners for real-time calculation
+    openingTimeInput.addEventListener('input', calculateAndDisplayHours);
+    closingTimeInput.addEventListener('input', calculateAndDisplayHours);
+    
     // Modifications 
     const addModificationForm = document.getElementById('add-modification-form');
     const modificationsListContainer = document.getElementById('modifications-list-container');
@@ -644,37 +682,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmModalConfirmBtn = document.getElementById('confirm-modal-confirm');
     const confirmModalCancelBtn = document.getElementById('confirm-modal-cancel');
 
-    // Edit Info Modal Elements
+    // Edit Image Modal Elements
     const editInfoModal = document.getElementById('edit-info-modal');
     const modalCloseBtn = document.getElementById('modal-close-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
     const modalSalonInfoForm = document.getElementById('modal-salon-info-form');
-    const modalInfoSalonName = document.getElementById('modal-info-salon-name');
-    const modalInfoOwnerName = document.getElementById('modal-info-owner-name');
-    const modalInfoSalonPhone = document.getElementById('modal-info-salon-phone');
-    const modalInfoOwnerPhone = document.getElementById('modal-info-owner-phone');
-    const modalInfoAddress = document.getElementById('modal-info-address');
-    const modalInfoCity = document.getElementById('modal-info-city');
-    const modalInfoGenderFocus = document.getElementById('modal-info-gender-focus');
+    const modalInfoSalonImage = document.getElementById('modal-info-salon-image');
+    const modalImagePreview = document.getElementById('modal-image-preview');
+    const modalImagePlaceholder = document.getElementById('modal-image-placeholder');
 
     const openEditModal = () => {
         if (!editInfoModal) return;
-        // Populate modal inputs from currentSalon
-        modalInfoSalonName.value = currentSalon.salon_name || '';
-        modalInfoOwnerName.value = currentSalon.owner_name || '';
-        modalInfoSalonPhone.value = currentSalon.salon_phone || '';
-        modalInfoOwnerPhone.value = currentSalon.owner_phone || '';
-        modalInfoAddress.value = currentSalon.address || '';
-        // Populate cities
-        populateCityDropdowns(currentSalon.city).then(() => {
-            // Mirror selection into modal select
-            modalInfoCity.innerHTML = infoCity.innerHTML;
-            modalInfoCity.value = currentSalon.city || '';
-        }).catch(() => {
-            modalInfoCity.innerHTML = infoCity.innerHTML;
-            modalInfoCity.value = currentSalon.city || '';
-        });
-        modalInfoGenderFocus.value = currentSalon.gender_focus || 'men';
+        // Reset image input and preview
+        modalInfoSalonImage.value = '';
+        modalImagePreview.classList.add('hidden');
+        modalImagePlaceholder.classList.remove('hidden');
+        
+        // Show current salon image if available
+        if (currentSalon.image_url && !currentSalon.image_url.includes('placehold.co')) {
+            modalImagePreview.src = currentSalon.image_url;
+            modalImagePreview.classList.remove('hidden');
+            modalImagePlaceholder.classList.add('hidden');
+        }
 
         editInfoModal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
@@ -698,7 +727,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeEditModal);
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
 
-    // Submit handler: reuse saveSalonInfo logic but from modal fields
+    // Image preview functionality for modal
+    if (modalInfoSalonImage) {
+        modalInfoSalonImage.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    const url = URL.createObjectURL(file);
+                    modalImagePreview.src = url;
+                    modalImagePreview.loading = 'lazy';
+                    modalImagePreview.decoding = 'async';
+                    modalImagePreview.classList.remove('hidden');
+                    if (modalImagePlaceholder) modalImagePlaceholder.classList.add('hidden');
+                } catch (error) {
+                    console.error('Error generating image preview:', error);
+                    showMessage(messageBox, 'خطأ في معالجة الصورة', false);
+                }
+            }
+        });
+    }
+
+    // Submit handler: handle image upload only
     if (modalSalonInfoForm) {
         modalSalonInfoForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -707,15 +756,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ';
 
+                let imageUrl = currentSalon.image_url; // Keep existing image by default
+
+                // Handle image upload if a new image is selected
+                if (modalInfoSalonImage.files && modalInfoSalonImage.files[0]) {
+                    const formData = new FormData();
+                    formData.append('image', modalInfoSalonImage.files[0]);
+
+                    const uploadResponse = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    const uploadData = await uploadResponse.json();
+                    if (uploadData.success) {
+                        imageUrl = uploadData.imageUrl;
+                    } else {
+                        throw new Error(uploadData.message || 'فشل رفع الصورة');
+                    }
+                }
+
+                // Update only the image
                 const infoData = {
-                    salon_name: modalInfoSalonName.value,
-                    owner_name: modalInfoOwnerName.value,
-                    salon_phone: modalInfoSalonPhone.value,
-                    owner_phone: modalInfoOwnerPhone.value,
-                    address: modalInfoAddress.value,
-                    city: modalInfoCity.value,
-                    gender_focus: modalInfoGenderFocus.value,
-                    image_url: currentSalon.image_url // Keep existing image
+                    salon_name: currentSalon.salon_name,
+                    owner_name: currentSalon.owner_name,
+                    salon_phone: currentSalon.salon_phone,
+                    owner_phone: currentSalon.owner_phone,
+                    address: currentSalon.address,
+                    city: currentSalon.city,
+                    gender_focus: currentSalon.gender_focus,
+                    image_url: imageUrl
                 };
 
                 const response = await fetch(`/api/salon/info/${salonId}`, {
@@ -726,19 +795,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success) {
                     await loadSalonInfo();
-                    showMessage(messageBox, 'تم حفظ التعديلات بنجاح.', true);
+                    showMessage(messageBox, 'تم تحديث صورة الصالون بنجاح.', true);
                     closeEditModal();
                 } else {
-                    showMessage(messageBox, data.message || 'فشل حفظ التعديلات.', false);
+                    showMessage(messageBox, data.message || 'فشل تحديث الصورة.', false);
                 }
             } catch (error) {
-                console.error('Error saving modal info:', error);
-                showMessage(messageBox, 'خطأ في الشبكة.', false);
+                console.error('Error saving image:', error);
+                showMessage(messageBox, error.message || 'خطأ في الشبكة.', false);
             } finally {
                 const submitBtn = modalSalonInfoForm.querySelector('button[type="submit"]');
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fas fa-save ml-1"></i> حفظ';
+                    submitBtn.innerHTML = '<i class="fas fa-save ml-1"></i> حفظ الصورة';
                 }
             }
         });

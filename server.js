@@ -5,6 +5,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Added CORS for development ease
 const crypto = require('crypto'); // Used for generating simple tokens/salts
+const bcrypt = require('bcrypt'); // Secure password hashing
 const compression = require('compression'); // Enable gzip compression for responses
 const db = require('./database'); // Import our database module
 const nodemailer = require('nodemailer'); // Email sending for Contact Us
@@ -35,10 +36,22 @@ const CITIES = [
     'دير البلح', 'الناصرة', 'حيفا', 'عكا', 'طبريا', 'صفد'
 ];
 
-// Helper function to hash passwords (simple simulation)
-function hashPassword(password) {
-    // In a real app, use bcrypt. Here, we simulate a hash for persistence.
-    return crypto.createHash('sha256').update(password).digest('hex');
+// Helper function to hash passwords securely using bcrypt
+async function hashPassword(password) {
+    const saltRounds = 12; // Higher salt rounds for better security
+    return await bcrypt.hash(password, saltRounds);
+}
+
+// Helper function to verify passwords
+async function verifyPassword(password, hashedPassword) {
+    return await bcrypt.compare(password, hashedPassword);
+}
+
+// Validate phone number format (must start with 0 and be exactly 9 digits)
+function validatePhoneFormat(phone) {
+    if (!phone) return true; // Allow empty for optional fields
+    const phonePattern = /^0[0-9]{8}$/;
+    return phonePattern.test(phone);
 }
 
 // Normalize phone numbers to a canonical form for duplicate checks and login.
@@ -764,7 +777,33 @@ app.post('/api/auth/register', async (req, res) => {
         console.log('User type:', user_type);
         console.log('Email:', email);
         
-        const hashedPassword = hashPassword(password);
+        // Validate phone format
+        if (user_type === 'user' && phone && !validatePhoneFormat(phone)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
+                message_en: 'Phone number must start with 0 and be 9 digits' 
+            });
+        }
+        
+        if (user_type === 'salon') {
+            if (phone && !validatePhoneFormat(phone)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
+                    message_en: 'Salon phone number must start with 0 and be 9 digits' 
+                });
+            }
+            if (owner_phone && !validatePhoneFormat(owner_phone)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
+                    message_en: 'Owner phone number must start with 0 and be 9 digits' 
+                });
+            }
+        }
+        
+        const hashedPassword = await hashPassword(password);
         
         if (user_type === 'user' || user_type === 'salon') {
             // 1. Insert into users table (Unified Login)
@@ -885,8 +924,15 @@ app.post('/api/auth/login', async (req, res) => {
         const input = (identifier || email || phone || '').trim();
         const isEmail = input.includes('@');
         console.log('Identifier:', input);
-
-        const hashedPassword = hashPassword(password);
+        
+        // Validate phone format if not email
+        if (!isEmail && input && !validatePhoneFormat(input)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام', 
+                message_en: 'Phone number must start with 0 and be 9 digits' 
+            });
+        }
 
         // 1. Find user in USERS table by email OR normalized phone
         let userResult;
@@ -914,7 +960,8 @@ app.post('/api/auth/login', async (req, res) => {
         console.log('Found user row:', userRow);
         
         // 2. Verify password
-        if (userRow.password !== hashedPassword) {
+        const isPasswordValid = await verifyPassword(password, userRow.password);
+        if (!isPasswordValid) {
             return res.status(401).json({ 
                 success: false, 
                 message: 'كلمة المرور غير صحيحة.', 
@@ -1273,9 +1320,33 @@ app.post('/api/salon/schedule/:salon_id', async (req, res) => {
          return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
     }
     
-    // FIX: Server-side validation for schedule times
-    if (opening_time >= closing_time) {
-        return res.status(400).json({ success: false, message: 'وقت الفتح يجب أن يكون قبل وقت الإغلاق.' });
+    // Helper function to convert time to minutes for comparison
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+    
+    // Helper function to calculate hours difference
+    function calculateHours(openTime, closeTime) {
+        const openMinutes = timeToMinutes(openTime);
+        const closeMinutes = timeToMinutes(closeTime);
+        
+        // Handle overnight hours (e.g., 22:00 to 02:00)
+        if (closeMinutes <= openMinutes) {
+            return (24 * 60 - openMinutes + closeMinutes) / 60;
+        } else {
+            return (closeMinutes - openMinutes) / 60;
+        }
+    }
+    
+    // FIX: Server-side validation for schedule times - allow overnight hours but deny zero hours
+    const hoursOpen = calculateHours(opening_time, closing_time);
+    if (hoursOpen === 0) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'لا يمكن أن يكون وقت الفتح والإغلاق متطابقين. الصالون يجب أن يكون مفتوحاً لساعة واحدة على الأقل.', 
+            message_en: 'Opening and closing times cannot be the same. Salon must be open for at least one hour.' 
+        });
     }
     
     const closedDaysJson = JSON.stringify(closed_days || []);
@@ -1427,8 +1498,8 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
             params.push(today);
             orderBy = 'ASC';
         } else if (filter === 'completed') {
-            // Show all completed appointments regardless of date
-            whereClause = `AND a.status = 'Completed'`;
+            // Show all completed and absent appointments regardless of date
+            whereClause = `AND (a.status = 'Completed' OR a.status = 'Absent')`;
             orderBy = 'DESC';
         } else if (filter === 'upcoming') {
             // Backward compatibility: upcoming shows only future scheduled
@@ -1880,6 +1951,287 @@ app.post('/api/salon/services/:salon_id', async (req, res) => {
 });
 
 // API to book a new appointment - UPDATED for Smart Staff Assignment and Multiple Services
+// ===== SERVER-SIDE BOOKING VALIDATION FUNCTIONS =====
+
+function timeToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
+}
+
+function minutesToTime(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+async function validateBookingSlot(salonId, staffId, startTime, endTime, serviceDuration) {
+    try {
+        // Parse the booking date and time
+        const bookingDate = new Date(startTime);
+        const dateString = bookingDate.toISOString().split('T')[0];
+        const dayOfWeek = bookingDate.getDay();
+        const now = new Date();
+        const isToday = dateString === now.toISOString().split('T')[0];
+        
+        // Convert times to minutes for easier comparison
+        const startMinutes = timeToMinutes(startTime.split('T')[1].substring(0, 5));
+        const endMinutes = timeToMinutes(endTime.split('T')[1].substring(0, 5));
+        
+        // Validate service duration matches
+        if (endMinutes - startMinutes !== serviceDuration) {
+            return { valid: false, message: 'مدة الخدمة غير متطابقة مع الوقت المحدد.' };
+        }
+        
+        // Get salon schedule data
+        const schedule = await dbGet('SELECT * FROM salon_schedule WHERE salon_id = ?', [salonId]);
+        if (!schedule) {
+            return { valid: false, message: 'جدول الصالون غير متوفر.' };
+        }
+        
+        // Check if salon is closed on this day
+        const closedDays = schedule.closed_days ? JSON.parse(schedule.closed_days) : [];
+        if (closedDays.includes(dayOfWeek)) {
+            return { valid: false, message: 'الصالون مغلق في هذا اليوم.' };
+        }
+        
+        // Get operating hours
+        const openMinutes = timeToMinutes(schedule.opening_time || '09:00');
+        const closeMinutes = timeToMinutes(schedule.closing_time || '18:00');
+        
+        // Get schedule modifications
+        const modifications = await dbAll(`
+            SELECT * FROM salon_schedule_modifications 
+            WHERE salon_id = ? AND (
+                (mod_type = 'once' AND mod_date = ?) OR
+                (mod_type = 'recurring' AND mod_day_index = ?)
+            )
+        `, [salonId, dateString, dayOfWeek]);
+        
+        // Check for complete day closures
+        const fullDayClosures = modifications.filter(mod => mod.closure_type === 'full_day');
+        if (fullDayClosures.length > 0) {
+            return { valid: false, message: 'الصالون مغلق في هذا اليوم بسبب ظروف خاصة.' };
+        }
+        
+        // Check if booking is within operating hours
+        if (startMinutes < openMinutes || endMinutes > closeMinutes) {
+            return { valid: false, message: 'الموعد خارج ساعات العمل.' };
+        }
+        
+        // Check if booking is in the past (for today)
+        if (isToday) {
+            const nowMinutes = timeToMinutes(now.toTimeString().substring(0, 5));
+            const minStartMinutes = Math.ceil((nowMinutes + 30) / 30) * 30;
+            if (startMinutes < minStartMinutes) {
+                return { valid: false, message: 'لا يمكن حجز موعد في الماضي.' };
+            }
+        }
+        
+        // Check for blocked time periods (interval closures)
+        for (const mod of modifications) {
+            if (mod.closure_type === 'interval' && mod.start_time && mod.end_time) {
+                const modStart = timeToMinutes(mod.start_time);
+                const modEnd = timeToMinutes(mod.end_time);
+                const modStaffId = mod.staff_id || 0;
+                
+                // Check if modification applies to this staff member
+                const staffMatch = modStaffId === 0 || parseInt(modStaffId) === parseInt(staffId);
+                
+                if (staffMatch && startMinutes < modEnd && endMinutes > modStart) {
+                    return { valid: false, message: 'الوقت المحدد غير متاح بسبب ظروف خاصة.' };
+                }
+            }
+        }
+        
+        // Get breaks for this salon
+        const breaks = await dbAll('SELECT * FROM salon_breaks WHERE salon_id = ?', [salonId]);
+        
+        // Check for break conflicts
+        for (const breakItem of breaks) {
+            const breakStart = timeToMinutes(breakItem.start_time);
+            const breakEnd = timeToMinutes(breakItem.end_time);
+            const breakStaffId = breakItem.staff_id || 0;
+            
+            // Check if break applies to this staff member
+            const staffMatch = breakStaffId === 0 || parseInt(breakStaffId) === parseInt(staffId);
+            
+            if (staffMatch && startMinutes < breakEnd && endMinutes > breakStart) {
+                return { valid: false, message: 'الوقت المحدد يتعارض مع فترة استراحة.' };
+            }
+        }
+        
+        // Get existing appointments for this date
+        const appointments = await dbAll(`
+            SELECT * FROM appointments 
+            WHERE salon_id = ? AND DATE(start_time) = ? 
+            AND status NOT IN ('Cancelled', 'Completed', 'Rejected', 'No_Show', 'Absent')
+        `, [salonId, dateString]);
+        
+        // Check for appointment conflicts
+        for (const appt of appointments) {
+            if (!appt.start_time || !appt.end_time) continue;
+            
+            let apptStartMinutes, apptEndMinutes;
+            try {
+                // Handle both ISO format and SQL format
+                let startTimePart, endTimePart;
+                
+                if (appt.start_time.includes('T')) {
+                    startTimePart = appt.start_time.split('T')[1];
+                } else if (appt.start_time.includes(' ')) {
+                    startTimePart = appt.start_time.split(' ')[1];
+                } else {
+                    continue;
+                }
+                
+                if (appt.end_time.includes('T')) {
+                    endTimePart = appt.end_time.split('T')[1];
+                } else if (appt.end_time.includes(' ')) {
+                    endTimePart = appt.end_time.split(' ')[1];
+                } else {
+                    continue;
+                }
+                
+                if (!startTimePart || !endTimePart) continue;
+                
+                apptStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
+                apptEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
+            } catch (e) {
+                console.error('Error processing appointment times:', e, appt);
+                continue;
+            }
+            
+            const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
+            
+            // Check for direct staff conflict
+            if (parseInt(staffId) !== 0 && apptStaffId === parseInt(staffId)) {
+                if (startMinutes < apptEndMinutes && endMinutes > apptStartMinutes) {
+                    return { valid: false, message: 'الموظف غير متاح في هذا الوقت - يوجد موعد آخر.' };
+                }
+            }
+            
+            // For "Any Staff" bookings (staffId = 0), check capacity
+            if (parseInt(staffId) === 0) {
+                // Get all staff for capacity calculation
+                const allStaff = await dbAll('SELECT id FROM staff WHERE salon_id = ?', [salonId]);
+                const staffCount = allStaff.length;
+                
+                if (staffCount === 0) {
+                    // No staff defined, check for generic conflicts only
+                    if (apptStaffId === 0 && startMinutes < apptEndMinutes && endMinutes > apptStartMinutes) {
+                        return { valid: false, message: 'الوقت المحدد غير متاح.' };
+                    }
+                } else {
+                    // Calculate available staff at this time slot
+                    let availableStaffCount = 0;
+                    let genericOverlapCount = 0;
+                    
+                    for (const staff of allStaff) {
+                        let staffAvailable = true;
+                        
+                        // Check if this staff member has conflicts
+                        for (const conflictAppt of appointments) {
+                            const conflictStaffId = conflictAppt.staff_id === null || conflictAppt.staff_id === undefined ? 0 : parseInt(conflictAppt.staff_id);
+                            
+                            if (conflictStaffId === staff.id) {
+                                let conflictStartMinutes, conflictEndMinutes;
+                                try {
+                                    let startTimePart, endTimePart;
+                                    
+                                    if (conflictAppt.start_time.includes('T')) {
+                                        startTimePart = conflictAppt.start_time.split('T')[1];
+                                    } else if (conflictAppt.start_time.includes(' ')) {
+                                        startTimePart = conflictAppt.start_time.split(' ')[1];
+                                    } else {
+                                        continue;
+                                    }
+                                    
+                                    if (conflictAppt.end_time.includes('T')) {
+                                        endTimePart = conflictAppt.end_time.split('T')[1];
+                                    } else if (conflictAppt.end_time.includes(' ')) {
+                                        endTimePart = conflictAppt.end_time.split(' ')[1];
+                                    } else {
+                                        continue;
+                                    }
+                                    
+                                    if (!startTimePart || !endTimePart) continue;
+                                    
+                                    conflictStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
+                                    conflictEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
+                                    
+                                    if (startMinutes < conflictEndMinutes && endMinutes > conflictStartMinutes) {
+                                        staffAvailable = false;
+                                        break;
+                                    }
+                                } catch (e) {
+                                    console.error('Error processing conflict appointment times:', e, conflictAppt);
+                                    continue;
+                                }
+                            }
+                        }
+                        
+                        if (staffAvailable) {
+                            availableStaffCount++;
+                        }
+                    }
+                    
+                    // Count generic appointments that overlap
+                    for (const genericAppt of appointments) {
+                        const genericStaffId = genericAppt.staff_id === null || genericAppt.staff_id === undefined ? 0 : parseInt(genericAppt.staff_id);
+                        
+                        if (genericStaffId === 0) {
+                            let genericStartMinutes, genericEndMinutes;
+                            try {
+                                let startTimePart, endTimePart;
+                                
+                                if (genericAppt.start_time.includes('T')) {
+                                    startTimePart = genericAppt.start_time.split('T')[1];
+                                } else if (genericAppt.start_time.includes(' ')) {
+                                    startTimePart = genericAppt.start_time.split(' ')[1];
+                                } else {
+                                    continue;
+                                }
+                                
+                                if (genericAppt.end_time.includes('T')) {
+                                    endTimePart = genericAppt.end_time.split('T')[1];
+                                } else if (genericAppt.end_time.includes(' ')) {
+                                    endTimePart = genericAppt.end_time.split(' ')[1];
+                                } else {
+                                    continue;
+                                }
+                                
+                                if (!startTimePart || !endTimePart) continue;
+                                
+                                genericStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
+                                genericEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
+                                
+                                if (startMinutes < genericEndMinutes && endMinutes > genericStartMinutes) {
+                                    genericOverlapCount++;
+                                }
+                            } catch (e) {
+                                console.error('Error processing generic appointment times:', e, genericAppt);
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    // Check if there's capacity for this booking
+                    if (availableStaffCount <= genericOverlapCount) {
+                        return { valid: false, message: 'لا يوجد موظفين متاحين في هذا الوقت.' };
+                    }
+                }
+            }
+        }
+        
+        return { valid: true, message: 'الموعد متاح للحجز.' };
+        
+    } catch (error) {
+        console.error('Error validating booking slot:', error);
+        return { valid: false, message: 'خطأ في التحقق من صحة الموعد.' };
+    }
+}
+
 app.post('/api/appointment/book', async (req, res) => {
     const { salon_id, user_id, staff_id, service_id, services, start_time, end_time, price } = req.body;
     
@@ -1907,6 +2259,29 @@ app.post('/api/appointment/book', async (req, res) => {
     if (servicesToBook.length === 0) {
         return res.status(400).json({ success: false, message: 'يجب اختيار خدمة واحدة على الأقل.' });
     }
+
+    // Calculate total service duration for validation
+    let totalServiceDuration = 0;
+    try {
+        for (const service of servicesToBook) {
+            const serviceDetails = await dbGet('SELECT duration FROM services WHERE id = ?', [service.id]);
+            if (serviceDetails && serviceDetails.duration) {
+                totalServiceDuration += serviceDetails.duration;
+            }
+        }
+    } catch (error) {
+        console.error('Error calculating service duration:', error);
+        return res.status(400).json({ success: false, message: 'خطأ في حساب مدة الخدمات.' });
+    }
+
+    // ===== CRITICAL SERVER-SIDE VALIDATION =====
+    // Validate the booking slot before proceeding with any booking logic
+    const validationResult = await validateBookingSlot(salon_id, staff_id, start_time, end_time, totalServiceDuration);
+    if (!validationResult.valid) {
+        console.log('Booking validation failed:', validationResult.message);
+        return res.status(400).json({ success: false, message: validationResult.message });
+    }
+    console.log('Booking validation passed:', validationResult.message);
 
     // Use the first service as the main service for the appointment record (for backward compatibility)
     const mainServiceId = servicesToBook[0].id;

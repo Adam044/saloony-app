@@ -187,7 +187,7 @@
                     <i class="fas fa-envelope-open-text text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
                 <div class="relative">
-                    <input type="tel" id="user-phone" name="phone" placeholder="رقم الهاتف (مثال: 059xxxxxxx)" required class="w-full p-4 border border-gray-200 rounded-xl">
+                    <input type="tel" id="user-phone" name="phone" placeholder="رقم الهاتف (يجب أن يبدأ بـ 0 ويكون 9 أرقام: 0594444403)" required class="w-full p-4 border border-gray-200 rounded-xl" pattern="0[0-9]{8}" title="يجب أن يبدأ رقم الهاتف بـ 0 ويكون 9 أرقام بالضبط">
                     <i class="fas fa-phone text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
                 
@@ -236,17 +236,17 @@
                 
                 <div class="flex space-x-2 space-x-reverse">
                     <div class="relative flex-1">
-                        <input type="tel" id="salon-phone" name="phone" placeholder="هاتف الصالون" required class="w-full p-4 border border-gray-200 rounded-xl">
+                        <input type="tel" id="salon-phone" name="phone" placeholder="هاتف الصالون (اختياري: 0594444403)" class="w-full p-4 border border-gray-200 rounded-xl" pattern="0[0-9]{8}" title="يجب أن يبدأ رقم الهاتف بـ 0 ويكون 9 أرقام بالضبط">
                         <i class="fas fa-phone-square-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                     </div>
                     <div class="relative flex-1">
-                        <input type="tel" id="salon-owner-phone" name="owner_phone" placeholder="هاتف المالك (للتسجيل)" required class="w-full p-4 border border-gray-200 rounded-xl">
+                        <input type="tel" id="salon-owner-phone" name="owner_phone" placeholder="هاتف المالك (يجب أن يبدأ بـ 0 ويكون 9 أرقام: 0594444403)" required class="w-full p-4 border border-gray-200 rounded-xl" pattern="0[0-9]{8}" title="يجب أن يبدأ رقم الهاتف بـ 0 ويكون 9 أرقام بالضبط">
                         <i class="fas fa-mobile-alt text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                     </div>
                 </div>
 
                 <div class="relative">
-                    <input type="email" id="salon-email" name="email" placeholder="البريد الإلكتروني للصالون (للتسجيل)" required class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="off">
+                    <input type="email" id="salon-email" name="email" placeholder="البريد الإلكتروني للصالون (اختياري)" class="w-full p-4 border border-gray-200 rounded-xl" autocomplete="off">
                     <i class="fas fa-envelope-open-text text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
                 <div class="relative">
@@ -470,10 +470,19 @@ class AuthManager {
             return;
         }
 
+        // Phone format validation for login
+        const isEmail = identifier.includes('@');
+        if (!isEmail) {
+            const phonePattern = /^0[0-9]{8}$/;
+            if (!phonePattern.test(identifier)) {
+                this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                return;
+            }
+        }
+
         this.showLoadingSpinner(true, 'login');
 
         try {
-            const isEmail = identifier.includes('@');
             const loginData = { identifier, password };
             if (isEmail) { loginData.email = identifier; }
             else { loginData.phone = identifier; }
@@ -576,9 +585,30 @@ class AuthManager {
             return;
         }
 
+        // Phone format validation
+        const phonePattern = /^0[0-9]{8}$/;
+        
+        if (userType === 'user') {
+            if (signupData.phone && !phonePattern.test(signupData.phone)) {
+                this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                return;
+            }
+        } else {
+            // For salon: owner_phone is required and must match format
+            if (signupData.owner_phone && !phonePattern.test(signupData.owner_phone)) {
+                this.showToast('رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                return;
+            }
+            // Salon phone is optional but if provided must match format
+            if (signupData.phone && signupData.phone.trim() !== '' && !phonePattern.test(signupData.phone)) {
+                this.showToast('رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 9 أرقام بالضبط (مثال: 0594444403)', 'error');
+                return;
+            }
+        }
+
         // Basic check for empty required fields
         const requiredFields = userType === 'user' ? ['name', 'email', 'password', 'phone', 'city', 'gender'] : 
-            ['name', 'owner_name', 'phone', 'owner_phone', 'email', 'address', 'city', 'gender_focus', 'password'];
+            ['name', 'owner_name', 'owner_phone', 'address', 'city', 'gender_focus', 'password'];
         
         for (const field of requiredFields) {
             const value = signupData[field];
