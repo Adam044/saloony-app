@@ -89,31 +89,63 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 60px;
+            height: 80px;
             background: linear-gradient(135deg, #06C167, #05ae5d);
             display: flex;
             align-items: center;
             justify-content: center;
             transform: translateY(-100%);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 30;
             color: white;
             font-weight: 600;
-            box-shadow: 0 2px 10px rgba(6, 193, 103, 0.3);
+            box-shadow: 0 4px 20px rgba(6, 193, 103, 0.3);
+            border-radius: 0 0 20px 20px;
         }
         .pull-to-refresh.visible {
             transform: translateY(0);
         }
+        .pull-to-refresh .refresh-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+        }
         .pull-to-refresh .refresh-icon {
-            margin-left: 8px;
+            font-size: 20px;
             transition: transform 0.3s ease;
         }
         .pull-to-refresh.refreshing .refresh-icon {
             animation: spin 1s linear infinite;
         }
+        .pull-to-refresh .pull-arrow {
+            font-size: 24px;
+            transition: transform 0.3s ease;
+            opacity: 0.8;
+        }
+        .pull-to-refresh.ready .pull-arrow {
+            transform: rotate(180deg);
+        }
+        .pull-to-refresh.refreshing .pull-arrow {
+            opacity: 0;
+        }
+        
+        /* Enhanced body animation during pull */
+        body.pulling {
+            transform-origin: top center;
+            transition: transform 0.1s ease-out;
+        }
+        
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pullBounce {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
         }
 
         /* Booking Modal Styles */
@@ -300,8 +332,11 @@
 
 <!-- Pull to Refresh Indicator -->
 <div id="pull-to-refresh" class="pull-to-refresh">
-    <span>اسحب للتحديث</span>
-    <i class="fas fa-sync-alt refresh-icon"></i>
+    <div class="refresh-content">
+        <i class="fas fa-arrow-down pull-arrow"></i>
+        <span class="refresh-text">اسحب للتحديث</span>
+        <i class="fas fa-sync-alt refresh-icon"></i>
+    </div>
 </div>
 
 <div class="min-h-screen flex flex-col">
@@ -4072,42 +4107,77 @@ function openServicesExplorer(prefCategory = 'all') {
   
   const pullToRefresh = document.getElementById('pull-to-refresh');
   const refreshIcon = pullToRefresh.querySelector('.refresh-icon');
-  const refreshText = pullToRefresh.querySelector('span');
+  const refreshText = pullToRefresh.querySelector('.refresh-text');
+  const pullArrow = pullToRefresh.querySelector('.pull-arrow');
+  const body = document.body;
   
   // Check if we're at the top of the page
   function isAtTop() {
     return window.scrollY <= 0;
   }
   
-  // Update pull indicator
+  // Update pull indicator with enhanced animations
   function updatePullIndicator(distance) {
     const progress = Math.min(distance / threshold, 1);
-    const translateY = Math.min(distance * 0.5, maxPull * 0.5);
+    const translateY = Math.min(distance * 0.6, maxPull * 0.6);
+    const bodyScale = 1 - (progress * 0.02); // Subtle scale effect
+    const bodyTranslateY = Math.min(distance * 0.3, 30);
     
     if (distance > 0) {
-      pullToRefresh.style.transform = `translateY(${translateY - 60}px)`;
+      // Update pull indicator position and visibility
+      pullToRefresh.style.transform = `translateY(${translateY - 80}px)`;
       pullToRefresh.classList.add('visible');
       
+      // Add body transformation for pulling effect
+      body.classList.add('pulling');
+      body.style.transform = `translateY(${bodyTranslateY}px) scale(${bodyScale})`;
+      
+      // Update states based on pull distance
       if (distance >= threshold) {
+        pullToRefresh.classList.add('ready');
         refreshText.textContent = 'اتركه للتحديث';
-        refreshIcon.style.transform = 'rotate(180deg)';
+        pullArrow.style.transform = 'rotate(180deg) scale(1.2)';
+        pullArrow.style.color = '#ffffff';
       } else {
+        pullToRefresh.classList.remove('ready');
         refreshText.textContent = 'اسحب للتحديث';
-        refreshIcon.style.transform = 'rotate(0deg)';
+        pullArrow.style.transform = `rotate(0deg) scale(${1 + progress * 0.3})`;
+        pullArrow.style.color = 'rgba(255, 255, 255, 0.8)';
       }
+      
+      // Add subtle bounce effect when reaching threshold
+      if (distance >= threshold && !pullToRefresh.classList.contains('ready-bounce')) {
+        pullToRefresh.classList.add('ready-bounce');
+        pullToRefresh.style.animation = 'pullBounce 0.3s ease-out';
+        setTimeout(() => {
+          pullToRefresh.classList.remove('ready-bounce');
+          pullToRefresh.style.animation = '';
+        }, 300);
+      }
+      
     } else {
-      pullToRefresh.classList.remove('visible');
+      // Reset all transformations
+      pullToRefresh.classList.remove('visible', 'ready');
       pullToRefresh.style.transform = 'translateY(-100%)';
+      body.classList.remove('pulling');
+      body.style.transform = '';
+      pullArrow.style.transform = 'rotate(0deg) scale(1)';
+      pullArrow.style.color = 'rgba(255, 255, 255, 0.8)';
     }
   }
   
-  // Perform refresh
+  // Perform refresh with enhanced feedback
   async function performRefresh() {
     if (isRefreshing) return;
     
     isRefreshing = true;
     pullToRefresh.classList.add('refreshing');
+    pullToRefresh.classList.remove('ready');
     refreshText.textContent = 'جاري التحديث...';
+    
+    // Reset body transformation
+    body.classList.remove('pulling');
+    body.style.transform = '';
     
     try {
       // Refresh salons data
@@ -4152,13 +4222,14 @@ function openServicesExplorer(prefCategory = 'all') {
         }, 3000);
       }
     } finally {
-      // Reset state
+      // Reset state with smooth animation
       setTimeout(() => {
         isRefreshing = false;
         pullToRefresh.classList.remove('refreshing', 'visible');
         pullToRefresh.style.transform = 'translateY(-100%)';
         refreshText.textContent = 'اسحب للتحديث';
-        refreshIcon.style.transform = 'rotate(0deg)';
+        pullArrow.style.transform = 'rotate(0deg) scale(1)';
+        pullArrow.style.color = 'rgba(255, 255, 255, 0.8)';
       }, 500);
     }
   }

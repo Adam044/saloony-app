@@ -1108,6 +1108,24 @@ app.get('/api/cities', (req, res) => {
     res.json(CITIES);
 });
 
+// API for image upload (multipart/form-data)
+app.post('/api/upload', async (req, res) => {
+    try {
+        // For now, we'll handle the image as base64 in the main endpoints
+        // This endpoint exists for compatibility but redirects to base64 handling
+        res.status(400).json({ 
+            success: false, 
+            message: 'يرجى استخدام رفع الصور المباشر في النموذج' 
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'خطأ في رفع الصورة' 
+        });
+    }
+});
+
 
 // ===================================
 // Salon Management Routes 
