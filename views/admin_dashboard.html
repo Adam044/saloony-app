@@ -83,6 +83,39 @@
             background-color: #E53E3E;
         }
 
+        /* Pull to Refresh Styles */
+        .pull-to-refresh {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(135deg, #4299E1, #3182CE);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            z-index: 30;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(66, 153, 225, 0.3);
+        }
+        .pull-to-refresh.visible {
+            transform: translateY(0);
+        }
+        .pull-to-refresh .refresh-icon {
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+        }
+        .pull-to-refresh.refreshing .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* --- Stats Grid --- */
         .stats-grid {
             display: grid;
@@ -455,6 +488,12 @@
     </style>
 </head>
 <body>
+    <!-- Pull to Refresh Indicator -->
+    <div class="pull-to-refresh" id="pullToRefresh">
+        <span>اسحب للتحديث</span>
+        <i class="fas fa-sync-alt refresh-icon"></i>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1><i class="fas fa-user-shield"></i> لوحة تحكم الإدارة</h1>
@@ -836,6 +875,143 @@
             fetchStats();
             fetchSalons();
         });
+
+        // Pull to Refresh Functionality
+        let startY = 0;
+        let currentY = 0;
+        let pullDistance = 0;
+        let isRefreshing = false;
+        let isPulling = false;
+        const pullThreshold = 80;
+        const pullToRefreshElement = document.getElementById('pullToRefresh');
+
+        // Touch events for mobile
+        document.addEventListener('touchstart', function(e) {
+            if (window.scrollY === 0 && !isRefreshing) {
+                startY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!isPulling || isRefreshing) return;
+            
+            currentY = e.touches[0].clientY;
+            pullDistance = Math.max(0, currentY - startY);
+            
+            if (pullDistance > 0) {
+                e.preventDefault();
+                updatePullIndicator(pullDistance);
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', function(e) {
+            if (!isPulling || isRefreshing) return;
+            
+            isPulling = false;
+            
+            if (pullDistance >= pullThreshold) {
+                performRefresh();
+            } else {
+                resetPullIndicator();
+            }
+        }, { passive: true });
+
+        // Mouse events for desktop testing
+        document.addEventListener('mousedown', function(e) {
+            if (window.scrollY === 0 && !isRefreshing) {
+                startY = e.clientY;
+                isPulling = true;
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isPulling || isRefreshing) return;
+            
+            currentY = e.clientY;
+            pullDistance = Math.max(0, currentY - startY);
+            
+            if (pullDistance > 0) {
+                e.preventDefault();
+                updatePullIndicator(pullDistance);
+            }
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            if (!isPulling || isRefreshing) return;
+            
+            isPulling = false;
+            
+            if (pullDistance >= pullThreshold) {
+                performRefresh();
+            } else {
+                resetPullIndicator();
+            }
+        });
+
+        function updatePullIndicator(distance) {
+            const progress = Math.min(distance / pullThreshold, 1);
+            const translateY = Math.min(distance * 0.5, 60);
+            
+            pullToRefreshElement.style.transform = `translateY(${translateY - 60}px)`;
+            pullToRefreshElement.style.opacity = progress;
+            
+            if (progress >= 1) {
+                pullToRefreshElement.querySelector('span').textContent = 'اتركه للتحديث';
+            } else {
+                pullToRefreshElement.querySelector('span').textContent = 'اسحب للتحديث';
+            }
+        }
+
+        function resetPullIndicator() {
+            pullToRefreshElement.style.transform = 'translateY(-100%)';
+            pullToRefreshElement.style.opacity = '0';
+            pullToRefreshElement.querySelector('span').textContent = 'اسحب للتحديث';
+            pullToRefreshElement.classList.remove('refreshing');
+            pullDistance = 0;
+        }
+
+        function performRefresh() {
+            isRefreshing = true;
+            pullToRefreshElement.style.transform = 'translateY(0)';
+            pullToRefreshElement.style.opacity = '1';
+            pullToRefreshElement.querySelector('span').textContent = 'جاري التحديث...';
+            pullToRefreshElement.classList.add('refreshing');
+            
+            // Perform refresh operations
+            Promise.all([
+                new Promise(resolve => {
+                    if (typeof fetchStats === 'function') {
+                        fetchStats();
+                    }
+                    resolve();
+                }),
+                new Promise(resolve => {
+                    if (typeof fetchSalons === 'function') {
+                        fetchSalons();
+                    }
+                    resolve();
+                })
+            ]).then(() => {
+                // Show success message
+                setTimeout(() => {
+                    pullToRefreshElement.querySelector('span').textContent = 'تم التحديث بنجاح';
+                    setTimeout(() => {
+                        isRefreshing = false;
+                        resetPullIndicator();
+                    }, 1000);
+                }, 1000);
+            }).catch(() => {
+                // Show error message
+                setTimeout(() => {
+                    pullToRefreshElement.querySelector('span').textContent = 'فشل في التحديث';
+                    setTimeout(() => {
+                        isRefreshing = false;
+                        resetPullIndicator();
+                    }, 1000);
+                }, 1000);
+            });
+        }
     </script>
 </body>
 </html>

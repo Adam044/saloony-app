@@ -92,6 +92,39 @@
             font-weight: 500;
         }
         
+        /* Pull to Refresh Styles */
+        .pull-to-refresh {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(135deg, #06C167, #05ae5d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            z-index: 30;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(6, 193, 103, 0.3);
+        }
+        .pull-to-refresh.visible {
+            transform: translateY(0);
+        }
+        .pull-to-refresh .refresh-icon {
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+        }
+        .pull-to-refresh.refreshing .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
         /* Confirmation Modal Styles */
         #confirm-modal-overlay {
             position: fixed;
@@ -122,6 +155,12 @@
     </style>
 </head>
 <body>
+
+<!-- Pull to Refresh Indicator -->
+<div id="pull-to-refresh" class="pull-to-refresh">
+    <span>اسحب للتحديث</span>
+    <i class="fas fa-sync-alt refresh-icon"></i>
+</div>
 
 <div class="min-h-screen flex flex-col">
     <header id="app-header" class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20">
@@ -3296,6 +3335,190 @@ function openSalonServicesExplorer(prefCategory = 'all') {
       });
     }
   })();
+</script>
+
+<!-- Pull to Refresh Script -->
+<script>
+(function() {
+  let startY = 0;
+  let currentY = 0;
+  let isRefreshing = false;
+  let pullDistance = 0;
+  const threshold = 80; // Minimum pull distance to trigger refresh
+  const maxPull = 120; // Maximum pull distance
+  
+  const pullToRefresh = document.getElementById('pull-to-refresh');
+  const refreshIcon = pullToRefresh.querySelector('.refresh-icon');
+  const refreshText = pullToRefresh.querySelector('span');
+  
+  // Check if we're at the top of the page
+  function isAtTop() {
+    return window.scrollY <= 0;
+  }
+  
+  // Update pull indicator
+  function updatePullIndicator(distance) {
+    const progress = Math.min(distance / threshold, 1);
+    const translateY = Math.min(distance * 0.5, maxPull * 0.5);
+    
+    if (distance > 0) {
+      pullToRefresh.style.transform = `translateY(${translateY - 60}px)`;
+      pullToRefresh.classList.add('visible');
+      
+      if (distance >= threshold) {
+        refreshText.textContent = 'اتركه للتحديث';
+        refreshIcon.style.transform = 'rotate(180deg)';
+      } else {
+        refreshText.textContent = 'اسحب للتحديث';
+        refreshIcon.style.transform = 'rotate(0deg)';
+      }
+    } else {
+      pullToRefresh.classList.remove('visible');
+      pullToRefresh.style.transform = 'translateY(-100%)';
+    }
+  }
+  
+  // Perform refresh
+  async function performRefresh() {
+    if (isRefreshing) return;
+    
+    isRefreshing = true;
+    pullToRefresh.classList.add('refreshing');
+    refreshText.textContent = 'جاري التحديث...';
+    
+    try {
+      // Refresh appointments
+      if (typeof refreshAppointments === 'function') {
+        await refreshAppointments();
+      }
+      
+      // Refresh salon info if function exists
+      if (typeof loadSalonInfo === 'function') {
+        await loadSalonInfo();
+      }
+      
+      // Show success message
+      const messageBox = document.getElementById('message-box');
+      if (messageBox) {
+        messageBox.textContent = 'تم تحديث البيانات بنجاح';
+        messageBox.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto bg-green-100 text-green-800 border border-green-200';
+        messageBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+          messageBox.classList.add('hidden');
+        }, 3000);
+      }
+      
+    } catch (error) {
+      console.error('Refresh error:', error);
+      
+      // Show error message
+      const messageBox = document.getElementById('message-box');
+      if (messageBox) {
+        messageBox.textContent = 'حدث خطأ أثناء التحديث';
+        messageBox.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto bg-red-100 text-red-800 border border-red-200';
+        messageBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+          messageBox.classList.add('hidden');
+        }, 3000);
+      }
+    } finally {
+      // Reset state
+      setTimeout(() => {
+        isRefreshing = false;
+        pullToRefresh.classList.remove('refreshing', 'visible');
+        pullToRefresh.style.transform = 'translateY(-100%)';
+        refreshText.textContent = 'اسحب للتحديث';
+        refreshIcon.style.transform = 'rotate(0deg)';
+      }, 500);
+    }
+  }
+  
+  // Touch events for mobile
+  document.addEventListener('touchstart', (e) => {
+    if (!isAtTop() || isRefreshing) return;
+    
+    startY = e.touches[0].clientY;
+    currentY = startY;
+  }, { passive: true });
+  
+  document.addEventListener('touchmove', (e) => {
+    if (!isAtTop() || isRefreshing || startY === 0) return;
+    
+    currentY = e.touches[0].clientY;
+    pullDistance = Math.max(0, currentY - startY);
+    
+    if (pullDistance > 0) {
+      e.preventDefault();
+      updatePullIndicator(pullDistance);
+    }
+  }, { passive: false });
+  
+  document.addEventListener('touchend', (e) => {
+    if (!isAtTop() || isRefreshing || pullDistance === 0) {
+      startY = 0;
+      currentY = 0;
+      pullDistance = 0;
+      return;
+    }
+    
+    if (pullDistance >= threshold) {
+      performRefresh();
+    } else {
+      updatePullIndicator(0);
+    }
+    
+    startY = 0;
+    currentY = 0;
+    pullDistance = 0;
+  }, { passive: true });
+  
+  // Mouse events for desktop testing
+  let isMouseDown = false;
+  
+  document.addEventListener('mousedown', (e) => {
+    if (!isAtTop() || isRefreshing) return;
+    
+    isMouseDown = true;
+    startY = e.clientY;
+    currentY = startY;
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isAtTop() || isRefreshing || !isMouseDown || startY === 0) return;
+    
+    currentY = e.clientY;
+    pullDistance = Math.max(0, currentY - startY);
+    
+    if (pullDistance > 0) {
+      e.preventDefault();
+      updatePullIndicator(pullDistance);
+    }
+  });
+  
+  document.addEventListener('mouseup', (e) => {
+    if (!isAtTop() || isRefreshing || !isMouseDown || pullDistance === 0) {
+      isMouseDown = false;
+      startY = 0;
+      currentY = 0;
+      pullDistance = 0;
+      return;
+    }
+    
+    isMouseDown = false;
+    
+    if (pullDistance >= threshold) {
+      performRefresh();
+    } else {
+      updatePullIndicator(0);
+    }
+    
+    startY = 0;
+    currentY = 0;
+    pullDistance = 0;
+  });
+})();
 </script>
 
 <!-- Header is non-sticky now -->
