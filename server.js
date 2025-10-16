@@ -1670,8 +1670,8 @@ app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
     }
     
     try {
-        // First, get the appointment details to find the user_id
-        const getAppointmentQuery = 'SELECT user_id, status FROM appointments WHERE id = $1'; 
+        // First, get the appointment details to find the user_id and salon_id
+        const getAppointmentQuery = 'SELECT user_id, salon_id, status FROM appointments WHERE id = $1'; 
         const appointment = await dbGet(getAppointmentQuery, [appointmentId]);
 
         if (!appointment) {
@@ -1686,6 +1686,23 @@ app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
         // Update appointment status
         const sql = `UPDATE appointments SET status = $1 WHERE id = $2`;
         await dbRun(sql, [status, appointmentId]);
+
+        // WebSocket broadcast to salon room for real-time update
+        if (global.broadcastToSalon) {
+            global.broadcastToSalon(appointment.salon_id, 'appointment_status_updated', {
+                appointmentId,
+                status,
+                user_id: appointment.user_id
+            });
+        }
+
+        // WebSocket broadcast to user room for real-time update
+        if (global.broadcastToUser) {
+            global.broadcastToUser(appointment.user_id, 'appointment_status_updated', {
+                appointmentId,
+                status
+            });
+        }
 
         // If status is "Absent", increment user strikes
         if (status === 'Absent') {
@@ -1834,8 +1851,17 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
                 late: true,
                 strikes: newStrikes
              });
-             // Socket.IO emit for late cancellation
-             try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: true, strikes: newStrikes }); } } catch (e) { console.warn('socket late cancel emit error:', e.message); }
+             
+             // WebSocket broadcast for late cancellation
+             if (global.broadcastToSalon) {
+                 global.broadcastToSalon(row.salon_id, 'appointment_cancelled', {
+                     appointmentId,
+                     user_id,
+                     start_time: row.start_time,
+                     late: true,
+                     strikes: newStrikes
+                 });
+             }
 
              // Push notify salon about late cancellation
              await sendPushToTargets({
@@ -1876,8 +1902,16 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
             start_time: row.start_time,
             late: false
         });
-        // Socket.IO emit for normal cancellation
-        try { if (io) { io.to(`salon_${row.salon_id}`).emit('appointment_cancelled', { appointmentId, user_id, start_time: row.start_time, late: false }); } } catch (e) { console.warn('socket cancel emit error:', e.message); }
+        
+        // WebSocket broadcast for normal cancellation
+        if (global.broadcastToSalon) {
+            global.broadcastToSalon(row.salon_id, 'appointment_cancelled', {
+                appointmentId,
+                user_id,
+                start_time: row.start_time,
+                late: false
+            });
+        }
         // Push notify salon about normal cancellation (clean Arabic text, no user name)
         const fmtDate = (() => {
             try {
@@ -2444,8 +2478,20 @@ app.post('/api/appointment/book', async (req, res) => {
             services_count: servicesToBook.length,
             price
         });
-        // Socket.IO emit to salon room for real-time update
-        try { if (io) { io.to(`salon_${salon_id}`).emit('appointment_booked', { appointmentId, user_id, staff_id: staffIdForDB, staff_name: assignedStaffName, start_time, end_time, services_count: servicesToBook.length, price }); } } catch (e) { console.warn('socket booked emit error:', e.message); }
+        
+        // WebSocket broadcast to salon room for real-time update
+        if (global.broadcastToSalon) {
+            global.broadcastToSalon(salon_id, 'appointment_booked', {
+                appointmentId,
+                user_id,
+                staff_id: staffIdForDB,
+                staff_name: assignedStaffName,
+                start_time,
+                end_time,
+                services_count: servicesToBook.length,
+                price
+            });
+        }
 
         // Helper formatters for clean Arabic date/time in pushes
         const formatArabicDate = (d) => {
@@ -2996,22 +3042,69 @@ try {
         }
     });
 
-    // Salon room join and basic connection logging
+    // Enhanced WebSocket handling for real-time updates
     io.on('connection', (socket) => {
-        // Client should emit 'joinSalon' with numeric salonId
+        console.log('Client connected:', socket.id);
+
+        // Salon room join with enhanced logging
         socket.on('joinSalon', (salonId) => {
             try {
                 const sid = parseInt(salonId);
                 if (!isNaN(sid)) {
                     const room = `salon_${sid}`;
                     socket.join(room);
-                    socket.emit('joinedSalon', { room });
+                    socket.salonId = sid; // Store salon ID on socket
+                    console.log(`Salon ${sid} joined room: ${room}`);
+                    socket.emit('joinedSalon', { room, salonId: sid });
                 }
             } catch (e) {
                 console.warn('joinSalon handler error:', e.message);
             }
         });
+
+        // User room join for real-time slot updates
+        socket.on('joinUser', (userId) => {
+            try {
+                const uid = parseInt(userId);
+                if (!isNaN(uid)) {
+                    const room = `user_${uid}`;
+                    socket.join(room);
+                    socket.userId = uid; // Store user ID on socket
+                    console.log(`User ${uid} joined room: ${room}`);
+                    socket.emit('joinedUser', { room, userId: uid });
+                }
+            } catch (e) {
+                console.warn('joinUser handler error:', e.message);
+            }
+        });
+
+        // Handle disconnection
+        socket.on('disconnect', () => {
+            if (socket.salonId) {
+                console.log(`Salon ${socket.salonId} disconnected`);
+            }
+            if (socket.userId) {
+                console.log(`User ${socket.userId} disconnected`);
+            }
+        });
     });
+
+    // Helper function to broadcast to salon rooms
+    global.broadcastToSalon = (salonId, event, data) => {
+        if (io) {
+            io.to(`salon_${salonId}`).emit(event, data);
+            console.log(`Broadcasted ${event} to salon ${salonId}`);
+        }
+    };
+
+    // Helper function to broadcast to user rooms
+    global.broadcastToUser = (userId, event, data) => {
+        if (io) {
+            io.to(`user_${userId}`).emit(event, data);
+            console.log(`Broadcasted ${event} to user ${userId}`);
+        }
+    };
+
 } catch (e) {
     console.warn('Socket.IO setup warning:', e.message);
 }
