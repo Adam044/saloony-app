@@ -98,18 +98,18 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 80px;
-            background: linear-gradient(135deg, #06C167, #05ae5d);
+            height: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
             justify-content: center;
             transform: translateY(-100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s ease-out;
             z-index: 30;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 4px 20px rgba(6, 193, 103, 0.3);
-            border-radius: 0 0 20px 20px;
+            color: #374151;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         .pull-to-refresh.visible {
             transform: translateY(0);
@@ -117,26 +117,12 @@
         .pull-to-refresh .refresh-content {
             display: flex;
             align-items: center;
-            gap: 12px;
-            transition: all 0.3s ease;
+            justify-content: center;
         }
         .pull-to-refresh .refresh-icon {
-            font-size: 20px;
-            transition: transform 0.3s ease;
-        }
-        .pull-to-refresh.refreshing .refresh-icon {
+            font-size: 18px;
+            color: #6B7280;
             animation: spin 1s linear infinite;
-        }
-        .pull-to-refresh .pull-arrow {
-            font-size: 24px;
-            transition: transform 0.3s ease;
-            opacity: 0.8;
-        }
-        .pull-to-refresh.ready .pull-arrow {
-            transform: rotate(180deg);
-        }
-        .pull-to-refresh.refreshing .pull-arrow {
-            opacity: 0;
         }
         
         /* Enhanced body animation during pull */
@@ -191,8 +177,6 @@
 <!-- Pull to Refresh Indicator -->
 <div id="pull-to-refresh" class="pull-to-refresh">
     <div class="refresh-content">
-        <i class="fas fa-arrow-down pull-arrow"></i>
-        <span class="refresh-text">اسحب للتحديث</span>
         <i class="fas fa-sync-alt refresh-icon"></i>
     </div>
 </div>
@@ -919,9 +903,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }).catch(() => {});
 
-        // Register Push Subscription and send to server
+        // Register Push Subscription and send to server (only once per session)
         (async () => {
             try {
+                // Check if we already registered push subscription in this session
+                const sessionKey = 'push_subscription_registered_salon';
+                if (sessionStorage.getItem(sessionKey)) {
+                    console.debug('Push subscription already registered this session');
+                    return;
+                }
+
                 const reg = await navigator.serviceWorker.ready;
                 if (!('pushManager' in reg)) return;
 
@@ -963,7 +954,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                // Log to console for debugging
+                
+                // Mark as registered for this session
+                sessionStorage.setItem(sessionKey, 'true');
                 console.debug('Salon push subscription saved for', { user_id: body.user_id, salon_id: body.salon_id });
             } catch (err) {
                 console.debug('Push subscription error:', err);
@@ -3309,48 +3302,79 @@ function openSalonServicesExplorer(prefCategory = 'all') {
           saveButton.disabled = true;
           saveButton.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ...';
           
-          const formData = new FormData();
           const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
           
-          // Add salon name if changed
-          const newName = editableSalonName.value.trim();
-          const originalName = editableSalonName.dataset.originalValue || '';
-          if (newName !== originalName.trim()) {
-            formData.append('salon_name', newName);
-          }
+          // Prepare complete salon data like in signup
+          const infoSalonName = document.getElementById('info-salon-name');
+          const infoOwnerName = document.getElementById('info-owner-name');
+          const infoSalonPhone = document.getElementById('info-salon-phone');
+          const infoOwnerPhone = document.getElementById('info-owner-phone');
+          const infoAddress = document.getElementById('info-address');
+          const infoCity = document.getElementById('info-city');
+          const infoGenderFocus = document.getElementById('info-gender-focus');
           
-          // Add image if changed
-          const imageFile = editableProfileImage.files[0];
+          const salonData = {
+            salon_name: infoSalonName.value.trim(),
+            owner_name: infoOwnerName.value.trim(),
+            salon_phone: infoSalonPhone.value.trim(),
+            owner_phone: infoOwnerPhone.value.trim(),
+            address: infoAddress.value.trim(),
+            city: infoCity.value,
+            gender_focus: infoGenderFocus.value,
+            image_url: user.image_url // Keep existing image by default
+          };
+          
+          // Handle image upload if changed
+          const imageFile = modalInfoSalonImage.files[0];
           if (imageFile) {
-            formData.append('image', imageFile);
+            try {
+              const base64Image = await convertImageToBase64(imageFile);
+              salonData.image_url = base64Image;
+            } catch (error) {
+              console.error('Error converting image:', error);
+              showMessage(messageBox, 'خطأ في معالجة الصورة', false);
+              return;
+            }
           }
-          
-          formData.append('userId', user.userId || user.id);
-          formData.append('salonId', user.salonId);
           
           const response = await fetch(`/api/salon/info/${user.salonId}`, {
             method: 'POST',
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(salonData)
           });
           
           const data = await response.json();
           
           if (response.ok) {
-            // Update stored user data
-            if (newName !== originalName.trim()) {
-              user.salon_name = newName;
-              editableSalonName.dataset.originalValue = newName;
-            }
+            // Update stored user data with all the new information
+            const updatedUser = {
+              ...user,
+              salon_name: salonData.salon_name,
+              owner_name: salonData.owner_name,
+              salon_phone: salonData.salon_phone,
+              owner_phone: salonData.owner_phone,
+              address: salonData.address,
+              city: salonData.city,
+              gender_focus: salonData.gender_focus,
+              image_url: data.image_url || salonData.image_url
+            };
             
+            localStorage.setItem('salonni_user', JSON.stringify(updatedUser));
+            
+            // Update display elements
+            updateSalonInfoDisplay(updatedUser);
+            
+            // Update image preview if changed
             if (data.image_url) {
-              user.image_url = data.image_url;
-              editableProfileImg.dataset.originalSrc = data.image_url;
+              const imagePreview = document.getElementById('image-preview');
+              const imagePlaceholder = document.getElementById('image-placeholder');
+              imagePreview.src = data.image_url;
+              imagePreview.classList.remove('hidden');
+              if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
             }
-            
-            localStorage.setItem('salonni_user', JSON.stringify(user));
             
             showMessage(messageBox, 'تم حفظ التغييرات بنجاح!', true);
-            hideSaveButton();
+            setEditMode(false); // Exit edit mode
           } else {
             throw new Error(data.message || 'فشل في حفظ التغييرات');
           }
@@ -3378,8 +3402,6 @@ function openSalonServicesExplorer(prefCategory = 'all') {
   
   const pullToRefresh = document.getElementById('pull-to-refresh');
   const refreshIcon = pullToRefresh.querySelector('.refresh-icon');
-  const refreshText = pullToRefresh.querySelector('.refresh-text');
-  const pullArrow = pullToRefresh.querySelector('.pull-arrow');
   const body = document.body;
   
   // Check if we're at the top of the page
@@ -3387,64 +3409,34 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     return window.scrollY <= 0;
   }
   
-  // Update pull indicator with enhanced animations
+  // Update pull indicator with simple animation
   function updatePullIndicator(distance) {
     const progress = Math.min(distance / threshold, 1);
-    const translateY = Math.min(distance * 0.6, maxPull * 0.6);
-    const bodyScale = 1 - (progress * 0.02); // Subtle scale effect
-    const bodyTranslateY = Math.min(distance * 0.3, 30);
+    const translateY = Math.min(distance * 0.5, maxPull * 0.5);
     
     if (distance > 0) {
       // Update pull indicator position and visibility
-      pullToRefresh.style.transform = `translateY(${translateY - 80}px)`;
+      pullToRefresh.style.transform = `translateY(${translateY - 60}px)`;
       pullToRefresh.classList.add('visible');
       
-      // Add body transformation for pulling effect
+      // Simple body translation for pulling effect
       body.classList.add('pulling');
-      body.style.transform = `translateY(${bodyTranslateY}px) scale(${bodyScale})`;
-      
-      // Update states based on pull distance
-      if (distance >= threshold) {
-        pullToRefresh.classList.add('ready');
-        refreshText.textContent = 'اتركه للتحديث';
-        pullArrow.style.transform = 'rotate(180deg) scale(1.2)';
-        pullArrow.style.color = '#ffffff';
-      } else {
-        pullToRefresh.classList.remove('ready');
-        refreshText.textContent = 'اسحب للتحديث';
-        pullArrow.style.transform = `rotate(0deg) scale(${1 + progress * 0.3})`;
-        pullArrow.style.color = 'rgba(255, 255, 255, 0.8)';
-      }
-      
-      // Add subtle bounce effect when reaching threshold
-      if (distance >= threshold && !pullToRefresh.classList.contains('ready-bounce')) {
-        pullToRefresh.classList.add('ready-bounce');
-        pullToRefresh.style.animation = 'pullBounce 0.3s ease-out';
-        setTimeout(() => {
-          pullToRefresh.classList.remove('ready-bounce');
-          pullToRefresh.style.animation = '';
-        }, 300);
-      }
-      
+      body.style.transform = `translateY(${Math.min(distance * 0.2, 20)}px)`;
     } else {
       // Reset all transformations
       pullToRefresh.classList.remove('visible', 'ready');
       pullToRefresh.style.transform = 'translateY(-100%)';
       body.classList.remove('pulling');
       body.style.transform = '';
-      pullArrow.style.transform = 'rotate(0deg) scale(1)';
-      pullArrow.style.color = 'rgba(255, 255, 255, 0.8)';
     }
   }
   
-  // Perform refresh with enhanced feedback
+  // Perform refresh with simple feedback
   async function performRefresh() {
     if (isRefreshing) return;
     
     isRefreshing = true;
     pullToRefresh.classList.add('refreshing');
-    pullToRefresh.classList.remove('ready');
-    refreshText.textContent = 'جاري التحديث...';
     
     // Reset body transformation
     body.classList.remove('pulling');
@@ -3459,18 +3451,6 @@ function openSalonServicesExplorer(prefCategory = 'all') {
       // Refresh salon info if function exists
       if (typeof loadSalonInfo === 'function') {
         await loadSalonInfo();
-      }
-      
-      // Show success message
-      const messageBox = document.getElementById('message-box');
-      if (messageBox) {
-        messageBox.textContent = 'تم تحديث البيانات بنجاح';
-        messageBox.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto bg-green-100 text-green-800 border border-green-200';
-        messageBox.classList.remove('hidden');
-        
-        setTimeout(() => {
-          messageBox.classList.add('hidden');
-        }, 3000);
       }
       
     } catch (error) {

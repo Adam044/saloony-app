@@ -10,6 +10,7 @@ const compression = require('compression'); // Enable gzip compression for respo
 const db = require('./database'); // Import our database module
 const nodemailer = require('nodemailer'); // Email sending for Contact Us
 const webPush = require('web-push'); // Web Push notifications
+const multer = require('multer'); // File upload handling
 require('dotenv').config(); // Load environment variables (.env)
 
 const app = express();
@@ -473,6 +474,21 @@ app.use(compression()); // Compress all responses to improve load times
 app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for image_url
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
+// Configure multer for file uploads
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'), false);
+        }
+    }
+});
+
 // Serve static files (views, Images)
 // Serve static assets with mild caching for images; keep HTML no-cache via discovery route headers
 app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
@@ -511,14 +527,24 @@ app.post('/api/push/subscribe', async (req, res) => {
         const p256dh = subscription.keys.p256dh;
         const auth = subscription.keys.auth;
 
-        // Upsert by endpoint uniqueness
-        const existing = await dbGet('SELECT id FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+        // Check if subscription already exists with same data to prevent unnecessary updates
+        const existing = await dbGet('SELECT id, user_id, salon_id, p256dh, auth FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
         if (existing) {
+            // Only update if data has actually changed
+            if (existing.user_id === (user_id || null) && 
+                existing.salon_id === (salon_id || null) && 
+                existing.p256dh === p256dh && 
+                existing.auth === auth) {
+                // No changes needed, just update last_active timestamp
+                await dbRun('UPDATE push_subscriptions SET last_active = CURRENT_TIMESTAMP WHERE id = $1', [existing.id]);
+                return res.json({ success: true, message: 'Subscription already up to date' });
+            }
+            
             await dbRun('UPDATE push_subscriptions SET user_id = $1, salon_id = $2, p256dh = $3, auth = $4, last_active = CURRENT_TIMESTAMP WHERE id = $5', [user_id || null, salon_id || null, p256dh, auth, existing.id]);
-            console.log('Push subscription updated', { endpoint, user_id: user_id || null, salon_id: salon_id || null, id: existing.id });
+            console.log('Push subscription updated', { endpoint: endpoint.substring(0, 50) + '...', user_id: user_id || null, salon_id: salon_id || null, id: existing.id });
         } else {
             await dbRun('INSERT INTO push_subscriptions (user_id, salon_id, endpoint, p256dh, auth, last_active) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)', [user_id || null, salon_id || null, endpoint, p256dh, auth]);
-            console.log('Push subscription inserted', { endpoint, user_id: user_id || null, salon_id: salon_id || null });
+            console.log('Push subscription inserted', { endpoint: endpoint.substring(0, 50) + '...', user_id: user_id || null, salon_id: salon_id || null });
         }
 
         res.json({ success: true });
@@ -1197,6 +1223,16 @@ app.get('/api/salon/details/:salon_id', async (req, res) => {
 // API to update salon basic info
 app.post('/api/salon/info/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
+    
+    // Debug logging
+    console.log('Request body:', req.body);
+    console.log('Content-Type:', req.headers['content-type']);
+    
+    // Check if req.body exists and has the required data
+    if (!req.body) {
+        return res.status(400).json({ success: false, message: 'Request body is missing' });
+    }
+    
     // NOTE: password and email are excluded from this general update for security
     const { salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url } = req.body;
     
@@ -1233,7 +1269,11 @@ app.post('/api/salon/info/:salon_id', async (req, res) => {
         }
     }
 
-    res.json({ success: true, message: 'Salon information updated successfully.' });
+    res.json({ 
+        success: true, 
+        message: 'Salon information updated successfully.',
+        image_url: image_url // Return the image URL for frontend update
+    });
 });
 
 // --- Staff Management ---

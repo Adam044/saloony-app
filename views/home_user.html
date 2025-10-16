@@ -1101,6 +1101,13 @@ async function notifyLocal({ title = 'Saloony', body = 'لديك إشعار جد
 // Ensure Push subscription is created and saved server-side for the current user
 async function ensurePushSubscription() {
   try {
+    // Check if we already registered push subscription in this session
+    const sessionKey = 'push_subscription_registered_user';
+    if (sessionStorage.getItem(sessionKey)) {
+      console.debug('Push subscription already registered this session');
+      return true;
+    }
+
     if (!('serviceWorker' in navigator)) return false;
     // Ensure SW registered
     const regExisting = await navigator.serviceWorker.getRegistration();
@@ -1149,6 +1156,10 @@ async function ensurePushSubscription() {
     await fetch('/api/push/subscribe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
+    
+    // Mark as registered for this session
+    sessionStorage.setItem(sessionKey, 'true');
+    console.debug('User push subscription saved for', { user_id: body.user_id });
     return true;
   } catch (e) {
     console.debug('ensurePushSubscription failed:', e);
