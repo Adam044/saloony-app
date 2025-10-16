@@ -458,6 +458,8 @@
                         <button id="save-profile-changes" class="btn-action w-full py-3 rounded-xl font-bold">
                             <i class="fas fa-save ml-1"></i> حفظ التغييرات
                         </button>
+                        <!-- Inline message shown under the button -->
+                        <div id="profile-save-message" class="hidden mt-2 text-center"></div>
                     </div>
 
                     <form id="salon-info-form" class="space-y-4 hidden" enctype="multipart/form-data">
@@ -2394,7 +2396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 infoGenderFocus.value = currentSalon.gender_focus || 'men';
                 populateCityDropdowns(currentSalon.city);
             }
-            setEditMode(false);
+            // Removed edit mode toggling; keep display as-is
         });
     }
 
@@ -2469,8 +2471,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Populate readonly display
                 updateSalonInfoDisplay(info);
-                // Ensure default mode is display
-                setEditMode(false);
+                // Default to display mode; edit mode removed
             } else {
                 showMessage(messageBox, 'فشل تحميل معلومات الصالون.', false);
             }
@@ -2628,8 +2629,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await loadServiceManagement(infoData.gender_focus);
                 }
 
-                // Return to display mode after successful save
-                setEditMode(false);
+                // Edit mode removed; keep current display
             } else {
                 showMessage(messageBox, data.message || 'فشل تحديث المعلومات.', false);
             }
@@ -3370,7 +3370,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     // Save changes handler
     if (saveButton) {
       saveButton.addEventListener('click', async function() {
-        const messageBox = document.getElementById('message-box');
+        const messageBox = document.getElementById('profile-save-message');
         
         try {
           saveButton.disabled = true;
@@ -3379,24 +3379,22 @@ function openSalonServicesExplorer(prefCategory = 'all') {
           const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
           
           // Prepare complete salon data like in signup
-          const infoSalonName = document.getElementById('info-salon-name');
-          const infoOwnerName = document.getElementById('info-owner-name');
-          const infoSalonPhone = document.getElementById('info-salon-phone');
-          const infoOwnerPhone = document.getElementById('info-owner-phone');
-          const infoAddress = document.getElementById('info-address');
-          const infoCity = document.getElementById('info-city');
-          const infoGenderFocus = document.getElementById('info-gender-focus');
-          
           const salonData = {
-            salon_name: infoSalonName.value.trim(),
-            owner_name: infoOwnerName.value.trim(),
-            salon_phone: infoSalonPhone.value.trim(),
-            owner_phone: infoOwnerPhone.value.trim(),
-            address: infoAddress.value.trim(),
-            city: infoCity.value,
-            gender_focus: infoGenderFocus.value,
+            // Use inline editable name; keep other fields from current user profile
+            salon_name: (editableSalonName?.value || '').trim(),
+            owner_name: user.owner_name,
+            salon_phone: user.salon_phone,
+            owner_phone: user.owner_phone,
+            address: user.address,
+            city: user.city,
+            gender_focus: user.gender_focus,
             image_url: user.image_url // Keep existing image by default
           };
+
+          if (!salonData.salon_name) {
+            showMessage(messageBox, 'يرجى إدخال اسم الصالون.', false);
+            return;
+          }
           
           // Handle image upload if changed
           const modalInfoSalonImage = document.getElementById('modal-info-salon-image');
@@ -3468,7 +3466,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
             }
             
             showMessage(messageBox, 'تم حفظ التغييرات بنجاح!', true);
-            setEditMode(false); // Exit edit mode
+            hideSaveButton();
           } else {
             throw new Error(data.message || 'فشل في حفظ التغييرات');
           }
