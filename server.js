@@ -2201,8 +2201,16 @@ app.post('/api/salon/services/:salon_id', async (req, res) => {
 
 function timeToMinutes(timeStr) {
     if (!timeStr || typeof timeStr !== 'string') return 0;
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
+    const [h, m] = timeStr.split(':').map(Number);
+    let minutes = (h || 0) * 60 + (m || 0);
+    
+    // Handle overnight hours (e.g., 1am = 25:00 = 1500 minutes)
+    // If hour is between 0-6, assume it's next day (add 24 hours)
+    if (h >= 0 && h <= 6) {
+        minutes += 24 * 60;
+    }
+    
+    return minutes;
 }
 
 function minutesToTime(minutes) {
