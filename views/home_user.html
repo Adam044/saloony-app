@@ -1167,7 +1167,15 @@ function formatTime(timeString) {
 
 function timeToMinutes(timeStr) {
     const [h, m] = timeStr.split(':').map(Number);
-    return h * 60 + m;
+    let minutes = h * 60 + m;
+    
+    // Handle overnight hours (e.g., 1am = 25:00 = 1500 minutes)
+    // If hour is between 0-6, assume it's next day (add 24 hours)
+    if (h >= 0 && h <= 6) {
+        minutes += 24 * 60;
+    }
+    
+    return minutes;
 }
 
 function formatDateTimeForDB(date) {
@@ -2952,7 +2960,9 @@ function calculateTimeSlots(dateString) {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
     }
 
-    const serviceDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0);
+    const serviceDuration = selectedServices
+        .filter(service => service.service_type === 'main')
+        .reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
     
     if (serviceDuration === 0 || !selectedStaff) return []; 
 
@@ -3308,8 +3318,10 @@ async function confirmBooking() {
     // Proactively ensure push subscription is created before booking triggers server-side push
     try { await ensurePushSubscription(); } catch (e) {}
     
-    const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0);
-    const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
+    const totalDuration = selectedServices
+        .filter(service => service.service_type === 'main')
+        .reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
+    const totalPrice = selectedServices.reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
     const mainService = selectedServices[0]; 
 
     const [h, m] = selectedTime.split(':').map(Number);
@@ -3452,11 +3464,11 @@ function renderServiceSelection(services) {
                  data-service-name="${service.name_ar}" 
                  data-service-type="${service.service_type}"
                  data-price="${service.price}" 
-                 data-duration="${service.duration}">
+                 data-duration="${service.duration || 30}">
                 <div class="flex items-center justify-between space-x-3 space-x-reverse">
                     <div class="flex-1">
                         <h4 class="font-bold text-primary-dark">${service.name_ar}</h4>
-                        <p class="text-sm text-gray-600 duration-display">${service.duration} دقيقة</p>
+                        <p class="text-sm text-gray-600 duration-display">${service.duration || 30} دقيقة</p>
                     </div>
                     <p class="text-lg font-bold text-secondary flex-shrink-0 price-display">${service.price} شيكل</p>
                 </div>
@@ -3486,7 +3498,7 @@ function renderServiceSelection(services) {
                  data-service-name="${service.name_ar}" 
                  data-service-type="${service.service_type}"
                  data-price="${service.price}" 
-                 data-duration="${service.duration}">
+                 data-duration="${service.duration || 0}">
                 <div class="flex items-center justify-between space-x-3 space-x-reverse">
                     <div class="flex-1">
                         <h4 class="font-bold text-primary-dark">${service.name_ar} 
@@ -3506,8 +3518,8 @@ function renderServiceSelection(services) {
         // Only count main services for duration (add-ons don't take time)
         let totalDuration = selectedServices
             .filter(service => service.service_type === 'main')
-            .reduce((sum, service) => sum + service.duration, 0);
-        let totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
+            .reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
+        let totalPrice = selectedServices.reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
         
         // Count main services and add-ons separately for display
         const mainServicesCount = selectedServices.filter(s => s.service_type === 'main').length;
@@ -4004,8 +4016,8 @@ function openServicesExplorer(prefCategory = 'all') {
             selectedServices.push({
                 id: s.id,
                 name_ar: s.name_ar,
-                price: parseFloat(s.price),
-                duration: s.service_type === 'add_on' ? 0 : parseInt(s.duration),
+                price: parseFloat(s.price) || 0,
+                duration: s.service_type === 'add_on' ? 0 : (parseInt(s.duration) || 30),
                 service_type: s.service_type
             });
             selectedServices.sort((a, b) => a.id - b.id);
