@@ -20,22 +20,31 @@ class Database {
                 // Ensure SSL is handled correctly for Render/Supabase
                 ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
                 // Stabilize connections in serverless/managed environments
-                max: parseInt(process.env.PG_POOL_MAX || '10', 10),
-                idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT || '30000', 10),
+                max: parseInt(process.env.PG_POOL_MAX || '20', 10),
+                idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT || '300000', 10), // 5 minutes instead of 30 seconds
                 connectionTimeoutMillis: parseInt(process.env.PG_CONN_TIMEOUT || '10000', 10),
-                keepAlive: true
+                acquireTimeoutMillis: parseInt(process.env.PG_ACQUIRE_TIMEOUT || '60000', 10), // 1 minute to acquire connection
+                keepAlive: true,
+                keepAliveInitialDelayMillis: 10000 // 10 seconds
             });
             // Pool diagnostics for production stability
             this.pool.on('error', (err) => {
                 console.error('PostgreSQL Pool Error:', err.message);
+                // Attempt to reconnect on critical errors
+                if (err.code === 'ECONNRESET' || err.code === 'ENOTFOUND' || err.code === 'ETIMEDOUT') {
+                    console.log('Attempting to reinitialize pool due to connection error...');
+                    setTimeout(() => this.init(), 5000);
+                }
             });
-            this.pool.on('connect', () => {
+            this.pool.on('connect', (client) => {
                 console.log('PostgreSQL pool: client connected');
+                // Set connection parameters for better stability
+                client.query('SET statement_timeout = 30000'); // 30 second query timeout
             });
             this.pool.on('acquire', () => {
                 // console.log('PostgreSQL pool: client acquired');
             });
-            this.pool.on('remove', () => {
+            this.pool.on('remove', (client) => {
                 console.log('PostgreSQL pool: client removed');
             });
             console.log('Using PostgreSQL via DATABASE_URL');
@@ -67,17 +76,27 @@ class Database {
     async query(sql, params = []) {
         return new Promise((resolve, reject) => {
             if (this.isProduction) {
-                // PostgreSQL query
-                this.pool.query(sql, params, (err, result) => {
-                    if (err) {
-                        // CRITICAL FIX: Log the full PostgreSQL error for debugging
-                        console.error("PostgreSQL Query Error:", err.code, err.message, "SQL:", sql, "Params:", params);
-                        reject(err);
-                    } else {
-                        // Return the array of rows (for dbAll in server.js)
-                        resolve(result.rows);
-                    }
-                });
+                // PostgreSQL query with retry logic
+                const executeQuery = (retryCount = 0) => {
+                    this.pool.query(sql, params, (err, result) => {
+                        if (err) {
+                            console.error("PostgreSQL Query Error:", err.code, err.message, "SQL:", sql, "Params:", params);
+                            
+                            // Retry on connection errors
+                            if ((err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.code === '57P01') && retryCount < 3) {
+                                console.log(`Retrying query (attempt ${retryCount + 1}/3)...`);
+                                setTimeout(() => executeQuery(retryCount + 1), 1000 * (retryCount + 1));
+                                return;
+                            }
+                            
+                            reject(err);
+                        } else {
+                            // Return the array of rows (for dbAll in server.js)
+                            resolve(result.rows);
+                        }
+                    });
+                };
+                executeQuery();
             } else {
                 // SQLite query
                 this.db.all(sql, params, (err, rows) => {
