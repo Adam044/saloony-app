@@ -202,6 +202,20 @@ async function initializeDb() {
             FOREIGN KEY (service_id) REFERENCES services(id),
             UNIQUE(appointment_id, service_id)
         )`); 
+
+        // Storage: optimized images linked to salons
+        await db.run(`CREATE TABLE IF NOT EXISTS salon_images (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL,
+            image_path TEXT NOT NULL,
+            width INTEGER,
+            height INTEGER,
+            size_bytes INTEGER,
+            mime_type TEXT,
+            is_primary BOOLEAN DEFAULT false,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+        )`);
         
         // Push subscriptions table
         await db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -2736,6 +2750,9 @@ async function ensurePerfIndexes() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_services_service ON salon_services(service_id)`);
         // Index reviews by salon_id for rating aggregates
         await db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_salon ON reviews(salon_id)`);
+        // Index salon_images for quick lookup and primary selection
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_images_salon ON salon_images(salon_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_images_primary ON salon_images(salon_id, is_primary)`);
     } catch (e) {
         console.warn('ensurePerfIndexes warning:', e.message);
     }
