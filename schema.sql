@@ -196,3 +196,20 @@ CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date_booked ON appointments(date_booked);
 CREATE INDEX IF NOT EXISTS idx_salon_services_salon_id ON salon_services(salon_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_salon_id ON reviews(salon_id);
+
+-- 13. Salon Images storage table
+CREATE TABLE IF NOT EXISTS salon_images (
+    id SERIAL PRIMARY KEY,
+    salon_id INTEGER NOT NULL,
+    image_path TEXT NOT NULL, -- Relative path served under /uploads
+    width INTEGER,
+    height INTEGER,
+    size_bytes INTEGER,
+    mime_type TEXT,
+    is_primary BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+);
+
+-- Index for faster lookups by salon
+CREATE INDEX IF NOT EXISTS idx_salon_images_salon_id ON salon_images(salon_id);

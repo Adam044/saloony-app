@@ -794,11 +794,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Handle image upload if a new image is selected
                 if (modalInfoSalonImage.files && modalInfoSalonImage.files[0]) {
                     try {
-                        // Convert image to base64 directly instead of using /api/upload
-                        const base64Image = await convertImageToBase64(modalInfoSalonImage.files[0]);
-                        imageUrl = base64Image;
+                        const formData = new FormData();
+                        formData.append('image', modalInfoSalonImage.files[0]);
+                        formData.append('salon_id', salonId);
+                        const uploadResp = await fetch(`/api/upload?salon_id=${salonId}`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const uploadJson = await uploadResp.json();
+                        if (!uploadResp.ok || !uploadJson.success) {
+                            throw new Error(uploadJson.message || 'فشل رفع الصورة');
+                        }
+                        imageUrl = uploadJson.image_url;
                     } catch (error) {
-                        throw new Error('فشل في معالجة الصورة');
+                        throw new Error('فشل في رفع الصورة');
                     }
                 }
 
@@ -2347,6 +2356,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('Failed to update display:', e);
         }
     };
+    // Expose globally to avoid scope issues in event handlers elsewhere
+    window.updateSalonInfoDisplay = updateSalonInfoDisplay;
 
     const setEditMode = (isEditing) => {
         const displayEl = salonInfoDisplay;
@@ -2508,6 +2519,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // Expose globally so other script blocks/handlers can access it
+    window.convertImageToBase64 = convertImageToBase64;
+
     // Image preview functionality
     const imageInput = document.getElementById('info-salon-image');
     const imagePreview = document.getElementById('image-preview');
@@ -2557,11 +2571,21 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (imageFile) {
             try {
-                // Only convert to base64 when submitting the form
-                imageUrl = await convertImageToBase64(imageFile);
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                formData.append('salon_id', salonId);
+                const uploadResp = await fetch(`/api/upload?salon_id=${salonId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadJson = await uploadResp.json();
+                if (!uploadResp.ok || !uploadJson.success) {
+                    throw new Error(uploadJson.message || 'فشل رفع الصورة');
+                }
+                imageUrl = uploadJson.image_url;
             } catch (error) {
-                console.error('Error converting image:', error);
-                showMessage(messageBox, 'خطأ في معالجة الصورة', false);
+                console.error('Error uploading image:', error);
+                showMessage(messageBox, 'خطأ في رفع الصورة', false);
                 return;
             }
         } else if (isDefaultPlaceholder) {
@@ -3388,11 +3412,21 @@ function openSalonServicesExplorer(prefCategory = 'all') {
           
           if (imageFile) {
             try {
-              const base64Image = await convertImageToBase64(imageFile);
-              salonData.image_url = base64Image;
+              const formData = new FormData();
+              formData.append('image', imageFile);
+              formData.append('salon_id', user.salonId);
+              const uploadResp = await fetch(`/api/upload?salon_id=${user.salonId}`, {
+                method: 'POST',
+                body: formData
+              });
+              const uploadJson = await uploadResp.json();
+              if (!uploadResp.ok || !uploadJson.success) {
+                throw new Error(uploadJson.message || 'فشل رفع الصورة');
+              }
+              salonData.image_url = uploadJson.image_url;
             } catch (error) {
-              console.error('Error converting image:', error);
-              showMessage(messageBox, 'خطأ في معالجة الصورة', false);
+              console.error('Error uploading image:', error);
+              showMessage(messageBox, 'خطأ في رفع الصورة', false);
               return;
             }
           }

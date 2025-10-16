@@ -11,6 +11,8 @@ const db = require('./database'); // Import our database module
 const nodemailer = require('nodemailer'); // Email sending for Contact Us
 const webPush = require('web-push'); // Web Push notifications
 const multer = require('multer'); // File upload handling
+const fs = require('fs'); // File system for saving uploads
+const sharp = require('sharp'); // Image optimization
 require('dotenv').config(); // Load environment variables (.env)
 
 const app = express();
@@ -495,6 +497,8 @@ app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
 app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
 // Serve notification sounds
 app.use('/sounds', express.static(path.join(__dirname, 'Sounds'), { maxAge: '7d', etag: true }));
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d', etag: true }));
 
 // Root route should serve index for browser launches
 app.get('/', (req, res) => {
@@ -889,6 +893,50 @@ app.post('/api/auth/register', async (req, res) => {
                     }
                     
                     const salonId = salonResult[0].id;
+
+                    // If image_url is base64, save optimized file to uploads and update DB
+                    try {
+                        if (image_url && typeof image_url === 'string' && image_url.startsWith('data:image')) {
+                            const match = image_url.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+                            const mime = match && match[1] ? match[1] : 'image/jpeg';
+                            const base64Data = match ? match[2] : (image_url.split(',')[1] || '');
+                            if (base64Data) {
+                                const bufferIn = Buffer.from(base64Data, 'base64');
+                                const ext = mime.includes('png') ? 'png' : 'jpg';
+                                const relativeDir = path.join('uploads', 'salons', String(salonId));
+                                const absoluteDir = path.join(__dirname, relativeDir);
+                                await fs.promises.mkdir(absoluteDir, { recursive: true });
+                                const filenameBase = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+                                const filename = `${filenameBase}.${ext}`;
+                                const absolutePath = path.join(absoluteDir, filename);
+
+                                // Optimize image using sharp
+                                const pipeline = sharp(bufferIn);
+                                const meta = await pipeline.metadata();
+                                const targetWidth = Math.min(1024, meta.width || 1024);
+                                const { data, info } = await pipeline
+                                    .resize({ width: targetWidth, withoutEnlargement: true })
+                                    [ext === 'png' ? 'png' : 'jpeg'](ext === 'png' ? { compressionLevel: 9 } : { quality: 75 })
+                                    .toBuffer({ resolveWithObject: true });
+                                await fs.promises.writeFile(absolutePath, data);
+                                const stat = await fs.promises.stat(absolutePath);
+                                const imagePath = `/uploads/salons/${salonId}/${filename}`;
+
+                                // Store in salon_images table
+                                await dbGet(
+                                    `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
+                                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+                                    [salonId, imagePath, info.width || targetWidth, info.height || null, stat.size, mime, true]
+                                );
+
+                                // Update salons.image_url to stored path
+                                await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [imagePath, salonId]);
+                            }
+                        }
+                    } catch (imgErr) {
+                        console.warn('Signup image processing warning:', imgErr.message);
+                        // Continue without failing signup
+                    }
                     
                     console.log(`New Salon registered with ID: ${salonId}, linked to User ID: ${userId}`);
                     return res.json({ 
@@ -1135,20 +1183,53 @@ app.get('/api/cities', (req, res) => {
 });
 
 // API for image upload (multipart/form-data)
-app.post('/api/upload', async (req, res) => {
+app.post('/api/upload', upload.single('image'), async (req, res) => {
     try {
-        // For now, we'll handle the image as base64 in the main endpoints
-        // This endpoint exists for compatibility but redirects to base64 handling
-        res.status(400).json({ 
-            success: false, 
-            message: 'يرجى استخدام رفع الصور المباشر في النموذج' 
-        });
+        const salonIdRaw = req.query.salon_id || req.body.salon_id;
+        const salonId = parseInt(salonIdRaw);
+        if (!salonId || isNaN(salonId)) {
+            return res.status(400).json({ success: false, message: 'Salon ID مطلوب.' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'لم يتم تقديم ملف صورة.' });
+        }
+
+        const mime = req.file.mimetype || 'image/jpeg';
+        const ext = mime.includes('png') ? 'png' : 'jpg';
+        const relativeDir = path.join('uploads', 'salons', String(salonId));
+        const absoluteDir = path.join(__dirname, relativeDir);
+        await fs.promises.mkdir(absoluteDir, { recursive: true });
+
+        const filenameBase = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+        const filename = `${filenameBase}.${ext}`;
+        const absolutePath = path.join(absoluteDir, filename);
+
+        // Optimize image using sharp
+        let pipeline = sharp(req.file.buffer);
+        const meta = await pipeline.metadata();
+        const targetWidth = Math.min(1024, meta.width || 1024);
+        pipeline = pipeline.resize({ width: targetWidth, withoutEnlargement: true });
+        const optimized = ext === 'png' ? pipeline.png({ compressionLevel: 9 }) : pipeline.jpeg({ quality: 75 });
+        const buffer = await optimized.toBuffer();
+        await fs.promises.writeFile(absolutePath, buffer);
+
+        const stat = await fs.promises.stat(absolutePath);
+        const imageUrl = `/uploads/salons/${salonId}/${filename}`;
+
+        // Store in salon_images for tracking
+        const inserted = await dbGet(
+            `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+            [salonId, imageUrl, targetWidth, meta.height || null, stat.size, mime, true]
+        );
+
+        // Update salons.image_url for backward compatibility in UIs
+        await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [imageUrl, salonId]);
+
+        res.json({ success: true, image_url: imageUrl, image_id: inserted?.id });
     } catch (error) {
         console.error('Upload error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'خطأ في رفع الصورة' 
-        });
+        res.status(500).json({ success: false, message: 'خطأ في رفع الصورة' });
     }
 });
 
@@ -2067,8 +2148,29 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
         const isToday = dateString === now.toISOString().split('T')[0];
         
         // Convert times to minutes for easier comparison
-        const startMinutes = timeToMinutes(startTime.split('T')[1].substring(0, 5));
-        const endMinutes = timeToMinutes(endTime.split('T')[1].substring(0, 5));
+        // Handle both ISO format (with T) and other formats safely
+        let startTimeStr, endTimeStr;
+        
+        if (startTime.includes('T')) {
+            startTimeStr = startTime.split('T')[1].substring(0, 5);
+        } else if (startTime.includes(' ')) {
+            startTimeStr = startTime.split(' ')[1].substring(0, 5);
+        } else {
+            // Assume it's already in HH:MM format
+            startTimeStr = startTime.substring(0, 5);
+        }
+        
+        if (endTime.includes('T')) {
+            endTimeStr = endTime.split('T')[1].substring(0, 5);
+        } else if (endTime.includes(' ')) {
+            endTimeStr = endTime.split(' ')[1].substring(0, 5);
+        } else {
+            // Assume it's already in HH:MM format
+            endTimeStr = endTime.substring(0, 5);
+        }
+        
+        const startMinutes = timeToMinutes(startTimeStr);
+        const endMinutes = timeToMinutes(endTimeStr);
         
         // Validate service duration matches
         if (endMinutes - startMinutes !== serviceDuration) {
@@ -2076,7 +2178,7 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
         }
         
         // Get salon schedule data
-        const schedule = await dbGet('SELECT * FROM salon_schedule WHERE salon_id = ?', [salonId]);
+        const schedule = await dbGet('SELECT * FROM schedules WHERE salon_id = $1', [salonId]);
         if (!schedule) {
             return { valid: false, message: 'جدول الصالون غير متوفر.' };
         }
@@ -2093,10 +2195,10 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
         
         // Get schedule modifications
         const modifications = await dbAll(`
-            SELECT * FROM salon_schedule_modifications 
-            WHERE salon_id = ? AND (
-                (mod_type = 'once' AND mod_date = ?) OR
-                (mod_type = 'recurring' AND mod_day_index = ?)
+            SELECT * FROM schedule_modifications 
+            WHERE salon_id = $1 AND (
+                (mod_type = 'once' AND mod_date = $2) OR
+                (mod_type = 'recurring' AND mod_day_index = $3)
             )
         `, [salonId, dateString, dayOfWeek]);
         
@@ -2137,7 +2239,7 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
         }
         
         // Get breaks for this salon
-        const breaks = await dbAll('SELECT * FROM salon_breaks WHERE salon_id = ?', [salonId]);
+        const breaks = await dbAll('SELECT * FROM breaks WHERE salon_id = $1', [salonId]);
         
         // Check for break conflicts
         for (const breakItem of breaks) {
@@ -2156,7 +2258,7 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
         // Get existing appointments for this date
         const appointments = await dbAll(`
             SELECT * FROM appointments 
-            WHERE salon_id = ? AND DATE(start_time) = ? 
+            WHERE salon_id = $1 AND DATE(start_time) = $2 
             AND status NOT IN ('Cancelled', 'Completed', 'Rejected', 'No_Show', 'Absent')
         `, [salonId, dateString]);
         
@@ -2206,7 +2308,7 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
             // For "Any Staff" bookings (staffId = 0), check capacity
             if (parseInt(staffId) === 0) {
                 // Get all staff for capacity calculation
-                const allStaff = await dbAll('SELECT id FROM staff WHERE salon_id = ?', [salonId]);
+                const allStaff = await dbAll('SELECT id FROM staff WHERE salon_id = $1', [salonId]);
                 const staffCount = allStaff.length;
                 
                 if (staffCount === 0) {
@@ -2356,7 +2458,7 @@ app.post('/api/appointment/book', async (req, res) => {
     let totalServiceDuration = 0;
     try {
         for (const service of servicesToBook) {
-            const serviceDetails = await dbGet('SELECT duration FROM services WHERE id = ?', [service.id]);
+            const serviceDetails = await dbGet('SELECT duration FROM salon_services WHERE salon_id = $1 AND service_id = $2', [salon_id, service.id]);
             if (serviceDetails && serviceDetails.duration) {
                 totalServiceDuration += serviceDetails.duration;
             }
