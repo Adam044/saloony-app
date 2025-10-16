@@ -2523,6 +2523,17 @@ async function showSalonDetailModal(salon) {
     resetAllBookingState(); 
     selectedSalon = salon; 
 
+    // Join the salon WebSocket room to receive real-time booking/cancellation updates
+    try {
+        const salonIdSafe = (salon && (salon.salonId ?? salon.salonid ?? salon.id ?? salon.salon_id));
+        if (window.userSocket && salonIdSafe && !isNaN(parseInt(salonIdSafe))) {
+            window.userSocket.emit('joinSalon', salonIdSafe);
+            console.log('Joined salon room for availability updates:', salonIdSafe);
+        }
+    } catch (e) {
+        console.warn('Failed to join salon room:', e.message);
+    }
+
     document.getElementById('booking-modal').classList.add('modal-open');
     document.body.classList.add('modal-open');
     
@@ -4154,6 +4165,8 @@ function openServicesExplorer(prefCategory = 'all') {
         
         const socket = window.io ? io() : null;
         if (socket) {
+            // Expose globally so booking flow can join salon rooms on demand
+            window.userSocket = socket;
             socket.emit('joinUser', userId);
             
             socket.on('connect', () => {
@@ -4204,6 +4217,20 @@ function openServicesExplorer(prefCategory = 'all') {
                     console.warn('WebSocket time_slots_updated handler error:', e.message);
                 }
             });
+
+            // Also refresh time slots on salon room events affecting availability
+            const refreshSlotsIfActive = () => {
+                try {
+                    const step3Visible = !document.getElementById('step-3').classList.contains('hidden');
+                    if (step3Visible && selectedDate && selectedServices.length > 0 && selectedStaff && selectedSalon && selectedSalon.salonId) {
+                        loadTimeSlots();
+                    }
+                } catch (e) {
+                    console.warn('refreshSlotsIfActive error:', e.message);
+                }
+            };
+            socket.on('appointment_booked', refreshSlotsIfActive);
+            socket.on('appointment_cancelled', refreshSlotsIfActive);
         }
     } catch (e) {
         console.warn('WebSocket client init failed:', e.message);

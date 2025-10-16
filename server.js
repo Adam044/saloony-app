@@ -1516,6 +1516,17 @@ app.post('/api/salon/schedule/:salon_id', async (req, res) => {
     
     try {
         await dbRun(sql, [salonId, opening_time, closing_time, closedDaysJson]);
+        // Broadcast real-time availability update to this salon room
+        try {
+            if (global.broadcastToSalon) {
+                global.broadcastToSalon(salonId, 'time_slots_updated', {
+                    source: 'schedule_updated',
+                    salon_id: parseInt(salonId)
+                });
+            }
+        } catch (e) {
+            console.warn('Broadcast time_slots_updated (schedule) failed:', e.message);
+        }
         res.json({ success: true, message: 'Schedule updated successfully.' });
     } catch (err) {
         console.error("Schedule save error:", err.message);
@@ -1541,6 +1552,17 @@ app.post('/api/salon/break/:salon_id', async (req, res) => {
         // FIX: Use RETURNING id with dbGet to ensure the new ID is retrieved in PostgreSQL
         const result = await dbGet('INSERT INTO breaks (salon_id, staff_id, start_time, end_time, reason) VALUES ($1, $2, $3, $4, $5) RETURNING id', 
             [salonId, staff_id || null, start_time, end_time, reason || null]);
+        // Broadcast real-time availability update to this salon room
+        try {
+            if (global.broadcastToSalon) {
+                global.broadcastToSalon(salonId, 'time_slots_updated', {
+                    source: 'break_added',
+                    salon_id: parseInt(salonId)
+                });
+            }
+        } catch (e) {
+            console.warn('Broadcast time_slots_updated (break add) failed:', e.message);
+        }
         res.json({ success: true, breakId: result.id, message: 'Break added successfully.' });
     } catch (err) {
         console.error('Break addition error:', err);
@@ -1552,7 +1574,20 @@ app.delete('/api/salon/break/:break_id', async (req, res) => {
     const breakId = req.params.break_id;
      // FIX: Use $1 placeholder
     try {
+        // Lookup salon_id before deletion to know which room to notify
+        const row = await dbGet('SELECT salon_id FROM breaks WHERE id = $1', [breakId]);
         await dbRun('DELETE FROM breaks WHERE id = $1', [breakId]);
+        // Broadcast real-time availability update to this salon room
+        try {
+            if (row && row.salon_id && global.broadcastToSalon) {
+                global.broadcastToSalon(row.salon_id, 'time_slots_updated', {
+                    source: 'break_deleted',
+                    salon_id: parseInt(row.salon_id)
+                });
+            }
+        } catch (e) {
+            console.warn('Broadcast time_slots_updated (break delete) failed:', e.message);
+        }
         res.json({ success: true, message: 'Break deleted successfully.' });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Database error.' });
@@ -1608,6 +1643,17 @@ app.post('/api/salon/schedule/modification/:salon_id', async (req, res) => {
 
     try {
         const result = await dbGet(sql, params);
+        // Broadcast real-time availability update to this salon room
+        try {
+            if (global.broadcastToSalon) {
+                global.broadcastToSalon(salonId, 'time_slots_updated', {
+                    source: 'schedule_mod_added',
+                    salon_id: parseInt(salonId)
+                });
+            }
+        } catch (e) {
+            console.warn('Broadcast time_slots_updated (schedule mod add) failed:', e.message);
+        }
         res.json({ success: true, modId: result.id, message: 'تم إضافة تعديل الإغلاق بنجاح.' });
     } catch (err) {
         console.error('Modification add error:', err.message);
@@ -1619,7 +1665,20 @@ app.delete('/api/salon/schedule/modification/:mod_id', async (req, res) => {
     const modId = req.params.mod_id;
      // FIX: Use $1 placeholder
     try {
+        // Lookup salon_id before deletion to know which room to notify
+        const row = await dbGet('SELECT salon_id FROM schedule_modifications WHERE id = $1', [modId]);
         await dbRun('DELETE FROM schedule_modifications WHERE id = $1', [modId]);
+        // Broadcast real-time availability update to this salon room
+        try {
+            if (row && row.salon_id && global.broadcastToSalon) {
+                global.broadcastToSalon(row.salon_id, 'time_slots_updated', {
+                    source: 'schedule_mod_deleted',
+                    salon_id: parseInt(row.salon_id)
+                });
+            }
+        } catch (e) {
+            console.warn('Broadcast time_slots_updated (schedule mod delete) failed:', e.message);
+        }
         res.json({ success: true, message: 'Schedule modification deleted successfully.' });
     } catch (err) {
         return res.status(500).json({ success: false, message: 'Database error.' });
