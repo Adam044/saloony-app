@@ -3239,9 +3239,9 @@ server.listen(PORT, async () => {
         } else {
             console.warn('DB ping failed at startup:', ping.error);
         }
-        await ensurePerfIndexes();
         await initializeDb();
         await alignSchema();
+        await ensurePerfIndexes();
         // insertMasterServices is called inside initializeDb now.
         console.log("Database schema created successfully and master data inserted.");
     } catch (error) {
