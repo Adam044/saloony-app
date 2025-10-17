@@ -552,6 +552,18 @@
             <div class="modal-body p-0">
                 <p id="confirmMessage" class="text-lg mb-4 text-gray-300"></p>
                 <p id="salonNameConfirm" class="text-xl font-bold mb-6 text-color-accent-blue"></p>
+                
+                <!-- 200 ILS Offer Checkbox (only shown for acceptance) -->
+                <div id="offerCheckboxContainer" class="mb-4 p-4 bg-gray-700 rounded-lg" style="display: none;">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="offer200Checkbox" class="ml-3 w-5 h-5 text-blue-600 bg-gray-600 border-gray-500 rounded focus:ring-blue-500 focus:ring-2" checked>
+                        <span class="text-lg text-gray-200">
+                            <span class="text-green-400 font-bold">عرض 200 شيكل؟</span>
+                            <br>
+                            <span class="text-sm text-gray-400">شهرين مقابل 200 شيكل - تأكيد الدفع</span>
+                        </span>
+                    </label>
+                </div>
             </div>
             <div class="confirmation-actions">
                 <button class="action-btn accept-btn" id="confirmActionBtn">تأكيد</button>
@@ -604,6 +616,16 @@
             document.getElementById('confirmTitle').textContent = `تأكيد ${actionText}`;
             document.getElementById('confirmMessage').textContent = `هل أنت متأكد من تغيير حالة الصالون إلى "${getStatusText(status)}؟"`;
             document.getElementById('salonNameConfirm').textContent = salon.salon_name;
+            
+            // Show/hide 200 ILS offer checkbox only for acceptance
+            const offerContainer = document.getElementById('offerCheckboxContainer');
+            if (status === 'accepted') {
+                offerContainer.style.display = 'block';
+                // Reset checkbox to checked by default
+                document.getElementById('offer200Checkbox').checked = true;
+            } else {
+                offerContainer.style.display = 'none';
+            }
             
             const confirmActionBtn = document.getElementById('confirmActionBtn');
             confirmActionBtn.textContent = actionText;
@@ -800,13 +822,23 @@
 
             try {
                 const token = localStorage.getItem('adminToken');
+                
+                // Prepare request body with offer information
+                const requestBody = { status };
+                
+                // If accepting and offer checkbox is checked, include offer data
+                if (status === 'accepted') {
+                    const offerChecked = document.getElementById('offer200Checkbox').checked;
+                    requestBody.offer200ils = offerChecked;
+                }
+                
                 const response = await fetch(`/api/admin/salon/status/${currentSalonId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ status })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) throw new Error('Failed to update salon status');

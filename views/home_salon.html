@@ -552,6 +552,21 @@
                 </section>
             </div>
             
+            <!-- Invoices View -->
+            <div id="invoices-view" class="view-content hidden">
+                <section class="bg-white p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-2xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3 text-center">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i class="fas fa-receipt"></i>
+                            الفواتير والمدفوعات
+                        </span>
+                    </h2>
+                    <div id="invoices-loading" class="text-gray-500 text-center py-4 hidden">جاري تحميل الفواتير...</div>
+                    <div id="invoices-empty" class="text-gray-500 text-center py-4 hidden">لا توجد فواتير حتى الآن.</div>
+                    <div id="invoices-list" class="space-y-4"></div>
+                </section>
+            </div>
+            
         </div>
     </main>
     
@@ -571,6 +586,10 @@
         <button id="nav-reviews" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="reviews-view">
             <i class="fas fa-star text-xl"></i>
             <span class="text-xs font-medium mt-1">المراجعات</span>
+        </button>
+        <button id="nav-invoices" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="invoices-view">
+            <i class="fas fa-receipt text-xl"></i>
+            <span class="text-xs font-medium mt-1">الفواتير</span>
         </button>
     </nav>
 </div>
@@ -1190,6 +1209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'appointments-view': document.getElementById('appointments-view'),
         'salon-view': document.getElementById('salon-view'),
         'reviews-view': document.getElementById('reviews-view'),
+        'invoices-view': document.getElementById('invoices-view'),
     };
 
 
@@ -1268,6 +1288,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('loadServiceManagement() completed');
         } else if (viewId === 'reviews-view') {
             await loadSalonReviews();
+        } else if (viewId === 'invoices-view') {
+            await loadSalonInvoices();
         }
     };
     
@@ -1408,6 +1430,101 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
     };
 
+    const renderSalonInvoices = (payments) => {
+        const list = document.getElementById('invoices-list');
+        const empty = document.getElementById('invoices-empty');
+        if (!list || !empty) return;
+
+        if (!payments || payments.length === 0) {
+            list.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+        
+        list.innerHTML = payments.map(payment => {
+            const statusColor = payment.payment_status === 'completed' ? 'text-green-600 bg-green-50' : 
+                               payment.payment_status === 'pending' ? 'text-yellow-600 bg-yellow-50' : 
+                               'text-red-600 bg-red-50';
+            
+            const statusText = payment.payment_status === 'completed' ? 'مكتمل' : 
+                              payment.payment_status === 'pending' ? 'معلق' : 'فاشل';
+            
+            const paymentDate = new Date(payment.created_at).toLocaleDateString('ar-SA', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            const validUntil = payment.valid_until ? new Date(payment.valid_until).toLocaleDateString('ar-SA', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }) : '';
+
+            return `
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <!-- Invoice Header -->
+                    <div class="bg-gradient-to-r from-primary-dark to-secondary p-4 text-white">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-receipt text-2xl"></i>
+                                <div>
+                                    <h3 class="font-bold text-lg">فاتورة رقم ${payment.invoice_number}</h3>
+                                    <p class="text-sm opacity-90">${paymentDate}</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold ${statusColor} text-gray-800 bg-white">
+                                ${statusText}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Invoice Details -->
+                    <div class="p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">نوع الدفع:</span>
+                            <span class="font-semibold">${payment.payment_type === '200ils_offer' ? 'عرض 200 شيكل' : payment.payment_type}</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">المبلغ:</span>
+                            <span class="font-bold text-lg text-primary-dark">${payment.amount} ${payment.currency}</span>
+                        </div>
+                        
+                        ${payment.payment_method ? `
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">طريقة الدفع:</span>
+                            <span class="font-semibold">${payment.payment_method}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${payment.description ? `
+                        <div class="border-t pt-3">
+                            <span class="text-gray-600 block mb-1">الوصف:</span>
+                            <p class="text-sm text-gray-800">${payment.description}</p>
+                        </div>
+                        ` : ''}
+                        
+                        ${validUntil ? `
+                        <div class="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                            <span class="text-blue-700 font-medium">صالح حتى:</span>
+                            <span class="text-blue-800 font-bold">${validUntil}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${payment.admin_notes ? `
+                        <div class="border-t pt-3">
+                            <span class="text-gray-600 block mb-1">ملاحظات:</span>
+                            <p class="text-sm text-gray-600 italic">${payment.admin_notes}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
     const loadSalonReviews = async () => {
         const loading = document.getElementById('reviews-loading');
         const list = document.getElementById('reviews-list');
@@ -1429,6 +1546,36 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error loading salon reviews:', error);
             showMessage(messageBox, 'خطأ في الشبكة أثناء جلب المراجعات.', false);
             renderSalonReviews([]);
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
+    };
+
+    const loadSalonInvoices = async () => {
+        const loading = document.getElementById('invoices-loading');
+        const list = document.getElementById('invoices-list');
+        const empty = document.getElementById('invoices-empty');
+        if (loading) loading.classList.remove('hidden');
+        if (list) list.innerHTML = '';
+        if (empty) empty.classList.add('hidden');
+
+        try {
+            const response = await fetch(`/api/salon/payments/${salonId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('salonToken')}`
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                renderSalonInvoices(data.payments || []);
+            } else {
+                showMessage(messageBox, data.message || 'فشل في جلب الفواتير.', false);
+                renderSalonInvoices([]);
+            }
+        } catch (error) {
+            console.error('Error loading salon invoices:', error);
+            showMessage(messageBox, 'خطأ في الشبكة أثناء جلب الفواتير.', false);
+            renderSalonInvoices([]);
         } finally {
             if (loading) loading.classList.add('hidden');
         }

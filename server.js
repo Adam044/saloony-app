@@ -250,6 +250,8 @@ async function initializeDb() {
             FOREIGN KEY (salon_id) REFERENCES salons(id)
         )`);
 
+        await db.run('')
+
         await db.run(`CREATE TABLE IF NOT EXISTS schedule_modifications (
             id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
@@ -3148,7 +3150,7 @@ app.get('/api/admin/appointments', async (req, res) => {
 app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
     try {
         const { salon_id } = req.params;
-        const { status } = req.body;
+        const { status, offer200ils } = req.body;
         
         // Validate status
         if (!['pending', 'accepted', 'rejected'].includes(status)) {
@@ -3158,9 +3160,69 @@ app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
         // Update salon status
         await db.query('UPDATE salons SET status = $1 WHERE id = $2', [status, salon_id]);
         
-        res.json({ message: 'Salon status updated successfully', status });
+        // If salon is accepted and 200 ILS offer is checked, create payment record
+        if (status === 'accepted' && offer200ils) {
+            // Generate unique invoice number
+            const invoiceNumber = `INV-${Date.now()}-${salon_id}`;
+            
+            // Calculate valid dates (2 months from now)
+            const validFrom = new Date();
+            const validUntil = new Date();
+            validUntil.setMonth(validUntil.getMonth() + 2);
+            
+            // Insert payment record
+            await db.query(`
+                INSERT INTO payments (
+                    salon_id, payment_type, amount, currency, payment_status, 
+                    payment_method, description, valid_from, valid_until, 
+                    invoice_number, admin_notes
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `, [
+                salon_id,
+                'offer_200ils',
+                200.00,
+                'ILS',
+                'completed',
+                'cash',
+                'عرض شهرين مقابل 200 شيكل - تأكيد من الإدارة',
+                validFrom.toISOString().split('T')[0],
+                validUntil.toISOString().split('T')[0],
+                invoiceNumber,
+                'Payment confirmed by admin during salon acceptance'
+            ]);
+            
+            console.log(`Created 200 ILS offer payment record for salon ${salon_id}, invoice: ${invoiceNumber}`);
+        }
+        
+        res.json({ 
+            message: 'Salon status updated successfully', 
+            status,
+            paymentCreated: status === 'accepted' && offer200ils
+        });
     } catch (error) {
         console.error('Error updating salon status:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get salon payments/invoices
+app.get('/api/salon/payments/:salon_id', async (req, res) => {
+    try {
+        const { salon_id } = req.params;
+        
+        const payments = await db.query(`
+            SELECT 
+                id, payment_type, amount, currency, payment_status,
+                payment_method, description, valid_from, valid_until,
+                invoice_number, created_at
+            FROM payments 
+            WHERE salon_id = $1 
+            ORDER BY created_at DESC
+        `, [salon_id]);
+        
+        res.json({ payments });
+    } catch (error) {
+        console.error('Error fetching salon payments:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

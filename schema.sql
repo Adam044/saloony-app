@@ -213,3 +213,28 @@ CREATE TABLE IF NOT EXISTS salon_images (
 
 -- Index for faster lookups by salon
 CREATE INDEX IF NOT EXISTS idx_salon_images_salon_id ON salon_images(salon_id);
+
+-- 14. Payments table for tracking salon payments and offers
+CREATE TABLE IF NOT EXISTS payments (
+    id SERIAL PRIMARY KEY,
+    salon_id INTEGER NOT NULL,
+    payment_type VARCHAR(50) NOT NULL, -- 'offer_200ils', 'monthly_subscription', 'one_time', etc.
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'ILS',
+    payment_status VARCHAR(20) DEFAULT 'completed', -- 'pending', 'completed', 'failed', 'refunded'
+    payment_method VARCHAR(50), -- 'cash', 'credit_card', 'bank_transfer', 'paypal', etc.
+    description TEXT, -- e.g., "2 months for 200 ILS offer", "Monthly subscription - January 2024"
+    valid_from DATE, -- When the payment/offer starts
+    valid_until DATE, -- When the payment/offer expires
+    invoice_number VARCHAR(50) UNIQUE, -- Auto-generated invoice number
+    admin_notes TEXT, -- Internal notes for admins
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+);
+
+-- Indexes for payments table
+CREATE INDEX IF NOT EXISTS idx_payments_salon_id ON payments(salon_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(payment_status);
+CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type);
+CREATE INDEX IF NOT EXISTS idx_payments_valid_dates ON payments(valid_from, valid_until);
