@@ -267,6 +267,31 @@ async function initializeDb() {
             FOREIGN KEY (staff_id) REFERENCES staff(id)
         )`);
 
+        // Create payments table for tracking salon payments and offers
+        await db.run(`CREATE TABLE IF NOT EXISTS payments (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL,
+            payment_type TEXT NOT NULL DEFAULT '200ils_offer',
+            amount DECIMAL(10,2) NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'ILS',
+            payment_status TEXT NOT NULL DEFAULT 'completed',
+            payment_method TEXT DEFAULT 'admin_approval',
+            description TEXT,
+            valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            valid_until TIMESTAMP,
+            invoice_number TEXT UNIQUE NOT NULL,
+            admin_notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id)
+        )`);
+
+        // Create indexes for payments table
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_salon_id ON payments(salon_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(payment_status)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at)`);
+
         console.log("Database schema created successfully.");
         
         // Insert master services if they don't exist
