@@ -22,7 +22,9 @@
             --color-accent-blue: #4299E1; /* Primary Admin Color */
             --color-success: #48BB78;
             --color-danger: #F56565;
-            --color-pending: #ECC94B;
+            --color-pending: #3182CE; /* Changed to blue for pending */
+            --color-accepted: #00E676; /* Bright neon green for accepted */
+            --color-rejected: #FF5252; /* Bright red for rejected */
         }
 
         * {
@@ -483,8 +485,8 @@
         }
         
         .salon-item.status-pending { border-left-color: var(--color-pending); }
-        .salon-item.status-accepted { border-left-color: var(--color-success); }
-        .salon-item.status-rejected { border-left-color: var(--color-danger); }
+        .salon-item.status-accepted { border-left-color: var(--color-accepted); }
+        .salon-item.status-rejected { border-left-color: var(--color-rejected); }
 
         .salon-header {
             display: flex;
@@ -514,18 +516,18 @@
         }
 
         .salon-status.status-pending {
-            background-color: rgba(236, 201, 75, 0.2);
+            background-color: rgba(49, 130, 206, 0.2);
             color: var(--color-pending);
         }
 
         .salon-status.status-accepted {
-            background-color: rgba(72, 187, 120, 0.2);
-            color: var(--color-success);
+            background-color: rgba(0, 230, 118, 0.2);
+            color: var(--color-accepted);
         }
 
         .salon-status.status-rejected {
-            background-color: rgba(245, 101, 101, 0.2);
-            color: var(--color-danger);
+            background-color: rgba(255, 82, 82, 0.2);
+            color: var(--color-rejected);
         }
 
         .salon-actions {
@@ -801,15 +803,17 @@
         
         /* Confirmation Modal Specifics */
         .confirmation-modal-content {
-             padding: 30px;
+             padding: 20px; /* Reduced from 30px */
              text-align: center;
+             max-width: 450px; /* Added max-width to make it more compact */
+             margin: 0 auto;
         }
         
         .confirmation-actions {
             display: flex;
-            gap: 15px;
+            gap: 12px; /* Reduced from 15px */
             justify-content: center;
-            margin-top: 25px;
+            margin-top: 20px; /* Reduced from 25px */
         }
 
         @keyframes modalPopIn {
@@ -935,35 +939,35 @@
         .offer-checkbox-container {
             background: linear-gradient(135deg, #2D3748 0%, #4A5568 100%);
             border: 2px solid var(--color-accent-blue);
-            border-radius: 15px;
-            padding: 20px;
-            margin: 20px 0;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-radius: 12px; /* Reduced from 15px */
+            padding: 15px; /* Reduced from 20px */
+            margin: 15px 0; /* Reduced from 20px 0 */
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* Reduced shadow */
         }
 
         .offer-checkbox-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
+            gap: 8px; /* Reduced from 10px */
+            margin-bottom: 12px; /* Reduced from 15px */
+            padding-bottom: 8px; /* Reduced from 10px */
             border-bottom: 1px solid #4A5568;
         }
 
         .offer-checkbox-header i {
             color: var(--color-accent-blue);
-            font-size: 1.5rem;
+            font-size: 1.3rem; /* Reduced from 1.5rem */
         }
 
         .offer-checkbox-header h4 {
             color: var(--color-text-light);
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.1rem; /* Reduced from 1.2rem */
             font-weight: 600;
         }
 
         .offer-checkbox-content {
-            margin-bottom: 15px;
+            margin-bottom: 12px; /* Reduced from 15px */
         }
 
         .offer-checkbox-label {

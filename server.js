@@ -3171,6 +3171,28 @@ app.get('/api/admin/appointments', async (req, res) => {
     }
 });
 
+// Get all payments for admin dashboard
+app.get('/api/admin/payments', async (req, res) => {
+    try {
+        const payments = await db.query(`
+            SELECT 
+                p.*,
+                s.salon_name,
+                s.owner_name,
+                u.name as user_name,
+                u.email as user_email
+            FROM payments p
+            LEFT JOIN salons s ON p.salon_id = s.id
+            LEFT JOIN users u ON s.user_id = u.id
+            ORDER BY p.created_at DESC
+        `);
+        res.json(payments);
+    } catch (error) {
+        console.error('Error fetching admin payments:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Update salon status (approve/reject)
 app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
     try {
