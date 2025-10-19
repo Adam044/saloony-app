@@ -1118,6 +1118,14 @@
 
     // Add event listeners for admin payment filters
     document.addEventListener('DOMContentLoaded', function() {
+        // Set current date as placeholder for date filter
+        const dateFilter = document.getElementById('admin-date-filter');
+        if (dateFilter) {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            dateFilter.setAttribute('placeholder', todayString);
+        }
+        
         // Search and filter event listeners
         document.getElementById('admin-payment-search')?.addEventListener('input', filterAdminPayments);
         document.getElementById('admin-status-filter')?.addEventListener('change', filterAdminPayments);
@@ -1410,10 +1418,31 @@
                     filterAdminPayments();
                 }
                 
-                // Show payment details
+                // Ensure all elements in the payments list are interactive
                 setTimeout(() => {
-                    showAdminPaymentDetails(payment);
-                }, 500);
+                    const paymentsList = document.getElementById('payments-list');
+                    if (paymentsList) {
+                        // Re-enable all buttons and interactive elements
+                        const buttons = paymentsList.querySelectorAll('button');
+                        const inputs = paymentsList.querySelectorAll('input, select, textarea');
+                        
+                        buttons.forEach(button => {
+                            button.disabled = false;
+                            button.style.pointerEvents = 'auto';
+                            button.style.opacity = '1';
+                        });
+                        
+                        inputs.forEach(input => {
+                            input.disabled = false;
+                            input.readOnly = false;
+                            input.style.pointerEvents = 'auto';
+                        });
+                        
+                        // Ensure the payment list container is interactive
+                        paymentsList.style.pointerEvents = 'auto';
+                        paymentsList.style.opacity = '1';
+                    }
+                }, 100);
             }, 2000);
         } else {
             alert('لم يتم العثور على فاتورة بهذا الرقم');
