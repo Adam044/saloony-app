@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
         body {
@@ -117,9 +118,9 @@
         <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
         <div class="max-w-6xl mx-auto space-y-8">
 
-            <!-- 1. Dashboard Overview -->
+            <!-- 1. Dashboard -->
             <div id="dashboard-view" class="view-content">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2">نظرة عامة</h2>
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">نظرة عامة</h2>
                 <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <p class="col-span-full text-center text-gray-500">جاري تحميل الإحصائيات...</p>
                 </div>
@@ -127,7 +128,7 @@
 
             <!-- 2. Pending Salons -->
             <div id="pending-salons-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-red-500/50 pb-2 flex justify-between items-center">
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-red-500/50 pb-2 flex justify-between items-center mt-8">
                     <span class="inline-flex items-center gap-2">
                          <i class="fas fa-clock-rotate-left text-red-500"></i> الصالونات قيد الانتظار (<span id="pending-count">0</span>)
                     </span>
@@ -142,7 +143,7 @@
 
             <!-- 3. All Salons -->
             <div id="all-salons-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2">إدارة الصالونات</h2>
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">إدارة الصالونات</h2>
                 <div id="all-salons-list" class="table-wrapper">
                     <p class="text-center text-gray-500 p-8">جاري تحميل جميع الصالونات...</p>
                 </div>
@@ -150,7 +151,7 @@
             
             <!-- 4. All Users -->
             <div id="all-users-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2">إدارة المستخدمين</h2>
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">إدارة المستخدمين</h2>
                 <div id="all-users-list" class="table-wrapper">
                     <p class="text-center text-gray-500 p-8">جاري تحميل المستخدمين...</p>
                 </div>
@@ -158,7 +159,7 @@
             
             <!-- 5. Payments -->
             <div id="payments-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2">إدارة المدفوعات</h2>
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">إدارة المدفوعات</h2>
                 
                 <!-- Search and Filter Controls -->
                 <div class="mb-6 space-y-4 bg-white p-4 rounded-xl shadow-sm">
@@ -170,10 +171,9 @@
                             <i class="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                         
-                        <!-- QR Scanner Button -->
-                        <button id="qr-scanner-btn" class="px-6 py-3 bg-gradient-to-r from-primary-dark to-secondary text-white rounded-xl hover:shadow-lg transition-all duration-200 flex items-center gap-2 whitespace-nowrap">
+                        <!-- Simple QR Button -->
+                        <button id="qr-scanner-btn" class="px-4 py-3 bg-primary-dark text-white rounded-xl hover:bg-primary-darker transition-colors">
                             <i class="fas fa-qrcode text-lg"></i>
-                            <span class="font-medium">مسح QR</span>
                         </button>
                     </div>
                     
@@ -1292,12 +1292,62 @@
     }
 
     function startQRScanning() {
-        // Simple QR detection simulation
-        // In a real implementation, you'd use a QR code library like jsQR
+        const video = document.getElementById('qr-video');
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        
         qrScanning = true;
         
-        // For demo purposes, we'll just listen for manual input
-        // In production, implement actual QR scanning with jsQR library
+        function scanFrame() {
+            if (!qrScanning || !video.videoWidth || !video.videoHeight) {
+                if (qrScanning) {
+                    requestAnimationFrame(scanFrame);
+                }
+                return;
+            }
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (code) {
+                // QR code detected
+                qrScanning = false;
+                const scannedData = code.data;
+                
+                // Show visual feedback
+                const loading = document.getElementById('qr-loading');
+                loading.style.display = 'flex';
+                loading.innerHTML = `
+                    <div class="text-center">
+                        <i class="fas fa-check-circle text-4xl text-green-500 mb-2"></i>
+                        <p class="text-green-600">تم اكتشاف رمز QR!</p>
+                        <p class="text-sm text-gray-600">جاري البحث...</p>
+                    </div>
+                `;
+                
+                // Process the scanned invoice number
+                setTimeout(() => {
+                    searchInvoiceByNumber(scannedData);
+                }, 1000);
+            } else {
+                // Continue scanning
+                requestAnimationFrame(scanFrame);
+            }
+        }
+        
+        // Start scanning when video is ready
+        video.addEventListener('loadedmetadata', () => {
+            scanFrame();
+        });
+        
+        // If video is already loaded, start immediately
+        if (video.readyState >= 2) {
+            scanFrame();
+        }
     }
 
     function searchByManualInput() {
