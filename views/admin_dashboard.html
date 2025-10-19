@@ -193,13 +193,13 @@
                             <option value="annual_subscription">اشتراك سنوي</option>
                         </select>
                         
-                        <input type="date" id="admin-date-from" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark" placeholder="من تاريخ">
-                        <input type="date" id="admin-date-to" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark" placeholder="إلى تاريخ">
-                        
-                        <button id="admin-clear-filters" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
-                            <i class="fas fa-times ml-2"></i>
-                            مسح الفلاتر
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="admin-date-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark" placeholder="تاريخ الإنشاء">
+                            <label class="flex items-center gap-2 text-gray-700">
+                                <input type="checkbox" id="admin-all-dates" class="rounded" checked>
+                                <span>جميع التواريخ</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 
@@ -879,8 +879,8 @@
         const searchTerm = document.getElementById('admin-payment-search')?.value.toLowerCase() || '';
         const statusFilter = document.getElementById('admin-status-filter')?.value || '';
         const typeFilter = document.getElementById('admin-type-filter')?.value || '';
-        const dateFrom = document.getElementById('admin-date-from')?.value || '';
-        const dateTo = document.getElementById('admin-date-to')?.value || '';
+        const dateFilter = document.getElementById('admin-date-filter')?.value || '';
+        const allDatesChecked = document.getElementById('admin-all-dates')?.checked || false;
 
         let filteredPayments = window.allAdminPayments.filter(payment => {
             // Search filter
@@ -896,28 +896,22 @@
             // Type filter
             const matchesType = !typeFilter || payment.payment_type === typeFilter;
 
-            // Date filter
-            const paymentDate = new Date(payment.created_at);
-            const matchesDateFrom = !dateFrom || paymentDate >= new Date(dateFrom);
-            const matchesDateTo = !dateTo || paymentDate <= new Date(dateTo + 'T23:59:59');
+            // Date filter - only apply if "All dates" is unchecked and a date is selected
+            let matchesDate = true;
+            if (!allDatesChecked && dateFilter) {
+                const paymentDate = new Date(payment.created_at);
+                const filterDate = new Date(dateFilter);
+                // Check if payment was created on the selected date
+                matchesDate = paymentDate.toDateString() === filterDate.toDateString();
+            }
 
-            return matchesSearch && matchesStatus && matchesType && matchesDateFrom && matchesDateTo;
+            return matchesSearch && matchesStatus && matchesType && matchesDate;
         });
 
         renderAdminPayments(filteredPayments);
     };
 
-    // Clear all filters for admin payments
-    const clearAdminFilters = () => {
-        document.getElementById('admin-payment-search').value = '';
-        document.getElementById('admin-status-filter').value = '';
-        document.getElementById('admin-type-filter').value = '';
-        document.getElementById('admin-date-from').value = '';
-        document.getElementById('admin-date-to').value = '';
-        if (window.allAdminPayments) {
-            renderAdminPayments(window.allAdminPayments);
-        }
-    };
+
 
     // --- Modal and Action Functions ---
     let currentSalonId = null;
@@ -1128,9 +1122,8 @@
         document.getElementById('admin-payment-search')?.addEventListener('input', filterAdminPayments);
         document.getElementById('admin-status-filter')?.addEventListener('change', filterAdminPayments);
         document.getElementById('admin-type-filter')?.addEventListener('change', filterAdminPayments);
-        document.getElementById('admin-date-from')?.addEventListener('change', filterAdminPayments);
-        document.getElementById('admin-date-to')?.addEventListener('change', filterAdminPayments);
-        document.getElementById('admin-clear-filters')?.addEventListener('click', clearAdminFilters);
+        document.getElementById('admin-date-filter')?.addEventListener('change', filterAdminPayments);
+        document.getElementById('admin-all-dates')?.addEventListener('change', filterAdminPayments);
         
         // QR Scanner event listener
     document.getElementById('qr-scanner-btn')?.addEventListener('click', openQRScanner);
@@ -1279,7 +1272,7 @@
         qrScanning = false;
         modal.classList.remove('modal-open');
         
-        // Reset UI
+        // Reset UI and ensure all inputs are enabled
         loading.style.display = 'flex';
         loading.innerHTML = `
             <div class="text-center">
@@ -1289,6 +1282,20 @@
         `;
         result.classList.add('hidden');
         document.getElementById('manual-invoice-input').value = '';
+        
+        // Ensure all filter inputs remain interactive
+        const searchInput = document.getElementById('admin-payment-search');
+        const statusFilter = document.getElementById('admin-status-filter');
+        const typeFilter = document.getElementById('admin-type-filter');
+        const dateFilter = document.getElementById('admin-date-filter');
+        const allDatesCheckbox = document.getElementById('admin-all-dates');
+        
+        [searchInput, statusFilter, typeFilter, dateFilter, allDatesCheckbox].forEach(element => {
+            if (element) {
+                element.disabled = false;
+                element.readOnly = false;
+            }
+        });
     }
 
     function startQRScanning() {
@@ -1386,10 +1393,20 @@
             setTimeout(() => {
                 closeQRScanner();
                 
-                // Set search term to invoice number
+                // Reset all filters first
+                document.getElementById('admin-payment-search').value = '';
+                document.getElementById('admin-status-filter').value = '';
+                document.getElementById('admin-type-filter').value = '';
+                document.getElementById('admin-date-filter').value = '';
+                document.getElementById('admin-all-dates').checked = true;
+                
+                // Set search term to invoice number only
                 const searchInput = document.getElementById('admin-payment-search');
                 if (searchInput) {
                     searchInput.value = invoiceNumber;
+                    // Ensure the input is enabled and focusable
+                    searchInput.disabled = false;
+                    searchInput.readOnly = false;
                     filterAdminPayments();
                 }
                 

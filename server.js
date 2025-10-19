@@ -1030,15 +1030,11 @@ app.post('/api/auth/register', async (req, res) => {
 
 // Login (Updated to return full user data object and check hash)
 app.post('/api/auth/login', async (req, res) => {
-    console.log('🚀 LOGIN ENDPOINT HIT!');
-    console.log('Request body:', req.body);
     try {
         const { identifier, email, phone, password } = req.body;
 
-        console.log('=== UNIFIED LOGIN REQUEST ===');
         const input = (identifier || email || phone || '').trim();
         const isEmail = input.includes('@');
-        console.log('Identifier:', input);
         
         // Validate phone format if not email
         if (!isEmail && input && !validatePhoneFormat(input)) {
@@ -1060,10 +1056,8 @@ app.post('/api/auth/login', async (req, res) => {
                 [normalizedIdentifier]
             );
         }
-        console.log('Users table query result:', userResult);
         
         if (!userResult || userResult.length === 0) {
-            console.log('No user found with that identifier.');
             return res.status(401).json({ 
                 success: false, 
                 message: isEmail ? 'البريد الإلكتروني غير مسجل.' : 'رقم الهاتف غير مسجل.', 
@@ -1072,7 +1066,6 @@ app.post('/api/auth/login', async (req, res) => {
         }
         
         const userRow = userResult[0];
-        console.log('Found user row:', userRow);
         
         // 2. Verify password
         const isPasswordValid = await verifyPassword(password, userRow.password);
@@ -1133,8 +1126,6 @@ app.post('/api/auth/login', async (req, res) => {
         } else {
             return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
         }
-
-        console.log(`Successful login for ${userType}: ${isEmail ? userRow.email : userRow.phone}`);
 
         // Generate token
         const token = crypto.randomUUID();
@@ -1345,10 +1336,6 @@ app.get('/api/salon/details/:salon_id', async (req, res) => {
 // API to update salon basic info
 app.post('/api/salon/info/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
-    
-    // Debug logging
-    console.log('Request body:', req.body);
-    console.log('Content-Type:', req.headers['content-type']);
     
     // Check if req.body exists and has the required data
     if (!req.body) {
@@ -1802,12 +1789,6 @@ app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
             }
         }));
 
-        console.log("Appointments query result:", appointmentsWithServices.map(row => ({
-            id: row.id,
-            service_name: row.service_name,
-            services_names: row.services_names,
-            user_name: row.user_name
-        })));
         res.json({ success: true, appointments: appointmentsWithServices });
     } catch (err) {
         console.error("Appointments fetch error:", err.message);
