@@ -271,19 +271,19 @@ async function initializeDb() {
         await db.run(`CREATE TABLE IF NOT EXISTS payments (
             id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
-            payment_type TEXT NOT NULL DEFAULT '200ils_offer',
+            payment_type VARCHAR(50) NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
-            currency TEXT NOT NULL DEFAULT 'ILS',
-            payment_status TEXT NOT NULL DEFAULT 'completed',
-            payment_method TEXT DEFAULT 'admin_approval',
+            currency VARCHAR(3) DEFAULT 'ILS',
+            payment_status VARCHAR(20) DEFAULT 'completed',
+            payment_method VARCHAR(50),
             description TEXT,
-            valid_from TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            valid_until TIMESTAMP,
-            invoice_number TEXT UNIQUE NOT NULL,
+            valid_from DATE,
+            valid_until DATE,
+            invoice_number VARCHAR(50) UNIQUE,
             admin_notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id)
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
         )`);
 
         // Create indexes for payments table
@@ -3197,7 +3197,7 @@ app.get('/api/admin/payments', async (req, res) => {
 app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
     try {
         const { salon_id } = req.params;
-        const { status, offer200ils } = req.body;
+        const { status, payment200ils } = req.body;
         
         // Validate status
         if (!['pending', 'accepted', 'rejected'].includes(status)) {
@@ -3207,8 +3207,8 @@ app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
         // Update salon status
         await db.query('UPDATE salons SET status = $1 WHERE id = $2', [status, salon_id]);
         
-        // If salon is accepted and 200 ILS offer is checked, create payment record
-        if (status === 'accepted' && offer200ils) {
+        // If salon is accepted and 200 ILS payment is checked, create payment record
+        if (status === 'accepted' && payment200ils) {
             // Generate unique invoice number
             const invoiceNumber = `INV-${Date.now()}-${salon_id}`;
             
@@ -3235,7 +3235,7 @@ app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
                 validFrom.toISOString().split('T')[0],
                 validUntil.toISOString().split('T')[0],
                 invoiceNumber,
-                'Payment confirmed by admin during salon acceptance'
+                'تم تأكيد الدفع من قبل الإدارة أثناء قبول الصالون'
             ]);
             
             console.log(`Created 200 ILS offer payment record for salon ${salon_id}, invoice: ${invoiceNumber}`);
@@ -3244,7 +3244,7 @@ app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
         res.json({ 
             message: 'Salon status updated successfully', 
             status,
-            paymentCreated: status === 'accepted' && offer200ils
+            paymentCreated: status === 'accepted' && payment200ils
         });
     } catch (error) {
         console.error('Error updating salon status:', error);
@@ -3267,10 +3267,10 @@ app.get('/api/salon/payments/:salon_id', async (req, res) => {
             ORDER BY created_at DESC
         `, [salon_id]);
         
-        res.json({ payments });
+        res.json({ success: true, payments });
     } catch (error) {
         console.error('Error fetching salon payments:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
