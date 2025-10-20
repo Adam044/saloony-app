@@ -248,6 +248,45 @@
             background-color: #f8fafc;
         }
         
+        /* Pull to Refresh Styles */
+        .pull-to-refresh {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .refresh-indicator {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: #06C167;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            opacity: 0;
+            z-index: 1000;
+        }
+        
+        .refresh-indicator.visible {
+            opacity: 1;
+            top: 20px;
+        }
+        
+        .refresh-indicator.refreshing {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: translateX(-50%) rotate(0deg); }
+            to { transform: translateX(-50%) rotate(360deg); }
+        }
+        
         .service-checkbox {
             width: 16px;
             height: 16px;
@@ -280,7 +319,10 @@
         </div>
     </header>
 
-    <main class="flex-grow pt-[60px] w-full">
+    <main class="flex-grow pt-[60px] w-full pull-to-refresh">
+        <div class="refresh-indicator">
+            <i class="fas fa-arrow-down"></i>
+        </div>
         <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-4xl mx-auto" role="alert"></div>
         <div class="w-full">
             
@@ -1169,9 +1211,16 @@ function timeToMinutes(timeStr) {
     const [h, m] = timeStr.split(':').map(Number);
     let minutes = h * 60 + m;
     
+    // Handle midnight (00:00) as end of day for closing times
+    if (h === 0 && m === 0) {
+        // Check if this is being used in a closing time context
+        // For now, treat 00:00 as 24:00 (1440 minutes) to match server logic
+        return 24 * 60; // 1440 minutes
+    }
+    
     // Handle overnight hours (e.g., 1am = 25:00 = 1500 minutes)
-    // If hour is between 0-6, assume it's next day (add 24 hours)
-    if (h >= 0 && h <= 6) {
+    // If hour is between 1-6, assume it's next day (add 24 hours)
+    if (h >= 1 && h <= 6) {
         minutes += 24 * 60;
     }
     
@@ -2440,8 +2489,14 @@ function renderSalonCard(salon, cardType = 'detail') {
                         ${formatRating(avgRating, reviewCount)}
                     </div>
                     ${salon.is_available_today ? 
-                        '<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">متاح اليوم</span>' : 
-                        '<span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">مغلق</span>'
+                        (salon.status === 'closing_soon' ? 
+                            '<span class="bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded-full">يغلق قريباً</span>' :
+                            '<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">متاح اليوم</span>'
+                        ) : 
+                        (salon.status === 'opening_soon' ? 
+                            '<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">يفتح قريباً</span>' :
+                            '<span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">مغلق</span>'
+                        )
                     }
                 </div>
 
@@ -4241,6 +4296,124 @@ function openServicesExplorer(prefCategory = 'all') {
     } catch (e) {
         console.warn('WebSocket client init failed:', e.message);
     }
+})();
+</script>
+
+<!-- Pull to Refresh Implementation -->
+<script>
+(function() {
+    let startY = 0;
+    let currentY = 0;
+    let isRefreshing = false;
+    let pullDistance = 0;
+    const threshold = 80;
+    
+    const main = document.querySelector('main.pull-to-refresh');
+    const indicator = document.querySelector('.refresh-indicator');
+    const icon = indicator.querySelector('i');
+    
+    function refreshPage() {
+        if (isRefreshing) return;
+        isRefreshing = true;
+        
+        // Show refreshing state
+        indicator.classList.add('refreshing');
+        icon.className = 'fas fa-sync-alt';
+        
+        // Reload the page after a short delay for smooth animation
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    }
+    
+    function resetPull() {
+        pullDistance = 0;
+        indicator.classList.remove('visible', 'refreshing');
+        icon.className = 'fas fa-arrow-down';
+        main.style.transform = '';
+        isRefreshing = false;
+    }
+    
+    // Touch events
+    main.addEventListener('touchstart', (e) => {
+        if (window.scrollY > 0 || isRefreshing) return;
+        startY = e.touches[0].clientY;
+    }, { passive: true });
+    
+    main.addEventListener('touchmove', (e) => {
+        if (window.scrollY > 0 || isRefreshing || startY === 0) return;
+        
+        currentY = e.touches[0].clientY;
+        pullDistance = Math.max(0, currentY - startY);
+        
+        if (pullDistance > 10) {
+            e.preventDefault();
+            
+            const progress = Math.min(pullDistance / threshold, 1);
+            const translateY = pullDistance * 0.5;
+            
+            main.style.transform = `translateY(${translateY}px)`;
+            
+            if (pullDistance > threshold) {
+                if (!indicator.classList.contains('visible')) {
+                    indicator.classList.add('visible');
+                    icon.className = 'fas fa-arrow-up';
+                }
+            } else {
+                indicator.classList.remove('visible');
+                icon.className = 'fas fa-arrow-down';
+            }
+        }
+    }, { passive: false });
+    
+    main.addEventListener('touchend', () => {
+        if (pullDistance > threshold && !isRefreshing) {
+            refreshPage();
+        } else {
+            resetPull();
+        }
+        startY = 0;
+    }, { passive: true });
+    
+    // Mouse events for desktop testing
+    main.addEventListener('mousedown', (e) => {
+        if (window.scrollY > 0 || isRefreshing) return;
+        startY = e.clientY;
+        e.preventDefault();
+    });
+    
+    main.addEventListener('mousemove', (e) => {
+        if (window.scrollY > 0 || isRefreshing || startY === 0) return;
+        
+        currentY = e.clientY;
+        pullDistance = Math.max(0, currentY - startY);
+        
+        if (pullDistance > 10) {
+            const progress = Math.min(pullDistance / threshold, 1);
+            const translateY = pullDistance * 0.5;
+            
+            main.style.transform = `translateY(${translateY}px)`;
+            
+            if (pullDistance > threshold) {
+                if (!indicator.classList.contains('visible')) {
+                    indicator.classList.add('visible');
+                    icon.className = 'fas fa-arrow-up';
+                }
+            } else {
+                indicator.classList.remove('visible');
+                icon.className = 'fas fa-arrow-down';
+            }
+        }
+    });
+    
+    main.addEventListener('mouseup', () => {
+        if (pullDistance > threshold && !isRefreshing) {
+            refreshPage();
+        } else {
+            resetPull();
+        }
+        startY = 0;
+    });
 })();
 </script>
 

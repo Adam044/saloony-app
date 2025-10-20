@@ -538,8 +538,6 @@ app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
 app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
 // Serve notification sounds
 app.use('/sounds', express.static(path.join(__dirname, 'Sounds'), { maxAge: '7d', etag: true }));
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { maxAge: '7d', etag: true }));
 
 // Root route should serve index for browser launches
 app.get('/', (req, res) => {
@@ -935,7 +933,7 @@ app.post('/api/auth/register', async (req, res) => {
                     
                     const salonId = salonResult[0].id;
 
-                    // If image_url is base64, save optimized file to uploads and update DB
+                    // If image_url is base64, save to Supabase and update DB
                     try {
                         if (image_url && typeof image_url === 'string' && image_url.startsWith('data:image')) {
                             const match = image_url.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
@@ -944,12 +942,8 @@ app.post('/api/auth/register', async (req, res) => {
                             if (base64Data) {
                                 const bufferIn = Buffer.from(base64Data, 'base64');
                                 const ext = mime.includes('png') ? 'png' : 'jpg';
-                                const relativeDir = path.join('uploads', 'salons', String(salonId));
-                                const absoluteDir = path.join(__dirname, relativeDir);
-                                await fs.promises.mkdir(absoluteDir, { recursive: true });
                                 const filenameBase = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
                                 const filename = `${filenameBase}.${ext}`;
-                                const absolutePath = path.join(absoluteDir, filename);
 
                                 // Optimize image using sharp
                                 const pipeline = sharp(bufferIn);
@@ -959,15 +953,16 @@ app.post('/api/auth/register', async (req, res) => {
                                     .resize({ width: targetWidth, withoutEnlargement: true })
                                     [ext === 'png' ? 'png' : 'jpeg'](ext === 'png' ? { compressionLevel: 9 } : { quality: 75 })
                                     .toBuffer({ resolveWithObject: true });
-                                await fs.promises.writeFile(absolutePath, data);
-                                const stat = await fs.promises.stat(absolutePath);
-                                const imagePath = `/uploads/salons/${salonId}/${filename}`;
+
+                                // TODO: Upload to Supabase storage instead of local uploads folder
+                                // For now, store as base64 in salon_images table
+                                const imagePath = `data:${mime};base64,${data.toString('base64')}`;
 
                                 // Store in salon_images table
                                 await dbGet(
                                     `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
                                      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-                                    [salonId, imagePath, info.width || targetWidth, info.height || null, stat.size, mime, true]
+                                    [salonId, imagePath, info.width || targetWidth, info.height || null, data.length, mime, true]
                                 );
 
                                 // Update salons.image_url to stored path
@@ -1228,13 +1223,8 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 
         const mime = req.file.mimetype || 'image/jpeg';
         const ext = mime.includes('png') ? 'png' : 'jpg';
-        const relativeDir = path.join('uploads', 'salons', String(salonId));
-        const absoluteDir = path.join(__dirname, relativeDir);
-        await fs.promises.mkdir(absoluteDir, { recursive: true });
-
         const filenameBase = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
         const filename = `${filenameBase}.${ext}`;
-        const absolutePath = path.join(absoluteDir, filename);
 
         // Optimize image using sharp
         let pipeline = sharp(req.file.buffer);
@@ -1243,16 +1233,16 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
         pipeline = pipeline.resize({ width: targetWidth, withoutEnlargement: true });
         const optimized = ext === 'png' ? pipeline.png({ compressionLevel: 9 }) : pipeline.jpeg({ quality: 75 });
         const buffer = await optimized.toBuffer();
-        await fs.promises.writeFile(absolutePath, buffer);
 
-        const stat = await fs.promises.stat(absolutePath);
-        const imageUrl = `/uploads/salons/${salonId}/${filename}`;
+        // TODO: Upload to Supabase storage instead of local uploads folder
+        // For now, store as base64 in salon_images table
+        const imageUrl = `data:${mime};base64,${buffer.toString('base64')}`;
 
         // Store in salon_images for tracking
         const inserted = await dbGet(
             `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            [salonId, imageUrl, targetWidth, meta.height || null, stat.size, mime, true]
+            [salonId, imageUrl, targetWidth, meta.height || null, buffer.length, mime, true]
         );
 
         // Update salons.image_url for backward compatibility in UIs
@@ -2753,10 +2743,11 @@ const fetchSalonsWithMinPrice = async (city, gender) => {
         
         // Add availability status for each salon
         const salonsWithAvailability = await Promise.all(result.map(async (salon) => {
-            const isAvailable = await checkSalonAvailabilityToday(salon.salonId);
+            const availabilityInfo = await checkSalonAvailabilityToday(salon.salonId);
             return {
                 ...salon,
-                is_available_today: isAvailable
+                is_available_today: availabilityInfo.is_available_today,
+                status: availabilityInfo.status
             };
         }));
         
@@ -2777,7 +2768,7 @@ const checkSalonAvailabilityToday = async (salonId) => {
         const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
         
         if (!schedule) {
-            return false; // No schedule means not available
+            return { is_available_today: false, status: 'closed' }; // No schedule means not available
         }
         
         // Parse closed days
@@ -2790,13 +2781,17 @@ const checkSalonAvailabilityToday = async (salonId) => {
         
         // Check if today is a closed day
         if (closedDays.includes(dayOfWeek)) {
-            return false;
+            return { is_available_today: false, status: 'closed' };
         }
         
         // Convert opening and closing times to minutes
         const timeToMinutes = (timeStr) => {
             if (!timeStr) return 0;
             const [hours, minutes] = timeStr.split(':').map(Number);
+            // Handle midnight (00:00) as end of day (24:00 = 1440 minutes)
+            if (hours === 0 && timeStr === schedule.closing_time) {
+                return 24 * 60; // 1440 minutes for midnight as closing time
+            }
             return hours * 60 + minutes;
         };
         
@@ -2806,15 +2801,70 @@ const checkSalonAvailabilityToday = async (salonId) => {
         // Check if salon is currently open
         let isOpen = false;
         if (closeMinutes > openMinutes) {
-            // Normal hours (e.g., 9:00 - 18:00)
+            // Normal hours (e.g., 9:00 - 18:00 or 9:00 - 24:00)
             isOpen = currentTime >= openMinutes && currentTime <= closeMinutes;
         } else {
             // Overnight hours (e.g., 22:00 - 02:00)
             isOpen = currentTime >= openMinutes || currentTime <= closeMinutes;
         }
         
+        // Determine status based on current time and opening/closing times
+        let status = 'closed';
+        const oneHour = 60; // 60 minutes = 1 hour
+        
+        if (isOpen) {
+            // Salon is currently open
+            if (closeMinutes > openMinutes) {
+                // Normal hours - check if closing soon (but only if there's more than 30 minutes left)
+                const timeUntilClose = closeMinutes - currentTime;
+                if (timeUntilClose <= oneHour && timeUntilClose > 30) {
+                    status = 'closing_soon';
+                } else {
+                    status = 'open';
+                }
+            } else {
+                // Overnight hours - more complex logic needed
+                if (currentTime >= openMinutes) {
+                    // We're in the evening part (before midnight)
+                    // Calculate time until closing (which is after midnight)
+                    const timeUntilMidnight = (24 * 60) - currentTime;
+                    const timeUntilClose = timeUntilMidnight + closeMinutes;
+                    
+                    if (timeUntilClose <= oneHour && timeUntilClose > 30) {
+                        status = 'closing_soon';
+                    } else {
+                        status = 'open';
+                    }
+                } else {
+                    // We're in the morning part (after midnight)
+                    const timeUntilClose = closeMinutes - currentTime;
+                    if (timeUntilClose <= oneHour && timeUntilClose > 30) {
+                        status = 'closing_soon';
+                    } else {
+                        status = 'open';
+                    }
+                }
+            }
+        } else {
+            // Salon is currently closed - check if opening soon
+            if (closeMinutes > openMinutes) {
+                // Normal hours
+                if (currentTime < openMinutes && currentTime >= (openMinutes - oneHour)) {
+                    status = 'opening_soon';
+                }
+            } else {
+                // Overnight hours
+                if (currentTime < openMinutes && currentTime >= (openMinutes - oneHour)) {
+                    status = 'opening_soon';
+                } else if (currentTime > closeMinutes && currentTime < (openMinutes - oneHour)) {
+                    // In the gap between closing and opening (not opening soon)
+                    status = 'closed';
+                }
+            }
+        }
+        
         if (!isOpen) {
-            return false;
+            return { is_available_today: false, status: status };
         }
         
         // Check for schedule modifications (closures) for today
@@ -2833,17 +2883,17 @@ const checkSalonAvailabilityToday = async (salonId) => {
         );
         
         if (hasFullDayClosure) {
-            return false;
+            return { is_available_today: false, status: 'closed' };
         }
         
         // For interval closures, we'll consider the salon available if there are any open slots
         // This is a simplified check - in reality, you might want to check specific time slots
         
-        return true; // Salon is available today
+        return { is_available_today: true, status: status }; // Salon is available today
         
     } catch (error) {
         console.error('Error checking salon availability:', error);
-        return false; // Default to not available on error
+        return { is_available_today: false, status: 'closed' }; // Default to not available on error
     }
 };
 
