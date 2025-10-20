@@ -628,6 +628,23 @@
 
                 <div id="time-slots-container" class="pt-4">
                     <h5 class="font-bold text-lg text-primary-dark mb-3">الأوقات المتاحة:</h5>
+                    
+                    <!-- Time Period Filters -->
+                    <div class="flex gap-2 mb-4 justify-center">
+                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="morning">
+                            صباح
+                        </button>
+                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="noon">
+                            ظهر
+                        </button>
+                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="afternoon">
+                            عصر
+                        </button>
+                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="evening">
+                            مساء
+                        </button>
+                    </div>
+                    
                     <div id="slots-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
                         <p class="text-gray-500 col-span-full">اختر تاريخًا أولاً.</p>
                     </div>
@@ -2600,6 +2617,17 @@ async function showSalonDetailModal(salon) {
     
     showBookingStep(0); 
     
+    // Initialize time period filters
+    selectedTimePeriod = getTimePeriodFromCurrentTime();
+    updateTimeFilterButtons();
+    
+    // Auto-select today's date
+    const today = getCurrentUserDate();
+    const dateInput = document.getElementById('date-input');
+    if (dateInput) {
+        dateInput.value = today;
+    }
+    
     // FIX: Await all asynchronous content loads
     await loadSalonDetailView(salon);
     
@@ -3042,7 +3070,7 @@ function calculateTimeSlots(dateString) {
     const now = new Date();
     const selectedDateObj = new Date(dateString);
     const dayOfWeek = selectedDateObj.getDay(); 
-    const todayString = now.toISOString().split('T')[0];
+    const todayString = getCurrentUserDate();
     const isToday = dateString === todayString;
     // Ensure staff ids are numeric to prevent comparison issues
     const staffListExcludingAny = staffOptions
@@ -3305,6 +3333,130 @@ function calculateTimeSlots(dateString) {
     return slots;
 }
 
+let selectedTimePeriod = 'morning'; // Default to morning
+
+function getCurrentUserDate() {
+    // Get user's local date and time
+    const now = new Date();
+    
+    // Format as YYYY-MM-DD in user's local timezone
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+}
+
+function getCurrentUserTime() {
+    const now = new Date();
+    return {
+        hours: now.getHours(),
+        minutes: now.getMinutes(),
+        totalMinutes: now.getHours() * 60 + now.getMinutes()
+    };
+}
+
+function getTimePeriodFromCurrentTime() {
+    const { hours } = getCurrentUserTime();
+    
+    if (hours >= 5 && hours < 12) return 'morning';
+    if (hours >= 12 && hours < 16) return 'noon';
+    if (hours >= 16 && hours < 19) return 'afternoon';
+    return 'evening';
+}
+
+function isPastTimePeriod(period) {
+    const selectedDate = document.getElementById('date-input').value;
+    const todayDate = getCurrentUserDate();
+    
+    // If not today, no periods are past
+    if (selectedDate !== todayDate) {
+        return false;
+    }
+    
+    const { hours } = getCurrentUserTime();
+    
+    switch (period) {
+        case 'morning': return hours >= 12; // Past if it's noon or later
+        case 'noon': return hours >= 16; // Past if it's 4pm or later
+        case 'afternoon': return hours >= 19; // Past if it's 7pm or later
+        case 'evening': return false; // Evening is never past (includes late night)
+        default: return false;
+    }
+}
+
+function filterSlotsByPeriod(slots, period) {
+    const selectedDate = document.getElementById('date-input').value;
+    const todayDate = getCurrentUserDate();
+    const isToday = selectedDate === todayDate;
+    const { hours: currentHour, minutes: currentMinute, totalMinutes: currentMinutes } = getCurrentUserTime();
+    
+    console.log('Filtering slots:', {
+        period,
+        isToday,
+        currentTime: `${currentHour}:${currentMinute}`,
+        selectedDate,
+        todayDate,
+        totalSlots: slots.length
+    });
+    
+    const filtered = slots.filter(slot => {
+        const [hours, minutes] = slot.split(':').map(Number);
+        const hour24 = hours;
+        
+        // First filter by time period
+        let inPeriod = false;
+        switch (period) {
+            case 'morning': inPeriod = hour24 >= 5 && hour24 < 12; break;
+            case 'noon': inPeriod = hour24 >= 12 && hour24 < 16; break;
+            case 'afternoon': inPeriod = hour24 >= 16 && hour24 < 19; break;
+            case 'evening': inPeriod = hour24 >= 19 || hour24 < 5; break;
+            default: inPeriod = true;
+        }
+        
+        if (!inPeriod) return false;
+        
+        // If it's today, also filter out past slots
+        if (isToday) {
+            // Convert slot time to minutes for easier comparison
+            const slotMinutes = hour24 * 60 + minutes;
+            
+            console.log(`Slot ${slot}: ${slotMinutes} vs current ${currentMinutes}`);
+            
+            // Only show slots that are at least 30 minutes in the future
+            return slotMinutes > currentMinutes + 30;
+        }
+        
+        return true;
+    });
+    
+    console.log('Filtered slots:', filtered);
+    return filtered;
+}
+
+function updateTimeFilterButtons() {
+    document.querySelectorAll('.time-filter').forEach(btn => {
+        const period = btn.dataset.period;
+        const isPast = isPastTimePeriod(period);
+        
+        // Reset all classes
+        btn.classList.remove('border-primary-dark', 'bg-secondary-soft', 'text-primary-dark', 
+                           'border-gray-300', 'text-gray-600', 'opacity-50', 'cursor-not-allowed',
+                           'bg-gray-100', 'text-gray-400');
+        
+        if (isPast) {
+            // Past time period styling
+            btn.classList.add('border-gray-200', 'bg-gray-100', 'text-gray-400', 'opacity-50', 'cursor-not-allowed');
+        } else if (period === selectedTimePeriod) {
+            // Selected period styling
+            btn.classList.add('border-primary-dark', 'bg-secondary-soft', 'text-primary-dark');
+        } else {
+            // Normal period styling
+            btn.classList.add('border-gray-300', 'text-gray-600');
+        }
+    });
+}
+
 async function loadTimeSlots() {
     document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full">جاري البحث عن أوقات متاحة...</p>';
 
@@ -3339,7 +3491,31 @@ function renderTimeSlots(slots) {
         return;
     }
     
-    container.innerHTML = slots.map(slot => `
+    // Always filter slots by selected time period AND current time
+    const filteredSlots = filterSlotsByPeriod(slots, selectedTimePeriod);
+    
+    // Check if selected period is past (entire period)
+    const isPast = isPastTimePeriod(selectedTimePeriod);
+    
+    if (isPast) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-8">
+                <div class="text-gray-400 text-6xl mb-4">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <p class="text-gray-500 font-medium text-lg">لقد انتهت هذه الفترة الزمنية</p>
+                <p class="text-gray-400 text-sm mt-2">اختر فترة زمنية أخرى أو يوم آخر</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (filteredSlots.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 col-span-full">لا توجد أوقات متاحة في هذه الفترة.</p>';
+        return;
+    }
+    
+    container.innerHTML = filteredSlots.map(slot => `
         <button class="time-slot p-3 border-2 border-gray-300 rounded-xl text-center hover:border-secondary transition-all duration-200 text-primary-dark font-medium" data-time="${slot}">
             ${formatTime(slot)}
         </button>
@@ -3767,6 +3943,26 @@ function initializeEventListeners() {
     });
     
     document.getElementById('close-modal-btn').addEventListener('click', hideBookingModal);
+    
+    // Time filter event listeners
+    document.querySelectorAll('.time-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Prevent clicking on past time periods
+            if (isPastTimePeriod(btn.dataset.period)) {
+                return;
+            }
+            
+            selectedTimePeriod = btn.dataset.period;
+            updateTimeFilterButtons();
+            
+            // Reload time slots with new filter
+            const selectedDate = document.getElementById('date-input').value;
+            if (selectedDate) {
+                loadTimeSlots();
+            }
+        });
+    });
+    
     document.getElementById('conf-understood-btn').addEventListener('click', () => {
         hideConfirmationModal();
         switchView('home-view');
@@ -3884,7 +4080,7 @@ function initializeEventListeners() {
              return;
         }
         showBookingStep(3);
-        const today = new Date().toISOString().split('T')[0];
+        const today = getCurrentUserDate();
         document.getElementById('date-input').min = today;
     });
     
@@ -3896,6 +4092,9 @@ function initializeEventListeners() {
         selectedDate = e.target.value;
         document.getElementById('confirm-booking-btn').disabled = true; 
         selectedTime = null; 
+        
+        // Update time filter buttons when date changes (past periods might change)
+        updateTimeFilterButtons();
         
         if (selectedDate && selectedServices.length > 0 && selectedStaff) {
             loadTimeSlots();

@@ -53,108 +53,157 @@
 <!-- Hero Section -->
 <section class="relative bg-hero bg-cover bg-center min-h-[90vh] flex items-center justify-center">
     <div class="absolute inset-0 bg-black/60"></div>
-    <div class="relative text-center max-w-3xl px-6">
-        <h1 class="text-4xl sm:text-5xl font-extrabold mb-4">صالوني — حجز الصالون في ثوانٍ</h1>
-        <p class="text-white/90 text-lg sm:text-xl mb-8">تطبيق سريع وسهل للمستخدمين وأصحاب الصالونات.</p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button id="installBtn" style="display:none" class="inline-flex items-center justify-center text-center bg-[#06C167] text-[#1E293B] px-6 py-3 rounded-xl font-bold text-lg shadow-md hover:bg-[#05AE5D] transition">تثبيت التطبيق</button>
-            <button id="learnMoreBtn" class="bg-white text-[#1E293B] px-6 py-3 rounded-xl font-bold text-lg shadow-md hover:bg-gray-100 transition">تعرف على صالوني</button>
-        </div>
-        <div class="mt-6 grid sm:grid-cols-2 gap-3 max-w-xl mx-auto">
-            <div class="install-card flex items-center gap-3">
-                <i class="fa-brands fa-apple text-2xl text-[#1E293B]"></i>
-                <p class="text-sm">iOS (16.4+): من Safari، اضغط مشاركة → تثبيت.</p>
-            </div>
-            <div class="install-card flex items-center gap-3">
-                <i class="fa-brands fa-android text-2xl text-[#06C167]"></i>
-                <p class="text-sm">Android: اضغط "تثبيت" أو اختر "تثبيت" من القائمة.</p>
-            </div>
-        </div>
-
-        <!-- Callout: App requires adding to Home Screen -->
-        <div id="iosRequiredNotice" class="mt-4 max-w-xl mx-auto bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-lg p-3">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <p class="text-sm">لاستخدام التطبيق بكامل الميزات، يجب إضافته إلى الشاشة الرئيسية. اتبع التعليمات أدناه.</p>
-            </div>
-        </div>
-
-    <!-- iOS Install Guide Toggle -->
-    <button id="iosGuideToggle" class="mt-6 hidden bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
-        <i class="fa-brands fa-apple"></i>
-        عرض خطوات التثبيت على iOS
-        <i class="fa-solid fa-chevron-down"></i>
-    </button>
-
-    <!-- iOS Install Guide -->
-    <div id="iosInstallGuide" class="mt-3 hidden bg-white/95 text-[#1E293B] rounded-xl shadow-lg p-4">
-        <h3 class="font-extrabold text-lg mb-3 flex items-center gap-2">
-            <i class="fa-brands fa-apple"></i>
-            خطوات التثبيت على iOS (سفاري)
-        </h3>
-        <div class="grid sm:grid-cols-3 gap-4">
-            <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">1</span>
-                <i class="fa-solid fa-compass text-2xl text-[#1E293B] mt-2"></i>
-                <p class="mt-2 text-sm">افتح الموقع في <strong>Safari</strong></p>
-            </div>
-            <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">2</span>
-                <div class="mt-2 flex items-center gap-2">
-                    <i class="fa-solid fa-share-from-square text-2xl text-[#1E293B]"></i>
-                    <i class="fa-solid fa-hand-pointer text-xl text-[#06C167]"></i>
-                </div>
-                <p class="mt-2 text-sm">اضغط <strong>مشاركة</strong> من الأسفل</p>
-            </div>
-            <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">3</span>
-                <div class="mt-2 flex items-center gap-2">
-                    <i class="fa-solid fa-download text-2xl text-[#06C167]"></i>
-                    <i class="fa-solid fa-arrow-down text-xl text-[#06C167]"></i>
-                </div>
-                <p class="mt-2 text-sm">اختر <strong>تثبيت</strong> لإنشاء التطبيق</p>
-            </div>
-            <!-- iOS Instructions Image: Always visible in a clean design -->
-            <div class="sm:col-span-3 mt-4">
-                <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-lg">
-                    <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <i class="fa-brands fa-apple text-blue-600 text-lg"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-gray-800 text-sm">تعليمات التثبيت على iOS</h4>
-                                <p class="text-xs text-gray-600">اتبع الخطوات الموضحة في الصورة أدناه</p>
-                            </div>
-                            </div>
-                        </div>
-                        <div class="p-4">
-                            <img src="/images/ios_instructions.png" alt="تعليمات تثبيت iOS" class="w-full h-auto object-contain rounded-lg shadow-sm" loading="lazy">
-                        </div>
-                        <div class="px-4 pb-4">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <div class="flex items-start gap-2">
-                                    <i class="fa-solid fa-info-circle text-blue-600 text-sm mt-0.5"></i>
-                                    <p class="text-xs text-blue-800 leading-relaxed">
-                                        <strong>ملاحظة:</strong> تأكد من استخدام متصفح Safari لإتمام عملية التثبيت بنجاح على أجهزة iOS.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <p class="text-xs text-gray-600 mt-3">بعد التثبيت، افتح التطبيق من شاشة جهازك الرئيسية.</p>
+    <div class="relative text-center max-w-4xl px-6">
+        <h1 class="text-4xl sm:text-6xl font-extrabold mb-6 text-white mt-8">صالوني — حجز الصالون في ثوانٍ</h1>
+        <p class="text-white/90 text-xl sm:text-2xl mb-12 leading-relaxed max-w-3xl mx-auto">
+            تطبيق ذكي يربط بين العملاء وصالونات التجميل، يوفر تجربة حجز سهلة وسريعة للعملاء، 
+            وأدوات إدارة متقدمة لأصحاب الصالونات.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-6 justify-center mb-12">
+            <button id="startNowBtn" class="bg-[#06C167] text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-[#05AE5D] transition transform hover:scale-105">
+                ابدأ الآن
+            </button>
+            <button id="learnMoreBtn" class="bg-white text-[#1E293B] px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-105">
+                تعرف أكثر
+            </button>
         </div>
     </div>
 </section>
 
+<!-- Installation Instructions Section -->
+<section id="installation" class="bg-gradient-to-br from-gray-50 to-gray-100 py-16">
+    <div class="max-w-4xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl sm:text-4xl font-extrabold mb-4 text-[#1E293B]">تثبيت التطبيق</h2>
+            <p class="text-gray-600 text-lg max-w-2xl mx-auto">اختر نظام التشغيل الخاص بك واتبع التعليمات البسيطة</p>
+        </div>
+
+        <!-- Platform Selection Cards -->
+        <div class="grid sm:grid-cols-2 gap-6 mb-8">
+            <div class="install-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                <div class="flex items-center gap-4 mb-4">
+                    <i class="fa-brands fa-apple text-3xl text-[#1E293B]"></i>
+                    <div>
+                        <h3 class="font-bold text-lg text-[#1E293B]">iOS (iPhone/iPad)</h3>
+                        <p class="text-sm text-gray-600">iOS 16.4+ مطلوب</p>
+                    </div>
+                </div>
+                <p class="text-gray-700 mb-4">من Safari، اضغط مشاركة → تثبيت التطبيق</p>
+                <button id="iosInstructionsBtn" class="w-full bg-[#1E293B] text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition">
+                    عرض التعليمات التفصيلية
+                </button>
+            </div>
+            
+            <div class="install-card bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                <div class="flex items-center gap-4 mb-4">
+                    <i class="fa-brands fa-android text-3xl text-[#06C167]"></i>
+                    <div>
+                        <h3 class="font-bold text-lg text-[#1E293B]">Android</h3>
+                        <p class="text-sm text-gray-600">Chrome أو Firefox</p>
+                    </div>
+                </div>
+                <p class="text-gray-700 mb-4">اضغط "تثبيت" أو اختر "تثبيت التطبيق" من القائمة</p>
+                <button id="installBtn" style="display:none" class="w-full bg-[#06C167] text-white py-3 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center">
+                    تثبيت
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- iOS Installation Modal -->
+<div id="iosModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-[#1E293B] flex items-center gap-3">
+                <i class="fa-solid fa-download text-[#1E293B]"></i>
+                خطوات التثبيت على iOS
+            </h2>
+            <button id="closeModal" class="text-gray-500 hover:text-gray-700 text-2xl">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid sm:grid-cols-3 gap-4 mb-6">
+                <div class="flex flex-col items-center text-center p-4 rounded-lg bg-gray-50">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#1E293B] text-white text-sm font-bold mb-3">1</span>
+                    <i class="fa-solid fa-compass text-3xl text-[#1E293B] mb-3"></i>
+                    <p class="text-sm font-medium text-gray-800">افتح الموقع في Safari</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-4 rounded-lg bg-gray-50">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#1E293B] text-white text-sm font-bold mb-3">2</span>
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-share-from-square text-2xl text-[#1E293B]"></i>
+                        <i class="fa-solid fa-hand-pointer text-xl text-[#06C167]"></i>
+                    </div>
+                    <p class="text-sm font-medium text-gray-800">اضغط <strong>مشاركة</strong></p>
+                </div>
+                <div class="flex flex-col items-center text-center p-4 rounded-lg bg-gray-50">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#1E293B] text-white text-sm font-bold mb-3">3</span>
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-download text-2xl text-[#06C167]"></i>
+                        <i class="fa-solid fa-arrow-down text-xl text-[#06C167]"></i>
+                    </div>
+                    <p class="text-sm font-medium text-gray-800">اختر <strong>تثبيت</strong></p>
+                </div>
+            </div>
+            
+            <!-- Installation Instructions Image -->
+            <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-mobile-alt text-blue-600 text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">تعليمات التثبيت المرئية</h4>
+                            <p class="text-sm text-gray-600">اتبع الخطوات الموضحة في الصورة</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <img src="/images/ios_instructions.png" alt="تعليمات التثبيت على iOS" class="w-full h-auto object-contain rounded-lg shadow-sm" loading="lazy">
+                </div>
+                <div class="px-4 pb-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-info-circle text-blue-600 text-sm mt-0.5"></i>
+                            <p class="text-sm text-blue-800 leading-relaxed">
+                                <strong>ملاحظة:</strong> قد تختلف خطوات التثبيت قليلاً حسب إصدار iOS المستخدم.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Separator -->
+<div class="py-8 border-t border-gray-700 mx-6"></div>
+
 <!-- Features Section -->
 <section id="features" class="max-w-6xl mx-auto px-6 py-16">
+    <!-- What is Saloony? -->
+    <div class="text-center mb-16">
+        <h2 class="text-4xl font-extrabold mb-6 text-white">ما هو صالوني؟</h2>
+        <p class="text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
+            صالوني هو تطبيق ذكي يربط بين العملاء وصالونات التجميل، يوفر تجربة حجز سهلة وسريعة للعملاء، 
+            وأدوات إدارة متقدمة لأصحاب الصالونات. نهدف إلى تحسين تجربة الجمال والعناية الشخصية من خلال التكنولوجيا.
+        </p>
+    </div>
+
+    <!-- Features for Users and Salons -->
+    <div class="text-center mb-8">
+        <h3 class="text-2xl font-bold text-white mb-2">مميزات التطبيق</h3>
+        <p class="text-gray-300">اكتشف كيف يمكن لصالوني أن يحسن تجربتك</p>
+    </div>
+
     <div class="grid lg:grid-cols-2 gap-10">
-        <!-- Users -->
+        <!-- For Users -->
         <div>
-            <h2 class="text-3xl font-extrabold mb-6 text-white">للمستخدمين</h2>
+            <h3 class="text-3xl font-extrabold mb-6 text-white">للمستخدمين</h3>
             <div class="grid sm:grid-cols-2 gap-6">
                 <div class="feature-card flex flex-col gap-2">
                     <div class="flex items-center gap-3 mb-2">
@@ -180,9 +229,9 @@
             </div>
         </div>
 
-        <!-- Salons -->
+        <!-- For Salons -->
         <div>
-            <h2 class="text-3xl font-extrabold mb-6 text-white">لأصحاب الصالونات</h2>
+            <h3 class="text-3xl font-extrabold mb-6 text-white">لأصحاب الصالونات</h3>
             <div class="grid sm:grid-cols-2 gap-6">
                 <div class="feature-card flex flex-col gap-2">
                     <div class="flex items-center gap-3 mb-2">
@@ -229,10 +278,10 @@
 <div id="iosInstructionsModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-xl p-3 w-11/12 max-w-3xl text-[#1E293B] shadow-xl">
         <div class="flex items-center gap-2 mb-2">
-            <i class="fa-brands fa-apple text-2xl"></i>
-            <h3 class="font-bold text-lg">تعليمات التثبيت على iOS</h3>
+            <i class="fa-solid fa-mobile-alt text-2xl"></i>
+            <h3 class="font-bold text-lg">تعليمات التثبيت</h3>
         </div>
-        <img src="/images/ios_instructions.png" alt="تعليمات تثبيت iOS" class="w-full h-auto object-contain rounded-lg" loading="lazy">
+        <img src="/images/ios_instructions.png" alt="تعليمات التثبيت" class="w-full h-auto object-contain rounded-lg" loading="lazy">
         <div class="mt-3 flex justify-end gap-2">
             <button id="closeIosInstructionsModal" class="bg-[#1E293B] text-white px-4 py-2 rounded-md font-bold">إغلاق</button>
         </div>
@@ -270,8 +319,6 @@
     // Install prompt handling
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
-    const iosInstallGuide = document.getElementById('iosInstallGuide');
-    const iosGuideToggle = document.getElementById('iosGuideToggle');
     const iosInstructionsModal = document.getElementById('iosInstructionsModal');
     const closeIosInstructionsModal = document.getElementById('closeIosInstructionsModal');
     const iosBrowserModal = document.getElementById('iosBrowserModal');
@@ -281,58 +328,18 @@
         deferredPrompt = e;
         if (installBtn) installBtn.style.display = 'inline-flex';
     });
-    // iOS Safari does not support beforeinstallprompt. Show guidance button.
-    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+    // Show install button for all users
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    if (isIOS && !isStandalone && installBtn) {
+    if (!isStandalone && installBtn) {
         installBtn.style.display = 'inline-flex';
         installBtn.textContent = 'تثبيت';
     }
 
-    // Show iOS guide toggle only for iOS users
-    if (iosGuideToggle) {
-        if (isIOS) iosGuideToggle.classList.remove('hidden');
-        else iosGuideToggle.classList.add('hidden');
-    }
+    // iOS browser detection for Safari guidance
+    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    // Show iOS guide by default on iOS (not standalone)
-    if (isIOS && !isStandalone && iosInstallGuide && iosGuideToggle) {
-        iosInstallGuide.classList.remove('hidden');
-        const chevron = iosGuideToggle.querySelector('.fa-chevron-down');
-        if (chevron) {
-            chevron.classList.remove('fa-chevron-down');
-            chevron.classList.add('fa-chevron-up');
-        }
-        iosGuideToggle.innerHTML = '<i class="fa-brands fa-apple"></i> إخفاء خطوات التثبيت على iOS <i class="fa-solid fa-chevron-up"></i>';
-    }
-
-    // Enable iOS guide toggle
-    if (iosGuideToggle && iosInstallGuide) {
-        iosGuideToggle.addEventListener('click', () => {
-            const isHidden = iosInstallGuide.classList.contains('hidden');
-            iosInstallGuide.classList.toggle('hidden');
-            const chevron = iosGuideToggle.querySelector('.fa-chevron-down');
-            const chevronUp = iosGuideToggle.querySelector('.fa-chevron-up');
-            if (!isHidden) {
-                // It will hide now, set to down
-                if (chevronUp) {
-                    chevronUp.classList.remove('fa-chevron-up');
-                    chevronUp.classList.add('fa-chevron-down');
-                }
-                iosGuideToggle.innerHTML = '<i class="fa-brands fa-apple"></i> عرض خطوات التثبيت على iOS <i class="fa-solid fa-chevron-down"></i>';
-            } else {
-                // It will show now, set to up
-                if (chevron) {
-                    chevron.classList.remove('fa-chevron-down');
-                    chevron.classList.add('fa-chevron-up');
-                }
-                iosGuideToggle.innerHTML = '<i class="fa-brands fa-apple"></i> إخفاء خطوات التثبيت على iOS <i class="fa-solid fa-chevron-up"></i>';
-            }
-        });
-    }
-
-    // Modal functionality for iOS instructions (if needed)
+    // Modal functionality for instructions (if needed)
     if (closeIosInstructionsModal && iosInstructionsModal) {
         closeIosInstructionsModal.addEventListener('click', () => {
             iosInstructionsModal.classList.add('hidden');
@@ -388,13 +395,8 @@
     }
     installBtn.addEventListener('click', async () => {
         if (!deferredPrompt) {
-            // If browser shows its own banner, this button may be unnecessary
-            const message = isIOS
-              ? (isSafari
-                    ? 'على iOS: افتح الموقع في Safari، ثم اضغط زر المشاركة واختر "تثبيت".'
-                    : 'على iOS: الرجاء فتح الموقع في Safari ثم اضغط زر المشاركة واختر "تثبيت".')
-              : 'يرجى استخدام زر "تثبيت" من المتصفح.';
-            alert(message);
+            // Show universal installation message
+            alert('يرجى استخدام زر "تثبيت" من المتصفح أو اتباع تعليمات التثبيت المعروضة أدناه.');
             return;
         }
         await deferredPrompt.prompt();
@@ -404,12 +406,50 @@
         else console.log('User dismissed the install prompt');
     });
 
-    // Learn More button scroll
+    // Start Now button scroll to installation section
+    const startNowBtn = document.getElementById('startNowBtn');
+    if (startNowBtn) {
+        startNowBtn.addEventListener('click', () => {
+            const el = document.getElementById('installation');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // Learn More button scroll to features section
     const learnMoreBtn = document.getElementById('learnMoreBtn');
     if (learnMoreBtn) {
         learnMoreBtn.addEventListener('click', () => {
             const el = document.getElementById('features');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // iOS Instructions Modal functionality
+    const iosInstructionsBtn = document.getElementById('iosInstructionsBtn');
+    const iosModal = document.getElementById('iosModal');
+    const closeModal = document.getElementById('closeModal');
+
+    if (iosInstructionsBtn && iosModal && closeModal) {
+        iosInstructionsBtn.addEventListener('click', () => {
+            iosModal.classList.remove('hidden');
+        });
+
+        closeModal.addEventListener('click', () => {
+            iosModal.classList.add('hidden');
+        });
+
+        // Close modal when clicking outside
+        iosModal.addEventListener('click', (e) => {
+            if (e.target === iosModal) {
+                iosModal.classList.add('hidden');
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !iosModal.classList.contains('hidden')) {
+                iosModal.classList.add('hidden');
+            }
         });
     }
 </script>
