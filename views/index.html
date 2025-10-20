@@ -75,7 +75,7 @@
     <div class="max-w-4xl mx-auto px-6">
         <div class="text-center mb-12">
             <h2 class="text-3xl sm:text-4xl font-extrabold mb-4 text-[#1E293B]">تثبيت التطبيق</h2>
-            <p class="text-gray-600 text-lg max-w-2xl mx-auto">اختر نظام التشغيل الخاص بك واتبع التعليمات البسيطة</p>
+            <p class="text-gray-600 text-lg max-w-2xl mx-auto">اختر نظام التشغيل الخاص بك واتبع الخطوات البسيطة</p>
         </div>
 
         <!-- Platform Selection Cards -->
@@ -88,9 +88,9 @@
                         <p class="text-sm text-gray-600">iOS 16.4+ مطلوب</p>
                     </div>
                 </div>
-                <p class="text-gray-700 mb-4">من Safari، اضغط مشاركة → تثبيت التطبيق</p>
+                <p class="text-gray-700 mb-4">من Safari، اضغط مشاركة ← تثبيت التطبيق</p>
                 <button id="iosInstructionsBtn" class="w-full bg-[#1E293B] text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition">
-                    عرض التعليمات التفصيلية
+                    عرض الخطوات التفصيلية
                 </button>
             </div>
             
@@ -102,7 +102,7 @@
                         <p class="text-sm text-gray-600">Chrome أو Firefox</p>
                     </div>
                 </div>
-                <p class="text-gray-700 mb-4">اضغط "تثبيت" أو اختر "تثبيت التطبيق" من القائمة</p>
+                <p class="text-gray-700 mb-4">اضغط <strong>"تثبيت"</strong> أو اختر <strong>"تثبيت التطبيق"</strong> من القائمة</p>
                 <button id="installBtn" style="display:none" class="w-full bg-[#06C167] text-white py-3 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center">
                     تثبيت
                 </button>
@@ -175,6 +175,14 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Continue Button -->
+            <div class="px-6 pb-6">
+                <button id="continueToSafari" class="w-full bg-[#06C167] text-white py-4 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center gap-3 text-lg">
+                    <i class="fa-solid fa-compass"></i>
+                    متابعة في Safari
+                </button>
             </div>
         </div>
     </div>
@@ -449,6 +457,30 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !iosModal.classList.contains('hidden')) {
                 iosModal.classList.add('hidden');
+            }
+        });
+    }
+
+    // Continue to Safari button functionality
+    const continueToSafari = document.getElementById('continueToSafari');
+    if (continueToSafari) {
+        continueToSafari.addEventListener('click', () => {
+            // Get current URL
+            const currentUrl = window.location.href;
+            
+            // Create Safari URL scheme
+            const safariUrl = `x-web-search://?${encodeURIComponent(currentUrl)}`;
+            
+            // Try to open in Safari, fallback to regular redirect
+            try {
+                window.location.href = safariUrl;
+                // Fallback after a short delay
+                setTimeout(() => {
+                    window.open(currentUrl, '_blank');
+                }, 1000);
+            } catch (error) {
+                // Direct fallback
+                window.open(currentUrl, '_blank');
             }
         });
     }
