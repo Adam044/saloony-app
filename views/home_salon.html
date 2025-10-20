@@ -528,6 +528,14 @@
                     </h3>
                     <p class="text-gray-500 mb-6 border-r-4 border-secondary pr-3">اختر الخدمات التي تقدمها، ثم حدد السعر والوقت اللازم لكل خدمة.</p>
                     
+                    <!-- Add Service Manually Button -->
+                    <div class="mb-6 text-center">
+                        <button id="add-manual-service-btn" class="bg-gradient-to-r from-secondary to-orange-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-300 transform hover:scale-105 relative z-10" style="background: linear-gradient(to right, #06C167, #f97316) !important; color: white !important; display: inline-block !important; visibility: visible !important;">
+                            <i class="fas fa-plus-circle ml-2"></i>
+                            لم تجد خدمتك؟ أضفها يدوياً
+                        </button>
+                    </div>
+                    
                     <div id="services-list-container" class="space-y-4">
                         <p class="text-gray-500 text-center py-4">جاري تحميل قائمة الخدمات...</p>
                     </div>
@@ -2993,6 +3001,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('[data-service-id]').forEach(card => {
             const serviceId = card.getAttribute('data-service-id');
             const serviceType = card.getAttribute('data-service-type');
+            const isManual = card.getAttribute('data-is-manual') === 'true';
+            
+            // Skip manual services from auto-save - they are handled separately
+            if (isManual) {
+                return;
+            }
+            
             const priceInput = card.querySelector('.details-inputs input[data-type="price"]');
             const durationElement = serviceType === 'add_on'
                 ? card.querySelector('.details-inputs input[data-type="duration"]')
@@ -3128,10 +3143,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // For add-on services, allow duration to be 0 or any positive value
+            if (serviceType === 'add_on' && (isNaN(duration) || duration < 0)) {
+                showMessage(servicesMessage, `يرجى إدخال مدة صحيحة (0 أو أكثر) للخدمة الإضافية.`, false);
+                validationError = true;
+                return;
+            }
+
             selectedServices.push({
                 service_id: parseInt(serviceId),
                 price: price,
-                duration: serviceType === 'add_on' ? 0 : duration
+                duration: duration
             });
         });
         
@@ -3243,6 +3265,11 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = `p-4 rounded-xl shadow-md border transition-all duration-300 mb-3 ${isAddOn ? 'border-orange-400 bg-orange-50' : 'border-secondary bg-secondary-soft'}`;
       card.setAttribute('data-service-id', service.id);
       card.setAttribute('data-service-type', service.service_type);
+      
+      // Mark manual services to exclude them from auto-save
+      if (service.is_manual) {
+        card.setAttribute('data-is-manual', 'true');
+      }
 
       const header = `
         <div class="flex justify-between items-center mb-3">
@@ -3264,8 +3291,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <input type="number" data-id="${service.id}" data-type="price" value="${initialPrice}" min="5" step="5" required class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right">
             </div>
             <div class="flex-1">
-              <label class="block text-sm font-medium text-gray-500">المدة (تلقائياً 0 دقيقة)</label>
-              <input type="number" data-id="${service.id}" data-type="duration" value="0" readonly class="mt-1 w-full p-2 border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500">
+              <label class="block text-sm font-medium text-gray-700">المدة (دقيقة)</label>
+              <input type="number" data-id="${service.id}" data-type="duration" value="0" min="0" step="5" class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-right" placeholder="0">
             </div>
           </div>
         </div>` : `
@@ -3365,12 +3392,12 @@ function openSalonServicesExplorer(prefCategory = 'all') {
         <div class="border rounded-xl p-3 flex items-center justify-between">
           <div class="flex-1">
             <div class="font-bold text-primary-dark">${s.name_ar}</div>
-            <div class="text-sm ${isAddOn ? 'text-orange-600' : 'text-gray-600'}">${isAddOn ? 'إضافة - بدون وقت' : 'خدمة أساسية'}</div>
+            <div class="text-sm ${isAddOn ? 'text-orange-600' : 'text-gray-600'}">${isAddOn ? 'إضافة' : 'خدمة أساسية'}</div>
           </div>
           <div class="flex items-center gap-2">
             <input type="number" class="w-24 p-2 border rounded-lg text-right" data-field="price" data-id="${s.id}" value="${price}" min="5" step="5" placeholder="السعر">
             ${isAddOn
-              ? `<input type="number" class="w-20 p-2 border rounded-lg text-right bg-gray-100 text-gray-500" value="0" readonly>`
+              ? `<input type="number" class="w-20 p-2 border rounded-lg text-right" data-field="duration" data-id="${s.id}" value="0" min="0" step="5" placeholder="0">`
               : `<select class="w-24 p-2 border rounded-lg text-right" data-field="duration" data-id="${s.id}">${[...Array(24)].map((_,i)=>{const v=(i+1)*5;return `<option value="${v}" ${v===duration?'selected':''}>${v} دقيقة</option>`}).join('')}</select>`
             }
             <button class="py-1.5 px-3 rounded-xl btn-action" data-action="add" data-id="${s.id}">إضافة</button>
@@ -3385,9 +3412,11 @@ function openSalonServicesExplorer(prefCategory = 'all') {
         const s = allServices.find(x => x.id === id);
         if (!s) return;
         const priceEl = listEl.querySelector(`input[data-field="price"][data-id="${id}"]`);
-        const durEl = listEl.querySelector(`select[data-field="duration"][data-id="${id}"]`);
+        const durEl = s.service_type === 'add_on' 
+          ? listEl.querySelector(`input[data-field="duration"][data-id="${id}"]`)
+          : listEl.querySelector(`select[data-field="duration"][data-id="${id}"]`);
         const price = priceEl ? parseFloat(priceEl.value) : (s.service_type === 'add_on' ? 25 : 50);
-        const duration = s.service_type === 'add_on' ? 0 : (durEl ? parseInt(durEl.value) : 30);
+        const duration = durEl ? parseInt(durEl.value) : (s.service_type === 'add_on' ? 0 : 30);
 
         // Ensure card exists (especially for add-ons) and reflect selection
         let card = document.querySelector(`[data-service-id="${id}"]`);
@@ -3400,7 +3429,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
           ? details?.querySelector('input[data-type="duration"]')
           : details?.querySelector('select[data-type="duration"]');
         if (priceInput) priceInput.value = isNaN(price) ? (s.service_type === 'add_on' ? 25 : 50) : price;
-        if (durationInput) durationInput.value = s.service_type === 'add_on' ? 0 : (isNaN(duration) ? 30 : duration);
+        if (durationInput) durationInput.value = isNaN(duration) ? (s.service_type === 'add_on' ? 0 : 30) : duration;
         // Trigger auto-save after adding
         scheduleAutoSave();
 
@@ -3867,6 +3896,244 @@ function openSalonServicesExplorer(prefCategory = 'all') {
   });
 
   // Event listeners removed for user invoice filters - users don't need search/filter functionality
+</script>
+
+<!-- Manual Service Addition Modal -->
+<div id="manual-service-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 text-right">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center">
+        <i class="fas fa-plus-circle text-secondary ml-2 text-2xl"></i>
+        <h3 class="text-xl font-bold text-primary-dark">إضافة خدمة يدوياً</h3>
+      </div>
+      <button id="manual-service-close" class="py-1 px-3 rounded-xl border hover:bg-gray-100">إغلاق</button>
+    </div>
+    
+    <form id="manual-service-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-bold text-primary-dark mb-2">اسم الخدمة</label>
+        <input type="text" id="manual-service-name" class="w-full border rounded-xl px-3 py-2" placeholder="مثال: قص شعر خاص" required>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-bold text-primary-dark mb-2">نوع الخدمة</label>
+        <select id="manual-service-type" class="w-full border rounded-xl px-3 py-2" required>
+          <option value="">اختر نوع الخدمة</option>
+          <option value="main">خدمة أساسية (تحتاج وقت محدد)</option>
+          <option value="add_on">خدمة إضافية (لا تحتاج وقت)</option>
+        </select>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-bold text-primary-dark mb-2">السعر (شيكل)</label>
+        <input type="number" id="manual-service-price" class="w-full border rounded-xl px-3 py-2" placeholder="50" min="1" required>
+      </div>
+      
+      <div id="manual-service-duration-container">
+        <label class="block text-sm font-bold text-primary-dark mb-2">المدة (دقيقة)</label>
+        <select id="manual-service-duration" class="w-full p-3 border border-gray-300 rounded-lg">
+          <option value="0">0 دقيقة</option>
+          <option value="5">5 دقائق</option>
+          <option value="10">10 دقائق</option>
+          <option value="15">15 دقيقة</option>
+          <option value="20">20 دقيقة</option>
+          <option value="25">25 دقيقة</option>
+          <option value="30" selected>30 دقيقة</option>
+          <option value="35">35 دقيقة</option>
+          <option value="40">40 دقيقة</option>
+          <option value="45">45 دقيقة</option>
+          <option value="50">50 دقيقة</option>
+          <option value="55">55 دقيقة</option>
+          <option value="60">60 دقيقة</option>
+          <option value="65">65 دقيقة</option>
+          <option value="70">70 دقيقة</option>
+          <option value="75">75 دقيقة</option>
+          <option value="80">80 دقيقة</option>
+          <option value="85">85 دقيقة</option>
+          <option value="90">90 دقيقة</option>
+          <option value="95">95 دقيقة</option>
+          <option value="100">100 دقيقة</option>
+          <option value="105">105 دقيقة</option>
+          <option value="110">110 دقيقة</option>
+          <option value="115">115 دقيقة</option>
+          <option value="120">120 دقيقة</option>
+        </select>
+      </div>
+      
+      <div class="flex justify-between mt-6">
+        <button type="submit" class="bg-gradient-to-r from-secondary to-orange-500 text-white px-6 py-2 rounded-xl font-bold hover:shadow-lg transition-all relative z-10" style="background: linear-gradient(to right, #06C167, #f97316) !important; color: white !important; display: inline-block !important; visibility: visible !important;">
+          <i class="fas fa-plus ml-2"></i>إضافة الخدمة
+        </button>
+        <button type="button" id="manual-service-cancel" class="py-2 px-4 rounded-xl border hover:bg-gray-100">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Manual Service Addition Functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const addManualServiceBtn = document.getElementById('add-manual-service-btn');
+  const manualServiceModal = document.getElementById('manual-service-modal');
+  const manualServiceForm = document.getElementById('manual-service-form');
+  const manualServiceClose = document.getElementById('manual-service-close');
+  const manualServiceCancel = document.getElementById('manual-service-cancel');
+  const manualServiceType = document.getElementById('manual-service-type');
+  const manualServiceDurationContainer = document.getElementById('manual-service-duration-container');
+  const servicesMessage = document.getElementById('services-message');
+
+  // Show message function for manual service modal
+  function showMessage(messageBox, message, isSuccess) {
+    if (!messageBox) return;
+    
+    messageBox.textContent = message;
+    messageBox.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto';
+    
+    if (isSuccess) {
+      messageBox.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
+    } else {
+      messageBox.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
+    }
+    
+    messageBox.classList.remove('hidden');
+    
+    setTimeout(() => {
+      messageBox.classList.add('hidden');
+    }, 5000);
+  }
+
+  // Show/hide duration field based on service type
+  manualServiceType.addEventListener('change', function() {
+    if (this.value === 'add_on') {
+      manualServiceDurationContainer.style.display = 'none';
+    } else {
+      manualServiceDurationContainer.style.display = 'block';
+    }
+  });
+
+  // Open modal
+  addManualServiceBtn.addEventListener('click', function() {
+    manualServiceModal.classList.remove('hidden');
+    document.getElementById('manual-service-name').focus();
+  });
+
+  // Close modal functions
+  const closeModal = () => {
+    manualServiceModal.classList.add('hidden');
+    manualServiceForm.reset();
+    manualServiceDurationContainer.style.display = 'block';
+  };
+
+  manualServiceClose.addEventListener('click', closeModal);
+  manualServiceCancel.addEventListener('click', closeModal);
+
+  // Close modal when clicking outside
+  manualServiceModal.addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+
+  // Handle form submission
+  manualServiceForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const serviceName = document.getElementById('manual-service-name').value.trim();
+    const serviceType = document.getElementById('manual-service-type').value;
+    const servicePrice = parseFloat(document.getElementById('manual-service-price').value);
+    
+    // Get duration in minutes directly from number input
+    let serviceDuration = 0;
+    if (serviceType === 'main') {
+      const durationValue = parseInt(document.getElementById('manual-service-duration').value);
+      serviceDuration = durationValue || 0;
+    }
+
+    if (!serviceName || !serviceType || !servicePrice) {
+      showMessage(servicesMessage, 'يرجى ملء جميع الحقول المطلوبة.', false);
+      return;
+    }
+
+    try {
+      // Create a temporary service object with negative ID to distinguish from master services
+      // Use a smaller negative number that fits within PostgreSQL integer range (-2147483648 to 2147483647)
+      const tempServiceId = -(Math.floor(Math.random() * 1000000) + 1000000);
+      const newService = {
+        id: tempServiceId,
+        name_ar: serviceName,
+        service_type: serviceType,
+        price: servicePrice,
+        duration: serviceDuration,
+        is_manual: true
+      };
+
+      // Add the service directly to the services list
+      const servicesListContainer = document.getElementById('services-list-container');
+      
+      // Find the appropriate container based on service type
+      let targetContainer;
+      if (serviceType === 'main') {
+        targetContainer = document.getElementById('main-list-container');
+        if (!targetContainer) {
+          // Create main services section if it doesn't exist
+          const mainHeader = document.createElement('div');
+          mainHeader.className = 'mb-4';
+          mainHeader.innerHTML = `
+            <div class="flex items-center justify-between">
+              <button id="btn-salon-more-main" class="py-2 px-4 rounded-xl border hover:bg-gray-100 font-bold text-primary-dark">
+                <i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية
+              </button>
+            </div>
+            <p class="text-gray-600 text-sm">الخدمات التي تحتاج وقت محدد في الجدولة</p>
+          `;
+          servicesListContainer.appendChild(mainHeader);
+          targetContainer = document.createElement('div');
+          targetContainer.id = 'main-list-container';
+          servicesListContainer.appendChild(targetContainer);
+        }
+      } else {
+        targetContainer = document.getElementById('add-on-list-container');
+        if (!targetContainer) {
+          // Create add-ons section if it doesn't exist
+          const addOnHeader = document.createElement('div');
+          addOnHeader.className = 'mb-4 mt-8';
+          addOnHeader.innerHTML = `
+            <div class="flex items-center justify-between">
+              <button id="btn-salon-more-addons" class="py-2 px-4 rounded-xl border hover:bg-gray-100 font-bold text-primary-dark">
+                <i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات
+              </button>
+            </div>
+            <p class="text-gray-600 text-sm">خدمات إضافية لا تحتاج وقت في الجدولة (المدة تلقائياً 0 دقيقة)</p>
+          `;
+          servicesListContainer.appendChild(addOnHeader);
+          targetContainer = document.createElement('div');
+          targetContainer.id = 'add-on-list-container';
+          servicesListContainer.appendChild(targetContainer);
+        }
+      }
+
+      // Create service card
+      const serviceCard = ensureServiceCardRendered(newService, servicePrice, serviceDuration);
+      if (serviceCard) {
+        targetContainer.appendChild(serviceCard);
+        
+        // Trigger auto-save
+        if (window.scheduleAutoSave) {
+          window.scheduleAutoSave();
+        }
+        
+        showMessage(servicesMessage, `تم إضافة خدمة "${serviceName}" بنجاح!`, true);
+        
+        // Close the modal after successful addition
+        closeModal();
+      }
+      
+    } catch (error) {
+      console.error('Error adding manual service:', error);
+      showMessage(servicesMessage, 'حدث خطأ أثناء إضافة الخدمة. يرجى المحاولة مرة أخرى.', false);
+    }
+  });
+});
 </script>
 
 <!-- Header is non-sticky now -->

@@ -71,53 +71,61 @@
             </div>
         </div>
 
-        <!-- iOS Install Guide Toggle -->
-        <button id="iosGuideToggle" class="mt-6 hidden bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
-            <i class="fa-brands fa-apple"></i>
-            عرض خطوات التثبيت على iOS
-            <i class="fa-solid fa-chevron-down"></i>
-        </button>
+        <!-- Callout: App requires adding to Home Screen -->
+        <div id="iosRequiredNotice" class="mt-4 max-w-xl mx-auto bg-yellow-50 border border-yellow-200 text-yellow-900 rounded-lg p-3">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p class="text-sm">لاستخدام التطبيق بكامل الميزات، يجب إضافته إلى الشاشة الرئيسية. اتبع التعليمات أدناه.</p>
+            </div>
+        </div>
 
-        <!-- iOS Install Guide -->
-        <div id="iosInstallGuide" class="mt-3 hidden bg-white/95 text-[#1E293B] rounded-xl shadow-lg p-4">
-            <h3 class="font-extrabold text-lg mb-3 flex items-center gap-2">
-                <i class="fa-brands fa-apple"></i>
-                خطوات التثبيت على iOS (سفاري)
-            </h3>
-            <div class="grid sm:grid-cols-3 gap-4">
-                <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
-                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">1</span>
-                    <i class="fa-solid fa-compass text-2xl text-[#1E293B] mt-2"></i>
-                    <p class="mt-2 text-sm">افتح الموقع في <strong>Safari</strong></p>
+    <!-- iOS Install Guide Toggle -->
+    <button id="iosGuideToggle" class="mt-6 hidden bg-[#1E293B] text-white rounded-md px-3 py-2 text-sm font-bold flex items-center gap-2">
+        <i class="fa-brands fa-apple"></i>
+        عرض خطوات التثبيت على iOS
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <!-- iOS Install Guide -->
+    <div id="iosInstallGuide" class="mt-3 hidden bg-white/95 text-[#1E293B] rounded-xl shadow-lg p-4">
+        <h3 class="font-extrabold text-lg mb-3 flex items-center gap-2">
+            <i class="fa-brands fa-apple"></i>
+            خطوات التثبيت على iOS (سفاري)
+        </h3>
+        <div class="grid sm:grid-cols-3 gap-4">
+            <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">1</span>
+                <i class="fa-solid fa-compass text-2xl text-[#1E293B] mt-2"></i>
+                <p class="mt-2 text-sm">افتح الموقع في <strong>Safari</strong></p>
+            </div>
+            <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">2</span>
+                <div class="mt-2 flex items-center gap-2">
+                    <i class="fa-solid fa-share-from-square text-2xl text-[#1E293B]"></i>
+                    <i class="fa-solid fa-hand-pointer text-xl text-[#06C167]"></i>
                 </div>
-                <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
-                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">2</span>
-                    <div class="mt-2 flex items-center gap-2">
-                        <i class="fa-solid fa-share-from-square text-2xl text-[#1E293B]"></i>
-                        <i class="fa-solid fa-hand-pointer text-xl text-[#06C167]"></i>
-                    </div>
-                    <p class="mt-2 text-sm">اضغط <strong>مشاركة</strong> من الأسفل</p>
+                <p class="mt-2 text-sm">اضغط <strong>مشاركة</strong> من الأسفل</p>
+            </div>
+            <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">3</span>
+                <div class="mt-2 flex items-center gap-2">
+                    <i class="fa-solid fa-download text-2xl text-[#06C167]"></i>
+                    <i class="fa-solid fa-arrow-down text-xl text-[#06C167]"></i>
                 </div>
-                <div class="flex flex-col items-center text-center p-3 rounded-lg bg-gray-50">
-                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1E293B] text-white text-xs font-bold">3</span>
-                    <div class="mt-2 flex items-center gap-2">
-                        <i class="fa-solid fa-download text-2xl text-[#06C167]"></i>
-                        <i class="fa-solid fa-arrow-down text-xl text-[#06C167]"></i>
-                    </div>
-                    <p class="mt-2 text-sm">اختر <strong>تثبيت</strong> لإنشاء التطبيق</p>
-                </div>
-                <!-- iOS Instructions Image: Always visible in a clean design -->
-                <div class="sm:col-span-3 mt-4">
-                    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-lg">
-                        <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <i class="fa-brands fa-apple text-blue-600 text-lg"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-gray-800 text-sm">تعليمات التثبيت على iOS</h4>
-                                    <p class="text-xs text-gray-600">اتبع الخطوات الموضحة في الصورة أدناه</p>
-                                </div>
+                <p class="mt-2 text-sm">اختر <strong>تثبيت</strong> لإنشاء التطبيق</p>
+            </div>
+            <!-- iOS Instructions Image: Always visible in a clean design -->
+            <div class="sm:col-span-3 mt-4">
+                <div class="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-lg">
+                    <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fa-brands fa-apple text-blue-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-sm">تعليمات التثبيت على iOS</h4>
+                                <p class="text-xs text-gray-600">اتبع الخطوات الموضحة في الصورة أدناه</p>
+                            </div>
                             </div>
                         </div>
                         <div class="p-4">
@@ -288,16 +296,39 @@
         else iosGuideToggle.classList.add('hidden');
     }
 
+    // Show iOS guide by default on iOS (not standalone)
+    if (isIOS && !isStandalone && iosInstallGuide && iosGuideToggle) {
+        iosInstallGuide.classList.remove('hidden');
+        const chevron = iosGuideToggle.querySelector('.fa-chevron-down');
+        if (chevron) {
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-up');
+        }
+        iosGuideToggle.innerHTML = '<i class="fa-brands fa-apple"></i> إخفاء خطوات التثبيت على iOS <i class="fa-solid fa-chevron-up"></i>';
+    }
+
     // Enable iOS guide toggle
     if (iosGuideToggle && iosInstallGuide) {
         iosGuideToggle.addEventListener('click', () => {
             const isHidden = iosInstallGuide.classList.contains('hidden');
             iosInstallGuide.classList.toggle('hidden');
             const chevron = iosGuideToggle.querySelector('.fa-chevron-down');
-            if (chevron) chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
-            iosGuideToggle.textContent = isHidden ? 'إخفاء خطوات التثبيت على iOS' : 'عرض خطوات التثبيت على iOS';
-            // Re-add icons since textContent replaced inner HTML
-            iosGuideToggle.innerHTML = `${isHidden ? '<i class="fa-brands fa-apple"></i> إخفاء خطوات التثبيت على iOS <i class="fa-solid fa-chevron-up"></i>' : '<i class="fa-brands fa-apple"></i> عرض خطوات التثبيت على iOS <i class="fa-solid fa-chevron-down"></i>'}`;
+            const chevronUp = iosGuideToggle.querySelector('.fa-chevron-up');
+            if (!isHidden) {
+                // It will hide now, set to down
+                if (chevronUp) {
+                    chevronUp.classList.remove('fa-chevron-up');
+                    chevronUp.classList.add('fa-chevron-down');
+                }
+                iosGuideToggle.innerHTML = '<i class="fa-brands fa-apple"></i> عرض خطوات التثبيت على iOS <i class="fa-solid fa-chevron-down"></i>';
+            } else {
+                // It will show now, set to up
+                if (chevron) {
+                    chevron.classList.remove('fa-chevron-down');
+                    chevron.classList.add('fa-chevron-up');
+                }
+                iosGuideToggle.innerHTML = '<i class="fa-brands fa-apple"></i> إخفاء خطوات التثبيت على iOS <i class="fa-solid fa-chevron-up"></i>';
+            }
         });
     }
 

@@ -2750,9 +2750,100 @@ const fetchSalonsWithMinPrice = async (city, gender) => {
             GROUP BY s.id 
         `;
         const result = await db.query(sql, [gender]);
-        return result;
+        
+        // Add availability status for each salon
+        const salonsWithAvailability = await Promise.all(result.map(async (salon) => {
+            const isAvailable = await checkSalonAvailabilityToday(salon.salonId);
+            return {
+                ...salon,
+                is_available_today: isAvailable
+            };
+        }));
+        
+        return salonsWithAvailability;
     } catch (err) {
         throw err;
+    }
+};
+
+// Helper function to check if salon is available today
+const checkSalonAvailabilityToday = async (salonId) => {
+    try {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const currentTime = today.getHours() * 60 + today.getMinutes(); // Current time in minutes
+        
+        // Get salon schedule
+        const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
+        
+        if (!schedule) {
+            return false; // No schedule means not available
+        }
+        
+        // Parse closed days
+        let closedDays = [];
+        try {
+            closedDays = schedule.closed_days ? JSON.parse(schedule.closed_days) : [];
+        } catch (e) {
+            closedDays = [];
+        }
+        
+        // Check if today is a closed day
+        if (closedDays.includes(dayOfWeek)) {
+            return false;
+        }
+        
+        // Convert opening and closing times to minutes
+        const timeToMinutes = (timeStr) => {
+            if (!timeStr) return 0;
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+        
+        const openMinutes = timeToMinutes(schedule.opening_time || '09:00');
+        const closeMinutes = timeToMinutes(schedule.closing_time || '18:00');
+        
+        // Check if salon is currently open
+        let isOpen = false;
+        if (closeMinutes > openMinutes) {
+            // Normal hours (e.g., 9:00 - 18:00)
+            isOpen = currentTime >= openMinutes && currentTime <= closeMinutes;
+        } else {
+            // Overnight hours (e.g., 22:00 - 02:00)
+            isOpen = currentTime >= openMinutes || currentTime <= closeMinutes;
+        }
+        
+        if (!isOpen) {
+            return false;
+        }
+        
+        // Check for schedule modifications (closures) for today
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        const modifications = await dbAll(`
+            SELECT * FROM schedule_modifications 
+            WHERE salon_id = $1 AND (
+                (mod_type = 'date' AND mod_date = $2) OR
+                (mod_type = 'day' AND mod_day_index = $3)
+            )
+        `, [salonId, todayStr, dayOfWeek]);
+        
+        // Check if there are any full-day closures
+        const hasFullDayClosure = modifications.some(mod => 
+            mod.closure_type === 'full_day' || (!mod.start_time && !mod.end_time)
+        );
+        
+        if (hasFullDayClosure) {
+            return false;
+        }
+        
+        // For interval closures, we'll consider the salon available if there are any open slots
+        // This is a simplified check - in reality, you might want to check specific time slots
+        
+        return true; // Salon is available today
+        
+    } catch (error) {
+        console.error('Error checking salon availability:', error);
+        return false; // Default to not available on error
     }
 };
 
@@ -2800,6 +2891,16 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
         
         // 2. Separate Salons for sections
         const citySalons = allRelevantSalons.filter(s => s.city === city);
+        
+        // Sort citySalons by availability - available salons first
+        citySalons.sort((a, b) => {
+            // Available salons (is_available_today = true) come first
+            if (a.is_available_today && !b.is_available_today) return -1;
+            if (!a.is_available_today && b.is_available_today) return 1;
+            // If both have same availability status, sort by rating (higher first)
+            return (b.avg_rating || 0) - (a.avg_rating || 0);
+        });
+        
         // Ensure that citySalons are only shown if they are not already in featuredSalons
         const featuredSalons = allRelevantSalons; 
 
@@ -3208,28 +3309,35 @@ app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
             `, [
                 salon_id,
                 'offer_200ils',
-                200.00,
+                200,
                 'ILS',
-                'completed',
-                'cash',
-                'عرض شهرين مقابل 200 شيكل - تأكيد من الإدارة',
-                validFrom.toISOString().split('T')[0],
-                validUntil.toISOString().split('T')[0],
+                'pending',
+                'admin_offer',
+                'عرض خاص للصالونات الجديدة - 200 شيكل لمدة شهرين',
+                validFrom.toISOString(),
+                validUntil.toISOString(),
                 invoiceNumber,
-                'تم تأكيد الدفع من قبل الإدارة أثناء قبول الصالون'
+                'Admin approved salon with 200 ILS offer'
             ]);
-            
-            console.log(`Created 200 ILS offer payment record for salon ${salon_id}, invoice: ${invoiceNumber}`);
+        }
+
+        // If salon is accepted, send congratulatory notification
+        if (status === 'accepted') {
+            await sendPushToTargets({
+                salon_id,
+                payload: {
+                    title: 'مبروك! تم قبول صالونك',
+                    body: 'تهانينا! صالونك الآن نشط ويمكن للجميع رؤيته والحجز من خلاله. ابدأ رحلتك معنا الآن!',
+                    url: '/home_salon.html',
+                    tag: 'salon_accepted'
+                }
+            });
         }
         
-        res.json({ 
-            message: 'Salon status updated successfully', 
-            status,
-            paymentCreated: status === 'accepted' && payment200ils
-        });
-    } catch (error) {
-        console.error('Error updating salon status:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.json({ success: true, message: `Salon status updated to ${status}` });
+    } catch (err) {
+        console.error('Error updating salon status:', err.message);
+        res.status(500).json({ error: 'Failed to update salon status' });
     }
 });
 

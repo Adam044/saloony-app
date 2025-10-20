@@ -2435,8 +2435,14 @@ function renderSalonCard(salon, cardType = 'detail') {
                 <h3 class="font-bold text-lg text-primary-dark truncate">${salon.salon_name}</h3>
                 
                 <!-- Tags/Info Section -->
-                <div class="flex items-center space-x-3 space-x-reverse">
-                    ${formatRating(avgRating, reviewCount)}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 space-x-reverse">
+                        ${formatRating(avgRating, reviewCount)}
+                    </div>
+                    ${salon.is_available_today ? 
+                        '<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">متاح اليوم</span>' : 
+                        '<span class="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">مغلق</span>'
+                    }
                 </div>
 
                 <!-- City & Address - CRITICAL: ADD HIDDEN DATA FOR EASY EXTRACTION -->
