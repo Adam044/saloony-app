@@ -544,6 +544,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
+// Employee presentation route
+app.get('/presentation', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'employee_presentation.html'));
+});
+
 // ===============================
 // Push Notification Endpoints
 // ===============================
