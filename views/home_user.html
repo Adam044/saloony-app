@@ -3113,7 +3113,8 @@ function calculateTimeSlots(dateString) {
     
     if (isToday) {
         const nowMinutes = timeToMinutes(now.toTimeString().substring(0, 5));
-        let minStartMinutes = Math.ceil(nowMinutes / 30) * 30; 
+        // Add 5-minute buffer: if current time is within 5 minutes of next slot, skip to the one after
+        let minStartMinutes = Math.ceil((nowMinutes + 5) / 30) * 30; 
         
         if (minStartMinutes > effectiveOpenMinutes) {
             effectiveOpenMinutes = minStartMinutes;
