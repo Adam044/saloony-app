@@ -2152,10 +2152,14 @@ app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
 // Used by User to fetch their own appointment history (FIXED SQL QUERY)
 app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
     const { user_id, filter } = req.params;
-    const now = new Date().toISOString();
+    // Use local time without timezone for comparison with database timestamps
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' '); // Format: YYYY-MM-DD HH:mm:ss
     let whereClause = '';
     let params = [user_id];
     let orderBy = 'DESC';
+
+    // Debug logging
+    console.log(`[DEBUG] User appointments request - User ID: ${user_id}, Filter: ${filter}, Current time: ${now}`);
 
     // FIX: Add validation for user_id
     if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
@@ -2167,11 +2171,13 @@ app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
         whereClause = `AND a.start_time > $2 AND a.status = 'Scheduled'`;
         params.push(now);
         orderBy = 'ASC';
+        console.log(`[DEBUG] Upcoming filter - Looking for appointments after: ${now} with status 'Scheduled'`);
     } else if (filter === 'past') {
          // FIX: Use $2 placeholder
         whereClause = `AND a.start_time <= $2`;
         params.push(now);
         orderBy = 'DESC';
+        console.log(`[DEBUG] Past filter - Looking for appointments before/at: ${now}`);
     } else {
         return res.status(400).json({ success: false, message: 'Invalid filter.' });
     }
@@ -2192,6 +2198,15 @@ app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
 
     try {
         const rows = await dbAll(sql, params);
+        console.log(`[DEBUG] SQL Query: ${sql}`);
+        console.log(`[DEBUG] Query params: ${JSON.stringify(params)}`);
+        console.log(`[DEBUG] Found ${rows.length} appointments`);
+        
+        // Log first few appointments for debugging
+        if (rows.length > 0) {
+            console.log(`[DEBUG] First appointment: ${JSON.stringify(rows[0])}`);
+        }
+        
         // Fetch all services for each appointment
         const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
             try {

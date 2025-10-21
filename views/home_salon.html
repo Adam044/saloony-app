@@ -137,6 +137,73 @@
             width: 90%;
             text-align: center;
         }
+
+        /* Update Modal Styles */
+        .update-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .update-modal.show {
+            display: flex;
+        }
+
+        .update-modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .update-modal.show .update-modal-content {
+            transform: scale(1);
+        }
+
+        .update-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #06C167, #05ae5d);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: white;
+            font-size: 24px;
+        }
+
+        .update-btn {
+            background: linear-gradient(135deg, #06C167, #05ae5d);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(6, 193, 103, 0.3);
+            width: 100%;
+        }
+
+        .update-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(6, 193, 103, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -1542,16 +1609,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Simple time formatting using the Date object (only hours/minutes are needed for breaks/schedules)
         const formatClockTime = (d) => {
-            // Get HH:MM part first
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const hour24 = d.getHours();
+            const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+            const minutes = d.getMinutes();
+            const period = getTimePeriodArabic(hour24);
             
-            // Convert to 12 hour format with Arabic AM/PM
-            const time12 = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-                            .replace('AM', 'ص').replace('PM', 'م');
-            
-            // For simple time ranges, we can return just the clock time
-            return time12;
+            if (minutes === 0) {
+                return `${hour12} ${period}`;
+            } else {
+                return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+            }
         }
         
         const startTimePart = formatClockTime(startDate);
@@ -1836,8 +1903,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const canChangeStatus = now >= tenMinutesAfterStart && appointment.status === 'Scheduled'; 
         // Display helpers
         const startDateDisplay = new Date(appointment.start_time).toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        const startTimeDisplay = new Date(appointment.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const availableAtDisplay = tenMinutesAfterStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const startTimeDisplay = formatTimeWithPeriod(appointment.start_time);
+        const availableAtDisplay = formatTimeWithPeriod(tenMinutesAfterStart.toISOString());
         
         const hideActions = (filter === 'past' || filter === 'completed' || appointment.status === 'Cancelled');
         const actionButtons = (!hideActions) ? `
@@ -3558,6 +3625,22 @@ function openSalonServicesExplorer(prefCategory = 'all') {
 <!-- Socket.IO client for real-time updates -->
 <script src="/socket.io/socket.io.js"></script>
 <!-- Note: WebSocket initialization is now handled in the main script above -->
+
+<!-- Update Available Modal -->
+<div id="update-modal" class="update-modal">
+  <div class="update-modal-content">
+    <div class="update-icon">
+      <i class="fas fa-sync-alt"></i>
+    </div>
+    <h3 class="text-xl font-bold text-primary-dark mb-2">تحديث جديد متاح</h3>
+    <p class="text-gray-600 mb-6">إصدار جديد من التطبيق متاح الآن. قم بالتحديث للحصول على أحدث الميزات والتحسينات.</p>
+    <button id="update-btn" class="update-btn">
+      <i class="fas fa-download ml-2"></i>
+      تحديث الآن
+    </button>
+  </div>
+</div>
+
 <!-- Notification Permission Modal -->
 <div id="notify-permission-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
   <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 text-right">
@@ -4236,5 +4319,9 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Header is non-sticky now -->
+
+<!-- Update Manager Script -->
+<script src="/update-manager.js"></script>
+
 </body>
 </html>

@@ -1,4 +1,5 @@
-const CACHE_NAME = 'saloony-cache-v4';
+const CACHE_NAME = 'saloony-cache-v5';
+const APP_VERSION = '1.0.5'; // Update this with each deployment
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -13,14 +14,33 @@ const URLS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  // Skip waiting to activate immediately
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE))
   );
 });
 
 self.addEventListener('activate', (event) => {
+  // Claim all clients immediately
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((k) => k !== CACHE_NAME && caches.delete(k))))
+    Promise.all([
+      caches.keys().then((keys) => Promise.all(keys.map((k) => k !== CACHE_NAME && caches.delete(k)))),
+      self.clients.claim()
+    ])
+  );
+  
+  // Notify all clients about the update
+  event.waitUntil(
+    self.clients.matchAll().then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({
+          type: 'SW_UPDATED',
+          version: APP_VERSION
+        });
+      });
+    })
   );
 });
 
@@ -100,6 +120,24 @@ self.addEventListener('notificationclick', (event) => {
 // Listen to messages from pages to show notifications (SSE bridge)
 self.addEventListener('message', (event) => {
   const msg = event.data || {};
+  
+  // Handle update check requests
+  if (msg.type === 'CHECK_UPDATE') {
+    event.ports[0].postMessage({
+      type: 'UPDATE_STATUS',
+      hasUpdate: false,
+      version: APP_VERSION
+    });
+    return;
+  }
+  
+  // Handle skip waiting requests
+  if (msg.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  
+  // Handle notification requests
   if (msg.type === 'saloony-notify') {
     const title = msg.title || 'Saloony';
     const body = msg.body || 'لديك إشعار جديد';
