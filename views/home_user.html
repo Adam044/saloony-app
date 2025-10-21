@@ -4095,6 +4095,13 @@ function initializeEventListeners() {
         showBookingStep(3);
         const today = getCurrentUserDate();
         document.getElementById('date-input').min = today;
+        document.getElementById('date-input').value = today;
+        selectedDate = today;
+        
+        // Load time slots for today by default
+        if (selectedServices.length > 0 && selectedStaff) {
+            loadTimeSlots();
+        }
     });
     
     document.getElementById('back-step-2-btn').addEventListener('click', () => {
