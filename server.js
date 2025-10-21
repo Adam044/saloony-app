@@ -945,21 +945,28 @@ app.post('/api/auth/register', async (req, res) => {
             const user_phone_to_use = user_type === 'salon' ? owner_phone : phone;
             const gender_to_use = user_type === 'salon' ? null : gender;
 
-            // Smart duplicate check on phone: compare normalized last 10 digits
-            try {
-                const normalizedPhone = normalizePhoneNumber(user_phone_to_use || '');
-                if (normalizedPhone) {
-                    const dup = await db.query(
-                        "SELECT id FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = $1 LIMIT 1",
-                        [normalizedPhone]
-                    );
-                    if (dup && dup.length > 0) {
-                        return res.status(400).json({ success: false, message: 'رقم الهاتف مسجل بالفعل.', message_en: 'Phone already registered.' });
-                    }
+            // Simple phone duplicate check
+            if (user_phone_to_use) {
+                const existingUser = await db.get('SELECT id FROM users WHERE phone = $1', [user_phone_to_use]);
+                if (existingUser) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'رقم الهاتف مسجل بالفعل.', 
+                        message_en: 'Phone number already registered.' 
+                    });
                 }
-            } catch (dupErr) {
-                console.error('Phone duplicate check error:', dupErr);
-                // Proceed without blocking if check fails unexpectedly
+            }
+
+            // For salon signup, also check if salon phone (if provided) conflicts with any user phone
+            if (user_type === 'salon' && phone && phone !== owner_phone) {
+                const existingSalonPhone = await db.get('SELECT id FROM users WHERE phone = $1', [phone]);
+                if (existingSalonPhone) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'رقم هاتف الصالون مسجل بالفعل.', 
+                        message_en: 'Salon phone number already registered.' 
+                    });
+                }
             }
 
             let userResult;
