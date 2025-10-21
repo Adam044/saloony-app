@@ -2952,11 +2952,12 @@ app.post('/api/appointment/book', async (req, res) => {
 
 
 // --- Discovery Routes (Real Data) ---
-const fetchSalonsWithMinPrice = async (city, gender) => {
+const fetchSalonsWithAvailability = async (city, gender) => {
     try {
+        console.log(`🔍 DEBUG: fetchSalonsWithAvailability called with city: ${city}, gender: ${gender}`);
         const sql = `
             SELECT 
-                s.id AS salonId, 
+                s.id, 
                 s.salon_name, 
                 s.address, 
                 s.city, 
@@ -2970,10 +2971,14 @@ const fetchSalonsWithMinPrice = async (city, gender) => {
             GROUP BY s.id 
         `;
         const result = await db.query(sql, [gender]);
+        console.log(`🔍 DEBUG: Found ${result.length} salons matching gender ${gender} and status accepted`);
+        console.log(`🔍 DEBUG: Raw database result structure:`, result.length > 0 ? Object.keys(result[0]) : 'No results');
         
         // Add availability status for each salon
         const salonsWithAvailability = await Promise.all(result.map(async (salon) => {
-            const availabilityInfo = await checkSalonAvailabilityToday(salon.salonId);
+            console.log(`🔍 DEBUG: Checking availability for salon: ${salon.salon_name} (ID: ${salon.id})`);
+            const availabilityInfo = await checkSalonAvailabilityToday(salon.id);
+            console.log(`🔍 DEBUG: Salon ${salon.salon_name} availability result:`, availabilityInfo);
             return {
                 ...salon,
                 is_available_today: availabilityInfo.is_available_today,
@@ -2981,8 +2986,17 @@ const fetchSalonsWithMinPrice = async (city, gender) => {
             };
         }));
         
+        console.log(`🔍 DEBUG: Final salons with availability:`, salonsWithAvailability.map(s => ({
+            name: s.salon_name,
+            id: s.id,
+            city: s.city,
+            available: s.is_available_today,
+            status: s.status
+        })));
+        
         return salonsWithAvailability;
     } catch (err) {
+        console.error(`🔍 DEBUG: Error in fetchSalonsWithAvailability:`, err);
         throw err;
     }
 };
@@ -2990,14 +3004,18 @@ const fetchSalonsWithMinPrice = async (city, gender) => {
 // Helper function to check if salon is available today
 const checkSalonAvailabilityToday = async (salonId) => {
     try {
+        console.log(`🔍 DEBUG: Checking availability for salon ID: ${salonId}`);
         const today = new Date();
         const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
         const currentTime = today.getHours() * 60 + today.getMinutes(); // Current time in minutes
+        console.log(`🔍 DEBUG: Current time: ${currentTime} minutes (${Math.floor(currentTime/60)}:${String(currentTime%60).padStart(2,'0')}), Day: ${dayOfWeek}`);
         
         // Get salon schedule
         const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
+        console.log(`🔍 DEBUG: Schedule for salon ${salonId}:`, schedule);
         
         if (!schedule) {
+            console.log(`🔍 DEBUG: No schedule found for salon ${salonId} - returning closed`);
             return { is_available_today: false, status: 'closed' }; // No schedule means not available
         }
         
@@ -3008,9 +3026,11 @@ const checkSalonAvailabilityToday = async (salonId) => {
         } catch (e) {
             closedDays = [];
         }
+        console.log(`🔍 DEBUG: Closed days for salon ${salonId}:`, closedDays);
         
         // Check if today is a closed day
         if (closedDays.includes(dayOfWeek)) {
+            console.log(`🔍 DEBUG: Salon ${salonId} is closed today (day ${dayOfWeek})`);
             return { is_available_today: false, status: 'closed' };
         }
         
@@ -3018,8 +3038,8 @@ const checkSalonAvailabilityToday = async (salonId) => {
         const timeToMinutes = (timeStr) => {
             if (!timeStr) return 0;
             const [hours, minutes] = timeStr.split(':').map(Number);
-            // Handle midnight (00:00) as end of day (24:00 = 1440 minutes)
-            if (hours === 0 && timeStr === schedule.closing_time) {
+            // Handle midnight (00:00) as end of day (24:00 = 1440 minutes) when it's the closing time
+            if (hours === 0 && minutes === 0 && timeStr === schedule.closing_time) {
                 return 24 * 60; // 1440 minutes for midnight as closing time
             }
             return hours * 60 + minutes;
@@ -3027,15 +3047,18 @@ const checkSalonAvailabilityToday = async (salonId) => {
         
         const openMinutes = timeToMinutes(schedule.opening_time || '09:00');
         const closeMinutes = timeToMinutes(schedule.closing_time || '18:00');
+        console.log(`🔍 DEBUG: Salon ${salonId} hours - Open: ${openMinutes} minutes, Close: ${closeMinutes} minutes`);
         
         // Check if salon is currently open
         let isOpen = false;
         if (closeMinutes > openMinutes) {
             // Normal hours (e.g., 9:00 - 18:00 or 9:00 - 24:00)
             isOpen = currentTime >= openMinutes && currentTime <= closeMinutes;
+            console.log(`🔍 DEBUG: Normal hours check - Current: ${currentTime}, Open: ${openMinutes}, Close: ${closeMinutes}, IsOpen: ${isOpen}`);
         } else {
             // Overnight hours (e.g., 22:00 - 02:00)
             isOpen = currentTime >= openMinutes || currentTime <= closeMinutes;
+            console.log(`🔍 DEBUG: Overnight hours check - Current: ${currentTime}, Open: ${openMinutes}, Close: ${closeMinutes}, IsOpen: ${isOpen}`);
         }
         
         // Determine status based on current time and opening/closing times
@@ -3122,7 +3145,7 @@ const checkSalonAvailabilityToday = async (salonId) => {
         return { is_available_today: true, status: status }; // Salon is available today
         
     } catch (error) {
-        console.error('Error checking salon availability:', error);
+        console.error(`🔍 DEBUG: Error checking salon ${salonId} availability:`, error);
         return { is_available_today: false, status: 'closed' }; // Default to not available on error
     }
 };
@@ -3135,12 +3158,16 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
     const { service_ids } = req.query; // Capture service filter IDs (can be comma-separated)
     const genderFocus = gender === 'male' ? 'men' : 'women'; // Convert user gender to salon focus
     
+    console.log(`🔍 DEBUG: Discovery endpoint called - City: ${city}, Gender: ${gender}, GenderFocus: ${genderFocus}, ServiceIDs: ${service_ids}`);
+    
     try {
         // Fetch ALL relevant salons (all cities, matching gender focus)
-        let allRelevantSalons = await fetchSalonsWithMinPrice(city, genderFocus);
+        let allRelevantSalons = await fetchSalonsWithAvailability(city, genderFocus);
+        console.log(`🔍 DEBUG: fetchSalonsWithAvailability returned ${allRelevantSalons.length} salons`);
         
         // --- Apply Service Filter ---
         if (service_ids) {
+            console.log(`🔍 DEBUG: Applying service filter for IDs: ${service_ids}`);
             // Parse service IDs (can be single ID or comma-separated IDs)
             const serviceIdArray = service_ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
             
@@ -3158,8 +3185,9 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
 
                 const salonIdsWithAllServices = new Set(salonServiceCounts.map(row => row.salon_id));
                 allRelevantSalons = allRelevantSalons.filter(salon => 
-                    salonIdsWithAllServices.has(salon.salonId)
+                    salonIdsWithAllServices.has(salon.id)
                 );
+                console.log(`🔍 DEBUG: After service filter: ${allRelevantSalons.length} salons remain`);
             }
         }
         // --- END Service Filter ---
@@ -3171,6 +3199,13 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
         
         // 2. Separate Salons for sections
         const citySalons = allRelevantSalons.filter(s => s.city === city);
+        console.log(`🔍 DEBUG: City salons for ${city}: ${citySalons.length} salons`);
+        console.log(`🔍 DEBUG: City salons details:`, citySalons.map(s => ({
+            name: s.salon_name,
+            id: s.id,
+            available: s.is_available_today,
+            status: s.status
+        })));
         
         // Sort citySalons by availability - available salons first
         citySalons.sort((a, b) => {
@@ -3184,6 +3219,8 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
         // Ensure that citySalons are only shown if they are not already in featuredSalons
         const featuredSalons = allRelevantSalons; 
 
+        console.log(`🔍 DEBUG: Sending response with ${citySalons.length} city salons, ${featuredSalons.length} featured salons`);
+        
         res.json({
             services: discoveryServices,
             citySalons: citySalons,
@@ -3192,7 +3229,7 @@ app.get('/api/discovery/:city/:gender', async (req, res) => {
         });
         
     } catch (error) {
-        console.error("Discovery fetch error:", error.message);
+        console.error("🔍 DEBUG: Discovery fetch error:", error.message);
         res.status(500).json({ success: false, message: 'Failed to load discovery data.' });
     }
 });
@@ -3653,6 +3690,44 @@ app.get('/api/debug/salons', async (req, res) => {
             salons: result
         });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Debug endpoint to check salon schedules and status calculation
+app.get('/api/debug/salon-status/:salon_id', async (req, res) => {
+    try {
+        const { salon_id } = req.params;
+        
+        // Get salon info
+        const salon = await dbGet('SELECT id, salon_name FROM salons WHERE id = $1', [salon_id]);
+        if (!salon) {
+            return res.status(404).json({ error: 'Salon not found' });
+        }
+        
+        // Get schedule
+        const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salon_id]);
+        
+        // Get current time info
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const currentTime = today.getHours() * 60 + today.getMinutes();
+        
+        // Calculate availability
+        const availabilityInfo = await checkSalonAvailabilityToday(salon_id);
+        
+        res.json({
+            salon,
+            schedule,
+            currentTime: {
+                dayOfWeek,
+                currentTimeMinutes: currentTime,
+                currentTimeFormatted: `${Math.floor(currentTime / 60)}:${(currentTime % 60).toString().padStart(2, '0')}`
+            },
+            availabilityInfo
+        });
+    } catch (error) {
+        console.error('Debug salon status error:', error);
         res.status(500).json({ error: error.message });
     }
 });
