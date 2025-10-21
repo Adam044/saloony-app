@@ -624,7 +624,7 @@
                 { title: 'الصالونات النشطة', count: stats.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
                 { title: 'صالونات الرجال', count: stats.menSalons || 0, icon: 'fa-mars', color: 'text-indigo-500' },
                 { title: 'صالونات النساء', count: stats.womenSalons || 0, icon: 'fa-venus', color: 'text-pink-500' },
-                { title: 'المدفوعات المكتملة', count: '---', icon: 'fa-receipt', color: 'text-orange-500' },
+                { title: 'إجمالي الإيرادات', count: `${stats.totalRevenue || 0} ₪`, icon: 'fa-money-bill-wave', color: 'text-green-600' },
             ];
             
             grid.innerHTML = statCards.map(card => `

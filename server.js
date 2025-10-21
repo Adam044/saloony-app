@@ -3513,6 +3513,14 @@ app.get('/api/admin/stats', async (req, res) => {
         const totalAppointmentsResult = await db.query('SELECT COUNT(*) as count FROM appointments');
         const totalAppointments = totalAppointmentsResult[0];
         
+        // Total revenue from completed 200 ILS invoices
+        const totalRevenueResult = await db.query(`
+            SELECT COALESCE(SUM(amount), 0) as total_revenue 
+            FROM payments 
+            WHERE payment_type = $1 AND payment_status = $2
+        `, ['offer_200ils', 'مكتملة']);
+        const totalRevenue = totalRevenueResult[0];
+        
         res.json({
             totalUsers: parseInt(totalUsers.count) || 0,
             totalSalons: parseInt(totalSalons.count) || 0,
@@ -3521,7 +3529,8 @@ app.get('/api/admin/stats', async (req, res) => {
             activeSalons: parseInt(activeSalons.count) || 0,
             pendingSalons: parseInt(pendingSalons.count) || 0,
             rejectedSalons: parseInt(rejectedSalons.count) || 0,
-            totalAppointments: parseInt(totalAppointments.count) || 0
+            totalAppointments: parseInt(totalAppointments.count) || 0,
+            totalRevenue: parseInt(totalRevenue.total_revenue) || 0
         });
     } catch (error) {
         console.error('Error fetching admin stats:', error);
