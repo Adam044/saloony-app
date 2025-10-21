@@ -176,14 +176,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Continue Button -->
-            <div class="px-6 pb-6">
-                <button id="continueToSafari" class="w-full bg-[#06C167] text-white py-4 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center gap-3 text-lg">
-                    <i class="fa-solid fa-compass"></i>
-                    متابعة في Safari
-                </button>
-            </div>
         </div>
     </div>
 </div>
@@ -371,10 +363,27 @@
             openInSafariBtn.textContent = 'جاري التوجيه...';
             openInSafariBtn.disabled = true;
             
-            // Simple redirect to the target URL
-            setTimeout(() => {
-                window.location.href = 'https://www.saloony.net';
-            }, 100);
+            // Try multiple methods to redirect to Safari
+            const targetUrl = 'https://www.saloony.net';
+            
+            // Method 1: Try Safari URL scheme
+            try {
+                window.location.href = `x-web-search://?${encodeURIComponent(targetUrl)}`;
+                
+                // Fallback after delay
+                setTimeout(() => {
+                    // Method 2: Try opening in new tab/window
+                    const newWindow = window.open(targetUrl, '_blank');
+                    if (!newWindow) {
+                        // Method 3: Direct redirect
+                        window.location.href = targetUrl;
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                // Direct fallback
+                window.location.href = targetUrl;
+            }
         });
     }
     installBtn.addEventListener('click', async () => {
@@ -433,30 +442,6 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !iosModal.classList.contains('hidden')) {
                 iosModal.classList.add('hidden');
-            }
-        });
-    }
-
-    // Continue to Safari button functionality
-    const continueToSafari = document.getElementById('continueToSafari');
-    if (continueToSafari) {
-        continueToSafari.addEventListener('click', () => {
-            // Get current URL
-            const currentUrl = window.location.href;
-            
-            // Create Safari URL scheme
-            const safariUrl = `x-web-search://?${encodeURIComponent(currentUrl)}`;
-            
-            // Try to open in Safari, fallback to regular redirect
-            try {
-                window.location.href = safariUrl;
-                // Fallback after a short delay
-                setTimeout(() => {
-                    window.open(currentUrl, '_blank');
-                }, 1000);
-            } catch (error) {
-                // Direct fallback
-                window.open(currentUrl, '_blank');
             }
         });
     }
