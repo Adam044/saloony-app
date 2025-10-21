@@ -104,13 +104,17 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background: rgba(0, 0, 0, 0.7);
-            z-index: 50;
+            z-index: 9999;
             display: none;
             justify-content: center;
             align-items: flex-end; /* Start from bottom for mobile UX */
+            /* Ensure modal covers everything including status bar */
+            inset: 0;
+            /* Prevent scrolling on background */
+            overflow: hidden;
         }
         .modal-content {
             background-color: #fff;
@@ -122,10 +126,21 @@
             overflow-y: auto;
             transform: translateY(100%);
             transition: transform 0.4s ease-out;
+            /* Ensure content doesn't go behind status bar */
+            max-height: calc(100vh - env(safe-area-inset-top));
+            margin-top: env(safe-area-inset-top);
         }
         .modal-open .modal-overlay { display: flex; }
         .modal-open .modal-content { transform: translateY(0); }
         .booking-step { min-height: 100%; }
+        
+        /* Prevent body scroll when modal is open */
+        .modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
 
         /* Custom selection card styling (UPDATED FOR MULTI-SELECT) */
         .selection-card {
@@ -663,7 +678,7 @@
                     </div>
                 </div>
 
-                <div class="pt-4 sticky bottom-0 bg-white shadow-top">
+                <div class="pt-4 pb-6 sticky bottom-0 bg-white shadow-top">
                     <button id="next-step-1-btn" class="btn-secondary w-full py-3 rounded-xl font-bold">
                         احجز الآن <i class="fas fa-arrow-left mr-2"></i>
                     </button>
