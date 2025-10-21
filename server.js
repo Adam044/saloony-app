@@ -782,39 +782,8 @@ async function sendSalonEvent(salonId, eventType, payload) {
         }
     }
     
-    // Always send push notification for background support
-    try {
-        let pushPayload = {
-            title: 'Saloony',
-            body: 'لديك إشعار جديد',
-            url: '/home_salon.html'
-        };
-        
-        // Customize notification based on event type
-        switch (eventType) {
-            case 'appointment_booked':
-                pushPayload.title = 'حجز جديد';
-                pushPayload.body = 'لديك حجز جديد في الصالون';
-                break;
-            case 'appointment_cancelled':
-                pushPayload.title = 'إلغاء حجز';
-                pushPayload.body = payload.late ? 'تم إلغاء حجز متأخر' : 'تم إلغاء حجز';
-                break;
-            case 'payment_completed':
-                pushPayload.title = 'دفع مكتمل';
-                pushPayload.body = 'تم استلام دفعة جديدة';
-                break;
-            default:
-                pushPayload.body = 'لديك إشعار جديد في الصالون';
-        }
-        
-        await sendPushToTargets({ 
-            salon_id: Number(salonId), 
-            payload: pushPayload 
-        });
-    } catch (pushError) {
-        console.warn('Failed to send push notification:', pushError.message);
-    }
+    // Note: Push notifications are handled by individual endpoints for better customization
+    // This prevents duplicate notifications since each endpoint calls sendPushToTargets separately
 }
 
 // SSE stream for a salon dashboard
@@ -1384,7 +1353,26 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
             throw new Error('فشل في رفع الصور إلى التخزين السحابي');
         }
 
-        // Store image metadata in salon_images table
+        // Delete existing images for this salon (both from database and Supabase)
+        const existingImages = await db.query('SELECT image_path FROM salon_images WHERE salon_id = ?', [salonId]);
+        
+        // Delete from Supabase Storage
+        if (existingImages && existingImages.length > 0) {
+            for (const img of existingImages) {
+                const pathParts = img.image_path.split('/');
+                const fileName = pathParts[pathParts.length - 1];
+                if (fileName) {
+                    await supabase.storage
+                        .from('salon-images')
+                        .remove([`salon-images/${fileName}`]);
+                }
+            }
+        }
+        
+        // Delete from database
+        await dbRun('DELETE FROM salon_images WHERE salon_id = ?', [salonId]);
+        
+        // Store new image metadata in salon_images table
         const imageRecords = [];
         for (const result of uploadResults) {
             const inserted = await dbGet(
@@ -1393,8 +1381,8 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
                 [
                     salonId, 
                     result.url, 
-                    result.size === 'thumb' ? 150 : (result.size === 'medium' ? 512 : 1024),
-                    result.size === 'thumb' ? 150 : (result.size === 'medium' ? 512 : 1024),
+                    result.size === 'medium' ? 512 : 512,
+                    result.size === 'medium' ? 512 : 512,
                     result.bytes, 
                     result.format === 'webp' ? 'image/webp' : 'image/jpeg',
                     result.size === 'medium' && result.format === 'webp' // Primary image is medium WebP
@@ -2261,28 +2249,34 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
                 strikes: newStrikes
              });
 
-             // Push notify salon about late cancellation
-             await sendPushToTargets({
-                salon_id: row.salon_id,
-                payload: {
-                    title: 'إلغاء موعد متأخر',
-                    body: (() => {
-                        try {
-                            const d = new Date(row.start_time);
-                            const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-                            let h = d.getHours();
-                            const isAM = h < 12;
-                            h = h % 12 || 12;
-                            const suffix = isAM ? 'صباحًا' : 'مساءً';
-                            const time = `${h} ${suffix}`;
-                            return `تم إلغاء موعد قريب بتاريخ ${date} على الساعة ${time}`;
-                        } catch {
-                            return `تم إلغاء موعد قريب بتاريخ ${new Date(row.start_time).toLocaleDateString('ar-EG')} على الساعة ${new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-                        }
-                    })(),
-                    url: '/home_salon.html#appointments'
-                }
-             });
+             // Push notify salon about late cancellation (only for today's appointments)
+             const appointmentDate = new Date(row.start_time);
+             const today = new Date();
+             
+             // Only send notification if appointment was for today (same day)
+             if (appointmentDate.toDateString() === today.toDateString()) {
+                 await sendPushToTargets({
+                    salon_id: row.salon_id,
+                    payload: {
+                        title: 'إلغاء موعد متأخر',
+                        body: (() => {
+                            try {
+                                const d = new Date(row.start_time);
+                                const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+                                let h = d.getHours();
+                                const isAM = h < 12;
+                                h = h % 12 || 12;
+                                const suffix = isAM ? 'صباحًا' : 'مساءً';
+                                const time = `${h} ${suffix}`;
+                                return `تم إلغاء موعد قريب بتاريخ ${date} على الساعة ${time}`;
+                            } catch {
+                                return `تم إلغاء موعد قريب بتاريخ ${new Date(row.start_time).toLocaleDateString('ar-EG')} على الساعة ${new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+                            }
+                        })(),
+                        url: '/home_salon.html#appointments'
+                    }
+                 });
+             }
 
              return res.status(200).json({ 
                 success: true, 
@@ -2300,31 +2294,40 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
             start_time: row.start_time,
             late: false
         });
-        // Push notify salon about normal cancellation (clean Arabic text, no user name)
-        const fmtDate = (() => {
-            try {
-                const d = new Date(row.start_time);
-                return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-            } catch { return new Date(row.start_time).toLocaleDateString('ar-EG'); }
-        })();
-        const fmtTime = (() => {
-            try {
-                const d = new Date(row.start_time);
-                let h = d.getHours();
-                const isAM = h < 12;
-                h = h % 12 || 12;
-                const suffix = isAM ? 'صباحًا' : 'مساءً';
-                return `${h} ${suffix}`;
-            } catch { return new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
-        })();
-        await sendPushToTargets({
-            salon_id: row.salon_id,
-            payload: {
-                title: 'تم إلغاء موعد',
-                body: `تم إلغاء موعد بتاريخ ${fmtDate} على الساعة ${fmtTime}`,
-                url: '/home_salon.html#appointments'
-            }
-        });
+        // Only send push notification for cancellations happening today (same day)
+        const appointmentDate = new Date(row.start_time);
+        const today = new Date();
+        
+        // Check if appointment is today
+        const isRelevantCancellation = appointmentDate.toDateString() === today.toDateString();
+        
+        if (isRelevantCancellation) {
+            // Push notify salon about normal cancellation (clean Arabic text, no user name)
+            const fmtDate = (() => {
+                try {
+                    const d = new Date(row.start_time);
+                    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+                } catch { return new Date(row.start_time).toLocaleDateString('ar-EG'); }
+            })();
+            const fmtTime = (() => {
+                try {
+                    const d = new Date(row.start_time);
+                    let h = d.getHours();
+                    const isAM = h < 12;
+                    h = h % 12 || 12;
+                    const suffix = isAM ? 'صباحًا' : 'مساءً';
+                    return `${h} ${suffix}`;
+                } catch { return new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+            })();
+            await sendPushToTargets({
+                salon_id: row.salon_id,
+                payload: {
+                    title: 'تم إلغاء موعد',
+                    body: `تم إلغاء موعد بتاريخ ${fmtDate} على الساعة ${fmtTime}`,
+                    url: '/home_salon.html#appointments'
+                }
+            });
+        }
         res.json({ success: true, message: 'تم إلغاء الموعد بنجاح.' });
     } catch (err) {
         console.error("Cancellation error:", err.message);
@@ -2917,15 +2920,24 @@ app.post('/api/appointment/book', async (req, res) => {
             } catch { return new Date(d).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
         };
 
-        // Push notify salon of new booking (clean Arabic text, no user name)
-        await sendPushToTargets({
-            salon_id,
-            payload: {
-                title: 'حجز جديد',
-                body: `لديك حجز جديد بتاريخ ${formatArabicDate(start_time)} على الساعة ${formatArabicTimeClean(start_time)}`,
-                url: '/home_salon.html#appointments'
-            }
-        });
+        // Only send push notification for bookings happening today
+        const appointmentDate = new Date(start_time);
+        const today = new Date();
+        
+        // Check if appointment is today
+        const isRelevantBooking = appointmentDate.toDateString() === today.toDateString();
+        
+        if (isRelevantBooking) {
+            // Push notify salon of new booking (clean Arabic text, no user name)
+            await sendPushToTargets({
+                salon_id,
+                payload: {
+                    title: 'حجز جديد',
+                    body: `لديك حجز جديد بتاريخ ${formatArabicDate(start_time)} على الساعة ${formatArabicTimeClean(start_time)}`,
+                    url: '/home_salon.html#appointments'
+                }
+            });
+        }
 
         // Do NOT push notify user on booking; user sees confirmation modal in-app
 
