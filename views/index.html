@@ -304,7 +304,7 @@
             <h3 class="font-bold text-lg">تابع في Safari لإكمال التثبيت</h3>
         </div>
         <p class="text-sm text-gray-600 mb-4">
-            يبدو أنك تستخدم متصفحًا غير Safari على iOS. يرجى فتح هذا الرابط في Safari ثم اتّبع خطوات "التثبيت" من زر المشاركة.
+            يبدو أنك تستخدم متصفحًا غير Safari على iOS. اضغط الزر أدناه للانتقال تلقائيًا إلى Safari وإكمال عملية التثبيت.
         </p>
         <div class="flex">
             <button id="openInSafariBtn" class="bg-[#06C167] text-white px-4 py-2 rounded-md font-bold w-full">متابعة في Safari</button>
@@ -363,42 +363,36 @@
         iosBrowserModal.classList.remove('hidden');
     }
     if (openInSafariBtn) {
-        openInSafariBtn.addEventListener('click', async () => {
-            // iOS does not allow forcing Safari from another browser.
-            // To avoid confusing page refreshes, do not navigate/open new tabs.
-            // Instead, copy the current link and show clear instructions.
-            const url = location.href;
-            let copied = false;
+        openInSafariBtn.addEventListener('click', () => {
+            // Automatically redirect to Safari using URL scheme
+            const currentUrl = location.href;
+            const safariUrl = `x-web-search://?${encodeURIComponent(currentUrl)}`;
+            
+            // Update button text to show it's redirecting
+            openInSafariBtn.textContent = 'جاري التوجيه...';
+            openInSafariBtn.disabled = true;
+            
+            // Try to open in Safari using URL scheme
             try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(url);
-                    copied = true;
-                } else {
-                    const temp = document.createElement('textarea');
-                    temp.value = url;
-                    temp.setAttribute('readonly', '');
-                    temp.style.position = 'absolute';
-                    temp.style.left = '-9999px';
-                    document.body.appendChild(temp);
-                    temp.select();
-                    try { document.execCommand('copy'); copied = true; } catch (e) {}
-                    document.body.removeChild(temp);
-                }
-            } catch (e) {}
-
-            const guidance = copied
-                ? 'تم نسخ الرابط. افتح تطبيق Safari ثم الصقه في شريط العنوان لمتابعة التثبيت.'
-                : `لا يمكن النسخ تلقائيًا. افتح Safari يدويًا ثم انتقل إلى هذا الرابط:\n${url}`;
-
-            // Keep the modal visible so the user can follow instructions without navigation.
-            // Optionally update the modal text for immediate feedback.
-            try {
-                const infoText = iosBrowserModal.querySelector('p');
-                if (infoText) infoText.textContent = guidance;
-                openInSafariBtn.textContent = copied ? 'تم النسخ ✓' : 'انسخ الرابط يدويًا';
-            } catch (e) {}
-
-            alert(guidance);
+                // First attempt: Use x-web-search scheme
+                window.location.href = safariUrl;
+                
+                // Fallback after a short delay if the scheme doesn't work
+                setTimeout(() => {
+                    // Second attempt: Use googlechrome scheme as fallback to Safari
+                    const fallbackUrl = `googlechrome://navigate?url=${encodeURIComponent(currentUrl)}`;
+                    try {
+                        window.location.href = fallbackUrl;
+                    } catch (e) {
+                        // Final fallback: Direct navigation
+                        window.location.href = currentUrl;
+                    }
+                }, 1000);
+                
+            } catch (e) {
+                // If URL scheme fails, fallback to direct navigation
+                window.location.href = currentUrl;
+            }
         });
     }
     installBtn.addEventListener('click', async () => {
