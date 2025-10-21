@@ -3113,7 +3113,7 @@ function calculateTimeSlots(dateString) {
     
     if (isToday) {
         const nowMinutes = timeToMinutes(now.toTimeString().substring(0, 5));
-        let minStartMinutes = Math.ceil((nowMinutes + 30) / 30) * 30; 
+        let minStartMinutes = Math.ceil(nowMinutes / 30) * 30; 
         
         if (minStartMinutes > effectiveOpenMinutes) {
             effectiveOpenMinutes = minStartMinutes;

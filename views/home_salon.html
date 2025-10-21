@@ -1489,13 +1489,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     // --- Date/Time Utility ---
+    
+    // Function to get Arabic time period based on hour
+    const getTimePeriodArabic = (hour24) => {
+        if (hour24 >= 5 && hour24 < 12) return 'صباحًا';
+        if (hour24 >= 12 && hour24 < 16) return 'ظهرًا';
+        if (hour24 >= 16 && hour24 < 19) return 'بعد الظهر';
+        return 'مساءً';
+    };
+    
+    // Enhanced time formatting with Arabic periods
+    const formatTimeWithPeriod = (isoString) => {
+        const date = new Date(isoString);
+        const hour24 = date.getHours();
+        const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+        const minutes = date.getMinutes();
+        const period = getTimePeriodArabic(hour24);
+        
+        if (minutes === 0) {
+            return `${hour12} ${period}`;
+        } else {
+            return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+        }
+    };
+    
     const formatAppointmentTime = (isoString) => {
         const date = new Date(isoString);
         // Date part: Use English date format for clarity in appointments list
         const datePart = date.toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        // Time part: Convert to 12-hour format with Arab AM/PM
-        const timePart = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-            .replace('AM', 'ص').replace('PM', 'م');
+        // Time part: Use new Arabic period formatting
+        const timePart = formatTimeWithPeriod(isoString);
             
         return `${datePart} - ${timePart}`;
     };
