@@ -14,6 +14,7 @@
                 window.location.replace('/index.html');
                 return;
             }
+
             const token = localStorage.getItem('salonni_token');
             const userRaw = localStorage.getItem('salonni_user');
             const user = userRaw ? JSON.parse(userRaw) : null;
@@ -612,6 +613,14 @@
                         <p id="detail-address" class="text-md font-medium flex items-center">
                             <i class="fas fa-location-dot text-secondary ml-1"></i> <span class="address-text">...</span>
                         </p>
+                    </div>
+                    
+                    <!-- Call Button -->
+                    <div id="call-button-container" class="mt-4">
+                        <button id="call-salon-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold transition duration-200 flex items-center justify-center gap-2 shadow-lg" style="display: none;">
+                            <i class="fas fa-phone"></i>
+                            <span id="call-button-text">اتصل بالصالون</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -1345,6 +1354,40 @@ function formatRating(rating, count) {
             <span class="text-xs text-gray-500 mr-2">(${count})</span>
         </span>
     `;
+}
+
+// Setup call button with phone number priority (salon_phone first, then owner_phone)
+function setupCallButton(salonPhone, ownerPhone) {
+    const callButton = document.getElementById('call-salon-btn');
+    const callButtonText = document.getElementById('call-button-text');
+    
+    // Determine which phone number to use (priority: salon_phone > owner_phone)
+    let phoneNumber = null;
+    
+    if (salonPhone && salonPhone.trim()) {
+        phoneNumber = salonPhone.trim();
+    } else if (ownerPhone && ownerPhone.trim()) {
+        phoneNumber = ownerPhone.trim();
+    }
+    
+    if (phoneNumber) {
+        // Show the call button and set up the click handler
+        callButton.style.display = 'flex';
+        callButtonText.textContent = 'اتصل بالصالون';
+        
+        // Remove any existing click handlers
+        const newCallButton = callButton.cloneNode(true);
+        callButton.parentNode.replaceChild(newCallButton, callButton);
+        
+        // Add new click handler
+        newCallButton.addEventListener('click', () => {
+            // Use tel: protocol to initiate phone call
+            window.location.href = `tel:${phoneNumber}`;
+        });
+    } else {
+        // Hide the call button if no phone number is available
+        callButton.style.display = 'none';
+    }
 }
 
 // ---------------------------------------------
@@ -2811,9 +2854,14 @@ async function loadSalonDetailView(salon) {
         if (salonDetailsResponse.ok) {
             const salonDetailsData = await salonDetailsResponse.json();
             if (salonDetailsData.success) {
-                // Update salon object with correct rating data
+                // Update salon object with complete data including phone numbers
                 salon.avg_rating = salonDetailsData.salon.avg_rating;
                 salon.review_count = salonDetailsData.salon.review_count;
+                salon.salon_phone = salonDetailsData.salon.salon_phone;
+                salon.owner_phone = salonDetailsData.salon.owner_phone;
+                
+                // Setup call button with phone number priority
+                setupCallButton(salon.salon_phone, salon.owner_phone);
             }
         }
     } catch (error) {

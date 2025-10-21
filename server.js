@@ -100,7 +100,7 @@ async function initializeDb() {
         await db.run(`CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE,
             phone TEXT,
             gender TEXT,
             city TEXT,
@@ -474,7 +474,7 @@ async function alignSchema() {
                     await db.run(`CREATE TABLE IF NOT EXISTS users (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
-                        email TEXT UNIQUE NOT NULL,
+                        email TEXT UNIQUE,
                         phone TEXT,
                         gender TEXT,
                         city TEXT,
@@ -964,7 +964,9 @@ app.post('/api/auth/register', async (req, res) => {
 
             let userResult;
             try {
-                userResult = await db.query(userSql, [user_name_to_use, email, user_phone_to_use, gender_to_use, city, hashedPassword, user_type]);
+                // Convert empty email to null for optional email field
+                const emailToInsert = email && email.trim() !== '' ? email : null;
+                userResult = await db.query(userSql, [user_name_to_use, emailToInsert, user_phone_to_use, gender_to_use, city, hashedPassword, user_type]);
             } catch (err) {
                 if (err.code === '23505') { // PostgreSQL unique constraint violation
                     return res.status(400).json({ success: false, message: 'البريد الإلكتروني مسجل بالفعل.', message_en: 'Email already registered.' });
@@ -996,45 +998,50 @@ app.post('/api/auth/register', async (req, res) => {
                     
                     const salonId = salonResult[0].id;
 
-                    // If image_url is base64, save to Supabase and update DB
+                    // If image_url is base64, save to Supabase Storage and update DB
                     try {
                         if (image_url && typeof image_url === 'string' && image_url.startsWith('data:image')) {
                             const match = image_url.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-                            const mime = match && match[1] ? match[1] : 'image/jpeg';
                             const base64Data = match ? match[2] : (image_url.split(',')[1] || '');
                             if (base64Data) {
                                 const bufferIn = Buffer.from(base64Data, 'base64');
-                                const ext = mime.includes('png') ? 'png' : 'jpg';
-                                const filenameBase = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
-                                const filename = `${filenameBase}.${ext}`;
-
-                                // Optimize image using sharp
-                                const pipeline = sharp(bufferIn);
-                                const meta = await pipeline.metadata();
-                                const targetWidth = Math.min(1024, meta.width || 1024);
-                                const { data, info } = await pipeline
-                                    .resize({ width: targetWidth, withoutEnlargement: true })
-                                    [ext === 'png' ? 'png' : 'jpeg'](ext === 'png' ? { compressionLevel: 9 } : { quality: 75 })
-                                    .toBuffer({ resolveWithObject: true });
-
-                                // TODO: Upload to Supabase storage instead of local uploads folder
-                                // For now, store as base64 in salon_images table
-                                const imagePath = `data:${mime};base64,${data.toString('base64')}`;
-
-                                // Store in salon_images table
-                                await dbGet(
-                                    `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
-                                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-                                    [salonId, imagePath, info.width || targetWidth, info.height || null, data.length, mime, true]
-                                );
-
-                                // Update salons.image_url to stored path
-                                await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [imagePath, salonId]);
+                                
+                                // Use the same optimized upload function as /api/upload
+                                const uploadResults = await uploadImageToSupabase(bufferIn, salonId, 'salon_signup_image.jpg');
+                                
+                                if (uploadResults && uploadResults.length > 0) {
+                                    // Store optimized image metadata in salon_images table
+                                    for (const result of uploadResults) {
+                                        await dbGet(
+                                            `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
+                                             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+                                            [
+                                                salonId, 
+                                                result.url, 
+                                                result.size === 'medium' ? 512 : 512,
+                                                result.size === 'medium' ? 512 : 512,
+                                                result.bytes, 
+                                                result.format === 'webp' ? 'image/webp' : 'image/jpeg',
+                                                result.size === 'medium' && result.format === 'webp' // Primary image is medium WebP
+                                            ]
+                                        );
+                                    }
+                                    
+                                    // Update salons.image_url with the primary image URL
+                                    const primaryImage = uploadResults.find(r => r.size === 'medium' && r.format === 'webp') || 
+                                                       uploadResults.find(r => r.size === 'medium' && r.format === 'jpeg') ||
+                                                       uploadResults[0];
+                                    
+                                    await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [primaryImage.url, salonId]);
+                                    console.log(`✅ Salon ${salonId} image uploaded to Supabase Storage successfully`);
+                                } else {
+                                    console.warn(`⚠️ Failed to upload image for salon ${salonId}, skipping image storage`);
+                                }
                             }
                         }
-                    } catch (imgErr) {
-                        console.warn('Signup image processing warning:', imgErr.message);
-                        // Continue without failing signup
+                    } catch (imageErr) {
+                        console.error('Image processing error during salon signup:', imageErr);
+                        // Continue with salon creation even if image upload fails
                     }
                     
                     console.log(`New Salon registered with ID: ${salonId}, linked to User ID: ${userId}`);
@@ -1354,7 +1361,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
         }
 
         // Delete existing images for this salon (both from database and Supabase)
-        const existingImages = await db.query('SELECT image_path FROM salon_images WHERE salon_id = ?', [salonId]);
+        const existingImages = await dbAll('SELECT image_path FROM salon_images WHERE salon_id = $1', [salonId]);
         
         // Delete from Supabase Storage
         if (existingImages && existingImages.length > 0) {
@@ -1370,7 +1377,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
         }
         
         // Delete from database
-        await dbRun('DELETE FROM salon_images WHERE salon_id = ?', [salonId]);
+        await dbRun('DELETE FROM salon_images WHERE salon_id = $1', [salonId]);
         
         // Store new image metadata in salon_images table
         const imageRecords = [];
@@ -1432,14 +1439,14 @@ app.get('/api/salon/image/:salon_id', async (req, res) => {
     try {
         // Get the optimized image from salon_images table
         const imageQuery = `
-            SELECT public_url, supabase_path, format, size_type, width, height
+            SELECT image_path, width, height
             FROM salon_images 
-            WHERE salon_id = ? AND size_type = ? AND format = ? AND is_primary = 1
+            WHERE salon_id = $1 AND is_primary = true
             ORDER BY created_at DESC 
             LIMIT 1
         `;
         
-        const images = await db.query(imageQuery, [salonId, size, format]);
+        const images = await dbAll(imageQuery, [salonId]);
         
         if (images && images.length > 0) {
             const image = images[0];
@@ -1447,28 +1454,13 @@ app.get('/api/salon/image/:salon_id', async (req, res) => {
             // Set cache headers for 1 year
             res.set({
                 'Cache-Control': 'public, max-age=31536000, immutable',
-                'Content-Type': format === 'webp' ? 'image/webp' : 'image/jpeg',
+                'Content-Type': 'image/webp',
                 'X-Image-Width': image.width,
                 'X-Image-Height': image.height
             });
             
             // Redirect to Supabase public URL for CDN delivery
-            return res.redirect(301, image.public_url);
-        }
-        
-        // Fallback: try JPEG if WebP not available
-        if (format === 'webp') {
-            const fallbackImages = await db.query(imageQuery, [salonId, size, 'jpeg']);
-            if (fallbackImages && fallbackImages.length > 0) {
-                const image = fallbackImages[0];
-                res.set({
-                    'Cache-Control': 'public, max-age=31536000, immutable',
-                    'Content-Type': 'image/jpeg',
-                    'X-Image-Width': image.width,
-                    'X-Image-Height': image.height
-                });
-                return res.redirect(301, image.public_url);
-            }
+            return res.redirect(301, image.image_path);
         }
         
         // No optimized image found, return placeholder
@@ -1529,12 +1521,14 @@ app.get('/api/salon/details/:salon_id', async (req, res) => {
             s.address, 
             s.city, 
             s.image_url,
+            s.salon_phone,
+            s.owner_phone,
             COALESCE(AVG(r.rating), 0) AS avg_rating,
             COUNT(r.id) AS review_count
         FROM salons s
         LEFT JOIN reviews r ON s.id = r.salon_id
         WHERE s.id = $1
-        GROUP BY s.id
+        GROUP BY s.id, s.salon_phone, s.owner_phone
     `;
     try {
         const row = await dbGet(sql, [salonId]);
