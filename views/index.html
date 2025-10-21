@@ -363,39 +363,18 @@
         iosBrowserModal.classList.remove('hidden');
     }
     if (openInSafariBtn) {
-        openInSafariBtn.addEventListener('click', () => {
-            // Use simple domain URL for Safari redirect
-            const targetUrl = 'https://www.saloony.net';
+        openInSafariBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Safari button clicked!'); // Debug log
             
             // Update button text to show it's redirecting
             openInSafariBtn.textContent = 'جاري التوجيه...';
             openInSafariBtn.disabled = true;
             
-            // Try to open in Safari using proper URL scheme
-            try {
-                // Use the correct Safari URL scheme to open in address bar
-                const safariUrl = `https://www.saloony.net`;
-                
-                // Try multiple methods to open in Safari
-                // Method 1: Direct window.open with Safari-specific target
-                const safariWindow = window.open(safariUrl, '_blank');
-                
-                // Method 2: If window.open fails, try location redirect
-                if (!safariWindow) {
-                    window.location.href = safariUrl;
-                }
-                
-                // Method 3: Fallback with timeout
-                setTimeout(() => {
-                    if (!safariWindow || safariWindow.closed) {
-                        window.location.href = safariUrl;
-                    }
-                }, 500);
-                
-            } catch (e) {
-                // Final fallback: Direct navigation to simple URL
+            // Simple redirect to the target URL
+            setTimeout(() => {
                 window.location.href = 'https://www.saloony.net';
-            }
+            }, 100);
         });
     }
     installBtn.addEventListener('click', async () => {
