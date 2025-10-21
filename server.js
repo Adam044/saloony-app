@@ -765,18 +765,55 @@ function removeSalonClient(salonId, res) {
     }
 }
 
-function sendSalonEvent(salonId, eventType, payload) {
+async function sendSalonEvent(salonId, eventType, payload) {
     const key = String(salonId);
     const clients = salonClients.get(key);
-    if (!clients || clients.size === 0) return;
     const data = JSON.stringify({ type: eventType, salonId: Number(salonId), ...payload });
-    for (const res of clients) {
-        try {
-            res.write(`data: ${data}\n\n`);
-        } catch (e) {
-            // Best-effort: drop on error
-            removeSalonClient(salonId, res);
+    
+    // Send SSE to connected clients
+    if (clients && clients.size > 0) {
+        for (const res of clients) {
+            try {
+                res.write(`data: ${data}\n\n`);
+            } catch (e) {
+                // Best-effort: drop on error
+                removeSalonClient(salonId, res);
+            }
         }
+    }
+    
+    // Always send push notification for background support
+    try {
+        let pushPayload = {
+            title: 'Saloony',
+            body: 'لديك إشعار جديد',
+            url: '/home_salon.html'
+        };
+        
+        // Customize notification based on event type
+        switch (eventType) {
+            case 'appointment_booked':
+                pushPayload.title = 'حجز جديد';
+                pushPayload.body = 'لديك حجز جديد في الصالون';
+                break;
+            case 'appointment_cancelled':
+                pushPayload.title = 'إلغاء حجز';
+                pushPayload.body = payload.late ? 'تم إلغاء حجز متأخر' : 'تم إلغاء حجز';
+                break;
+            case 'payment_completed':
+                pushPayload.title = 'دفع مكتمل';
+                pushPayload.body = 'تم استلام دفعة جديدة';
+                break;
+            default:
+                pushPayload.body = 'لديك إشعار جديد في الصالون';
+        }
+        
+        await sendPushToTargets({ 
+            salon_id: Number(salonId), 
+            payload: pushPayload 
+        });
+    } catch (pushError) {
+        console.warn('Failed to send push notification:', pushError.message);
     }
 }
 
@@ -2025,6 +2062,11 @@ app.get('/api/salon/:salon_id/appointments/:date', async (req, res) => {
          return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
     }
     
+    // FIX: Add validation for date parameter
+    if (!date || date === 'null' || date === 'undefined') {
+        return res.status(400).json({ success: false, message: 'Date is required and must be valid.' });
+    }
+    
     // FIX: Using DATE() extraction function suitable for PostgreSQL and use $2 placeholder
     const sql = `
         SELECT id, start_time, end_time, staff_id, status
@@ -2226,7 +2268,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
 
              // Emit SSE notification to salon dashboard
-             sendSalonEvent(row.salon_id, 'appointment_cancelled', {
+             await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
                 appointmentId,
                 user_id,
                 start_time: row.start_time,
@@ -2278,7 +2320,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
         // Proceed with cancellation without strike - FIX: Use $1 placeholder, ensure string literal is safe
         await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
         // Emit SSE notification to salon dashboard
-        sendSalonEvent(row.salon_id, 'appointment_cancelled', {
+        await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
             appointmentId,
             user_id,
             start_time: row.start_time,
@@ -2879,7 +2921,7 @@ app.post('/api/appointment/book', async (req, res) => {
         }
         
         // Emit SSE notification to salon dashboard
-        sendSalonEvent(salon_id, 'appointment_booked', {
+        await sendSalonEvent(salon_id, 'appointment_booked', {
             appointmentId,
             user_id,
             staff_id: staffIdForDB,

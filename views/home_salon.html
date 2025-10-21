@@ -1638,12 +1638,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         empty.classList.add('hidden');
         
         list.innerHTML = payments.map((payment, index) => {
-            const statusColor = payment.payment_status === 'completed' ? 'text-green-600' : 
-                               payment.payment_status === 'pending' ? 'text-yellow-600' : 
+            const statusColor = (payment.payment_status === 'completed' || payment.payment_status === 'مكتملة') ? 'text-green-600' : 
+                               (payment.payment_status === 'pending' || payment.payment_status === 'معلق') ? 'text-yellow-600' : 
                                'text-red-600';
             
-            const statusIcon = payment.payment_status === 'completed' ? 'fas fa-check-circle' : 
-                              payment.payment_status === 'pending' ? 'fas fa-clock' : 
+            const statusIcon = (payment.payment_status === 'completed' || payment.payment_status === 'مكتملة') ? 'fas fa-check-circle' : 
+                              (payment.payment_status === 'pending' || payment.payment_status === 'معلق') ? 'fas fa-clock' : 
                               'fas fa-times-circle';
             
             // Format date as dd/mm/yy

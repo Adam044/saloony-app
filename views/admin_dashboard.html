@@ -1033,17 +1033,17 @@
         const statusIcon = document.getElementById('payment-status-icon');
         const statusText = document.getElementById('payment-status-text');
         
-        if (payment.payment_status === 'completed') {
+        if (payment.payment_status === 'completed' || payment.payment_status === 'مكتملة') {
             statusSection.className = 'flex items-center justify-between p-3 rounded-lg bg-green-100';
             statusIcon.className = 'fas fa-check-circle text-green-600 ml-2';
             statusText.textContent = 'مكتملة';
             statusText.className = 'text-green-800 font-semibold';
-        } else if (payment.payment_status === 'pending') {
+        } else if (payment.payment_status === 'pending' || payment.payment_status === 'معلق') {
             statusSection.className = 'flex items-center justify-between p-3 rounded-lg bg-yellow-100';
             statusIcon.className = 'fas fa-clock text-yellow-600 ml-2';
             statusText.textContent = 'قيد الانتظار';
             statusText.className = 'text-yellow-800 font-semibold';
-        } else if (payment.payment_status === 'failed') {
+        } else {
             statusSection.className = 'flex items-center justify-between p-3 rounded-lg bg-red-100';
             statusIcon.className = 'fas fa-times-circle text-red-600 ml-2';
             statusText.textContent = 'فاشلة';
