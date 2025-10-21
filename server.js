@@ -1416,8 +1416,8 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
         const imageRecords = [];
         for (const result of uploadResults) {
             const inserted = await dbGet(
-                `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary, image_size, image_format)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+                `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
                 [
                     salonId, 
                     result.url, 
@@ -1425,9 +1425,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
                     result.size === 'thumb' ? 150 : (result.size === 'medium' ? 512 : 1024),
                     result.bytes, 
                     result.format === 'webp' ? 'image/webp' : 'image/jpeg',
-                    result.size === 'medium' && result.format === 'webp', // Primary image is medium WebP
-                    result.size,
-                    result.format
+                    result.size === 'medium' && result.format === 'webp' // Primary image is medium WebP
                 ]
             );
             imageRecords.push({ ...result, id: inserted?.id });
