@@ -13,7 +13,14 @@ const webPush = require('web-push'); // Web Push notifications
 const multer = require('multer'); // File upload handling
 const fs = require('fs'); // File system for saving uploads
 const sharp = require('sharp'); // Image optimization
+const { createClient } = require('@supabase/supabase-js'); // Supabase client
 require('dotenv').config(); // Load environment variables (.env)
+
+// Initialize Supabase client for storage
+const supabase = createClient(
+    process.env.SUPABASE_URL || 'your-supabase-url',
+    process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key'
+);
 
 const app = express();
 let io; // Socket.IO instance (initialized after HTTP server creation)
@@ -386,6 +393,30 @@ async function alignSchema() {
                 console.log('AlignSchema: Adding reason to breaks (PostgreSQL)...');
                 await db.run(`ALTER TABLE breaks ADD COLUMN reason TEXT`);
             }
+
+            // Ensure salon_images has new optimization columns
+            const salonImagesColumns = await db.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                ['salon_images', 'public']
+            );
+            const salonImagesColSet = new Set(salonImagesColumns.map(c => c.column_name));
+            
+            if (!salonImagesColSet.has('format')) {
+                console.log('AlignSchema: Adding format to salon_images (PostgreSQL)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN format TEXT`);
+            }
+            if (!salonImagesColSet.has('size_type')) {
+                console.log('AlignSchema: Adding size_type to salon_images (PostgreSQL)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN size_type TEXT`);
+            }
+            if (!salonImagesColSet.has('supabase_path')) {
+                console.log('AlignSchema: Adding supabase_path to salon_images (PostgreSQL)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN supabase_path TEXT`);
+            }
+            if (!salonImagesColSet.has('public_url')) {
+                console.log('AlignSchema: Adding public_url to salon_images (PostgreSQL)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN public_url TEXT`);
+            }
         } else {
             // SQLite alignment (PRAGMA introspection)
             const pragmaRows = await db.query(`PRAGMA table_info(salons)`);
@@ -455,6 +486,27 @@ async function alignSchema() {
                 } else {
                     console.warn('AlignSchema: users table has data and gender NOT NULL; manual migration needed to relax constraint.');
                 }
+            }
+
+            // SQLite: Ensure salon_images has new optimization columns
+            const salonImagesPragma = await db.query(`PRAGMA table_info(salon_images)`);
+            const salonImagesColSet = new Set(salonImagesPragma.map(r => r.name));
+            
+            if (!salonImagesColSet.has('format')) {
+                console.log('AlignSchema: Adding format to salon_images (SQLite)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN format TEXT`);
+            }
+            if (!salonImagesColSet.has('size_type')) {
+                console.log('AlignSchema: Adding size_type to salon_images (SQLite)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN size_type TEXT`);
+            }
+            if (!salonImagesColSet.has('supabase_path')) {
+                console.log('AlignSchema: Adding supabase_path to salon_images (SQLite)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN supabase_path TEXT`);
+            }
+            if (!salonImagesColSet.has('public_url')) {
+                console.log('AlignSchema: Adding public_url to salon_images (SQLite)...');
+                await db.run(`ALTER TABLE salon_images ADD COLUMN public_url TEXT`);
             }
 
             // SQLite: Ensure schedule_modifications has closure_type and backfill
@@ -1214,7 +1266,97 @@ app.get('/api/cities', (req, res) => {
     res.json(CITIES);
 });
 
-// API for image upload (multipart/form-data)
+// Optimized image upload function with Supabase Storage and multiple formats
+async function uploadImageToSupabase(buffer, salonId, originalFilename) {
+    try {
+        const timestamp = Date.now();
+        const randomId = crypto.randomBytes(6).toString('hex');
+        const baseFilename = `salon_${salonId}_${timestamp}_${randomId}`;
+        
+        // Generate multiple optimized versions
+        const versions = [];
+        
+        // 1. WebP versions (best compression)
+        const webpThumb = await sharp(buffer)
+            .resize(150, 150, { fit: 'cover', position: 'center' })
+            .webp({ quality: 85 })
+            .toBuffer();
+        
+        const webpMedium = await sharp(buffer)
+            .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 85 })
+            .toBuffer();
+        
+        const webpFull = await sharp(buffer)
+            .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 85 })
+            .toBuffer();
+        
+        // 2. JPEG fallbacks (for compatibility)
+        const jpegThumb = await sharp(buffer)
+            .resize(150, 150, { fit: 'cover', position: 'center' })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+        
+        const jpegMedium = await sharp(buffer)
+            .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+        
+        const jpegFull = await sharp(buffer)
+            .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+        
+        // Upload all versions to Supabase Storage
+        const uploads = [
+            { buffer: webpThumb, path: `salon-images/${baseFilename}_thumb.webp`, size: 'thumb', format: 'webp' },
+            { buffer: webpMedium, path: `salon-images/${baseFilename}_medium.webp`, size: 'medium', format: 'webp' },
+            { buffer: webpFull, path: `salon-images/${baseFilename}_full.webp`, size: 'full', format: 'webp' },
+            { buffer: jpegThumb, path: `salon-images/${baseFilename}_thumb.jpg`, size: 'thumb', format: 'jpeg' },
+            { buffer: jpegMedium, path: `salon-images/${baseFilename}_medium.jpg`, size: 'medium', format: 'jpeg' },
+            { buffer: jpegFull, path: `salon-images/${baseFilename}_full.jpg`, size: 'full', format: 'jpeg' }
+        ];
+        
+        const uploadResults = [];
+        
+        for (const upload of uploads) {
+            const { data, error } = await supabase.storage
+                .from('salon-images')
+                .upload(upload.path, upload.buffer, {
+                    contentType: upload.format === 'webp' ? 'image/webp' : 'image/jpeg',
+                    cacheControl: '31536000', // 1 year cache
+                    upsert: false
+                });
+            
+            if (error) {
+                console.error(`Upload error for ${upload.path}:`, error);
+                continue;
+            }
+            
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('salon-images')
+                .getPublicUrl(upload.path);
+            
+            uploadResults.push({
+                size: upload.size,
+                format: upload.format,
+                url: urlData.publicUrl,
+                path: upload.path,
+                bytes: upload.buffer.length
+            });
+        }
+        
+        return uploadResults;
+        
+    } catch (error) {
+        console.error('Supabase upload error:', error);
+        throw error;
+    }
+}
+
+// API for image upload (multipart/form-data) - OPTIMIZED VERSION
 app.post('/api/upload', upload.single('image'), async (req, res) => {
     try {
         const salonIdRaw = req.query.salon_id || req.body.salon_id;
@@ -1226,37 +1368,120 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'لم يتم تقديم ملف صورة.' });
         }
 
-        const mime = req.file.mimetype || 'image/jpeg';
-        const ext = mime.includes('png') ? 'png' : 'jpg';
-        const filenameBase = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
-        const filename = `${filenameBase}.${ext}`;
+        // Upload optimized images to Supabase Storage
+        const uploadResults = await uploadImageToSupabase(req.file.buffer, salonId, req.file.originalname);
+        
+        if (!uploadResults || uploadResults.length === 0) {
+            throw new Error('فشل في رفع الصور إلى التخزين السحابي');
+        }
 
-        // Optimize image using sharp
-        let pipeline = sharp(req.file.buffer);
-        const meta = await pipeline.metadata();
-        const targetWidth = Math.min(1024, meta.width || 1024);
-        pipeline = pipeline.resize({ width: targetWidth, withoutEnlargement: true });
-        const optimized = ext === 'png' ? pipeline.png({ compressionLevel: 9 }) : pipeline.jpeg({ quality: 75 });
-        const buffer = await optimized.toBuffer();
+        // Store image metadata in salon_images table
+        const imageRecords = [];
+        for (const result of uploadResults) {
+            const inserted = await dbGet(
+                `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary, image_size, image_format)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+                [
+                    salonId, 
+                    result.url, 
+                    result.size === 'thumb' ? 150 : (result.size === 'medium' ? 512 : 1024),
+                    result.size === 'thumb' ? 150 : (result.size === 'medium' ? 512 : 1024),
+                    result.bytes, 
+                    result.format === 'webp' ? 'image/webp' : 'image/jpeg',
+                    result.size === 'medium' && result.format === 'webp', // Primary image is medium WebP
+                    result.size,
+                    result.format
+                ]
+            );
+            imageRecords.push({ ...result, id: inserted?.id });
+        }
 
-        // TODO: Upload to Supabase storage instead of local uploads folder
-        // For now, store as base64 in salon_images table
-        const imageUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+        // Update salons.image_url with the primary image (medium WebP with JPEG fallback)
+        const primaryImage = uploadResults.find(r => r.size === 'medium' && r.format === 'webp') || 
+                           uploadResults.find(r => r.size === 'medium' && r.format === 'jpeg') ||
+                           uploadResults[0];
+        
+        await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [primaryImage.url, salonId]);
 
-        // Store in salon_images for tracking
-        const inserted = await dbGet(
-            `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            [salonId, imageUrl, targetWidth, meta.height || null, buffer.length, mime, true]
-        );
-
-        // Update salons.image_url for backward compatibility in UIs
-        await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [imageUrl, salonId]);
-
-        res.json({ success: true, image_url: imageUrl, image_id: inserted?.id });
+        // Return optimized response with all image versions
+        res.json({ 
+            success: true, 
+            image_url: primaryImage.url,
+            images: {
+                webp: {
+                    thumb: uploadResults.find(r => r.size === 'thumb' && r.format === 'webp')?.url,
+                    medium: uploadResults.find(r => r.size === 'medium' && r.format === 'webp')?.url,
+                    full: uploadResults.find(r => r.size === 'full' && r.format === 'webp')?.url
+                },
+                jpeg: {
+                    thumb: uploadResults.find(r => r.size === 'thumb' && r.format === 'jpeg')?.url,
+                    medium: uploadResults.find(r => r.size === 'medium' && r.format === 'jpeg')?.url,
+                    full: uploadResults.find(r => r.size === 'full' && r.format === 'jpeg')?.url
+                }
+            },
+            total_size_saved: uploadResults.reduce((sum, r) => sum + r.bytes, 0),
+            formats_available: ['webp', 'jpeg'],
+            sizes_available: ['thumb', 'medium', 'full']
+        });
     } catch (error) {
         console.error('Upload error:', error);
-        res.status(500).json({ success: false, message: 'خطأ في رفع الصورة' });
+        res.status(500).json({ success: false, message: error.message || 'خطأ في رفع الصورة' });
+    }
+});
+
+// API to get optimized salon image
+app.get('/api/salon/image/:salon_id', async (req, res) => {
+    const salonId = req.params.salon_id;
+    const { size = 'medium', format = 'webp' } = req.query;
+    
+    try {
+        // Get the optimized image from salon_images table
+        const imageQuery = `
+            SELECT public_url, supabase_path, format, size_type, width, height
+            FROM salon_images 
+            WHERE salon_id = ? AND size_type = ? AND format = ? AND is_primary = 1
+            ORDER BY created_at DESC 
+            LIMIT 1
+        `;
+        
+        const images = await db.query(imageQuery, [salonId, size, format]);
+        
+        if (images && images.length > 0) {
+            const image = images[0];
+            
+            // Set cache headers for 1 year
+            res.set({
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Content-Type': format === 'webp' ? 'image/webp' : 'image/jpeg',
+                'X-Image-Width': image.width,
+                'X-Image-Height': image.height
+            });
+            
+            // Redirect to Supabase public URL for CDN delivery
+            return res.redirect(301, image.public_url);
+        }
+        
+        // Fallback: try JPEG if WebP not available
+        if (format === 'webp') {
+            const fallbackImages = await db.query(imageQuery, [salonId, size, 'jpeg']);
+            if (fallbackImages && fallbackImages.length > 0) {
+                const image = fallbackImages[0];
+                res.set({
+                    'Cache-Control': 'public, max-age=31536000, immutable',
+                    'Content-Type': 'image/jpeg',
+                    'X-Image-Width': image.width,
+                    'X-Image-Height': image.height
+                });
+                return res.redirect(301, image.public_url);
+            }
+        }
+        
+        // No optimized image found, return placeholder
+        res.status(404).json({ success: false, message: 'Image not found' });
+        
+    } catch (error) {
+        console.error('Error serving salon image:', error);
+        res.status(500).json({ success: false, message: 'Error loading image' });
     }
 });
 
