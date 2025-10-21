@@ -1310,29 +1310,10 @@ async function uploadImageToSupabase(buffer, salonId, originalFilename) {
         const randomId = crypto.randomBytes(6).toString('hex');
         const baseFilename = `salon_${salonId}_${timestamp}_${randomId}`;
         
-        // Generate multiple optimized versions
-        const versions = [];
-        
-        // 1. WebP versions (best compression)
-        const webpThumb = await sharp(buffer)
-            .resize(150, 150, { fit: 'cover', position: 'center' })
-            .webp({ quality: 85 })
-            .toBuffer();
-        
+        // Generate optimized versions (WebP + JPEG for compatibility)
         const webpMedium = await sharp(buffer)
             .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 85 })
-            .toBuffer();
-        
-        const webpFull = await sharp(buffer)
-            .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 85 })
-            .toBuffer();
-        
-        // 2. JPEG fallbacks (for compatibility)
-        const jpegThumb = await sharp(buffer)
-            .resize(150, 150, { fit: 'cover', position: 'center' })
-            .jpeg({ quality: 80 })
             .toBuffer();
         
         const jpegMedium = await sharp(buffer)
@@ -1340,19 +1321,10 @@ async function uploadImageToSupabase(buffer, salonId, originalFilename) {
             .jpeg({ quality: 80 })
             .toBuffer();
         
-        const jpegFull = await sharp(buffer)
-            .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 80 })
-            .toBuffer();
-        
-        // Upload all versions to Supabase Storage
+        // Upload optimized versions to Supabase Storage
         const uploads = [
-            { buffer: webpThumb, path: `salon-images/${baseFilename}_thumb.webp`, size: 'thumb', format: 'webp' },
             { buffer: webpMedium, path: `salon-images/${baseFilename}_medium.webp`, size: 'medium', format: 'webp' },
-            { buffer: webpFull, path: `salon-images/${baseFilename}_full.webp`, size: 'full', format: 'webp' },
-            { buffer: jpegThumb, path: `salon-images/${baseFilename}_thumb.jpg`, size: 'thumb', format: 'jpeg' },
-            { buffer: jpegMedium, path: `salon-images/${baseFilename}_medium.jpg`, size: 'medium', format: 'jpeg' },
-            { buffer: jpegFull, path: `salon-images/${baseFilename}_full.jpg`, size: 'full', format: 'jpeg' }
+            { buffer: jpegMedium, path: `salon-images/${baseFilename}_medium.jpg`, size: 'medium', format: 'jpeg' }
         ];
         
         const uploadResults = [];
