@@ -2267,7 +2267,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              const strikeResult = await dbGet(strikeQuery, [user_id]);
              const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
 
-             // Emit SSE notification to salon dashboard
+             // Emit SSE notification to salon dashboard (includes push notifications)
              await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
                 appointmentId,
                 user_id,
@@ -2275,17 +2275,6 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
                 late: true,
                 strikes: newStrikes
              });
-             
-             // WebSocket broadcast for late cancellation
-             if (global.broadcastToSalon) {
-                 global.broadcastToSalon(row.salon_id, 'appointment_cancelled', {
-                     appointmentId,
-                     user_id,
-                     start_time: row.start_time,
-                     late: true,
-                     strikes: newStrikes
-                 });
-             }
 
              // Push notify salon about late cancellation
              await sendPushToTargets({
@@ -2319,23 +2308,13 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
 
         // Proceed with cancellation without strike - FIX: Use $1 placeholder, ensure string literal is safe
         await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
-        // Emit SSE notification to salon dashboard
+        // Emit SSE notification to salon dashboard (includes push notifications)
         await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
             appointmentId,
             user_id,
             start_time: row.start_time,
             late: false
         });
-        
-        // WebSocket broadcast for normal cancellation
-        if (global.broadcastToSalon) {
-            global.broadcastToSalon(row.salon_id, 'appointment_cancelled', {
-                appointmentId,
-                user_id,
-                start_time: row.start_time,
-                late: false
-            });
-        }
         // Push notify salon about normal cancellation (clean Arabic text, no user name)
         const fmtDate = (() => {
             try {
@@ -2920,7 +2899,7 @@ app.post('/api/appointment/book', async (req, res) => {
                        [appointmentId, service.id, service.price]);
         }
         
-        // Emit SSE notification to salon dashboard
+        // Emit SSE notification to salon dashboard (includes push notifications)
         await sendSalonEvent(salon_id, 'appointment_booked', {
             appointmentId,
             user_id,
@@ -2931,20 +2910,6 @@ app.post('/api/appointment/book', async (req, res) => {
             services_count: servicesToBook.length,
             price
         });
-        
-        // WebSocket broadcast to salon room for real-time update
-        if (global.broadcastToSalon) {
-            global.broadcastToSalon(salon_id, 'appointment_booked', {
-                appointmentId,
-                user_id,
-                staff_id: staffIdForDB,
-                staff_name: assignedStaffName,
-                start_time,
-                end_time,
-                services_count: servicesToBook.length,
-                price
-            });
-        }
 
         // Helper formatters for clean Arabic date/time in pushes
         const formatArabicDate = (d) => {
