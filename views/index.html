@@ -364,34 +364,37 @@
     }
     if (openInSafariBtn) {
         openInSafariBtn.addEventListener('click', () => {
-            // Automatically redirect to Safari using URL scheme
-            const currentUrl = location.href;
-            const safariUrl = `x-web-search://?${encodeURIComponent(currentUrl)}`;
+            // Use simple domain URL for Safari redirect
+            const targetUrl = 'https://www.saloony.net';
             
             // Update button text to show it's redirecting
             openInSafariBtn.textContent = 'جاري التوجيه...';
             openInSafariBtn.disabled = true;
             
-            // Try to open in Safari using URL scheme
+            // Try to open in Safari using proper URL scheme
             try {
-                // First attempt: Use x-web-search scheme
-                window.location.href = safariUrl;
+                // Use the correct Safari URL scheme to open in address bar
+                const safariUrl = `https://www.saloony.net`;
                 
-                // Fallback after a short delay if the scheme doesn't work
+                // Try multiple methods to open in Safari
+                // Method 1: Direct window.open with Safari-specific target
+                const safariWindow = window.open(safariUrl, '_blank');
+                
+                // Method 2: If window.open fails, try location redirect
+                if (!safariWindow) {
+                    window.location.href = safariUrl;
+                }
+                
+                // Method 3: Fallback with timeout
                 setTimeout(() => {
-                    // Second attempt: Use googlechrome scheme as fallback to Safari
-                    const fallbackUrl = `googlechrome://navigate?url=${encodeURIComponent(currentUrl)}`;
-                    try {
-                        window.location.href = fallbackUrl;
-                    } catch (e) {
-                        // Final fallback: Direct navigation
-                        window.location.href = currentUrl;
+                    if (!safariWindow || safariWindow.closed) {
+                        window.location.href = safariUrl;
                     }
-                }, 1000);
+                }, 500);
                 
             } catch (e) {
-                // If URL scheme fails, fallback to direct navigation
-                window.location.href = currentUrl;
+                // Final fallback: Direct navigation to simple URL
+                window.location.href = 'https://www.saloony.net';
             }
         });
     }
