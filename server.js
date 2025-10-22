@@ -3156,8 +3156,8 @@ const checkSalonAvailabilityToday = async (salonId) => {
 };
 
 app.get('/api/discovery/:city/:gender', async (req, res) => {
-    // Micro-cache for 5 seconds to smooth bursts from UI clicks
-    res.set({ 'Cache-Control': 'public, max-age=5' });
+    // Smart caching: 30 seconds for real-time balance
+    res.set({ 'Cache-Control': 'public, max-age=30' });
     
     const { city, gender } = req.params;
     const { service_ids } = req.query; // Capture service filter IDs (can be comma-separated)
