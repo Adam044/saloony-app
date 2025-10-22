@@ -1,6 +1,7 @@
 module.exports = {
   men: [
     { name_ar: "قص شعر", icon: "fa-cut", service_type: "main" },
+    { name_ar: "حلاقة شعر ولحية", icon: "fa-scissors", service_type: "main" },
     { name_ar: "تشذيب لحية", icon: "fa-user-tie", service_type: "main" },
     { name_ar: "سشوار رجال", icon: "fa-wind", service_type: "main" },
     { name_ar: "صبغة شعر رجال", icon: "fa-palette", service_type: "main" },
@@ -53,6 +54,5 @@ module.exports = {
     { name_ar: "سبراي تثبيت", icon: "fa-spray-can", service_type: "add_on" },
     { name_ar: "ترطيب شفاه", icon: "fa-grin-beam", service_type: "add_on" },
     { name_ar: "رموش فردية", icon: "fa-eye", service_type: "add_on" },
-    { name_ar: "حجر دَرّ", icon: "fa-gem", service_type: "add_on" }
   ]
 };
