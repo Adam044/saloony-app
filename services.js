@@ -2,7 +2,7 @@ module.exports = {
   men: [
     { name_ar: "قص شعر", icon: "fa-cut", service_type: "main" },
     { name_ar: "حلاقة شعر ولحية", icon: "fa-scissors", service_type: "main" },
-    { name_ar: "تشذيب لحية", icon: "fa-user-tie", service_type: "main" },
+    { name_ar: "لحية", icon: "fa-user-tie", service_type: "main" },
     { name_ar: "سشوار رجال", icon: "fa-wind", service_type: "main" },
     { name_ar: "صبغة شعر رجال", icon: "fa-palette", service_type: "main" },
     { name_ar: "فرد شعر رجال", icon: "fa-align-justify", service_type: "main" },
