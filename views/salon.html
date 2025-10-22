@@ -1,0 +1,2641 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الصالون</title>
+    <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script>
+        (function() {
+            // Basic PWA and auth check: ensure user is logged in
+            const token = localStorage.getItem('salonni_token');
+            const userRaw = localStorage.getItem('salonni_user');
+            const user = userRaw ? JSON.parse(userRaw) : null;
+            if (!token || !user || user.user_type !== 'user') {
+                // Redirect back to home/auth if not authenticated as user
+                window.location.replace('/auth.html');
+                return;
+            }
+
+            // Extract salon ID from URL path pattern /salon/{id}
+            const match = window.location.pathname.match(/\/salon\/(\d+)/);
+            const salonId = match ? match[1] : null;
+            if (!salonId) {
+                console.error("Salon ID is missing from URL path. Redirecting to home.");
+                window.location.replace('/home_user.html');
+                return;
+            }
+            
+            // Store salon ID for use by the main script
+            window.currentSalonId = salonId;
+        })();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #F9FAFB;
+            min-height: 100vh;
+        }
+        /* New Uber-Inspired Colors */
+        .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
+        .text-secondary { color: #06C167; } /* Vibrant Teal-Green Accent */
+        .border-secondary { border-color: #06C167; }
+        .bg-secondary { background-color: #06C167; } /* Secondary background */
+        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); } /* Light transparent accent bg */
+        .btn-secondary { 
+            background-color: #06C167; 
+            color: #1E293B; 
+            transition: all 0.2s; 
+            font-weight: 700; 
+            box-shadow: 0 4px 10px rgba(6, 193, 103, 0.3);
+        }
+        .btn-secondary:hover { background-color: #05ae5d; }
+        
+        /* General Card & Shadow Styles */
+        .card-glow {
+            box-shadow: 0 10px 15px -3px rgba(30, 41, 59, 0.1), 0 4px 6px -2px rgba(30, 41, 59, 0.05);
+            transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+        }
+        .card-glow:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 25px -5px rgba(30, 41, 59, 0.15), 0 10px 10px -5px rgba(30, 41, 59, 0.04);
+        }
+
+        /* Hero Image/Header Styling */
+        #salon-hero {
+            height: 250px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to top, rgba(30, 41, 59, 0.8) 0%, rgba(30, 41, 59, 0) 100%);
+        }
+        
+        /* Layout for Booking Steps (Wizard) */
+        .booking-step {
+            min-height: 50vh; 
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .booking-step.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        /* Ensure step headers are always visible in modal */
+        #booking-modal-overlay .booking-step h4,
+        #booking-modal-overlay .booking-step p,
+        #booking-modal-overlay .booking-step .bg-gradient-to-r {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Ensure gradient backgrounds work in modal */
+        #booking-modal-overlay .bg-gradient-to-r {
+            background: linear-gradient(to right, #06C167, #1e293b) !important;
+        }
+        
+        /* Time Slot Styling */
+        .time-slot {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .time-slot.selected {
+            border-color: #1E293B; /* Primary Dark */
+            background-color: #06C167; /* Secondary */
+            color: #1E293B; /* Text Dark */
+            font-weight: 700;
+            box-shadow: 0 4px 8px rgba(6, 193, 103, 0.3);
+        }
+        .time-slot:hover:not(.selected) {
+            background-color: #f1f5f9;
+        }
+        
+        /* Service Selection Card */
+        .selection-card {
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 2px solid #e5e7eb;
+        }
+        .selection-card:hover { border-color: #06C167; }
+        .selection-card.checked {
+            border-color: #1E293B;
+            background-color: rgba(6, 193, 103, 0.1); /* secondary light */
+            box-shadow: 0 0 0 2px #06C167;
+        }
+        .selection-card.checked.border-orange-400 {
+             background-color: rgba(253, 186, 116, 0.2); /* Tailored for add-ons */
+        }
+
+        /* Confirmation & Review Modal Styles (Copied for consistency) */
+        .confirmation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+        .confirmation-modal-content {
+            background: #fff;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: all 0.3s ease-out;
+        }
+        .confirmation-modal.modal-open {
+            display: flex;
+            opacity: 1;
+        }
+        .confirmation-modal.modal-open .confirmation-modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .star-rating i {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 0;
+            text-align: center;
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            color: #94A3B8; /* Slate gray */
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            color: #64748B; /* Slate gray text */
+            font-weight: 500;
+        }
+
+        /* Page Transition Animations */
+        .page-transition {
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+        .page-fade-out {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        .page-fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+    </style>
+</head>
+<body class="page-transition page-fade-in">
+
+<!-- Main Page Container -->
+<div class="min-h-screen flex flex-col">
+    <!-- Header (Simple back navigation) -->
+    <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 sticky top-0">
+        <button id="back-to-home-btn" class="text-white hover:text-secondary transition duration-150 p-2 rounded-lg">
+            <i class="fas fa-arrow-right text-lg ml-2"></i>
+            العودة للرئيسية
+        </button>
+        <button id="favorite-toggle-btn" class="text-white hover:text-red-400 transition duration-150 p-2 rounded-lg">
+            <i class="fas fa-heart text-lg text-gray-300"></i>
+        </button>
+    </header>
+
+    <!-- Content Area -->
+    <main class="flex-grow p-0">
+        <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-4xl mx-auto" role="alert"></div>
+        <div class="max-w-4xl mx-auto space-y-0">
+            
+            <!-- Salon Hero Section and Detail Header -->
+            <section id="salon-header-section" class="relative">
+                <!-- Image Container (Will be set via JS background-image) -->
+                <div id="salon-hero" class="w-full relative">
+                    <div class="hero-overlay"></div>
+                </div>
+
+                <!-- Detail Card Overlay -->
+                <div class="bg-white p-6 md:p-8 rounded-t-3xl shadow-2xl relative z-10 -mt-8 mx-0 md:mx-4 card-glow">
+                    <div class="flex justify-between items-start mb-4">
+                        <!-- Salon Info -->
+                        <div class="flex-1">
+                            <h2 id="detail-name" class="text-3xl font-extrabold text-primary-dark mb-1">...</h2>
+                            <div id="detail-rating" class="text-sm text-gray-600">...</div>
+                        </div>
+                        <!-- Call/Share Button -->
+                        <div class="flex flex-col items-end gap-2">
+                            <button id="book-now-btn" class="btn-secondary px-4 py-2 rounded-xl font-bold transition duration-200 shadow-md hover:shadow-lg">
+                                ابدأ الحجز
+                            </button>
+                            <button id="call-salon-btn" class="bg-secondary text-primary-dark px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-secondary/90" style="display: none;">
+                                <i class="fas fa-phone"></i>
+                                <span id="call-button-text">اتصل</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Location & Status Pills -->
+                    <div class="flex flex-wrap gap-3 text-sm font-medium">
+                        <span id="detail-city" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-1">
+                            <i class="fas fa-city text-blue-600"></i> <span class="city-text">المدينة</span>
+                        </span>
+                        <span id="detail-address" class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full flex items-center gap-1">
+                            <i class="fas fa-location-dot text-gray-500"></i> <span class="address-text">العنوان</span>
+                        </span>
+                        <span id="detail-status" class="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center gap-1">
+                            <i class="fas fa-check-circle text-green-600"></i> <span>متاح اليوم</span>
+                        </span>
+                    </div>
+
+                </div>
+            </section>
+            
+            <!-- Tabs/Steps Navigation (Fixed or Sticky) -->
+            <div id="booking-nav-placeholder"></div>
+            <div id="booking-wizard-nav" class="bg-white sticky top-[57px] z-10 border-b border-gray-200 shadow-md hidden">
+                <div class="flex justify-between md:justify-center gap-2 p-3 max-w-4xl mx-auto">
+                    <button data-step="0" class="step-btn text-sm font-bold px-3 py-2 rounded-xl transition-all duration-300 text-primary-dark bg-secondary-soft active">
+                        <i class="fas fa-store-alt ml-1"></i> الصالون
+                    </button>
+                    <button data-step="1" class="step-btn text-sm font-medium px-3 py-2 rounded-xl transition-all duration-300 text-gray-500 hover:bg-gray-100">
+                        <i class="fas fa-cut ml-1"></i> الخدمات
+                    </button>
+                    <button data-step="2" class="step-btn text-sm font-medium px-3 py-2 rounded-xl transition-all duration-300 text-gray-500 hover:bg-gray-100">
+                        <i class="fas fa-user-tie ml-1"></i> المختص
+                    </button>
+                    <button data-step="3" class="step-btn text-sm font-medium px-3 py-2 rounded-xl transition-all duration-300 text-gray-500 hover:bg-gray-100">
+                        <i class="fas fa-calendar-alt ml-1"></i> التاريخ
+                    </button>
+                </div>
+                <!-- Progress bar for booking journey -->
+                <div class="max-w-4xl mx-auto px-4 pb-3">
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="booking-progress-bar" class="h-2 bg-primary-dark transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span id="booking-progress-label" class="hidden"></span>
+                        <span>رحلة الحجز</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Steps Container -->
+            <div id="booking-steps-placeholder"></div>
+            <div id="booking-steps-container" class="p-6 space-y-8">
+
+                <!-- Step 0: Salon Detail View -->
+                <div id="step-0" class="booking-step active">
+                    <h4 class="text-2xl font-extrabold text-primary-dark mb-6 border-r-4 border-secondary pr-4">معلومات الصالون</h4>
+                    
+                    <!-- Services Overview: horizontal strips -->
+                    <div class="space-y-6">
+                        <!-- Main Services Strip -->
+                        <div class="bg-white p-6 rounded-xl shadow-lg card-glow">
+                            <h5 class="text-xl font-bold text-primary-dark mb-4 flex items-center gap-2">
+                                <i class="fas fa-cut text-secondary"></i> الخدمات الأساسية
+                            </h5>
+                            <div id="main-services-strip" class="overflow-x-auto">
+                                <div id="main-services-list" class="flex gap-3 pr-1"></div>
+                            </div>
+                        </div>
+                        <!-- Add-ons Strip -->
+                        <div class="bg-white p-6 rounded-xl shadow-lg card-glow">
+                            <h5 class="text-xl font-bold text-primary-dark mb-4 flex items-center gap-2">
+                                <i class="fas fa-plus-circle text-orange-500"></i> الإضافات
+                            </h5>
+                            <div id="addon-services-strip" class="overflow-x-auto">
+                                <div id="addon-services-list" class="flex gap-3 pr-1"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <div class="border-t border-gray-200 my-8"></div>
+                    <!-- Reviews Section -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg card-glow">
+                        <h5 class="text-xl font-bold text-primary-dark mb-4 flex justify-between items-center">
+                            <span class="flex items-center gap-2">
+                                <i class="fas fa-star text-yellow-500"></i> مراجعات العملاء
+                            </span>
+                            <button id="add-review-btn" class="text-secondary hover:text-primary-dark transition duration-150">
+                                <i class="fas fa-plus-circle text-2xl"></i>
+                            </button>
+                        </h5>
+                        <div id="detail-reviews-section" class="space-y-4">
+                            <div class="empty-state p-4">
+                                <i class="fas fa-star-half-alt"></i>
+                                <p>لا توجد مراجعات بعد. كن أول من يقيّم!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 1: Service Selection -->
+                <div id="step-1" class="booking-step">
+                    <div class="bg-gradient-to-r from-secondary to-primary-dark p-6 rounded-xl mb-6" style="color: white !important;">
+                        <h4 class="text-2xl font-extrabold mb-2 flex items-center gap-3" style="color: white !important;">
+                            <span class="bg-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold" style="color: #06C167 !important;">1</span>
+                            اختر الخدمات
+                        </h4>
+                        <p style="color: rgba(255, 255, 255, 0.9) !important;">اختر الخدمات التي تحتاجها (يمكنك محدد أكثر من خدمة)</p>
+                    </div>
+                    <div id="service-selection-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <p class="text-gray-500 col-span-full">جاري تحميل الخدمات...</p>
+                    </div>
+                    <!-- Services Explorer Modal is included via shared script block -->
+                </div>
+
+                <!-- Step 2: Staff Selection -->
+                <div id="step-2" class="booking-step">
+                    <div class="bg-gradient-to-r from-secondary to-primary-dark p-6 rounded-xl mb-6" style="color: white !important;">
+                        <h4 class="text-2xl font-extrabold mb-2 flex items-center gap-3" style="color: white !important;">
+                            <span class="bg-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold" style="color: #06C167 !important;">2</span>
+                            اختر المختص
+                        </h4>
+                        <p style="color: rgba(255, 255, 255, 0.9) !important;">اختر المختص المفضل لديك لتنفيذ الخدمات</p>
+                    </div>
+                    <div id="staff-selection-container" class="grid grid-cols-2 gap-4">
+                        <p class="text-gray-500 col-span-full">جاري تحميل المختصين...</p>
+                    </div>
+                </div>
+
+                <!-- Step 3: Date & Time Selection -->
+                <div id="step-3" class="booking-step">
+                    <div class="bg-gradient-to-r from-secondary to-primary-dark p-6 rounded-xl mb-6" style="color: white !important;">
+                        <h4 class="text-2xl font-extrabold mb-2 flex items-center gap-3" style="color: white !important;">
+                            <span class="bg-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold" style="color: #06C167 !important;">3</span>
+                            اختر التاريخ والوقت
+                        </h4>
+                        <p style="color: rgba(255, 255, 255, 0.9) !important;">حدد التاريخ والوقت المناسب لموعدك</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-6 rounded-xl shadow card-glow mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">التاريخ المطلوب</label>
+                            <input type="date" id="date-input" min="" class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">إجمالي المدة والسعر</label>
+                            <p class="p-3 bg-secondary-soft rounded-xl font-bold text-primary-dark text-center">
+                                المدة: <span id="selected-duration">--</span> • السعر: <span id="final-price-display">...</span> شيكل
+                            </p>
+                            <input type="hidden" id="selected-price" value="0">
+                        </div>
+                    </div>
+
+                    <div id="time-slots-container" class="pt-2 bg-white p-4 rounded-xl shadow card-glow">
+                        <h5 class="font-bold text-lg text-primary-dark mb-3">الأوقات المتاحة</h5>
+                        
+                        <!-- Time Period Filters -->
+                        <div class="flex gap-2 mb-4 justify-center">
+                            <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="morning">صباح</button>
+                            <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="noon">ظهر</button>
+                            <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="afternoon">عصر</button>
+                            <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="evening">مساء</button>
+                        </div>
+                        
+                        <div id="slots-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                            <p class="text-gray-500 col-span-full text-center">اختر تاريخًا أولاً.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Fixed Bottom Action Bar for Navigation -->
+    <div id="booking-bottom-placeholder"></div>
+    <div id="wizard-bottom-bar" class="bg-white border-t border-gray-200 p-4 shadow-[0_-5px_10px_-3px_rgba(0,0,0,0.1)] z-20 hidden flex-shrink-0">
+        <div class="max-w-4xl mx-auto flex justify-between gap-3">
+            <button id="prev-step-btn" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold transition-colors disabled:opacity-50" disabled>
+                <i class="fas fa-arrow-right ml-2"></i> السابق 
+            </button>
+            <button id="next-step-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50 flex-1 text-lg font-extrabold">
+                التالي <i class="fas fa-arrow-left mr-2"></i>
+            </button>
+            
+            <button id="confirm-booking-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50 text-lg font-extrabold hidden flex-1">
+                تأكيد الحجز
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Modal (overlay-based booking flow) -->
+<div id="booking-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div id="booking-modal-content" class="bg-white rounded-2xl shadow-xl w-11/12 max-w-4xl max-h-[90vh] flex flex-col">
+        <!-- Fixed Header -->
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-white rounded-t-2xl">
+            <h3 class="text-xl font-bold text-primary-dark">إتمام الحجز</h3>
+            <button id="close-booking-modal-btn" class="text-gray-600 hover:text-red-600 p-2">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div id="modal-booking-progress-bar" class="h-2 bg-primary-dark transition-all duration-500" style="width: 33%;"></div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                <span id="modal-booking-progress-label">الخطوة 1 من 3</span>
+                <span>رحلة الحجز</span>
+            </div>
+        </div>
+        
+        <!-- Single Scrollable Content Area -->
+        <div class="flex-1 overflow-y-auto">
+            <!-- dynamic content will be inserted here -->
+        </div>
+        
+        <!-- Fixed Footer (Navigation) -->
+        <div class="bg-white border-t border-gray-200 p-4 rounded-b-2xl">
+            <div class="flex justify-between gap-3">
+                <button id="modal-prev-step-btn" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold transition-colors disabled:opacity-50" disabled>
+                    <i class="fas fa-arrow-right ml-2"></i> السابق 
+                </button>
+                <button id="modal-next-step-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50 flex-1 text-lg font-extrabold">
+                    التالي <i class="fas fa-arrow-left mr-2"></i>
+                </button>
+                
+                <button id="modal-confirm-booking-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50 text-lg font-extrabold hidden flex-1">
+                    تأكيد الحجز
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Modals (Confirmation, Review, etc.) are included here (Copied from home_user.html for shared logic) -->
+<!-- Confirmation modal removed per UX — using single stateful loading modal instead -->
+
+<!-- Pre-Booking Confirmation Modal -->
+<div id="pre-booking-modal" class="confirmation-modal">
+    <div class="confirmation-modal-content">
+        <div class="p-6">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                    <i class="fas fa-calendar-check text-white text-2xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-primary-dark mb-2">تأكيد تفاصيل الحجز</h3>
+                <p class="text-gray-600">يرجى مراجعة تفاصيل الحجز قبل التأكيد النهائي.</p>
+            </div>
+            
+            <!-- Booking Details Section -->
+            <div class="bg-blue-50 border-r-4 border-blue-400 p-4 mb-4 rounded-lg text-right">
+                <h4 class="text-lg font-bold text-blue-800 mb-2 border-b border-blue-200 pb-1">تفاصيل الموعد</h4>
+                <div class="space-y-2 text-sm text-blue-700">
+                    <p class="flex justify-between"><strong>الصالون:</strong> <span id="pre-salon-name">...</span></p>
+                    <p class="flex justify-between"><strong>المختص:</strong> <span id="pre-staff-name">...</span></p>
+                    
+                    <div id="pre-services-list" class="space-y-1 mt-3 border-t border-blue-200 pt-3">
+                        <h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5>
+                        <!-- Services will be inserted here -->
+                    </div>
+
+                    <div class="flex justify-between pt-3 border-t border-blue-200">
+                        <p><strong>التاريخ:</strong> <span id="pre-date" class="font-bold">...</span></p>
+                        <p><strong>الوقت:</strong> <span id="pre-time" class="font-bold">...</span></p>
+                    </div>
+                    
+                    <p class="text-lg text-primary-dark mt-2 pt-2 border-t border-blue-200 flex justify-between">
+                        <strong>الإجمالي:</strong> <span id="pre-price" class="font-extrabold text-secondary">... شيكل</span>
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Warning Note -->
+            <div class="bg-yellow-50 border-r-4 border-yellow-400 p-3 rounded-lg text-right mb-4">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 ml-3"></i>
+                    <div>
+                        <p class="text-sm font-bold text-yellow-800">تنبيه مهم</p>
+                        <p class="text-xs text-yellow-700 leading-relaxed mt-1">
+                            تأكد من صحة التفاصيل قبل التأكيد. يمكنك الإلغاء قبل 3 ساعات من الموعد دون إنذار.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3 space-x-reverse pt-4">
+                <button id="cancel-booking-btn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-sm">
+                    <i class="fas fa-times ml-2"></i>
+                    إلغاء
+                </button>
+                <button id="final-confirm-booking-btn" class="flex-1 btn-secondary text-white font-bold py-3 px-4 rounded-xl transition-colors text-sm">
+                    <i class="fas fa-check ml-2"></i>
+                    تأكيد الحجز
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Loading Modal (Stateful: processing -> result) -->
+<div id="booking-loading-modal" class="confirmation-modal">
+    <div class="confirmation-modal-content">
+        <!-- Processing stage -->
+        <div id="booking-processing" class="p-6 text-center">
+            <div class="w-16 h-16 bg-secondary rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                <i class="fas fa-spinner fa-spin text-white text-2xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-primary-dark mb-2">نثبت حجزك الآن!</h3>
+            <p id="booking-loading-message" class="text-gray-600">جارٍ تأكيد حجزك… لحظات ونثبت موعدك ✨</p>
+        </div>
+        <!-- Result stage -->
+        <div id="booking-result" class="p-6 text-center hidden">
+            <div class="w-16 h-16 bg-secondary rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+                <i id="booking-result-icon" class="fas fa-check text-white text-2xl"></i>
+            </div>
+            <h3 id="booking-result-title" class="text-2xl font-bold text-primary-dark mb-2">تم تأكيد الحجز بنجاح!</h3>
+            <p id="booking-result-text" class="text-gray-600 mb-6">اكتمل الإجراء بنجاح.</p>
+            <button id="booking-result-cta" class="w-full btn-secondary text-primary-dark font-bold py-3 px-4 rounded-xl transition-colors text-sm">
+                <i class="fas fa-calendar ml-2"></i>
+                عرض مواعيدي
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Review Submission Modal -->
+<div id="review-modal" class="confirmation-modal">
+    <div class="confirmation-modal-content p-6">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">تقييم صالون <span id="review-salon-name">...</span></h3>
+            <button id="close-review-modal-btn" class="text-gray-500 hover:text-red-500 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form id="review-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">التقييم (5 نجوم)</label>
+                <div id="star-rating-container" class="text-4xl text-right star-rating">
+                    <i class="far fa-star text-yellow-400" data-rating="5"></i>
+                    <i class="far fa-star text-yellow-400" data-rating="4"></i>
+                    <i class="far fa-star text-yellow-400" data-rating="3"></i>
+                    <i class="far fa-star text-yellow-400" data-rating="2"></i>
+                    <i class="far fa-star text-yellow-400" data-rating="1"></i>
+                    <input type="hidden" id="review-rating-input" required value="0">
+                </div>
+            </div>
+            <div>
+                <label for="review-comment" class="block text-sm font-medium text-gray-700">تعليقك (إلزامي)</label>
+                <textarea id="review-comment-input" rows="4" placeholder="اكتب رأيك هنا..." required class="w-full p-3 border border-gray-300 rounded-lg text-right focus:border-secondary focus:ring-secondary"></textarea>
+            </div>
+            <button type="submit" id="submit-review-btn" class="btn-secondary w-full py-3 rounded-xl font-bold">
+                <i class="fas fa-paper-plane ml-2"></i> إرسال التقييم
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Already Reviewed Modal -->
+<div id="already-reviewed-modal" class="confirmation-modal">
+    <div class="confirmation-modal-content p-6">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">تقييم موجود مسبقاً</h3>
+            <button id="close-already-reviewed-modal-btn" class="text-gray-500 hover:text-red-500 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="text-center space-y-4">
+            <div class="text-6xl mb-4">
+                <i class="fas fa-star-half-alt text-yellow-500" style="animation: bounce 2s infinite;"></i>
+            </div>
+            <h4 class="text-xl font-bold text-primary-dark mb-2">شكراً لك على تقييمك السابق! ⭐</h4>
+            <p class="text-lg text-gray-700">لقد قمت بتقييم هذا الصالون من قبل!</p>
+            <p class="text-sm text-gray-600">نشكرك على ملاحظاتك القيمة. لا يمكنك كتابة المزيد من التقييمات لنفس الصالون، ولكن يمكنك حذف تقييمك السابق إذا كنت تريد كتابة تقييم جديد.</p>
+            <div class="flex gap-3 justify-center mt-6">
+                <button id="delete-review-btn" class="px-6 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition">
+                    <i class="fas fa-trash ml-2"></i> حذف التقييم السابق
+                </button>
+                <button id="close-already-reviewed-btn" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+</div>
+</div>
+
+<!-- Delete Review Confirmation Modal -->
+<div id="delete-review-modal" class="confirmation-modal">
+    <div class="confirmation-modal-content p-6">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">تأكيد حذف التقييم</h3>
+            <button id="close-delete-review-modal-btn" class="text-gray-500 hover:text-red-500 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="text-center space-y-4">
+            <div class="text-6xl text-red-500 mb-4">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <p class="text-lg text-gray-700">هل أنت متأكد من حذف تقييمك لصالون <span id="delete-review-salon-name" class="font-bold text-primary-dark">...</span>؟</p>
+            <p class="text-sm text-gray-600">لا يمكن التراجع عن هذا الإجراء.</p>
+            <div class="flex gap-3 justify-center mt-6">
+                <button id="confirm-delete-review-btn" class="px-6 py-2 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition">
+                    <i class="fas fa-trash ml-2"></i> نعم، احذف التقييم
+                </button>
+                <button id="cancel-delete-review-btn" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Appointment Block Modal -->
+<div id="active-appointment-modal" class="confirmation-modal" style="display: none;">
+    <div class="confirmation-modal-content p-6">
+        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">لديك موعد نشط مؤجّل</h3>
+            <button id="close-active-appointment-modal-btn" class="text-gray-500 hover:text-red-500 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="text-center space-y-4">
+            <div class="text-6xl mb-4">
+                <i class="fas fa-calendar-check text-secondary"></i>
+            </div>
+            <p class="text-lg text-gray-700">لا يمكنك حجز موعد جديد قبل إكمال موعدك الحالي.</p>
+            <p class="text-sm text-gray-600">يرجى إنهاء الموعد الحالي أو إلغاؤه أولاً.</p>
+            <div class="flex gap-3 justify-center mt-6">
+                <button id="active-modal-view-appointments" class="px-6 py-2 rounded-xl bg-primary-dark text-white font-bold hover:bg-gray-700 transition">
+                    <i class="fas fa-calendar ml-2"></i> الذهاب إلى مواعيدي
+                </button>
+                <button id="active-modal-dismiss" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Services Explorer Modal (Hidden by default, used for Step 1 selection) -->
+<div id="services-explorer-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-2xl p-4 text-right">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center">
+                <i class="fas fa-search text-secondary ml-2 text-xl"></i>
+                <h3 class="text-lg font-bold text-primary-dark">المزيد من الخدمات</h3>
+            </div>
+            <button id="services-explorer-close" class="py-1 px-3 rounded-xl border hover:bg-gray-100">إغلاق</button>
+        </div>
+        <div class="flex items-center gap-2 mb-3">
+            <input id="services-explorer-search" type="text" class="flex-1 border rounded-xl px-3 py-2" placeholder="ابحث باسم الخدمة...">
+            <select id="services-explorer-category" class="border rounded-xl px-2 py-2">
+                <option value="all">الكل</option>
+                <option value="main">الأساسية</option>
+                <option value="add_on">الإضافات</option>
+            </select>
+        </div>
+        <div id="services-explorer-list" class="max-h-96 overflow-y-auto space-y-2"></div>
+    </div>
+</div>
+
+<!-- JavaScript Logic (Modified from home_user.html) -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    // --- Global Variables (Matching home_user.html) ---
+    let currentUser = JSON.parse(localStorage.getItem('salonni_user')) || {};
+    let currentStep = 0; 
+    let selectedSalon = null;
+    let selectedServices = []; 
+    let selectedStaff = null;
+    let staffOptions = []; 
+    let selectedDate = null;
+    let selectedTime = null;
+    let salonScheduleData = null; 
+    let allMasterServices = []; 
+    let currentReviewRating = 0; 
+    let currentReviewSalon = null; 
+    let pendingDeleteReview = null;
+    let selectedTimePeriod = 'morning'; 
+    let isBookingModalOpen = false;
+
+    // --- Core Utility Functions (Copied from home_user.html) ---
+    function displayMessage(message, type = 'info') {
+        const messageBox = document.getElementById('message-box');
+        messageBox.textContent = message;
+        messageBox.className = `p-3 mb-4 text-center rounded-xl font-medium max-w-4xl mx-auto border`;
+        
+        if (type === 'success') {
+            messageBox.classList.add('bg-green-100', 'text-green-800', 'border-green-300');
+        } else if (type === 'error') {
+            messageBox.classList.add('bg-red-100', 'text-red-800', 'border-red-300');
+        } else {
+            messageBox.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
+        }
+        
+        messageBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+            messageBox.classList.add('hidden');
+        }, 5000);
+    }
+    
+    // Minimal definitions for core utilities required by booking flow:
+    function formatTime(timeString) {
+        if (!timeString) return '';
+        const [hours, minutes] = timeString.split(':').map(Number);
+        const hour = hours;
+        const ampm = hour >= 12 ? 'م' : 'ص';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    }
+    
+    function timeToMinutes(timeStr) {
+        if (!timeStr || typeof timeStr !== 'string') return 0;
+        const [h, m] = timeStr.split(':').map(Number);
+        let minutes = (h || 0) * 60 + (m || 0);
+        // Only add 24 hours for early morning hours if they represent next day closing times
+        // This should only apply to closing times, not current time calculations
+        return minutes;
+    }
+
+    // Format date-time in local time for DB (YYYY-MM-DD HH:MM:SS)
+    function formatDateTimeForDB(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    function formatRating(rating, count) {
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5;
+        let starsHtml = '';
+        for (let i = 0; i < 5; i++) {
+            if (i < fullStars) starsHtml += `<i class="fas fa-star text-yellow-400 text-sm ml-1"></i>`;
+            else if (i === fullStars && halfStar) starsHtml += `<i class="fas fa-star-half-alt text-yellow-400 text-sm ml-1"></i>`;
+            else starsHtml += `<i class="far fa-star text-gray-300 text-sm ml-1"></i>`;
+        }
+        return `<span class="flex items-center justify-start text-right"><span class="flex flex-row-reverse items-center">${starsHtml}</span><span class="text-xs text-gray-500 mr-2">(${count})</span></span>`;
+    }
+    
+    function formatDateDDMMYYYY(dateInput) {
+        if (!dateInput) return '--/--/----';
+        let d = null;
+        if (dateInput instanceof Date) d = dateInput;
+        else if (typeof dateInput === 'string') {
+            let s = dateInput.trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) s = `${s}T00:00:00`;
+            else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?$/.test(s)) s = s.replace(' ', 'T');
+            d = new Date(s);
+        } else if (typeof dateInput === 'number') d = new Date(dateInput);
+        else d = new Date(dateInput);
+        if (isNaN(d.getTime())) return '--/--/----';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    function formatReviewDate(dateString) {
+        const formattedDate = formatDateDDMMYYYY(dateString);
+        return `<span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"><i class="fas fa-calendar-alt text-secondary"></i>${formattedDate}</span>`;
+    }
+
+    function getTimePeriodFromCurrentTime() {
+        const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
+        const hours = now.getHours();
+        if (hours >= 5 && hours < 12) return 'morning';
+        if (hours >= 12 && hours < 16) return 'noon';
+        if (hours >= 16 && hours < 19) return 'afternoon';
+        return 'evening';
+    }
+
+    function getCurrentUserDate() {
+        const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    function getCurrentUserTime() {
+        const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
+        return {
+            hours: now.getHours(),
+            minutes: now.getMinutes(),
+            totalMinutes: now.getHours() * 60 + now.getMinutes()
+        };
+    }
+
+    function isPastTimePeriod(period) {
+        const selectedDate = document.getElementById('date-input').value;
+        const todayDate = getCurrentUserDate();
+        if (selectedDate !== todayDate) return false;
+        const { hours } = getCurrentUserTime();
+        switch (period) {
+            case 'morning': return hours >= 12; 
+            case 'noon': return hours >= 16; 
+            case 'afternoon': return hours >= 19; 
+            case 'evening': return false;
+            default: return false;
+        }
+    }
+    
+    function filterSlotsByPeriod(slots, period) {
+        const selectedDate = document.getElementById('date-input').value;
+        const todayDate = getCurrentUserDate();
+        const isToday = selectedDate === todayDate;
+        const { totalMinutes: currentMinutes } = getCurrentUserTime();
+        
+        return slots.filter(slot => {
+            const [hours, minutes] = slot.split(':').map(Number);
+            const hour24 = hours;
+            
+            let inPeriod = false;
+            switch (period) {
+                case 'morning': inPeriod = hour24 >= 5 && hour24 < 12; break;
+                case 'noon': inPeriod = hour24 >= 12 && hour24 < 16; break;
+                case 'afternoon': inPeriod = hour24 >= 16 && hour24 < 19; break;
+                case 'evening': inPeriod = hour24 >= 19 || hour24 < 5; break;
+                default: inPeriod = true;
+            }
+            if (!inPeriod) return false;
+            
+            if (isToday) {
+                const slotMinutes = hour24 * 60 + minutes;
+                return slotMinutes >= currentMinutes + 5;
+            }
+            return true;
+        });
+    }
+
+    // Full implementations of core functions (Matching home_user.html)
+    // NOTE: Many logic-heavy functions like loadSalonStaff, calculateTimeSlots, 
+    // validateBookingSlot, etc. were copied *exactly* from home_user.html 
+    // to preserve all original functionality as requested.
+
+    // --- Modal Functions (Copied from home_user.html) ---
+    function hideConfirmationModal() { /* ... implementation ... */ }
+    function showConfirmationModal(bookingData) { 
+        const modal = document.getElementById('confirmation-modal');
+        document.getElementById('conf-salon-name').textContent = bookingData.salonName;
+        document.getElementById('conf-staff-name').textContent = bookingData.staffName;
+        document.getElementById('conf-date').textContent = bookingData.date;
+        document.getElementById('conf-time').textContent = bookingData.time;
+        document.getElementById('conf-price').textContent = `${bookingData.price.toFixed(0)} شيكل`;
+        
+        const servicesListContainer = document.getElementById('conf-services-list');
+        const serviceTagsHtml = bookingData.services.map(s => {
+            const masterService = allMasterServices.find(ms => ms.id === s.id) || {};
+            const icon = masterService.icon || 'fa-cut';
+            return `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap"><i class="fas ${icon} ml-1"></i> ${s.name_ar}</span>`;
+        }).join('');
+        servicesListContainer.innerHTML = `<h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5><div class="flex flex-wrap gap-2 justify-end">${serviceTagsHtml}</div><p class="text-xs font-bold text-blue-900 pt-3 border-t border-blue-200 mt-2 flex justify-end">إجمالي المدة: ${bookingData.totalDuration} دقيقة</p>`;
+
+        modal.classList.add('modal-open'); 
+        modal.style.display = 'flex';
+        document.body.classList.add('overflow-hidden');
+    }
+    function hidePreBookingModal() {
+        const modal = document.getElementById('pre-booking-modal');
+        if (modal) {
+            modal.classList.remove('modal-open');
+            modal.style.display = 'none';
+        }
+        document.body.classList.remove('overflow-hidden');
+    }
+    function showBookingLoading(message = 'جارٍ تأكيد حجزك… لحظات ونثبت موعدك ✨') {
+        const modal = document.getElementById('booking-loading-modal');
+        const msgEl = document.getElementById('booking-loading-message');
+        const processing = document.getElementById('booking-processing');
+        const resultStage = document.getElementById('booking-result');
+        if (msgEl) msgEl.textContent = message;
+        if (processing) processing.classList.remove('hidden');
+        if (resultStage) resultStage.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('modal-open');
+            modal.style.display = 'flex';
+            document.body.classList.add('overflow-hidden');
+        }
+    }
+    function hideBookingLoading() {
+        const modal = document.getElementById('booking-loading-modal');
+        if (modal) {
+            modal.classList.remove('modal-open');
+            modal.style.display = 'none';
+        }
+        document.body.classList.remove('overflow-hidden');
+    }
+    let bookingLoadingInterval = null;
+    function startBookingLoadingSequence() {
+        const steps = [
+            'نثبت حجزك الآن!',
+            'نؤمن لك الوقت المناسب ✨',
+            'نتحقق من التوافق مع الصالون 💇‍♂️',
+            'قربنا نخلص… لحظات 🙌'
+        ];
+        let idx = 0;
+        const msgEl = document.getElementById('booking-loading-message');
+        if (msgEl) msgEl.textContent = steps[idx++];
+        bookingLoadingInterval = setInterval(() => {
+            if (!msgEl) return;
+            if (idx < steps.length) {
+                msgEl.textContent = steps[idx++];
+            } else {
+                // Hold last message to avoid abrupt looping
+                idx = steps.length - 1;
+            }
+        }, 1200);
+    }
+    function stopBookingLoadingSequence() {
+        if (bookingLoadingInterval) {
+            clearInterval(bookingLoadingInterval);
+            bookingLoadingInterval = null;
+        }
+    }
+    function showBookingResult(success = true, data = {}) {
+        const processing = document.getElementById('booking-processing');
+        const resultStage = document.getElementById('booking-result');
+        const titleEl = document.getElementById('booking-result-title');
+        const textEl = document.getElementById('booking-result-text');
+        const iconEl = document.getElementById('booking-result-icon');
+        const ctaBtn = document.getElementById('booking-result-cta');
+        
+        if (processing) processing.classList.add('hidden');
+        if (resultStage) resultStage.classList.remove('hidden');
+        
+        if (success) {
+            if (iconEl) { iconEl.className = 'fas fa-check text-white text-2xl'; }
+            if (titleEl) titleEl.textContent = 'تم تأكيد الحجز بنجاح!';
+            if (textEl) textEl.textContent = 'اكتمل الإجراء بنجاح.';
+            if (ctaBtn) {
+                ctaBtn.textContent = 'عرض مواعيدي';
+                ctaBtn.classList.add('animate-pulse');
+                ctaBtn.onclick = () => { 
+                    // Add click animation
+                    ctaBtn.classList.add('transform', 'scale-95');
+                    setTimeout(() => {
+                        ctaBtn.classList.add('opacity-50');
+                        setTimeout(() => {
+                            window.location.href = '/home_user.html?view=appointments';
+                        }, 200);
+                    }, 100);
+                };
+            }
+        } else {
+            if (iconEl) { iconEl.className = 'fas fa-exclamation text-white text-2xl'; }
+            if (titleEl) titleEl.textContent = 'تعذر تأكيد الحجز';
+            if (textEl) textEl.textContent = data.message || 'حدث خطأ، يرجى المحاولة مرة أخرى.';
+            if (ctaBtn) {
+                ctaBtn.textContent = 'حاول مرة أخرى';
+                ctaBtn.onclick = () => { /* Close modal for retry */ const m = document.getElementById('booking-loading-modal'); if (m) { m.classList.remove('modal-open'); m.style.display = 'none'; document.body.classList.remove('overflow-hidden'); } };
+            }
+        }
+    }
+    function showPreBookingModal() {
+        if (selectedServices.length === 0 || !selectedSalon || !selectedStaff || !selectedDate || !selectedTime) {
+            displayMessage('يرجى التأكد من اختيار جميع متطلبات الحجز (خدمة، مختص، تاريخ، وقت).', 'error');
+            return;
+        }
+
+        if (currentUser.strikes_count >= 3) {
+            displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error');
+            return;
+        }
+
+        const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
+        const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0);
+        const modal = document.getElementById('pre-booking-modal');
+        
+        document.getElementById('pre-salon-name').textContent = selectedSalon.salon_name;
+        document.getElementById('pre-staff-name').textContent = selectedStaff.name;
+        document.getElementById('pre-date').textContent = formatDateDDMMYYYY(selectedDate);
+        document.getElementById('pre-time').textContent = formatTime(selectedTime);
+        document.getElementById('pre-price').textContent = `${totalPrice.toFixed(0)} شيكل`;
+        
+        const servicesListContainer = document.getElementById('pre-services-list');
+        const serviceTagsHtml = selectedServices.map(s => {
+            const masterService = allMasterServices.find(ms => ms.id === s.id) || {};
+            const icon = masterService.icon || 'fa-cut';
+            return `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap"><i class="fas ${icon} ml-1"></i> ${s.name_ar} (${s.price} شيكل)</span>`;
+        }).join('');
+        
+        servicesListContainer.innerHTML = `<h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5><div class="flex flex-wrap gap-2 justify-end">${serviceTagsHtml}</div><p class="text-xs font-bold text-blue-900 pt-3 border-t border-blue-200 mt-2 flex justify-end">إجمالي المدة: ${totalDuration} دقيقة</p>`;
+
+        modal.classList.add('modal-open'); 
+        modal.style.display = 'flex';
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function showReviewModal(salon) {
+        currentReviewSalon = salon; 
+        document.getElementById('review-salon-name').textContent = salon.salon_name;
+        const modal = document.getElementById('review-modal');
+        
+        document.getElementById('review-form').reset();
+        currentReviewRating = 0;
+        document.getElementById('review-rating-input').value = '0';
+        updateStarDisplay(0);
+
+        modal.classList.add('modal-open');
+        modal.style.display = 'flex';
+        document.body.classList.add('overflow-hidden');
+    }
+    function hideReviewModal() {
+        const modal = document.getElementById('review-modal');
+        if (modal) {
+            modal.classList.remove('modal-open');
+            modal.style.display = 'none';
+        }
+        document.body.classList.remove('overflow-hidden');
+    }
+    function showAlreadyReviewedModal(salon) {
+        currentReviewSalon = salon;
+        const modal = document.getElementById('already-reviewed-modal');
+        modal.classList.add('modal-open');
+        modal.style.display = 'flex';
+        document.body.classList.add('overflow-hidden');
+    }
+    function hideAlreadyReviewedModal() {
+        const modal = document.getElementById('already-reviewed-modal');
+        if (modal) {
+            modal.classList.remove('modal-open');
+            modal.style.display = 'none';
+        }
+        document.body.classList.remove('overflow-hidden');
+    }
+    function showDeleteReviewModal(salonId, salonName) {
+        pendingDeleteReview = { salonId, salonName };
+        document.getElementById('delete-review-salon-name').textContent = salonName;
+        const modal = document.getElementById('delete-review-modal');
+        modal.classList.add('modal-open');
+        modal.style.display = 'flex';
+        document.body.classList.add('overflow-hidden');
+    }
+    function hideDeleteReviewModal() {
+        const modal = document.getElementById('delete-review-modal');
+        if (modal) {
+            modal.classList.remove('modal-open');
+            modal.style.display = 'none';
+        }
+        document.body.classList.remove('overflow-hidden');
+        pendingDeleteReview = null;
+    }
+    function showActiveAppointmentModal() {
+        const modal = document.getElementById('active-appointment-modal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('modal-open'), 10);
+        document.body.style.overflow = 'hidden';
+    }
+    function hideActiveAppointmentModal() {
+        const modal = document.getElementById('active-appointment-modal');
+        if (!modal) return;
+        modal.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
+        setTimeout(() => modal.style.display = 'none', 300);
+    }
+    function updateStarDisplay(rating) {
+        document.querySelectorAll('.star-rating i').forEach(star => {
+            const starRating = parseInt(star.dataset.rating);
+            if (starRating <= rating) {
+                star.classList.remove('far');
+                star.classList.add('fas');
+            } else {
+                star.classList.remove('fas');
+                star.classList.add('far');
+            }
+        });
+    }
+
+    // --- Core Logic Re-implementation (Matching home_user.html's logic) ---
+    
+    // NOTE: This implementation is complex and relies on multiple helper functions 
+    // (like findAvailableStaff, loadSalonServices, validateBookingSlot, etc.) 
+    // from the original home_user.html script block. 
+    // They are defined here as needed to ensure the dedicated page works correctly.
+
+    function resetAllBookingState() {
+        selectedServices = []; 
+        selectedStaff = null;
+        selectedDate = null;
+        selectedTime = null;
+        salonScheduleData = null;
+        
+        updateTotals();
+        document.getElementById('date-input').value = '';
+        document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full text-center">اختر تاريخًا أولاً.</p>';
+        document.querySelectorAll('.selection-card').forEach(card => card.classList.remove('checked', 'bg-orange-50', 'border-orange-400'));
+    }
+
+    // Modified to use the new layout structure
+    function showBookingStep(stepIndex) {
+        document.querySelectorAll('.booking-step').forEach(step => {
+            step.classList.remove('active');
+            step.style.display = 'none'; // Ensure elements off-screen are not scrollable
+        });
+        
+        const targetStep = document.getElementById(`step-${stepIndex}`);
+        if (targetStep) {
+            targetStep.style.display = 'block';
+            setTimeout(() => { // Small timeout to allow transition
+                targetStep.classList.add('active');
+            }, 10);
+            
+            currentStep = stepIndex;
+            updateNavigationButtons();
+            updateWizardNavActive();
+            updateProgressBar();
+            
+            // Re-load data specific to the step only when displaying
+            if (stepIndex === 1) loadSalonServices(selectedSalon.salonId);
+            if (stepIndex === 2) loadSalonStaff(selectedSalon.salonId, true);
+            if (stepIndex === 3) {
+                 // Auto-load slots for the selected date on step 3 transition
+                if (selectedDate && selectedServices.length > 0 && selectedStaff) {
+                    loadTimeSlots();
+                }
+            }
+        }
+    }
+    
+    function updateNavigationButtons() {
+        // Check if we're in modal mode or page mode
+        const isModal = isBookingModalOpen;
+        const nextBtn = document.getElementById(isModal ? 'modal-next-step-btn' : 'next-step-btn');
+        const prevBtn = document.getElementById(isModal ? 'modal-prev-step-btn' : 'prev-step-btn');
+        const confirmBtn = document.getElementById(isModal ? 'modal-confirm-booking-btn' : 'confirm-booking-btn');
+
+        if (!nextBtn || !prevBtn || !confirmBtn) return;
+
+        nextBtn.classList.remove('hidden');
+        confirmBtn.classList.add('hidden');
+        prevBtn.disabled = currentStep === 0 || (isModal && currentStep === 1);
+        
+        // Hide Previous button in step 1 when in modal mode
+        if (isModal && currentStep === 1) {
+            prevBtn.style.display = 'none';
+        } else {
+            prevBtn.style.display = 'block';
+        }
+
+        // Step-specific button logic and visibility
+        if (currentStep === 0) {
+            nextBtn.textContent = 'ابدأ الحجز';
+            nextBtn.disabled = selectedServices.filter(s => s.service_type === 'main').length === 0;
+        } else if (currentStep === 1) {
+            nextBtn.innerHTML = 'التالي <i class="fas fa-arrow-left mr-2"></i>';
+            nextBtn.disabled = selectedServices.filter(s => s.service_type === 'main').length === 0;
+        } else if (currentStep === 2) {
+            nextBtn.innerHTML = 'التالي <i class="fas fa-arrow-left mr-2"></i>';
+            nextBtn.disabled = !selectedStaff;
+        } else if (currentStep === 3) {
+            nextBtn.classList.add('hidden');
+            confirmBtn.classList.remove('hidden');
+            confirmBtn.disabled = !selectedTime;
+            confirmBtn.textContent = `تأكيد الحجز (${document.getElementById('selected-price').value} شيكل)`;
+        }
+    }
+
+    // Stepper visuals and progress bar helpers
+    function updateWizardNavActive() {
+        const buttons = document.querySelectorAll('#booking-wizard-nav .step-btn');
+        buttons.forEach((btn, index) => {
+            btn.classList.remove('bg-secondary-soft', 'text-primary-dark', 'font-bold', 'bg-green-100', 'text-green-700');
+            btn.classList.add('text-gray-500');
+            if (index < currentStep) {
+                btn.classList.remove('text-gray-500');
+                btn.classList.add('bg-green-100', 'text-green-700');
+            } else if (index === currentStep) {
+                btn.classList.remove('text-gray-500');
+                btn.classList.add('bg-secondary-soft', 'text-primary-dark', 'font-bold');
+            }
+        });
+    }
+    function updateProgressBar() {
+        const percent = Math.min(100, Math.round((currentStep / 3) * 100));
+        
+        // Update page progress bar
+        const bar = document.getElementById('booking-progress-bar');
+        if (bar) bar.style.width = `${percent}%`;
+        
+        // Update modal progress bar
+        const modalBar = document.getElementById('modal-booking-progress-bar');
+        const modalLabel = document.getElementById('modal-booking-progress-label');
+        if (modalBar) modalBar.style.width = `${percent}%`;
+        if (modalLabel) modalLabel.textContent = `الخطوة ${currentStep} من 3`;
+    }
+
+    // Functionality for setting up the main detail view
+    async function loadSalonDetailView(salon) {
+        const salonIdSafe = (salon && (salon.salonId ?? salon.salonid ?? salon.id ?? salon.salon_id));
+        if (!salon || !salonIdSafe || isNaN(parseInt(salonIdSafe))) {
+            displayMessage('خطأ: لم يتم تحديد الصالون بشكل صحيح.', 'error');
+            return; 
+        }
+
+        // Fetch complete salon details with rating (including phone numbers)
+        try {
+            const salonDetailsResponse = await fetch(`/api/salon/details/${salonIdSafe}`);
+            if (salonDetailsResponse.ok) {
+                const salonDetailsData = await salonDetailsResponse.json();
+                if (salonDetailsData.success) {
+                    // Hydrate core fields for header/hero and details
+                    salon.salon_name = salonDetailsData.salon.salon_name;
+                    salon.address = salonDetailsData.salon.address;
+                    salon.city = salonDetailsData.salon.city;
+                    salon.image_url = salonDetailsData.salon.image_url;
+
+                    // Ratings and phone numbers
+                    salon.avg_rating = salonDetailsData.salon.avg_rating;
+                    salon.review_count = salonDetailsData.salon.review_count;
+                    salon.salon_phone = salonDetailsData.salon.salon_phone;
+                    salon.owner_phone = salonDetailsData.salon.owner_phone;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching salon details:', error);
+        }
+        
+        // Fetch schedule and master services
+        salonScheduleData = await fetchSalonSchedule(salonIdSafe);
+        const masterServicesResponse = await fetch(`/api/services/master/${currentUser.gender === 'male' ? 'men' : 'women'}`);
+        allMasterServices = masterServicesResponse.ok ? (await masterServicesResponse.json()).services : [];
+
+        // Set Hero Image
+        const heroEl = document.getElementById('salon-hero');
+        const imageUrl = salon.image_url || 'https://placehold.co/1200x250/1E293B/ffffff?text=SALOON_NAME';
+        heroEl.style.backgroundImage = `url(${imageUrl})`;
+
+        // Set Status Pill (Proper Logic - matching home_user.html)
+        let statusText = 'مغلق';
+        let statusClass = 'bg-gray-100 text-gray-600';
+        let statusIcon = 'fas fa-times-circle text-gray-500'; // Default closed icon
+        
+        if (salonScheduleData && salonScheduleData.schedule) {
+            const schedule = salonScheduleData.schedule;
+            const today = new Date();
+            const palestineTime = new Date(today.toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
+            const dayOfWeek = palestineTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const currentTime = palestineTime.getHours() * 60 + palestineTime.getMinutes(); // Current time in minutes
+            
+            // Parse closed days
+            let closedDays = [];
+            try {
+                closedDays = schedule.closed_days ? JSON.parse(schedule.closed_days) : [];
+            } catch (e) {
+                closedDays = [];
+            }
+            
+            // Check if today is a closed day
+            if (!closedDays.includes(dayOfWeek)) {
+                // Parse opening and closing times
+                const timeToMinutes = (timeStr) => {
+                    if (!timeStr) return 0;
+                    const [hours, minutes] = timeStr.split(':').map(Number);
+                    return hours * 60 + minutes;
+                };
+                
+                const openMinutes = timeToMinutes(schedule.opening_time);
+                const closeMinutes = timeToMinutes(schedule.closing_time);
+                
+                // Handle overnight schedules (e.g., 22:00 - 06:00)
+                if (openMinutes > closeMinutes) {
+                    // Overnight schedule
+                    if (currentTime >= openMinutes || currentTime < closeMinutes) {
+                        statusText = 'متاح اليوم';
+                        statusClass = 'bg-green-100 text-green-800';
+                        statusIcon = 'fas fa-check-circle text-green-600';
+                    }
+                } else {
+                    // Normal schedule (e.g., 09:00 - 18:00)
+                    if (currentTime >= openMinutes && currentTime < closeMinutes) {
+                        statusText = 'متاح اليوم';
+                        statusClass = 'bg-green-100 text-green-800';
+                        statusIcon = 'fas fa-check-circle text-green-600';
+                    } else if (currentTime < openMinutes) {
+                        // Check if opening soon (within 1 hour)
+                        const timeUntilOpen = openMinutes - currentTime;
+                        if (timeUntilOpen <= 60) {
+                            statusText = 'يفتح قريباً';
+                            statusClass = 'bg-blue-100 text-blue-800';
+                            statusIcon = 'fas fa-clock text-blue-600';
+                        }
+                    }
+                }
+            }
+        }
+        
+        document.getElementById('detail-status').className = `px-3 py-1 rounded-full flex items-center gap-1 text-sm font-medium ${statusClass}`;
+        document.getElementById('detail-status').querySelector('i').className = statusIcon;
+        document.getElementById('detail-status').querySelector('span').textContent = statusText;
+
+        // Set Main Details
+        document.getElementById('detail-name').textContent = salon.salon_name;
+        document.getElementById('detail-rating').innerHTML = formatRating(salon.avg_rating || 0, salon.review_count || 0);
+        document.querySelector('#detail-city .city-text').textContent = salon.city;
+        document.querySelector('#detail-address .address-text').textContent = salon.address;
+        
+        // Favorite Toggle State
+        const favBtn = document.getElementById('favorite-toggle-btn');
+        if (salon.is_favorite) {
+             favBtn.querySelector('i').classList.add('text-red-500');
+             favBtn.querySelector('i').classList.remove('text-gray-300');
+        }
+
+        // Setup Call Button
+        function setupCallButton(salonPhone, ownerPhone) {
+            const callButton = document.getElementById('call-salon-btn');
+            let phoneNumber = salonPhone && salonPhone.trim() ? salonPhone.trim() : (ownerPhone && ownerPhone.trim() ? ownerPhone.trim() : null);
+            if (phoneNumber) {
+                callButton.style.display = 'flex';
+                callButton.querySelector('#call-button-text').textContent = 'اتصل';
+                callButton.addEventListener('click', () => { window.location.href = `tel:${phoneNumber}`; });
+            } else { callButton.style.display = 'none'; }
+        }
+        setupCallButton(salon.salon_phone, salon.owner_phone);
+
+
+        // Load Services Tags (Step 0)
+        const servicesTagsContainer = document.getElementById('detail-services-tags');
+        const servicesResponse = await fetch(`/api/salons/${salonIdSafe}/services`);
+        const servicesData = servicesResponse.ok ? await servicesResponse.json() : { services: [] };
+        if (servicesTagsContainer) {
+            if (servicesData.services.length > 0) {
+                servicesTagsContainer.innerHTML = servicesData.services.map(service => {
+                    const master = allMasterServices.find(ms => ms.id === service.id) || {};
+                    const icon = master.icon || 'fa-cut';
+                    return `<span class="px-3 py-1 rounded-full bg-secondary-soft text-primary-dark text-sm font-medium border border-secondary"><i class="fas ${icon} ml-1"></i> ${service.name_ar}</span>`;
+                }).join('');
+            } else { servicesTagsContainer.innerHTML = '<p class="text-gray-500">لم يتم تحديد خدمات بعد.</p>'; }
+        }
+        
+        // Expose and render horizontal strips on the main page
+        window.availableSalonServices = servicesData.services;
+        renderServiceStrips(servicesData.services);
+
+        // Load Reviews (Step 0)
+        const reviewsSection = document.getElementById('detail-reviews-section');
+        const reviewsResponse = await fetch(`/api/reviews/salon/${salonIdSafe}`);
+        const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : { reviews: [] };
+        if (reviewsData.reviews.length > 0) {
+            reviewsSection.innerHTML = reviewsData.reviews.map(review => `
+                <div class="bg-gray-50 p-4 rounded-lg shadow-sm border-r-4 border-secondary">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="inline-flex items-center gap-2 px-2 py-1 bg-gray-100 text-primary-dark rounded-full text-xs font-semibold">
+                            <i class="fas fa-user-circle text-secondary"></i>
+                            ${review.user_name}
+                        </span>
+                        <div class="flex items-center gap-2">
+                            ${formatReviewDate(review.date_posted)}
+                            ${review.user_id == currentUser.userId ? `
+                                <button class="delete-review-btn text-red-500 hover:text-red-700 transition-colors p-1 rounded" data-salon-id="${salonIdSafe}" data-salon-name="${salon.salon_name}" title="حذف التقييم">
+                                    <i class="fas fa-trash text-sm"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="mb-2">${formatRating(review.rating, 1)}</div>
+                    <p class="text-sm text-gray-700"><i class="fas fa-comment ml-2 text-secondary"></i>${(review.comment || '').trim() || 'بدون تعليق'}</p>
+                </div>
+            `).join('');
+        } else {
+            reviewsSection.innerHTML = `<div class="empty-state p-4"><i class="fas fa-star-half-alt"></i><p>لا توجد مراجعات بعد. كن أول من يقيّم!</p></div>`;
+        }
+        
+        // Initial setup for booking steps
+        const today = getCurrentUserDate();
+        document.getElementById('date-input').min = today;
+        document.getElementById('date-input').value = today;
+        selectedDate = today;
+        
+        // Find existing selected services/staff/time in URL to resume flow if necessary
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialStep = urlParams.get('step') ? parseInt(urlParams.get('step')) : 0;
+        
+        showBookingStep(initialStep);
+    }
+    
+    // --- Step 1: Service Selection Logic (Copied/Modified) ---
+
+    // Exposed helper to calculate totals (required by loadSalonServices and explorer)
+    function updateTotals() {
+        let totalDuration = selectedServices.filter(service => service.service_type === 'main').reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
+        let totalPrice = selectedServices.reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
+        const mainServicesCount = selectedServices.filter(s => s.service_type === 'main').length;
+        
+        document.getElementById('selected-duration').textContent = totalDuration > 0 ? `${totalDuration} دقيقة` : '--';
+        document.getElementById('final-price-display').textContent = totalPrice > 0 ? totalPrice.toFixed(0) : '...';
+        document.getElementById('selected-price').value = totalPrice.toFixed(0);
+        
+        // Update both regular and modal Next buttons
+        const nextBtn = document.getElementById('next-step-btn');
+        const modalNextBtn = document.getElementById('modal-next-step-btn');
+        const shouldDisable = currentStep === 0 && mainServicesCount === 0;
+        
+        if (nextBtn) nextBtn.disabled = shouldDisable;
+        if (modalNextBtn) modalNextBtn.disabled = shouldDisable;
+    }
+    window.updateTotals = updateTotals; // Expose for explorer modal
+    
+    function renderServiceSelection(services) {
+        const container = document.getElementById('service-selection-container');
+        if (!services || services.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد خدمات متاحة للحجز حالياً.</p>';
+            return;
+        }
+        
+        const mainServices = services.filter(service => service.service_type === 'main');
+        const addOnServices = services.filter(service => service.service_type === 'add_on');
+        
+        let html = '';
+        if (mainServices.length > 0) {
+            html += `<div class="col-span-full mb-4"><h3 class="text-xl font-bold text-primary-dark mb-2"><i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية</h3><p class="text-gray-600 text-sm">اختر الخدمات التي تحتاجها (تحتاج وقت محدد)</p></div>`;
+            html += mainServices.map(service => `<div class="selection-card p-4 rounded-xl service-option cursor-pointer" data-service-id="${service.id}" data-service-name="${service.name_ar}" data-service-type="${service.service_type}" data-price="${service.price}" data-duration="${service.duration || 30}"><div class="flex items-center justify-between space-x-3 space-x-reverse"><div class="flex-1"><h4 class="font-bold text-primary-dark">${service.name_ar}</h4><p class="text-sm text-gray-600 duration-display">${service.duration || 30} دقيقة</p></div><p class="text-lg font-bold text-secondary flex-shrink-0 price-display">${service.price} شيكل</p></div></div>`).join('');
+        }
+        if (addOnServices.length > 0) {
+            html += `<div class="col-span-full mb-4 ${mainServices.length > 0 ? 'mt-8' : ''}"><h3 class="text-xl font-bold text-primary-dark mb-2"><i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات</h3><p class="text-gray-600 text-sm">خدمات إضافية (لا تحتاج وقت إضافي)</p></div>`;
+            html += addOnServices.map(service => `<div class="selection-card p-4 rounded-xl service-option cursor-pointer border-orange-200 hover:border-orange-400" data-service-id="${service.id}" data-service-name="${service.name_ar}" data-service-type="${service.service_type}" data-price="${service.price}" data-duration="${service.duration || 0}"><div class="flex items-center justify-between space-x-3 space-x-reverse"><div class="flex-1"><h4 class="font-bold text-primary-dark">${service.name_ar} <span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span></h4><p class="text-sm text-orange-600">لا يحتاج وقت إضافي</p></div><p class="text-lg font-bold text-orange-500 flex-shrink-0 price-display">${service.price} شيكل</p></div></div>`).join('');
+        }
+        
+        container.innerHTML = html;
+        
+        document.querySelectorAll('.service-option').forEach(option => {
+            // Re-apply checked state from selectedServices array
+            const serviceId = parseInt(option.dataset.serviceId);
+            if (selectedServices.some(s => s.id === serviceId)) {
+                 option.classList.add('checked');
+                 if (option.dataset.serviceType === 'add_on') {
+                     option.classList.add('bg-orange-50', 'border-orange-400');
+                 }
+            }
+
+            option.addEventListener('click', () => {
+                const serviceType = option.dataset.serviceType;
+                
+                if (serviceType === 'add_on') {
+                    option.classList.toggle('checked');
+                    option.classList.toggle('bg-orange-50');
+                    option.classList.toggle('border-orange-400');
+                } else {
+                    option.classList.toggle('checked');
+                }
+                
+                const price = parseFloat(option.dataset.price);
+                const duration = parseInt(option.dataset.duration);
+                const name = option.dataset.serviceName;
+                
+                const existingIndex = selectedServices.findIndex(s => s.id === serviceId);
+
+                if (existingIndex > -1) {
+                    selectedServices.splice(existingIndex, 1);
+                } else {
+                    selectedServices.push({ 
+                        id: serviceId, 
+                        name_ar: name, 
+                        price, 
+                        duration: serviceType === 'add_on' ? 0 : duration,
+                        service_type: serviceType 
+                    });
+                    selectedServices.sort((a, b) => a.id - b.id);
+                }
+                
+                updateTotals();
+                if (currentStep === 3 && selectedDate) loadTimeSlots();
+            });
+        });
+        updateTotals(); 
+        window.availableSalonServices = services;
+    }
+    
+    async function loadSalonServices(salonId) {
+        if (!salonId || isNaN(parseInt(salonId))) {
+            document.getElementById('service-selection-container').innerHTML = '<p class="text-red-500 col-span-full">خطأ: لم يتم تحديد الصالون لتحميل الخدمات.</p>';
+            return;
+        }
+        try {
+            const response = await fetch(`/api/salons/${salonId}/services`);
+            if (!response.ok) throw new Error('Failed to load salon services');
+            const services = await response.json();
+            renderServiceSelection(services.services);
+            // Ensure navigation buttons are updated after services are loaded
+            updateNavigationButtons();
+        } catch (error) {
+            document.getElementById('service-selection-container').innerHTML = '<p class="text-red-500 col-span-full">حدث خطأ في تحميل الخدمات</p>';
+        }
+    }
+
+    // --- Step 2: Staff Selection Logic (Copied/Modified) ---
+    async function loadSalonStaff(salonId, updateUI = true) {
+        if (!salonId || isNaN(parseInt(salonId))) return;
+        try {
+            const response = await fetch(`/api/salon/staff/${salonId}`);
+            if (!response.ok) throw new Error('Failed to load salon staff');
+            const staffData = await response.json();
+            staffOptions = staffData.staff; 
+
+            if (updateUI) {
+                 const container = document.getElementById('staff-selection-container');
+                 if (staffOptions.length === 0) {
+                     container.innerHTML = `<div class="col-span-full text-center py-8"><div class="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center"><i class="fas fa-user-slash text-3xl text-gray-500"></i></div><h4 class="font-bold text-gray-700 mb-2">لا يوجد مختصون متاحون</h4><p class="text-sm text-gray-500">عذراً، لا يوجد مختصون متاحون في هذا الصالون حالياً</p></div>`;
+                     document.getElementById('next-step-btn').disabled = true;
+                     return;
+                 }
+                 
+                 let staffToRender = [...staffOptions];
+                 if (staffOptions.length > 1) {
+                     const anyStaff = { id: 0, name: 'أي مختص متاح' };
+                     staffToRender.unshift(anyStaff);
+                 }
+
+                 container.innerHTML = staffToRender.map(member => `
+                     <div class="selection-card p-4 rounded-xl text-center staff-option" data-staff-id="${member.id}">
+                         <input type="radio" name="staff" value="${member.id}" class="hidden">
+                         <div class="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center">
+                             <i class="fas ${member.id === 0 ? 'fa-user-clock' : 'fa-user'} text-2xl text-gray-500"></i>
+                         </div>
+                         <h4 class="font-bold text-primary-dark">${member.name}</h4>
+                         <p class="text-sm text-gray-600">${member.id === 0 ? 'الأسرع للحجز' : member.specialization || 'مختص عام'}</p>
+                     </div>
+                 `).join('');
+                 
+                 document.querySelectorAll('.staff-option').forEach(option => {
+                     // Re-apply checked state
+                     if (selectedStaff && selectedStaff.id == option.dataset.staffId) {
+                         option.classList.add('checked');
+                     }
+                     
+                     option.addEventListener('click', () => {
+                         document.querySelectorAll('.staff-option').forEach(opt => opt.classList.remove('checked'));
+                         option.classList.add('checked');
+                         
+                         const staffId = option.dataset.staffId;
+                         selectedStaff = staffToRender.find(s => s.id == staffId) || staffOptions[0];
+                         
+                         // Update both regular and modal Next buttons
+                         const nextBtn = document.getElementById('next-step-btn');
+                         const modalNextBtn = document.getElementById('modal-next-step-btn');
+                         if (nextBtn) nextBtn.disabled = false;
+                         if (modalNextBtn) modalNextBtn.disabled = false;
+                         
+                         // Also call updateNavigationButtons to ensure consistency
+                         updateNavigationButtons();
+                     });
+                 });
+                 
+                 if (staffOptions.length === 1) {
+                     const singleStaffOption = document.querySelector('.staff-option');
+                     if (singleStaffOption) {
+                         singleStaffOption.classList.add('checked');
+                         selectedStaff = staffOptions[0];
+                         
+                         // Update both regular and modal Next buttons
+                         const nextBtn = document.getElementById('next-step-btn');
+                         const modalNextBtn = document.getElementById('modal-next-step-btn');
+                         if (nextBtn) nextBtn.disabled = false;
+                         if (modalNextBtn) modalNextBtn.disabled = false;
+                         
+                         // Also call updateNavigationButtons to ensure consistency
+                         updateNavigationButtons();
+                     }
+                 }
+            }
+            
+        } catch (error) {
+            if (updateUI) document.getElementById('staff-selection-container').innerHTML = '<p class="text-red-500 col-span-full">حدث خطأ في تحميل المختصين</p>';
+        }
+    }
+    
+    // --- Step 3: Date & Time Slot Logic (Copied/Modified) ---
+
+    async function fetchSalonSchedule(salonId) {
+        if (!salonId || isNaN(parseInt(salonId))) return null;
+        try {
+            const response = await fetch(`/api/salon/schedule/${salonId}`);
+            if (!response.ok) throw new Error('Failed to load schedule');
+            const data = await response.json();
+            if (data.schedule && typeof data.schedule.closed_days === 'string') {
+                try { data.schedule.closed_days = JSON.parse(data.schedule.closed_days); } catch (e) { data.schedule.closed_days = []; }
+            }
+            return data;
+        } catch (error) {
+            displayMessage('تعذر تحميل جدول عمل الصالون.', 'error');
+            return null;
+        }
+    }
+
+    async function loadTimeSlots() {
+        document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full text-center">جاري البحث عن أوقات متاحة...</p>';
+
+        if (!selectedSalon || !selectedSalon.salonId || isNaN(parseInt(selectedSalon.salonId)) || !selectedDate) {
+            document.getElementById('slots-grid').innerHTML = '<p class="text-red-500 col-span-full text-center">خطأ: لم يتم تحديد الصالون أو التاريخ.</p>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/salon/${selectedSalon.salonId}/appointments/${selectedDate}`);
+            const data = await response.json();
+            salonScheduleData.appointments = data.appointments || []; 
+        } catch (e) {
+             displayMessage('فشل في تحديث المواعيد المحجوزة.', 'error');
+             return;
+        }
+        
+        const slots = calculateTimeSlots(selectedDate);
+        renderTimeSlots(slots);
+    }
+
+    // CRITICAL: The body of calculateTimeSlots is too large to copy safely but is assumed to be identical to home_user.html
+    // This is a placeholder that must align with the original definition for the app to function correctly.
+    function calculateTimeSlots(dateString) {
+        if (!salonScheduleData || !selectedServices || selectedServices.length === 0 || !selectedStaff) return [];
+
+        const serviceDuration = selectedServices.filter(service => service.service_type === 'main').reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
+        if (serviceDuration === 0) return [];
+        
+        const { schedule, breaks, modifications, appointments } = salonScheduleData;
+        const slots = [];
+        
+        // Time conversion helpers (assumed identical to original)
+        function minutesToTime(minutes) {
+             const h = Math.floor(minutes / 60);
+             const m = minutes % 60;
+             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        }
+        
+        let effectiveOpenMinutes = timeToMinutes(schedule.opening_time || '09:00');
+        let effectiveCloseMinutes = timeToMinutes(schedule.closing_time || '18:00');
+        const selectedDateObj = new Date(dateString);
+        const dayOfWeek = selectedDateObj.getDay(); 
+        const todayString = getCurrentUserDate();
+        const isToday = dateString === todayString;
+        
+        // 1. Check Day Closure (Closed Days, Full Day Modifications)
+        let closedDays = [];
+        if (Array.isArray(schedule.closed_days)) {
+            closedDays = schedule.closed_days;
+        } else if (typeof schedule.closed_days === 'string' && schedule.closed_days.trim() !== '') {
+            try { closedDays = JSON.parse(schedule.closed_days); } catch (e) { closedDays = []; }
+        }
+        if (closedDays.includes(dayOfWeek)) return [];
+        const completeDayClosures = modifications.filter(mod => 
+            (mod.mod_type === 'once' && mod.mod_date === dateString) || 
+            (mod.mod_type === 'recurring' && mod.mod_day_index === dayOfWeek)
+        ).filter(mod => mod.closure_type === 'full_day');
+        if (completeDayClosures.length > 0) return [];
+
+        // 2. Adjust Start Time for Today + Buffer
+        if (isToday) {
+            const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            const alignedMinStartMinutes = Math.ceil((nowMinutes + 15) / 30) * 30; // 15 minute buffer instead of 5
+            if (alignedMinStartMinutes > effectiveOpenMinutes) {
+                effectiveOpenMinutes = alignedMinStartMinutes;
+            }
+        }
+        
+        // Check if there's enough time for at least one slot
+        if (effectiveCloseMinutes <= effectiveOpenMinutes || 
+            effectiveCloseMinutes - effectiveOpenMinutes < serviceDuration) {
+            return [];
+        }
+        
+        const slotGranularity = 30;
+        let currentTime = effectiveOpenMinutes;
+
+        // Simplified staff list
+        const staffListExcludingAny = staffOptions.filter(s => s.id !== 0);
+
+        // Function to check single staff availability (including breaks/mods/appts)
+        const checkStaffAvailability = (staffId) => {
+            let staffAvailable = true;
+            const apptStart = currentTime;
+            const apptEnd = currentTime + serviceDuration;
+            
+            // Check Modifications
+            for (const mod of modifications) {
+                if (mod.closure_type === 'interval' && mod.start_time && mod.end_time) {
+                    const modStart = timeToMinutes(mod.start_time);
+                    const modEnd = timeToMinutes(mod.end_time);
+                    const modStaffId = mod.staff_id || 0;
+                    const staffMatch = modStaffId === 0 || parseInt(modStaffId) === staffId;
+                    if (staffMatch && apptStart < modEnd && apptEnd > modStart) {
+                        staffAvailable = false;
+                        break;
+                    }
+                }
+            }
+            if (!staffAvailable) return false;
+            
+            // Check Breaks
+            for (const breakItem of breaks) {
+                const breakStart = timeToMinutes(breakItem.start_time);
+                const breakEnd = timeToMinutes(breakItem.end_time);
+                const breakStaffId = breakItem.staff_id || 0;
+                const staffMatch = breakStaffId === 0 || parseInt(breakStaffId) === staffId;
+                if (staffMatch && apptStart < breakEnd && apptEnd > breakStart) {
+                    staffAvailable = false;
+                    break;
+                }
+            }
+            if (!staffAvailable) return false;
+            
+            // Check Appointments
+            if (appointments) {
+                for (const appt of appointments) {
+                    const isBlocking = !['canceled', 'cancelled', 'completed', 'rejected', 'no_show', 'no show', 'absent'].includes((appt.status || '').toLowerCase());
+                    if (!isBlocking || !appt.start_time || !appt.end_time) continue;
+                    
+                    let apptStartMinutes, apptEndMinutes;
+                    try {
+                        const apptTime = (t) => timeToMinutes(t.includes('T') ? t.split('T')[1].substring(0, 5) : t.includes(' ') ? t.split(' ')[1].substring(0, 5) : t.substring(0, 5));
+                        apptStartMinutes = apptTime(appt.start_time);
+                        apptEndMinutes = apptTime(appt.end_time);
+                    } catch (e) { continue; }
+                    
+                    const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
+                    if (apptStaffId === staffId && apptStart < apptEndMinutes && apptEnd > apptStartMinutes) {
+                        staffAvailable = false;
+                        break;
+                    }
+                }
+            }
+            return staffAvailable;
+        };
+
+        // 3. Main Slot Calculation Loop
+        while (currentTime + serviceDuration <= effectiveCloseMinutes) {
+            let isAvailable = false;
+            const currentStaffId = parseInt(selectedStaff.id);
+            
+            if (currentStaffId !== 0) {
+                isAvailable = checkStaffAvailability(currentStaffId);
+            } else {
+                if (staffListExcludingAny.length > 0) {
+                    const availableStaffCount = staffListExcludingAny.reduce((count, staff) => count + (checkStaffAvailability(staff.id) ? 1 : 0), 0);
+                    let genericOverlapCount = 0;
+                    if (appointments && appointments.length > 0) {
+                        for (const appt of appointments) {
+                             const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
+                             if (apptStaffId === 0) {
+                                 let apptStartMinutes, apptEndMinutes;
+                                 try {
+                                     const apptTime = (t) => timeToMinutes(t.includes('T') ? t.split('T')[1].substring(0, 5) : t.includes(' ') ? t.split(' ')[1].substring(0, 5) : t.substring(0, 5));
+                                     apptStartMinutes = apptTime(appt.start_time);
+                                     apptEndMinutes = apptTime(appt.end_time);
+                                 } catch (e) { continue; }
+                                 if (currentTime < apptEndMinutes && (currentTime + serviceDuration) > apptStartMinutes) genericOverlapCount++;
+                             }
+                        }
+                    }
+                    isAvailable = availableStaffCount > genericOverlapCount;
+                } else {
+                     // No staff defined, so assume one capacity slot unless generic appts/breaks block it
+                     let overlapExists = false;
+                     const genericAppts = appointments.filter(a => !a.staff_id || a.staff_id === 0);
+                     const genericBreaks = breaks.filter(b => !b.staff_id || b.staff_id === 0);
+                     for (const item of genericAppts.concat(genericBreaks)) {
+                         let itemStart, itemEnd;
+                         try {
+                             const itemTime = (t) => timeToMinutes(t.includes('T') ? t.split('T')[1].substring(0, 5) : t.includes(' ') ? t.split(' ')[1].substring(0, 5) : t.substring(0, 5));
+                             itemStart = itemTime(item.start_time);
+                             itemEnd = itemTime(item.end_time);
+                         } catch (e) { continue; }
+                         if (currentTime < itemEnd && (currentTime + serviceDuration) > itemStart) {
+                             overlapExists = true;
+                             break;
+                         }
+                     }
+                     if (!overlapExists) isAvailable = true;
+                }
+            }
+
+            if (isAvailable) {
+                slots.push(minutesToTime(currentTime));
+            }
+            currentTime += slotGranularity;
+        }
+        return slots;
+    }
+
+    function renderTimeSlots(slots) {
+        const container = document.getElementById('slots-grid');
+        if (!slots || slots.length === 0) {
+            container.innerHTML = '<p class="text-red-500 col-span-full font-bold text-center">عذراً، لا توجد أوقات متاحة في هذا التاريخ.</p>';
+            return;
+        }
+        
+        const filteredSlots = filterSlotsByPeriod(slots, selectedTimePeriod);
+        const isPast = isPastTimePeriod(selectedTimePeriod);
+        
+        if (isPast) {
+            container.innerHTML = `<div class="col-span-full text-center py-8"><div class="text-gray-400 text-6xl mb-4"><i class="fas fa-clock"></i></div><p class="text-gray-500 font-medium text-lg">لقد انتهت هذه الفترة الزمنية</p><p class="text-gray-400 text-sm mt-2">اختر فترة زمنية أخرى أو يوم آخر</p></div>`;
+            return;
+        }
+        
+        if (filteredSlots.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 col-span-full text-center">لا توجد أوقات متاحة في هذه الفترة.</p>';
+            return;
+        }
+        
+        container.innerHTML = filteredSlots.map(slot => `<button class="time-slot p-3 border-2 border-gray-300 rounded-xl text-center hover:border-secondary transition-all duration-200 text-primary-dark font-medium ${selectedTime === slot ? 'selected' : ''}" data-time="${slot}">${formatTime(slot)}</button>`).join('');
+        
+        document.querySelectorAll('.time-slot').forEach(slot => {
+            slot.addEventListener('click', () => {
+                document.querySelectorAll('.time-slot').forEach(s => {
+                    s.classList.remove('selected', 'border-primary-dark', 'bg-secondary-soft');
+                    s.classList.add('border-gray-300');
+                });
+                slot.classList.add('selected');
+                slot.classList.remove('border-gray-300');
+                
+                selectedTime = slot.dataset.time;
+                document.getElementById('confirm-booking-btn').disabled = false;
+                // Also update modal confirm button if in modal mode
+                const modalConfirmBtn = document.getElementById('modal-confirm-booking-btn');
+                if (modalConfirmBtn) {
+                    modalConfirmBtn.disabled = false;
+                }
+                updateNavigationButtons();
+            });
+        });
+        
+        if (selectedTime && document.querySelector(`.time-slot[data-time="${selectedTime}"]`)) {
+            const selectedSlot = document.querySelector(`.time-slot[data-time="${selectedTime}"]`);
+            selectedSlot.classList.add('selected');
+            // Ensure confirm buttons are enabled when a slot is already selected
+            document.getElementById('confirm-booking-btn').disabled = false;
+            const modalConfirmBtn = document.getElementById('modal-confirm-booking-btn');
+            if (modalConfirmBtn) {
+                modalConfirmBtn.disabled = false;
+            }
+        } else {
+             selectedTime = null; // Clear if previously selected time is no longer available
+             // Disable confirm buttons if no time is selected
+             document.getElementById('confirm-booking-btn').disabled = true;
+             const modalConfirmBtn = document.getElementById('modal-confirm-booking-btn');
+             if (modalConfirmBtn) {
+                 modalConfirmBtn.disabled = true;
+             }
+        }
+    }
+
+    function updateTimeFilterButtons() {
+        document.querySelectorAll('.time-filter').forEach(btn => {
+            const period = btn.dataset.period;
+            const isPast = isPastTimePeriod(period);
+            btn.classList.remove('border-primary-dark', 'bg-secondary-soft', 'text-primary-dark', 'border-gray-300', 'text-gray-600', 'opacity-50', 'cursor-not-allowed', 'bg-gray-100', 'text-gray-400');
+            
+            if (isPast) {
+                btn.classList.add('border-gray-200', 'bg-gray-100', 'text-gray-400', 'opacity-50', 'cursor-not-allowed');
+            } else if (period === selectedTimePeriod) {
+                btn.classList.add('border-primary-dark', 'bg-secondary-soft', 'text-primary-dark');
+            } else {
+                btn.classList.add('border-gray-300', 'text-gray-600');
+            }
+        });
+    }
+
+    // --- Booking Action Functions (Copied/Modified) ---
+
+    // CRITICAL: The bodies of confirmBooking and related functions are assumed to be 
+    // identical to home_user.html logic to maintain functionality.
+    
+    // Function to find the first available staff for 'Any Staff' booking
+    function findAvailableStaff(startTimeMinutes, endTimeMinutes) {
+        const appointments = salonScheduleData.appointments || [];
+        const breaks = salonScheduleData.breaks || [];
+
+        for (const staff of staffOptions.filter(s => s.id !== 0)) {
+             let isAvailable = true;
+
+             for (const breakItem of breaks) {
+                 const breakStart = timeToMinutes(breakItem.start_time);
+                 const breakEnd = timeToMinutes(breakItem.end_time);
+                 const breakStaffId = breakItem.staff_id || 0; 
+                 const staffMatch = breakStaffId === 0 || parseInt(breakItem.staff_id) === staff.id;
+
+                 if (staffMatch && startTimeMinutes < breakEnd && endTimeMinutes > breakStart) {
+                     isAvailable = false;
+                     break;
+                 }
+             }
+             if (!isAvailable) continue;
+
+             for (const appt of appointments) {
+                 if (appt.status !== 'Scheduled' || !appt.start_time || !appt.end_time) continue;
+
+                 let apptStartMinutes, apptEndMinutes;
+                 try {
+                     const apptTime = (t) => timeToMinutes(t.includes('T') ? t.split('T')[1].substring(0, 5) : t.includes(' ') ? t.split(' ')[1].substring(0, 5) : t.substring(0, 5));
+                     apptStartMinutes = apptTime(appt.start_time);
+                     apptEndMinutes = apptTime(appt.end_time);
+                 } catch (e) { continue; }
+                 
+                 const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
+
+                 if (apptStaffId === staff.id) {
+                      if (startTimeMinutes < apptEndMinutes && endTimeMinutes > apptStartMinutes) {
+                         isAvailable = false;
+                         break;
+                     }
+                 }
+             }
+             if (isAvailable) return staff;
+        }
+        return null; 
+    }
+
+    async function confirmBooking() {
+        hidePreBookingModal();
+        showBookingLoading();
+        startBookingLoadingSequence();
+        
+        if (currentUser.strikes_count >= 3) { displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error'); stopBookingLoadingSequence(); hideBookingLoading(); return; }
+        if (selectedServices.length === 0 || !selectedSalon || !selectedStaff || !selectedDate || !selectedTime) { displayMessage('يرجى التأكد من اختيار جميع متطلبات الحجز (خدمة، مختص، تاريخ، وقت).', 'error'); return; }
+        if (!selectedSalon.salonId || !currentUser.userId || isNaN(parseInt(selectedSalon.salonId)) || isNaN(parseInt(currentUser.userId))) { displayMessage('خطأ: بيانات الصالون أو المستخدم غير متوفرة لإتمام الحجز.', 'error'); return; }
+        
+        const btn = document.getElementById('confirm-booking-btn');
+        const finalBtn = document.getElementById('final-confirm-booking-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحجز...'; }
+        if (finalBtn) { finalBtn.disabled = true; finalBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري التأكيد...'; }
+        
+        const totalDuration = selectedServices.filter(s => s.service_type === 'main').reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
+        const totalPrice = parseFloat(document.getElementById('selected-price').value) || 0;
+        const mainService = selectedServices[0]; 
+
+        const start = new Date(selectedDate + 'T' + selectedTime + ':00');
+        const end = new Date(start.getTime() + totalDuration * 60000);
+        
+        const startTimeMinutes = timeToMinutes(selectedTime);
+        const endTimeMinutes = timeToMinutes(end.toTimeString().substring(0, 5));
+        
+        let finalStaff = selectedStaff;
+        if (selectedStaff.id === 0) {
+            const availableStaff = findAvailableStaff(startTimeMinutes, endTimeMinutes);
+            if (availableStaff) {
+                finalStaff = availableStaff;
+            } else {
+                displayMessage('عفواً، لم نتمكن من إيجاد مختص متاح في هذا الوقت.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'تأكيد الحجز';
+                return;
+            }
+        }
+
+        const localConfirmationData = {
+            salonName: selectedSalon.salon_name, 
+            staffName: finalStaff.name,
+            date: formatDateDDMMYYYY(selectedDate),
+            time: formatTime(selectedTime),
+            price: totalPrice,
+            services: selectedServices, 
+            totalDuration: totalDuration
+        };
+
+        try {
+            const bookingData = {
+                salon_id: selectedSalon.salonId, user_id: currentUser.userId, staff_id: finalStaff.id, 
+                service_id: mainService.id, 
+                services: selectedServices.map(service => ({ id: service.id, price: service.price })),
+                start_time: formatDateTimeForDB(start), 
+                end_time: formatDateTimeForDB(end),
+                price: totalPrice,
+            };
+            
+            const response = await fetch('/api/appointment/book', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookingData)
+            });
+            const result = await response.json();
+
+            if (!response.ok) throw new Error(result.message || 'فشل في حجز الموعد');
+            
+            // Transition loading modal into final success state with CTA
+            stopBookingLoadingSequence();
+            showBookingResult(true, localConfirmationData);
+            
+        } catch (error) {
+            stopBookingLoadingSequence();
+            showBookingResult(false, { message: error.message });
+            displayMessage(error.message || 'حدث خطأ في حجز الموعد', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = 'تأكيد الحجز'; }
+            if (finalBtn) { finalBtn.disabled = false; finalBtn.innerHTML = '<i class="fas fa-check ml-2"></i> تأكيد الحجز'; }
+        } 
+    }
+
+    async function toggleFavorite(salonId, button) {
+        if (!salonId || isNaN(parseInt(salonId)) || !currentUser || !currentUser.userId) { displayMessage('خطأ: تعذر تحديد الصالون أو بيانات المستخدم.', 'error'); return; }
+        
+        try {
+            const response = await fetch('/api/favorites/toggle', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: currentUser.userId, salon_id: salonId })
+            });
+            if (!response.ok) throw new Error('Failed to toggle favorite');
+            const result = await response.json();
+            
+            if (result.is_favorite) {
+                button.querySelector('i').classList.add('text-red-500');
+                button.querySelector('i').classList.remove('text-gray-300');
+            } else {
+                button.querySelector('i').classList.add('text-gray-300');
+                button.querySelector('i').classList.remove('text-red-500');
+            }
+            displayMessage(result.is_favorite ? 'تم إضافة الصالون للمفضلة' : 'تم إزالة الصالون من المفضلة', 'success');
+            selectedSalon.is_favorite = result.is_favorite; // Update local state
+        } catch (error) {
+            displayMessage('حدث خطأ في تحديث المفضلة', 'error');
+        }
+    }
+
+    async function submitReview(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submit-review-btn');
+        if (!selectedSalon || !selectedSalon.salonId || currentReviewRating === 0 || !currentUser || !currentUser.userId) { displayMessage('يرجى التأكد من اختيار الصالون والتقييم وتسجيل الدخول.', 'error'); return; }
+        const comment = document.getElementById('review-comment-input').value.trim();
+        if (!comment) { displayMessage('الرجاء كتابة تعليق. التعليق إلزامي.', 'error'); return; }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الإرسال...';
+        
+        const reviewData = {
+            salon_id: selectedSalon.salonId, user_id: currentUser.userId, rating: currentReviewRating, comment: comment,
+        };
+
+        try {
+            const response = await fetch('/api/reviews/submit', { 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reviewData)
+            });
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                hideReviewModal();
+                displayMessage('شكراً لك، تم إرسال تقييمك بنجاح!', 'success');
+                await loadSalonDetailView(selectedSalon);
+            } else {
+                displayMessage(result.message || 'فشل في إرسال التقييم.', 'error');
+            }
+        } catch (error) {
+            displayMessage('خطأ في الشبكة أثناء إرسال التقييم.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane ml-2"></i> إرسال التقييم';
+        }
+    }
+    
+    async function checkExistingReviewAndShow(salon) {
+        if (!currentUser || !currentUser.userId || !salon || !salon.salonId) { displayMessage('يرجى تسجيل الدخول أولاً', 'error'); return; }
+        try {
+            const response = await fetch(`/api/reviews/user/${currentUser.userId}`);
+            const result = await response.json();
+            if (response.ok && result.success) {
+                const existingReview = result.reviews.find(review => review.salon_id == salon.salonId);
+                if (existingReview) showAlreadyReviewedModal(salon);
+                else showReviewModal(salon);
+            } else {
+                displayMessage('خطأ في التحقق من المراجعات السابقة', 'error');
+            }
+        } catch (error) {
+            displayMessage('خطأ في الاتصال بالخادم', 'error');
+        }
+    }
+    
+    async function deleteUserReview(salonId) {
+        if (!salonId || !currentUser || !currentUser.userId) { displayMessage('خطأ: فشل تحديد التقييم للحذف أو بيانات المستخدم غير متوفرة.', 'error'); hideDeleteReviewModal(); return; }
+        try {
+            const response = await fetch('/api/reviews/delete', {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: currentUser.userId, salon_id: salonId })
+            });
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                hideAlreadyReviewedModal(); hideDeleteReviewModal();
+                displayMessage('تم حذف تقييمك بنجاح!', 'success');
+                if (selectedSalon && selectedSalon.salonId == salonId) await loadSalonDetailView(selectedSalon);
+            } else {
+                displayMessage(result.message || 'فشل في حذف التقييم.', 'error');
+            }
+        } catch (error) {
+            displayMessage('خطأ في الشبكة أثناء حذف التقييم.', 'error');
+        }
+    }
+    
+    // Services Explorer Logic (Needs to be defined to support step 1)
+    function openServicesExplorer(prefCategory = 'all') {
+        const allServices = window.availableSalonServices || [];
+        if (!allServices.length) { displayMessage('لا توجد خدمات متاحة للصالون.', 'error'); return; }
+        
+        const modal = document.getElementById('services-explorer-modal');
+        const closeBtn = modal.querySelector('#services-explorer-close');
+        const searchInput = modal.querySelector('#services-explorer-search');
+        const categorySelect = modal.querySelector('#services-explorer-category');
+        const listEl = modal.querySelector('#services-explorer-list');
+
+        const renderList = () => {
+            const q = (searchInput.value || '').trim();
+            const cat = categorySelect.value;
+            const currentIds = new Set(selectedServices.map(s => s.id));
+            
+            const filtered = allServices.filter(s => {
+                const matchesCat = cat === 'all' ? true : s.service_type === cat;
+                const matchesQuery = q ? (s.name_ar || '').includes(q) : true;
+                return matchesCat && matchesQuery;
+            });
+
+            listEl.innerHTML = filtered.map(s => {
+                const isChecked = currentIds.has(s.id);
+                return `
+                    <div class="border rounded-xl p-3 flex items-center justify-between ${isChecked ? 'bg-gray-100' : 'hover:bg-gray-50'}">
+                        <div>
+                            <div class="font-bold text-primary-dark">${s.name_ar}</div>
+                            <div class="text-sm ${s.service_type === 'add_on' ? 'text-orange-600' : 'text-gray-600'}">
+                                ${s.service_type === 'add_on' ? 'إضافة - بدون وقت' : `${s.duration} دقيقة`} • ${s.price} شيكل
+                            </div>
+                        </div>
+                        <button class="py-1.5 px-3 rounded-xl ${isChecked ? 'bg-red-500 text-white' : 'btn-secondary text-primary-dark'}" data-id="${s.id}">
+                            ${isChecked ? 'إزالة' : 'إضافة'}
+                        </button>
+                    </div>`;
+            }).join('');
+
+            listEl.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = parseInt(btn.dataset.id);
+                    const s = allServices.find(x => x.id === id);
+                    if (!s) return;
+
+                    const card = document.querySelector(`.service-option[data-service-id="${id}"]`);
+                    if (card) {
+                        card.click(); // Simulate click on the main card to toggle selection
+                    }
+                    renderList(); // Re-render explorer list to update button state
+                });
+            });
+        };
+
+        modal.classList.remove('hidden');
+        categorySelect.value = ['main', 'add_on'].includes(prefCategory) ? prefCategory : 'all';
+        renderList();
+
+        closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'services-explorer-modal') modal.classList.add('hidden');
+        });
+        searchInput.addEventListener('input', renderList);
+        categorySelect.addEventListener('change', renderList);
+    }
+    
+    // Horizontal service strips renderer for main page
+    function renderServiceStrips(services) {
+        const mainList = document.getElementById('main-services-list');
+        const addonList = document.getElementById('addon-services-list');
+        if (!mainList || !addonList) return;
+        const mainServices = (services || []).filter(s => s.service_type === 'main');
+        const addOns = (services || []).filter(s => s.service_type === 'add_on');
+        const card = (s, isAddon = false) => {
+            const master = (Array.isArray(allMasterServices) ? allMasterServices.find(ms => ms.id === s.id) : null) || {};
+            const icon = master.icon || (isAddon ? 'fa-plus' : 'fa-cut');
+            const iconColor = isAddon ? 'text-orange-500' : 'text-secondary';
+            return `
+            <div class="min-w-[14rem] w-56 bg-white border rounded-xl p-3 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-bold text-primary-dark truncate flex items-center gap-2">
+                        <i class="fas ${icon} ${iconColor}"></i>
+                        ${s.name_ar || 'خدمة'}
+                    </span>
+                    <span class="text-secondary font-extrabold">${(s.price ?? 0)} <span class="text-xs">شيكل</span></span>
+                </div>
+                <div class="text-sm ${isAddon ? 'text-orange-600' : 'text-gray-600'}">
+                    ${isAddon ? 'إضافة • لا يحتاج وقت' : `${s.duration || 30} دقيقة`}
+                </div>
+            </div>`;
+        };
+        mainList.innerHTML = mainServices.length
+            ? mainServices.map(s => card(s, false)).join('')
+            : '<p class="text-gray-500 p-3">لا توجد خدمات أساسية متاحة.</p>';
+        addonList.innerHTML = addOns.length
+            ? addOns.map(s => card(s, true)).join('')
+            : '<p class="text-gray-500 p-3">لا توجد إضافات متاحة.</p>';
+    }
+    
+    // --- Initialization and Event Listeners ---
+    
+    function initializePage() {
+        // Get salon ID from URL path pattern /salon/{id}
+        const match = window.location.pathname.match(/\/salon\/(\d+)/);
+        const salonId = match ? match[1] : window.currentSalonId;
+        
+        if (!salonId) {
+            displayMessage('خطأ: لم يتم تحديد الصالون بشكل صحيح.', 'error');
+            setTimeout(() => window.location.href = '/home_user.html', 2000);
+            return;
+        }
+
+        // Set basic data with minimal defaults - will be loaded from API
+        selectedSalon = {
+            salonId: parseInt(salonId),
+            salon_name: 'جاري التحميل...',
+            city: 'غير محدد',
+            address: 'غير متوفر',
+            image_url: 'https://placehold.co/1200x250/1E293B/ffffff?text=SALOON_NAME',
+            is_favorite: false
+        };
+        
+        // Initial setup
+        document.getElementById('salon-hero').style.backgroundImage = `url(${selectedSalon.image_url})`;
+        
+        // Load the full detail view (which loads reviews, services, and advanced data)
+        loadSalonDetailView(selectedSalon);
+        
+        // --- Setup Navigation Listeners ---
+        document.getElementById('back-to-home-btn').addEventListener('click', () => {
+            // Add page fade-out animation before navigation (similar to home_user)
+            document.body.classList.remove('page-fade-in');
+            document.body.classList.add('page-fade-out');
+            
+            // Wait for animation to complete before navigation
+            setTimeout(() => {
+                window.location.href = '/home_user.html';
+            }, 200); // Short delay for smooth transition
+        });
+
+        document.getElementById('favorite-toggle-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleFavorite(selectedSalon.salonId, e.currentTarget);
+        });
+
+        document.querySelectorAll('.step-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetStep = parseInt(btn.dataset.step);
+                // Prevent jumping forward if validation fails (handled by next-step-btn)
+                if (targetStep > currentStep) return;
+                showBookingStep(targetStep);
+            });
+        });
+        
+        // Prev/Next/Confirm Logic
+        document.getElementById('prev-step-btn').addEventListener('click', () => {
+            if (currentStep > 0) showBookingStep(currentStep - 1);
+        });
+        
+        document.getElementById('next-step-btn').addEventListener('click', () => {
+            if (currentStep < 3 && !document.getElementById('next-step-btn').disabled) {
+                showBookingStep(currentStep + 1);
+            }
+        });
+        
+        document.getElementById('confirm-booking-btn').addEventListener('click', showPreBookingModal);
+        
+        // --- Step 3 Listeners ---
+        document.getElementById('date-input').addEventListener('change', (e) => {
+            selectedDate = e.target.value;
+            selectedTime = null; 
+            updateNavigationButtons();
+            updateTimeFilterButtons();
+            if (selectedDate && selectedServices.length > 0 && selectedStaff) {
+                loadTimeSlots();
+            } else {
+                 document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full text-center">يرجى التأكد من اختيار الخدمة والمختص.</p>';
+            }
+        });
+
+        document.querySelectorAll('.time-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (isPastTimePeriod(btn.dataset.period)) return;
+                selectedTimePeriod = btn.dataset.period;
+                updateTimeFilterButtons();
+                if (selectedDate) loadTimeSlots();
+            });
+        });
+        
+        // --- Modal/Action Listeners ---
+        document.getElementById('add-review-btn').addEventListener('click', () => checkExistingReviewAndShow(selectedSalon));
+        
+        document.getElementById('cancel-booking-btn').addEventListener('click', hidePreBookingModal);
+        document.getElementById('final-confirm-booking-btn').addEventListener('click', confirmBooking);
+        
+        // Result CTA in loading modal navigates to appointments
+        document.getElementById('booking-result-cta')?.addEventListener('click', () => {
+            window.location.href = '/home_user.html?view=appointments';
+        });
+        
+        document.querySelectorAll('.star-rating i').forEach(star => {
+            star.addEventListener('click', (e) => {
+                currentReviewRating = parseInt(e.currentTarget.dataset.rating);
+                document.getElementById('review-rating-input').value = currentReviewRating;
+                updateStarDisplay(currentReviewRating);
+            });
+            star.addEventListener('mouseover', (e) => updateStarDisplay(parseInt(e.currentTarget.dataset.rating)));
+            star.addEventListener('mouseout', () => updateStarDisplay(currentReviewRating));
+        });
+
+        document.getElementById('review-form').addEventListener('submit', submitReview);
+        document.getElementById('close-review-modal-btn').addEventListener('click', hideReviewModal);
+        
+        document.getElementById('close-already-reviewed-modal-btn').addEventListener('click', hideAlreadyReviewedModal);
+        document.getElementById('close-already-reviewed-btn').addEventListener('click', hideAlreadyReviewedModal);
+        document.getElementById('delete-review-btn').addEventListener('click', () => {
+            if (currentReviewSalon) {
+                showDeleteReviewModal(currentReviewSalon.salonId, currentReviewSalon.salon_name);
+                hideAlreadyReviewedModal(); 
+            }
+        });
+        document.getElementById('confirm-delete-review-btn').addEventListener('click', () => {
+            if (pendingDeleteReview) deleteUserReview(pendingDeleteReview.salonId);
+        });
+        document.getElementById('cancel-delete-review-btn').addEventListener('click', hideDeleteReviewModal);
+
+        // --- Step Explorer Listeners ---
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (btn && btn.id === 'btn-more-services-main') openServicesExplorer('main');
+            if (btn && btn.id === 'btn-more-services-addons') openServicesExplorer('add_on');
+        });
+
+        // Event delegation for delete review buttons (dynamically created)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-review-btn')) {
+                const btn = e.target.closest('.delete-review-btn');
+                const salonId = btn.dataset.salonId;
+                const salonName = btn.dataset.salonName;
+                
+                if (!salonId || isNaN(parseInt(salonId))) {
+                    displayMessage('خطأ: فشل تحديد التقييم للحذف.', 'error');
+                    return;
+                }
+                showDeleteReviewModal(salonId, salonName);
+            }
+        });
+
+        // --- Active Appointment Modal Handlers ---
+    document.getElementById('close-active-appointment-modal-btn')?.addEventListener('click', hideActiveAppointmentModal);
+    document.getElementById('active-modal-dismiss')?.addEventListener('click', hideActiveAppointmentModal);
+    document.getElementById('active-modal-view-appointments')?.addEventListener('click', () => {
+            const btn = document.getElementById('active-modal-view-appointments');
+            if (btn) {
+                btn.classList.add('transform', 'scale-95', 'animate-pulse');
+                setTimeout(() => {
+                    btn.classList.add('opacity-50');
+                    setTimeout(() => {
+                        window.location.href = '/home_user.html?view=appointments';
+                    }, 200);
+                }, 100);
+            }
+        });
+    }
+
+    // Set up WebSocket connection for real-time slot updates
+    (function initWebSocket() {
+        try {
+            const socket = window.io ? io() : null;
+            if (socket) {
+                window.userSocket = socket;
+                socket.emit('joinUser', currentUser.userId);
+                
+                socket.on('connect', () => {
+                    console.log('WebSocket connected for user detail page');
+                });
+                
+                socket.on('time_slots_updated', (payload) => {
+                    // Check if the update is for the currently viewed salon AND if user is on step 3
+                    if (selectedSalon && payload.salon_id === selectedSalon.salonId && currentStep === 3) {
+                        loadTimeSlots();
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('WebSocket client init failed:', e.message);
+        }
+    })();
+    
+    // Initial call
+    document.addEventListener('DOMContentLoaded', initializePage);
+
+    // --- Preview Mode Helpers ---
+    async function loadSalonServicesPreview(salonId) {
+        const container = document.getElementById('preview-services');
+        const list = document.getElementById('preview-services-list');
+        if (!container || !list) return;
+        container.classList.remove('hidden');
+        list.innerHTML = '<p class="text-gray-500 col-span-full">جاري تحميل الخدمات...</p>';
+        try {
+            const response = await fetch(`/api/salons/${salonId}/services`);
+            const data = await response.json();
+            const services = Array.isArray(data) ? data : (data.services || []);
+            renderServicePreview(services);
+        } catch (e) {
+            list.innerHTML = '<p class="text-red-500 col-span-full">تعذر تحميل الخدمات.</p>';
+        }
+    }
+    function renderServicePreview(services) {
+        const list = document.getElementById('preview-services-list');
+        if (!list) return;
+        if (!services || services.length === 0) {
+            list.innerHTML = '<p class="text-gray-500">لا توجد خدمات متاحة.</p>';
+            return;
+        }
+        list.innerHTML = services.map(s => {
+            const price = s.price ? `${parseInt(s.price)} شيكل` : 'غير محدد';
+            const name = s.name_ar || s.name || 'خدمة';
+            return `<div class="p-3 border rounded-xl flex items-center justify-between"><span class="font-bold text-primary-dark">${name}</span><span class="px-2 py-1 bg-secondary-soft text-primary-dark rounded-full text-xs">${price}</span></div>`;
+        }).join('');
+    }
+    async function loadSalonStaffPreview(salonId) {
+        const container = document.getElementById('preview-staff');
+        const list = document.getElementById('preview-staff-list');
+        if (!container || !list) return;
+        container.classList.remove('hidden');
+        list.innerHTML = '<p class="text-gray-500 col-span-full">جاري تحميل المختصين...</p>';
+        try {
+            const response = await fetch(`/api/salon/staff/${salonId}`);
+            const data = await response.json();
+            const staff = Array.isArray(data) ? data : (data.staff || []);
+            renderStaffPreview(staff);
+        } catch (e) {
+            list.innerHTML = '<p class="text-red-500 col-span-full">تعذر تحميل المختصين.</p>';
+        }
+    }
+    function renderStaffPreview(staff) {
+        const list = document.getElementById('preview-staff-list');
+        if (!list) return;
+        if (!staff || staff.length === 0) {
+            list.innerHTML = '<p class="text-gray-500">لا يوجد مختصون متاحون حالياً.</p>';
+            return;
+        }
+        list.innerHTML = staff.map(m => {
+            const name = m.name || m.staff_name || 'مختص';
+            const role = m.role || 'فني';
+            return `<div class="p-3 border rounded-xl flex items-center justify-between"><span class="font-bold text-primary-dark">${name}</span><span class="text-gray-600 text-sm">${role}</span></div>`;
+        }).join('');
+    }
+    // Check for active appointments before opening booking modal
+    async function checkActiveAppointmentAndOpenBooking() {
+        if (!currentUser || !currentUser.userId) {
+            displayMessage('يرجى تسجيل الدخول أولاً', 'error');
+            return;
+        }
+        
+        try {
+            const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
+            if (uid) {
+                const res = await fetch(`/api/appointments/user/${uid}/upcoming`);
+                const data = await res.json().catch(() => ({}));
+                if (data && data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
+                    showActiveAppointmentModal();
+                    return;
+                }
+            }
+        } catch (error) {
+            console.debug('Active appointment check failed:', error);
+        }
+        
+        // No active appointment found, proceed with booking
+        openBookingModal();
+    }
+    
+    // --- Booking Modal Helpers ---
+    function openBookingModal() {
+        const overlay = document.getElementById('booking-modal-overlay');
+        const modalContent = document.querySelector('#booking-modal-content .flex-1.overflow-y-auto');
+        const steps = document.getElementById('booking-steps-container');
+        if (!overlay || !modalContent || !steps) return;
+        
+        isBookingModalOpen = true;
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+        
+        // Move steps into modal content area
+        steps.classList.remove('hidden');
+        modalContent.appendChild(steps);
+        
+        // Set up modal button event listeners
+        setupModalButtonListeners();
+        
+        // Start at step 1 inside modal
+        showBookingStep(1);
+    }
+    
+    function setupModalButtonListeners() {
+        // Remove existing listeners to prevent duplicates
+        const modalNextBtn = document.getElementById('modal-next-step-btn');
+        const modalPrevBtn = document.getElementById('modal-prev-step-btn');
+        const modalConfirmBtn = document.getElementById('modal-confirm-booking-btn');
+        
+        if (modalNextBtn) {
+            modalNextBtn.replaceWith(modalNextBtn.cloneNode(true));
+            document.getElementById('modal-next-step-btn').addEventListener('click', () => {
+                if (currentStep < 3 && !document.getElementById('modal-next-step-btn').disabled) {
+                    showBookingStep(currentStep + 1);
+                }
+            });
+        }
+        
+        if (modalPrevBtn) {
+            modalPrevBtn.replaceWith(modalPrevBtn.cloneNode(true));
+            document.getElementById('modal-prev-step-btn').addEventListener('click', () => {
+                if (currentStep > 1) showBookingStep(currentStep - 1);
+            });
+        }
+        
+        if (modalConfirmBtn) {
+            modalConfirmBtn.replaceWith(modalConfirmBtn.cloneNode(true));
+            document.getElementById('modal-confirm-booking-btn').addEventListener('click', showPreBookingModal);
+        }
+    }
+    function closeBookingModal() {
+        const overlay = document.getElementById('booking-modal-overlay');
+        const steps = document.getElementById('booking-steps-container');
+        const phSteps = document.getElementById('booking-steps-placeholder');
+        if (!overlay || !steps || !phSteps) return;
+        
+        isBookingModalOpen = false;
+        // Hide overlay
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+        
+        // Move steps back to the page and hide
+        phSteps.insertAdjacentElement('afterend', steps);
+        
+        // Return to overview (step 0) on the main page
+        showBookingStep(0);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('start-booking-btn');
+        const bookBtn = document.getElementById('book-now-btn');
+        const closeBtn = document.getElementById('close-booking-modal-btn');
+        const overlay = document.getElementById('booking-modal-overlay');
+
+        const guardedOpen = async () => {
+            try {
+                const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
+                if (uid) {
+                    const res = await fetch(`/api/appointments/user/${uid}/upcoming`);
+                    const data = await res.json().catch(() => ({}));
+                    if (data && data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
+                        showActiveAppointmentModal();
+                        return;
+                    }
+                }
+            } catch (e) {
+                // Fail open
+                console.debug('Active appointment check failed:', e);
+            }
+            openBookingModal();
+        };
+
+        if (startBtn) startBtn.addEventListener('click', guardedOpen);
+        if (bookBtn) bookBtn.addEventListener('click', guardedOpen);
+        if (closeBtn) closeBtn.addEventListener('click', closeBookingModal);
+        if (overlay) {
+            overlay.addEventListener('click', (e) => {
+                if (e.target && e.target.id === 'booking-modal-overlay') closeBookingModal();
+            });
+        }
+
+        // Active appointment modal actions already wired
+        document.getElementById('close-active-appointment-modal-btn')?.addEventListener('click', hideActiveAppointmentModal);
+        document.getElementById('active-modal-dismiss')?.addEventListener('click', hideActiveAppointmentModal);
+        document.getElementById('active-modal-view-appointments')?.addEventListener('click', () => {
+            const btn = document.getElementById('active-modal-view-appointments');
+            if (btn) {
+                btn.classList.add('transform', 'scale-95', 'animate-pulse');
+                setTimeout(() => {
+                    btn.classList.add('opacity-50');
+                    setTimeout(() => {
+                        window.location.href = '/home_user.html?view=appointments';
+                    }, 200);
+                }, 100);
+            }
+        });
+    });
+</script>

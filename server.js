@@ -608,6 +608,12 @@ app.get('/presentation', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'employee_presentation.html'));
 });
 
+// Serve dedicated salon page (route-capable)
+app.get('/salon/:salon_id', (req, res) => {
+    // Always serve the salon shell page; client JS loads content by salon_id
+    res.sendFile(path.join(__dirname, 'views', 'salon.html'));
+});
+
 // ===============================
 // Push Notification Endpoints
 // ===============================
@@ -2261,8 +2267,8 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              const appointmentDate = new Date(row.start_time);
              const today = new Date();
              
-             // Only send notification if appointment was for today (same day)
-             if (appointmentDate.toDateString() === today.toDateString()) {
+             // Only send notification if appointment was for today (same day in Palestine timezone)
+             if (appointmentDate.toDateString() === nowLocal.toDateString()) {
                  await sendPushToTargets({
                     salon_id: row.salon_id,
                     payload: {
@@ -2302,12 +2308,12 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
             start_time: row.start_time,
             late: false
         });
-        // Only send push notification for cancellations happening today (same day)
+        // Only send push notification for cancellations happening today (same day in Palestine timezone)
         const appointmentDate = new Date(row.start_time);
-        const today = new Date();
+        const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
         
-        // Check if appointment is today
-        const isRelevantCancellation = appointmentDate.toDateString() === today.toDateString();
+        // Check if appointment is today in Palestine timezone
+        const isRelevantCancellation = appointmentDate.toDateString() === nowLocal.toDateString();
         
         if (isRelevantCancellation) {
             // Push notify salon about normal cancellation (clean Arabic text, no user name)
@@ -2928,12 +2934,12 @@ app.post('/api/appointment/book', async (req, res) => {
             } catch { return new Date(d).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
         };
 
-        // Only send push notification for bookings happening today
+        // Only send push notification for bookings happening today (using Palestine timezone)
         const appointmentDate = new Date(start_time);
-        const today = new Date();
+        const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
         
-        // Check if appointment is today
-        const isRelevantBooking = appointmentDate.toDateString() === today.toDateString();
+        // Check if appointment is today in Palestine timezone
+        const isRelevantBooking = appointmentDate.toDateString() === nowLocal.toDateString();
         
         if (isRelevantBooking) {
             // Push notify salon of new booking (clean Arabic text, no user name)

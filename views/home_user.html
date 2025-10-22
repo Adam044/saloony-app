@@ -99,6 +99,58 @@
             transform: scale(1.1);
         }
 
+        /* Page Transition Animations */
+        .page-transition {
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+        .page-fade-out {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        .page-fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Section Slide Animations */
+        .view-content {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .slide-left-out {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        
+        .slide-right-out {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        
+        .slide-left-in {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        
+        .slide-right-in {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        
+        .slide-in-active {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        /* Salon Card Click Animation */
+        .salon-card-clicked {
+            transform: scale(0.95);
+            opacity: 0.8;
+            transition: all 0.2s ease-out;
+        }
+
         /* Booking Modal Styles */
         .modal-overlay {
             position: fixed;
@@ -132,7 +184,6 @@
         }
         .modal-open .modal-overlay { display: flex; }
         .modal-open .modal-content { transform: translateY(0); }
-        .booking-step { min-height: 100%; }
         
         /* Prevent body scroll when modal is open */
         .modal-open {
@@ -400,7 +451,7 @@
 
     </style>
 </head>
-<body class="modal-closed">
+<body class="modal-closed page-transition page-fade-in">
 
 
 <div class="min-h-screen flex flex-col">
@@ -611,288 +662,9 @@
 </div>
 
 <!-- Booking Modal Structure (Full Screen) -->
-<div id="booking-modal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center z-10">
-            <h3 id="modal-title" class="text-xl font-bold text-primary-dark">حجز موعد جديد</h3>
-            <button id="close-modal-btn" class="text-gray-500 hover:text-red-500 transition duration-150">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
-        </div>
-        
-        <!-- Booking Steps Container -->
-        <div id="booking-steps-container" class="p-6 space-y-6">
-            
-            <!-- Step 0: Salon Detail View (New) -->
-            <div id="step-0" class="booking-step space-y-6">
-                <h4 class="text-2xl font-extrabold text-primary-dark mb-4">تفاصيل الصالون</h4>
-                
-                <!-- Salon Header -->
-                <div id="salon-detail-header" class="flex flex-col items-center text-center">
-                <img id="detail-image" class="w-32 h-32 object-cover rounded-full shadow-lg mb-3" src="https://placehold.co/128x128/ccc/333?text=S" alt="Salon Image" loading="lazy" decoding="async" width="128" height="128">
-                    <h3 id="detail-name" class="text-2xl font-bold text-primary-dark">اسم الصالون</h3>
-                    <div class="flex items-center space-x-3 space-x-reverse mt-2">
-                        <p id="detail-rating" class="text-sm text-gray-600">...</p>
-                    </div>
-                    
-                    <!-- Clean City and Address Display -->
-                    <div class="flex flex-col md:flex-row space-y-1 md:space-y-0 md:space-x-4 md:space-x-reverse mt-3 text-gray-600">
-                        <p id="detail-city" class="text-md font-medium flex items-center">
-                            <i class="fas fa-city text-secondary ml-1"></i> <span class="city-text">...</span>
-                        </p>
-                        <p id="detail-address" class="text-md font-medium flex items-center">
-                            <i class="fas fa-location-dot text-secondary ml-1"></i> <span class="address-text">...</span>
-                        </p>
-                    </div>
-                    
-                    <!-- Call Button -->
-                    <div id="call-button-container" class="mt-4">
-                        <button id="call-salon-btn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold transition duration-200 flex items-center justify-center gap-2 shadow-lg" style="display: none;">
-                            <i class="fas fa-phone"></i>
-                            <span id="call-button-text">اتصل بالصالون</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <hr class="border-gray-200">
 
-                <!-- Services Section -->
-                <h5 class="text-xl font-bold text-primary-dark mb-3">الخدمات المتوفرة:</h5>
-                <div id="detail-services-tags" class="flex flex-wrap gap-2">
-                    <p class="text-gray-500">جاري تحميل الخدمات...</p>
-                </div>
-                
-                <hr class="border-gray-200">
 
-                <!-- Reviews Section -->
-                <h5 class="text-xl font-bold text-primary-dark mb-3 flex justify-between items-center">
-                    مراجعات العملاء:
-                    <button id="add-review-btn" class="text-secondary hover:text-primary-dark transition duration-150">
-                        <i class="fas fa-plus-circle text-2xl"></i>
-                    </button>
-                </h5>
-                <div id="detail-reviews-section" class="space-y-4">
-                    <div class="empty-state">
-                        <i class="fas fa-star-half-alt"></i>
-                        <p>لا توجد مراجعات بعد. كن أول من يقيّم!</p>
-                    </div>
-                </div>
 
-                <div class="pt-4 pb-6 sticky bottom-0 bg-white shadow-top">
-                    <button id="next-step-1-btn" class="btn-secondary w-full py-3 rounded-xl font-bold">
-                        احجز الآن <i class="fas fa-arrow-left mr-2"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Step 1: Service Selection -->
-            <div id="step-1" class="booking-step space-y-4 hidden">
-                <h4 class="text-2xl font-extrabold text-primary-dark mb-4">1. اختر الخدمات (يمكن اختيار أكثر من واحدة):</h4>
-                <div id="service-selection-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <p class="text-gray-500">جاري تحميل الخدمات...</p>
-                </div>
-                <div class="flex justify-between pt-4">
-                    <button id="back-step-0-btn" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold">
-                        <i class="fas fa-arrow-right ml-2"></i> تفاصيل الصالون
-                    </button>
-                    <button id="next-step-2-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50" disabled>
-                        التالي <i class="fas fa-arrow-left mr-2"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Step 2: Staff Selection -->
-            <div id="step-2" class="booking-step space-y-4 hidden">
-                <h4 class="text-2xl font-extrabold text-primary-dark mb-4">2. اختر المختص:</h4>
-                <div id="staff-selection-container" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <p class="text-gray-500 col-span-full">جاري تحميل المختصين...</p>
-                </div>
-                <div class="flex justify-between pt-4">
-                    <button id="back-step-1-btn" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold">
-                        <i class="fas fa-arrow-right ml-2"></i> السابق 
-                    </button>
-                    <button id="next-step-3-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50">
-                        التالي <i class="fas fa-arrow-left mr-2"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Step 3: Date & Time Selection -->
-            <div id="step-3" class="booking-step space-y-4 hidden">
-                <h4 class="text-2xl font-extrabold text-primary-dark mb-4">3. اختر التاريخ والوقت:</h4>
-                
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700">التاريخ</label>
-                        <input type="date" id="date-input" min="" class="w-full p-3 border border-gray-300 rounded-xl text-right">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700">المدة المقدرة الإجمالية</label>
-                        <p id="selected-duration" class="p-3 bg-secondary-soft rounded-xl font-bold text-primary-dark">--</p>
-                    </div>
-                </div>
-
-                <div id="time-slots-container" class="pt-4">
-                    <h5 class="font-bold text-lg text-primary-dark mb-3">الأوقات المتاحة:</h5>
-                    
-                    <!-- Time Period Filters -->
-                    <div class="flex gap-2 mb-4 justify-center">
-                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="morning">
-                            صباح
-                        </button>
-                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="noon">
-                            ظهر
-                        </button>
-                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="afternoon">
-                            عصر
-                        </button>
-                        <button class="time-filter px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all duration-200" data-period="evening">
-                            مساء
-                        </button>
-                    </div>
-                    
-                    <div id="slots-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                        <p class="text-gray-500 col-span-full">اختر تاريخًا أولاً.</p>
-                    </div>
-                </div>
-
-                <div class="flex justify-between pt-4">
-                    <button id="back-step-2-btn" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold">
-                        <i class="fas fa-arrow-right ml-2"></i> السابق 
-                    </button>
-                    <button id="confirm-booking-btn" class="btn-secondary px-6 py-3 rounded-xl disabled:opacity-50" disabled>
-                        تأكيد الحجز (<span id="final-price">...</span> شيكل)
-                    </button>
-                </div>
-            </div>
-            
-        </div>
-    </div>
-</div>
-
-<!-- Pre-Booking Confirmation Modal -->
-<div id="pre-booking-modal" class="confirmation-modal">
-    <div class="confirmation-modal-content">
-        <div class="p-6">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    <i class="fas fa-calendar-check text-white text-2xl"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-primary-dark mb-2">تأكيد تفاصيل الحجز</h3>
-                <p class="text-gray-600">يرجى مراجعة تفاصيل الحجز قبل التأكيد النهائي.</p>
-            </div>
-            
-            <!-- Booking Details Section -->
-            <div class="bg-blue-50 border-r-4 border-blue-400 p-4 mb-4 rounded-lg text-right">
-                <h4 class="text-lg font-bold text-blue-800 mb-2 border-b border-blue-200 pb-1">تفاصيل الموعد</h4>
-                <div class="space-y-2 text-sm text-blue-700">
-                    <p class="flex justify-between"><strong>الصالون:</strong> <span id="pre-salon-name">...</span></p>
-                    <p class="flex justify-between"><strong>المختص:</strong> <span id="pre-staff-name">...</span></p>
-                    
-                    <div id="pre-services-list" class="space-y-1 mt-3 border-t border-blue-200 pt-3">
-                        <h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5>
-                        <!-- Services will be inserted here -->
-                    </div>
-
-                    <div class="flex justify-between pt-3 border-t border-blue-200">
-                        <p><strong>التاريخ:</strong> <span id="pre-date" class="font-bold">...</span></p>
-                        <p><strong>الوقت:</strong> <span id="pre-time" class="font-bold">...</span></p>
-                    </div>
-                    
-                    <p class="text-lg text-primary-dark mt-2 pt-2 border-t border-blue-200 flex justify-between">
-                        <strong>الإجمالي:</strong> <span id="pre-price" class="font-extrabold text-secondary">... شيكل</span>
-                    </p>
-                </div>
-            </div>
-            
-            <!-- Warning Note -->
-            <div class="bg-yellow-50 border-r-4 border-yellow-400 p-3 rounded-lg text-right mb-4">
-                <div class="flex items-start">
-                    <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 ml-3"></i>
-                    <div>
-                        <p class="text-sm font-bold text-yellow-800">تنبيه مهم</p>
-                        <p class="text-xs text-yellow-700 leading-relaxed mt-1">
-                            تأكد من صحة التفاصيل قبل التأكيد. يمكنك الإلغاء قبل 3 ساعات من الموعد دون إنذار.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex space-x-3 space-x-reverse pt-4">
-                <button id="cancel-booking-btn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl transition-colors text-sm">
-                    <i class="fas fa-times ml-2"></i>
-                    إلغاء
-                </button>
-                <button id="final-confirm-booking-btn" class="flex-1 btn-secondary text-white font-bold py-3 px-4 rounded-xl transition-colors text-sm">
-                    <i class="fas fa-check ml-2"></i>
-                    تأكيد الحجز
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Booking Confirmation Modal - REVISED CLEANER STRUCTURE -->
-<div id="confirmation-modal" class="confirmation-modal">
-    <div class="confirmation-modal-content">
-        <div id="confirmation-content" class="p-6">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-secondary rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
-                    <i class="fas fa-check text-white text-2xl"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-primary-dark mb-2">تم تأكيد الحجز بنجاح!</h3>
-                <p class="text-gray-600">موعدك محجوز ومؤكد في الصالون.</p>
-            </div>
-            
-            <!-- Booking Details Section -->
-            <div class="bg-blue-50 border-r-4 border-blue-400 p-4 mb-4 rounded-lg text-right">
-                <h4 class="text-lg font-bold text-blue-800 mb-2 border-b border-blue-200 pb-1">تفاصيل الموعد</h4>
-                <div class="space-y-2 text-sm text-blue-700">
-                    <p class="flex justify-between"><strong>الصالون:</strong> <span id="conf-salon-name">...</span></p>
-                    <p class="flex justify-between"><strong>المختص:</strong> <span id="conf-staff-name">...</span></p>
-                    
-                    <div id="conf-services-list" class="space-y-1 mt-3 border-t border-blue-200 pt-3">
-                        <h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5>
-                        <!-- Services Tags will be inserted here -->
-                    </div>
-
-                    <div class="flex justify-between pt-3 border-t border-blue-200">
-                        <p><strong>التاريخ:</strong> <span id="conf-date" class="font-bold">...</span></p>
-                        <p><strong>الوقت:</strong> <span id="conf-time" class="font-bold">...</span></p>
-                    </div>
-                    
-                    <p class="text-lg text-primary-dark mt-2 pt-2 border-t border-blue-200 flex justify-between">
-                        <strong>الإجمالي:</strong> <span id="conf-price" class="font-extrabold text-secondary">... شيكل</span>
-                    </p>
-                </div>
-            </div>
-            
-            <!-- Striking Note (Not emergency) -->
-            <div class="bg-yellow-50 border-r-4 border-yellow-400 p-3 rounded-lg text-right">
-                <div class="flex items-start">
-                    <i class="fas fa-exclamation-circle text-yellow-500 mt-1 ml-3"></i>
-                    <div>
-                        <p class="text-sm font-bold text-yellow-800">ملاحظة مهمة (سياسة الإلغاء)</p>
-                        <p class="text-xs text-yellow-700 leading-relaxed mt-1">
-                            يمكنك إلغاء هذا الموعد دون إنذار <strong>قبل 3 ساعات</strong> من موعد البدء. تذكّر أن عدم الحضور دون إلغاء مسبق يؤدي إلى الحصول على <strong>إنذار</strong>. 3 إنذارات تؤدي إلى حظر الحساب.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex space-x-3 space-x-reverse pt-6">
-                <button id="conf-view-appointments-btn" class="flex-1 bg-primary-dark hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl transition-colors text-sm">
-                    <i class="fas fa-calendar ml-2"></i>
-                    عرض مواعيدي
-                </button>
-                <button id="conf-understood-btn" class="flex-1 btn-secondary text-primary-dark font-bold py-3 px-4 rounded-xl transition-colors text-sm">
-                    <i class="fas fa-home ml-2"></i>
-                    العودة للرئيسية
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Cancellation Confirmation Modal -->
 <div id="cancellation-confirm-modal" class="confirmation-modal">
@@ -971,32 +743,7 @@
 </div>
 </div>
 
-<!-- Active Appointment Block Modal -->
-<div id="active-appointment-modal" class="confirmation-modal" style="display: none;">
-    <div class="confirmation-modal-content p-6">
-        <div class="flex justify-between items-center pb-4 border-b border-gray-200 mb-4">
-            <h3 class="text-xl font-bold text-primary-dark">لديك موعد نشط مؤجّل</h3>
-            <button id="close-active-appointment-modal-btn" class="text-gray-500 hover:text-red-500 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div class="text-center space-y-4">
-            <div class="text-6xl mb-4">
-                <i class="fas fa-calendar-check text-secondary"></i>
-            </div>
-            <p class="text-lg text-gray-700">لا يمكنك حجز موعد جديد قبل إكمال موعدك الحالي.</p>
-            <p class="text-sm text-gray-600">يرجى إنهاء الموعد الحالي أو إلغاؤه أولاً.</p>
-            <div class="flex gap-3 justify-center mt-6">
-                <button id="active-modal-view-appointments" class="px-6 py-2 rounded-xl bg-primary-dark text-white font-bold hover:bg-gray-700 transition">
-                    <i class="fas fa-calendar ml-2"></i> الذهاب إلى مواعيدي
-                </button>
-                <button id="active-modal-dismiss" class="px-6 py-2 rounded-xl bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 transition">
-                    إغلاق
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Delete Review Confirmation Modal -->
 <div id="delete-review-modal" class="confirmation-modal">
@@ -1130,19 +877,13 @@
 // Global state variables
 let currentUser = null;
 let currentView = 'home-view';
-let selectedSalon = null;
-let selectedServices = []; 
-let selectedStaff = null;
 let staffOptions = []; 
-let selectedDate = null;
-let selectedTime = null;
 let salonScheduleData = null; 
 let activeServiceFilterId = null; 
 
 // NEW: Cancellation Modal State
 let pendingCancellation = null; 
 // NEW: Review Modal State
-let currentReviewRating = 0; 
 let pendingDeleteReview = null;
 let currentReviewSalon = null; // Store salon object for review modals (added this line)
 let allMasterServices = []; // Store master services here for icons
@@ -1407,240 +1148,6 @@ function setupCallButton(salonPhone, ownerPhone) {
 // --- 2. MODAL & STEP CONTROL FUNCTIONS ---
 // ---------------------------------------------
 
-function resetAllBookingState() {
-    selectedSalon = null;
-    selectedServices = []; 
-    selectedStaff = null;
-    selectedDate = null;
-    selectedTime = null;
-    salonScheduleData = null;
-}
-
-function resetBookingSteps() {
-    document.getElementById('step-0').classList.remove('hidden'); 
-    document.getElementById('step-1').classList.add('hidden');
-    document.getElementById('step-2').classList.add('hidden');
-    document.getElementById('step-3').classList.add('hidden');
-    
-    document.getElementById('next-step-2-btn').disabled = true;
-    document.getElementById('next-step-3-btn').disabled = true;
-    document.getElementById('confirm-booking-btn').disabled = true;
-
-    // Ensure confirm button label is restored (includes final-price span)
-    const confirmBtn = document.getElementById('confirm-booking-btn');
-    if (confirmBtn) {
-        confirmBtn.innerHTML = 'تأكيد الحجز (<span id="final-price">...</span> شيكل)';
-    }
-    // Reset selected duration display
-    const durationEl = document.getElementById('selected-duration');
-    if (durationEl) {
-        durationEl.textContent = '--';
-    }
-    
-    document.getElementById('date-input').value = '';
-    document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full">اختر تاريخًا أولاً.</p>';
-
-    document.querySelectorAll('.service-option').forEach(option => option.classList.remove('checked'));
-    document.querySelectorAll('.staff-option').forEach(option => option.classList.remove('checked'));
-}
-
-function showBookingStep(stepIndex) {
-    document.getElementById('step-0').classList.add('hidden');
-    document.getElementById('step-1').classList.add('hidden');
-    document.getElementById('step-2').classList.add('hidden');
-    document.getElementById('step-3').classList.add('hidden');
-    
-    document.getElementById(`step-${stepIndex}`).classList.remove('hidden');
-    // WebSocket handles real-time updates, no need for polling
-    // Time slots will be updated via WebSocket 'time_slots_updated' event
-}
-
-
-function hideBookingModal() {
-    document.getElementById('booking-modal').classList.remove('modal-open');
-    document.body.classList.remove('modal-open');
-    
-    resetAllBookingState();
-    // WebSocket handles real-time updates, no polling to stop
-}
-
-function showPreBookingModal() {
-    // Validate booking data first
-    if (selectedServices.length === 0 || !selectedSalon || !selectedStaff || !selectedDate || !selectedTime) {
-        displayMessage('يرجى التأكد من اختيار جميع متطلبات الحجز (خدمة، مختص، تاريخ، وقت).', 'error');
-        return;
-    }
-
-    // Check user strikes
-    if (currentUser.strikes_count >= 3) {
-        displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error');
-        return;
-    }
-
-    const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
-    const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0);
-    
-    const modal = document.getElementById('pre-booking-modal');
-    
-    // Populate modal with booking details
-    document.getElementById('pre-salon-name').textContent = selectedSalon.salon_name;
-    document.getElementById('pre-staff-name').textContent = selectedStaff.name;
-    document.getElementById('pre-date').textContent = formatDateDDMMYYYY(selectedDate);
-    document.getElementById('pre-time').textContent = formatTime(selectedTime);
-    document.getElementById('pre-price').textContent = `${totalPrice.toFixed(0)} شيكل`;
-    
-    // Display services
-    const servicesListContainer = document.getElementById('pre-services-list');
-    const serviceTagsHtml = selectedServices.map(s => {
-        const masterService = allMasterServices.find(ms => ms.id === s.id) || {};
-        const icon = masterService.icon || 'fa-cut';
-        return `
-            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap">
-                <i class="fas ${icon} ml-1"></i> ${s.name_ar} (${s.price} شيكل)
-            </span>
-        `;
-    }).join('');
-    
-    servicesListContainer.innerHTML = `
-        <h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5>
-        <div class="flex flex-wrap gap-2 justify-end">
-            ${serviceTagsHtml}
-        </div>
-        <p class="text-xs font-bold text-blue-900 pt-3 border-t border-blue-200 mt-2 flex justify-end">إجمالي المدة: ${totalDuration} دقيقة</p>
-    `;
-
-    modal.classList.add('modal-open'); 
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hidePreBookingModal() {
-    const modal = document.getElementById('pre-booking-modal');
-    modal.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-    setTimeout(() => modal.style.display = 'none', 300);
-}
-
-function showConfirmationModal(bookingData) {
-    const modal = document.getElementById('confirmation-modal');
-    
-    document.getElementById('conf-salon-name').textContent = bookingData.salonName;
-    document.getElementById('conf-staff-name').textContent = bookingData.staffName;
-    
-    // Format Date and Time
-    document.getElementById('conf-date').textContent = bookingData.date;
-    document.getElementById('conf-time').textContent = bookingData.time;
-    
-    document.getElementById('conf-price').textContent = `${bookingData.price.toFixed(0)} شيكل`;
-    
-    const servicesListContainer = document.getElementById('conf-services-list');
-    
-    const serviceTagsHtml = bookingData.services.map(s => {
-        const masterService = allMasterServices.find(ms => ms.id === s.id) || {};
-        const icon = masterService.icon || 'fa-cut';
-        return `
-            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap">
-                <i class="fas ${icon} ml-1"></i> ${s.name_ar}
-            </span>
-        `;
-    }).join('');
-    
-    servicesListContainer.innerHTML = `
-        <h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5>
-        <div class="flex flex-wrap gap-2 justify-end">
-            ${serviceTagsHtml}
-        </div>
-        <p class="text-xs font-bold text-blue-900 pt-3 border-t border-blue-200 mt-2 flex justify-end">إجمالي المدة: ${bookingData.totalDuration} دقيقة</p>
-    `;
-
-    modal.classList.add('modal-open'); 
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hideConfirmationModal() {
-    const modal = document.getElementById('confirmation-modal');
-    modal.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-    setTimeout(() => modal.style.display = 'none', 300);
-}
-
-function showCancellationModal(id, startTime, filter) {
-    pendingCancellation = { id, startTime, filter };
-    const modal = document.getElementById('cancellation-confirm-modal');
-    const message = document.getElementById('cancel-modal-message');
-
-    message.innerHTML = `أنت على وشك إلغاء موعدك. تذكر أنك <strong>يمكنك الإلغاء</strong> حتى 3 ساعات قبل موعدك، وبعد ذلك قد تواجه إنذاراً.`;
-    
-    modal.classList.add('modal-open');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hideCancellationModal() {
-    const modal = document.getElementById('cancellation-confirm-modal');
-    modal.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-    setTimeout(() => modal.style.display = 'none', 300);
-    pendingCancellation = null;
-}
-
-function showReviewModal(salon) {
-    currentReviewSalon = salon; // Store for delete/check logic
-    document.getElementById('review-salon-name').textContent = salon.salon_name;
-    const modal = document.getElementById('review-modal');
-    
-    // Reset form and stars
-    document.getElementById('review-form').reset();
-    currentReviewRating = 0;
-    document.getElementById('review-rating-input').value = '0';
-    updateStarDisplay(0);
-
-    modal.classList.add('modal-open');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hideReviewModal() {
-    const modal = document.getElementById('review-modal');
-    modal.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-    setTimeout(() => modal.style.display = 'none', 300);
-}
-
-function showAlreadyReviewedModal(salon) {
-    currentReviewSalon = salon;
-    const modal = document.getElementById('already-reviewed-modal');
-    modal.classList.add('modal-open');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function hideAlreadyReviewedModal() {
-    const modal = document.getElementById('already-reviewed-modal');
-    modal.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-    setTimeout(() => modal.style.display = 'none', 300);
-    currentReviewSalon = null;
-}
-
-// Active Appointment Block Modal Functions
-function showActiveAppointmentModal() {
-    const modal = document.getElementById('active-appointment-modal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('modal-open'), 10);
-    document.body.style.overflow = 'hidden';
-}
-
-function hideActiveAppointmentModal() {
-    const modal = document.getElementById('active-appointment-modal');
-    if (!modal) return;
-    modal.classList.remove('modal-open');
-    document.body.style.overflow = 'auto';
-    setTimeout(() => modal.style.display = 'none', 300);
-}
-
 function showDeleteReviewModal(salonId, salonName) {
     pendingDeleteReview = { salonId, salonName };
     document.getElementById('delete-review-salon-name').textContent = salonName;
@@ -1686,6 +1193,49 @@ function hideLogoutModal() {
     modal.classList.remove('modal-open');
     document.body.style.overflow = 'auto';
     setTimeout(() => modal.style.display = 'none', 300);
+}
+
+// Cancellation Modal Functions
+function showCancellationModal(appointmentId, startTime, filter) {
+    pendingCancellation = { id: appointmentId, startTime, filter };
+    const modal = document.getElementById('cancellation-confirm-modal');
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('modal-open'), 10);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideCancellationModal() {
+    const modal = document.getElementById('cancellation-confirm-modal');
+    modal.classList.remove('modal-open');
+    document.body.style.overflow = 'auto';
+    setTimeout(() => modal.style.display = 'none', 300);
+    pendingCancellation = null;
+}
+
+// Review Modal Functions
+function hideReviewModal() {
+    const modal = document.getElementById('review-modal');
+    if (modal) {
+        modal.classList.remove('modal-open');
+        modal.style.display = 'none';
+    }
+    document.body.style.overflow = 'auto';
+}
+
+async function submitReview(e) {
+    e.preventDefault();
+    // This function would handle review submission
+    // For now, just hide the modal as reviews are handled elsewhere
+    hideReviewModal();
+}
+
+function hideAlreadyReviewedModal() {
+    const modal = document.getElementById('already-reviewed-modal');
+    if (modal) {
+        modal.classList.remove('modal-open');
+        modal.style.display = 'none';
+    }
+    document.body.style.overflow = 'auto';
 }
 
 // Custom Dropdown Functions
@@ -2037,7 +1587,6 @@ async function loadSalonStaff(salonId, updateUI = true) {
                          <p class="text-sm text-gray-500">عذراً، لا يوجد مختصون متاحون في هذا الصالون حالياً</p>
                      </div>
                  `;
-                 document.getElementById('next-step-3-btn').disabled = true;
                  return;
              }
              
@@ -2066,9 +1615,6 @@ async function loadSalonStaff(salonId, updateUI = true) {
                      option.classList.add('checked');
                      
                      const staffId = option.dataset.staffId;
-                     selectedStaff = staffToRender.find(s => s.id == staffId) || staffOptions[0];
-                     
-                     document.getElementById('next-step-3-btn').disabled = false;
                  });
              });
              
@@ -2077,8 +1623,6 @@ async function loadSalonStaff(salonId, updateUI = true) {
                  const singleStaffOption = document.querySelector('.staff-option');
                  if (singleStaffOption) {
                      singleStaffOption.classList.add('checked');
-                     selectedStaff = staffOptions[0];
-                     document.getElementById('next-step-3-btn').disabled = false;
                  }
              }
         }
@@ -2436,12 +1980,50 @@ function switchView(viewId) {
         }
     }
     
-    document.querySelectorAll('.view-content').forEach(view => {
-        view.classList.add('hidden');
-    });
+    // Define view order for slide direction
+    const viewOrder = ['home-view', 'appointments-view', 'favorites-view', 'profile-view'];
+    const currentIndex = viewOrder.indexOf(currentView);
+    const newIndex = viewOrder.indexOf(viewId);
     
-    document.getElementById(viewId).classList.remove('hidden');
+    // Determine slide direction (flipped for correct behavior)
+    const slideLeft = newIndex < currentIndex; // Moving backward slides left, forward slides right
     
+    // Get current and new view elements
+    const currentViewElement = document.getElementById(currentView);
+    const newViewElement = document.getElementById(viewId);
+    
+    if (currentViewElement && newViewElement && currentView !== viewId) {
+        // Animate out current view
+        currentViewElement.classList.add(slideLeft ? 'slide-left-out' : 'slide-right-out');
+        
+        // Prepare new view for animation
+        newViewElement.classList.remove('hidden');
+        newViewElement.classList.add(slideLeft ? 'slide-left-in' : 'slide-right-in');
+        
+        // Force reflow
+        newViewElement.offsetHeight;
+        
+        // Animate in new view
+        setTimeout(() => {
+            newViewElement.classList.remove(slideLeft ? 'slide-left-in' : 'slide-right-in');
+            newViewElement.classList.add('slide-in-active');
+            
+            // Hide current view after animation
+            setTimeout(() => {
+                currentViewElement.classList.add('hidden');
+                currentViewElement.classList.remove('slide-left-out', 'slide-right-out');
+                newViewElement.classList.remove('slide-in-active');
+            }, 300);
+        }, 50);
+    } else {
+        // Fallback for same view or missing elements
+        document.querySelectorAll('.view-content').forEach(view => {
+            view.classList.add('hidden');
+        });
+        document.getElementById(viewId).classList.remove('hidden');
+    }
+    
+    // Update navigation styling
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.classList.remove('nav-active', 'text-secondary', 'bg-secondary/10');
         nav.classList.add('text-gray-500');
@@ -2473,19 +2055,21 @@ function switchView(viewId) {
 }
 
 async function cancelAppointment(appointmentId, startTime, filter) {
-    // This function is now only responsible for validation before showing the modal.
-    // The actual cancellation logic is confirmCancellation.
     const appointmentTime = new Date(startTime).getTime();
     const now = new Date().getTime();
     const threeHoursInMs = 3 * 60 * 60 * 1000;
-    
-    if (appointmentTime - now < threeHoursInMs) {
-        // Only show modal if cancellation is late, leading to a strike warning
-        showCancellationModal(appointmentId, startTime, filter); 
-    } else {
-        // If cancellation is early, proceed directly to confirmation/cancellation logic without strike warning message
-        await confirmCancellation(true);
-    }
+
+    // Set pending cancellation and open the modal regardless of timing
+    showCancellationModal(appointmentId, startTime, filter);
+
+    // Optionally adjust the modal message based on lateness:
+    // You already set a generic message in showCancellationModal; if you want:
+    // const message = document.getElementById('cancel-modal-message');
+    // if (message) {
+    //     message.innerHTML = (appointmentTime - now < threeHoursInMs)
+    //         ? 'أنت على وشك إلغاء موعدك. قد تواجه إنذاراً لأن الإلغاء أقل من 3 ساعات قبل الموعد.'
+    //         : 'أنت على وشك إلغاء موعدك. يمكنك الإلغاء قبل 3 ساعات بدون إنذار.';
+    // }
 }
 
 // Function to handle the actual API call after confirmation
@@ -2549,101 +2133,6 @@ async function confirmCancellation(isEarlyCancel = false) {
     }
 }
 
-async function submitReview(e) {
-    e.preventDefault();
-    
-    // FIX: Add validation for selectedSalon, currentUser.userId and currentReviewRating
-    if (!selectedSalon || !selectedSalon.salonId || currentReviewRating === 0 || !currentUser || !currentUser.userId) {
-        displayMessage('يرجى التأكد من اختيار الصالون والتقييم وتسجيل الدخول.', 'error');
-        return;
-    }
-
-    const comment = document.getElementById('review-comment-input').value.trim();
-    // NEW: Mandatory comment check (Backend also enforces this now)
-    if (!comment) {
-        displayMessage('الرجاء كتابة تعليق. التعليق إلزامي.', 'error');
-        return;
-    }
-    
-    const btn = document.getElementById('submit-review-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الإرسال...';
-    
-    const reviewData = {
-        salon_id: selectedSalon.salonId,
-        // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
-        user_id: currentUser.userId, 
-        rating: currentReviewRating,
-        comment: comment,
-    };
-
-    try {
-        const response = await fetch('/api/reviews/submit', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(reviewData)
-        });
-
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-            hideReviewModal();
-            displayMessage('شكراً لك، تم إرسال تقييمك بنجاح!', 'success');
-            // Re-load data for UI update
-            await loadSalonDetailView(selectedSalon);
-            if (currentView === 'profile-view') {
-                await loadUserData(); // Refresh profile reviews
-            }
-        } else {
-            displayMessage(result.message || 'فشل في إرسال التقييم.', 'error');
-        }
-
-    } catch (error) {
-        console.error('Review submission error:', error);
-        displayMessage('خطأ في الشبكة أثناء إرسال التقييم.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane ml-2"></i> إرسال التقييم';
-    }
-}
-
-async function checkExistingReviewAndShow(salon) {
-    try {
-        // CRITICAL FIX: Use currentUser.userId
-        if (!currentUser || !currentUser.userId || isNaN(parseInt(currentUser.userId))) {
-            displayMessage('يرجى تسجيل الدخول أولاً', 'error');
-            return;
-        }
-        
-        if (!salon || !salon.salonId || isNaN(parseInt(salon.salonId))) {
-            displayMessage('خطأ في تحديد الصالون', 'error');
-            return;
-        }
-        
-        // CRITICAL FIX: Use currentUser.userId for API call
-        const response = await fetch(`/api/reviews/user/${currentUser.userId}`);
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-            const existingReview = result.reviews.find(review => {
-                return review.salon_id == salon.salonId; 
-            });
-            
-            if (existingReview) {
-                showAlreadyReviewedModal(salon);
-            } else {
-                showReviewModal(salon);
-            }
-        } else {
-            console.error('Server error:', result.message);
-            displayMessage('خطأ في التحقق من المراجعات السابقة', 'error');
-        }
-    } catch (error) {
-        console.error('Error checking existing reviews:', error);
-        displayMessage('خطأ في الاتصال بالخادم', 'error');
-    }
-}
-
 async function deleteUserReview(salonId) {
     
     // FIX: Add validation for salonId and currentUser.userId
@@ -2673,9 +2162,6 @@ async function deleteUserReview(salonId) {
             hideDeleteReviewModal();
             displayMessage('تم حذف تقييمك بنجاح!', 'success');
             // Refresh the data
-            if (selectedSalon && selectedSalon.salonId == salonId) {
-                await loadSalonDetailView(selectedSalon);
-            }
             if (currentView === 'profile-view') {
                 await loadUserData();
             }
@@ -2879,12 +2365,10 @@ async function showSalonDetailModal(salon) {
     }
 
 
-    selectedSalon = salon;
     document.getElementById('modal-title').textContent = salon.salon_name;
     
     resetBookingSteps(); 
     resetAllBookingState(); 
-    selectedSalon = salon; 
 
     // Join the salon WebSocket room to receive real-time booking/cancellation updates
     try {
@@ -2899,19 +2383,6 @@ async function showSalonDetailModal(salon) {
 
     document.getElementById('booking-modal').classList.add('modal-open');
     document.body.classList.add('modal-open');
-    
-    showBookingStep(0); 
-    
-    // Initialize time period filters
-    selectedTimePeriod = getTimePeriodFromCurrentTime();
-    updateTimeFilterButtons();
-    
-    // Auto-select today's date
-    const today = getCurrentUserDate();
-    const dateInput = document.getElementById('date-input');
-    if (dateInput) {
-        dateInput.value = today;
-    }
     
     // FIX: Await all asynchronous content loads
     await loadSalonDetailView(salon);
@@ -3261,51 +2732,28 @@ function handleFavoriteBtnClick(e) {
 
 async function handleSalonCardClick(e) {
     e.stopPropagation();
-    if (e.target.closest('.favorite-btn')) return; 
+    if (e.target.closest('.favorite-btn')) return;
 
     const salonCard = e.currentTarget;
-    // FIX: Use getAttribute to ensure robust retrieval, mitigating extraction issues
     const salonId = salonCard.getAttribute('data-salon-id');
-    
-    // FIX: Ensure salonId is valid before proceeding
+
     if (!salonId || isNaN(parseInt(salonId))) {
         console.error("handleSalonCardClick: Invalid salonId extracted from card.");
-        displayMessage('خطأ: تعذر تحديد الصالون لفتح التفاصيل.', 'error');
+        displayMessage('خطأ: تعذر تحديد الصالون لفتح الصفحة.', 'error');
         return;
     }
-    
-    // Determine card type to extract data correctly
-    const isMinimal = salonCard.hasAttribute('data-city');
-    
-    let city, address, name;
 
-    if (isMinimal) {
-        // Data is stored directly on the minimal card's data attributes 
-        city = salonCard.dataset.city || '';
-        address = salonCard.dataset.address || '';
-        name = salonCard.dataset.salonName || '';
-    } else {
-        // Data is in the descriptive card's inner spans/hidden attributes
-        const fullCityElement = salonCard.querySelector('[data-full-city]');
-        const fullAddressElement = salonCard.querySelector('[data-full-address]');
-        
-        city = fullCityElement ? fullCityElement.dataset.fullCity : salonCard.dataset.city || '';
-        address = fullAddressElement ? fullAddressElement.dataset.fullAddress : salonCard.dataset.address || '';
-        name = salonCard.dataset.salonName || salonCard.querySelector('h3').textContent;
-    }
+    // Add click animation to the salon card
+    salonCard.classList.add('salon-card-clicked');
     
-    const salon = {
-        salonId: salonId,
-        salon_name: name,
-        address: address, 
-        city: city, 
-        image_url: salonCard.querySelector('img').src,
-        // Assume default rating/review count for now, update in modal load
-        avg_rating: 0,
-        review_count: 0
-    };
-
-    await showSalonDetailModal(salon);
+    // Start page fade-out animation
+    document.body.classList.remove('page-fade-in');
+    document.body.classList.add('page-fade-out');
+    
+    // Wait for animation to complete before navigation
+    setTimeout(() => {
+        window.location.href = `/salon/${salonId}`;
+    }, 200); // Short delay for smooth transition
 }
 
 async function fetchSalonSchedule(salonId) {
@@ -3343,292 +2791,7 @@ async function fetchSalonSchedule(salonId) {
     }
 }
 
-function calculateTimeSlots(dateString) {
-    
-    function minutesToTime(minutes) {
-        const h = Math.floor(minutes / 60);
-        const m = minutes % 60;
-        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    }
 
-    const serviceDuration = selectedServices
-        .filter(service => service.service_type === 'main')
-        .reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
-    
-    if (serviceDuration === 0 || !selectedStaff) return []; 
-
-    const slots = [];
-    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
-    const selectedDateObj = new Date(dateString);
-    const dayOfWeek = selectedDateObj.getDay(); 
-    const todayString = getCurrentUserDate();
-    const isToday = dateString === todayString;
-    // Ensure staff ids are numeric to prevent comparison issues
-    const staffListExcludingAny = staffOptions
-        .map(s => ({...s, id: typeof s.id === 'string' ? parseInt(s.id) : s.id}))
-        .filter(s => s.id !== 0);
-    
-    if (!salonScheduleData || !salonScheduleData.schedule) return [];
-
-    const { schedule, breaks, modifications, appointments } = salonScheduleData;
-    
-    let effectiveOpenMinutes = timeToMinutes(schedule.opening_time || '09:00');
-    let effectiveCloseMinutes = timeToMinutes(schedule.closing_time || '18:00');
-    
-    if (schedule.closed_days && schedule.closed_days.includes(dayOfWeek)) return [];
-
-    // Get all applicable modifications for this date
-    const applicableModifications = modifications.filter(mod => 
-        (mod.mod_type === 'once' && mod.mod_date === dateString) ||
-        (mod.mod_type === 'recurring' && mod.mod_day_index === dayOfWeek)
-    );
-
-    // Check for complete day closures using closure_type
-    const completeDayClosures = applicableModifications.filter(mod => mod.closure_type === 'full_day');
-    if (completeDayClosures.length > 0) {
-        console.log('Day is completely closed due to modification:', completeDayClosures[0]);
-        return []; // No slots available - salon is closed all day
-    }
-
-    // New behavior: No custom hours override. Only closures are applied.
-
-    // Note: Blocked time periods (closure_type === 'interval') handled in availability check loop
-    // They represent unavailable time ranges within the operating hours
-    
-    if (isToday) {
-        const nowMinutes = timeToMinutes(now.toTimeString().substring(0, 5));
-        // Add 5-minute buffer: only show slots that are at least 5 minutes in the future
-        const minStartMinutes = nowMinutes + 5;
-        
-        // Round up to the next 30-minute slot to maintain proper slot alignment
-        const alignedMinStartMinutes = Math.ceil(minStartMinutes / 30) * 30;
-        
-        if (alignedMinStartMinutes > effectiveOpenMinutes) {
-            effectiveOpenMinutes = alignedMinStartMinutes;
-        }
-    }
-    
-    if (effectiveCloseMinutes <= effectiveOpenMinutes) return [];
-    
-    const slotGranularity = 30;
-    let currentTime = effectiveOpenMinutes;
-
-    while (currentTime + serviceDuration <= effectiveCloseMinutes) {
-        const slotEndMinutes = currentTime + serviceDuration;
-        let isAvailable = false; 
-
-        const checkStaffAvailability = (staffId) => {
-            let staffAvailable = true;
-            console.log(`Checking availability for staff ${staffId} at time ${currentTime}-${slotEndMinutes}`);
-            console.log('Available appointments to check:', appointments);
-            
-            // Blocked time periods: closure intervals
-            for (const mod of applicableModifications) {
-                if (mod.closure_type === 'interval' && mod.start_time && mod.end_time) {
-                    // This is a blocked time period within the day (not a complete closure)
-                    const modStart = timeToMinutes(mod.start_time);
-                    const modEnd = timeToMinutes(mod.end_time);
-                    
-                    const modStaffId = mod.staff_id || 0;
-                    const staffMatch = modStaffId === 0 || parseInt(modStaffId) === staffId;
-
-                    if (staffMatch && currentTime < modEnd && slotEndMinutes > modStart) {
-                        console.log(`Slot ${currentTime}-${slotEndMinutes} blocked by closure interval ${modStart}-${modEnd}`);
-                        staffAvailable = false;
-                        break;
-                    }
-                }
-            }
-            
-            if (!staffAvailable) return false;
-            
-            // Check breaks
-            for (const breakItem of breaks) {
-                const breakStart = timeToMinutes(breakItem.start_time);
-                const breakEnd = timeToMinutes(breakItem.end_time);
-                
-                const breakStaffId = breakItem.staff_id || 0;
-                const staffMatch = breakStaffId === 0 || parseInt(breakStaffId) === staffId;
-
-                if (staffMatch && currentTime < breakEnd && slotEndMinutes > breakStart) {
-                    console.log(`Slot ${currentTime}-${slotEndMinutes} blocked by break ${breakStart}-${breakEnd}`);
-                    staffAvailable = false;
-                    break;
-                }
-            }
-            
-            if (staffAvailable && appointments) {
-                for (const appt of appointments) {
-                    const statusStr = (appt.status || '').toLowerCase();
-                    const isBlocking = !['canceled', 'cancelled', 'completed', 'rejected', 'no_show', 'no show'].includes(statusStr);
-                    if (!isBlocking || !appt.start_time || !appt.end_time) continue;
-
-                    let apptStartMinutes, apptEndMinutes;
-                    try {
-                        if (typeof appt.start_time !== 'string' || typeof appt.end_time !== 'string') continue;
-                        
-                        // Handle both ISO format (with T) and SQL format (with space)
-                        let startTimePart, endTimePart;
-                        
-                        if (appt.start_time.includes('T')) {
-                            startTimePart = appt.start_time.split('T')[1];
-                        } else if (appt.start_time.includes(' ')) {
-                            startTimePart = appt.start_time.split(' ')[1];
-                        } else {
-                            continue;
-                        }
-                        
-                        if (appt.end_time.includes('T')) {
-                            endTimePart = appt.end_time.split('T')[1];
-                        } else if (appt.end_time.includes(' ')) {
-                            endTimePart = appt.end_time.split(' ')[1];
-                        } else {
-                            continue;
-                        }
-                        
-                        if (!startTimePart || !endTimePart) continue;
-                        
-                        apptStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
-                        apptEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
-                        
-                        console.log(`Processing appointment: start_time=${appt.start_time}, end_time=${appt.end_time}`);
-                        console.log(`Converted to minutes: start=${apptStartMinutes}, end=${apptEndMinutes}`);
-                    } catch (e) {
-                        console.error('Error processing appointment times:', e, appt);
-                        continue;
-                    }
-                    
-                    // Normalize staff_id to a number to avoid strict equality mismatches
-                    const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
-                    console.log(`Appointment: staff_id=${apptStaffId}, start=${apptStartMinutes}, end=${apptEndMinutes}, checking against staff=${staffId}`);
-
-                    if (apptStaffId === staffId) {
-                        console.log(`Found appointment for staff ${staffId}: ${apptStartMinutes}-${apptEndMinutes}, checking slot ${currentTime}-${slotEndMinutes}`);
-                        
-                        // Check if the slot overlaps with the appointment
-                        if (currentTime < apptEndMinutes && slotEndMinutes > apptStartMinutes) {
-                            console.log(`Slot ${currentTime}-${slotEndMinutes} overlaps with appointment ${apptStartMinutes}-${apptEndMinutes} - marking unavailable`);
-                            staffAvailable = false;
-                            break;
-                        }
-                    }
-                }
-            }
-            return staffAvailable;
-        };
-
-
-        if (selectedStaff.id !== 0) {
-            isAvailable = checkStaffAvailability(parseInt(selectedStaff.id));
-        } else {
-            if (staffListExcludingAny.length > 0) {
-                // When selecting "Any staff", a generic appointment (staff_id=0) still consumes capacity.
-                // Compute available staff count and subtract overlapping generic appointments to decide availability.
-                const availableStaffCount = staffListExcludingAny.reduce((count, staff) => count + (checkStaffAvailability(staff.id) ? 1 : 0), 0);
-
-                let genericOverlapCount = 0;
-                if (appointments && appointments.length > 0) {
-                    for (const appt of appointments) {
-                        const statusStr = (appt.status || '').toLowerCase();
-                        const isBlocking = !['canceled', 'cancelled', 'completed', 'rejected', 'no_show', 'no show'].includes(statusStr);
-                        if (!isBlocking || !appt.start_time || !appt.end_time) continue;
-
-                        // Only consider salon-level/unassigned appointments
-                        const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
-                        if (apptStaffId !== 0) continue;
-
-                        try {
-                            let startTimePart, endTimePart;
-                            if (typeof appt.start_time !== 'string' || typeof appt.end_time !== 'string') continue;
-                            if (appt.start_time.includes('T')) {
-                                startTimePart = appt.start_time.split('T')[1];
-                            } else if (appt.start_time.includes(' ')) {
-                                startTimePart = appt.start_time.split(' ')[1];
-                            } else {
-                                continue;
-                            }
-                            if (appt.end_time.includes('T')) {
-                                endTimePart = appt.end_time.split('T')[1];
-                            } else if (appt.end_time.includes(' ')) {
-                                endTimePart = appt.end_time.split(' ')[1];
-                            } else {
-                                continue;
-                            }
-                            if (!startTimePart || !endTimePart) continue;
-                            const apptStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
-                            const apptEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
-                            if (currentTime < apptEndMinutes && slotEndMinutes > apptStartMinutes) {
-                                genericOverlapCount++;
-                            }
-                        } catch (e) {
-                            console.error('Error processing generic appointment times:', e, appt);
-                            continue;
-                        }
-                    }
-                }
-
-                isAvailable = availableStaffCount > genericOverlapCount;
-            }
-            else if (staffListExcludingAny.length === 0) {
-                let overlapExists = false;
-                 const genericAppts = appointments.filter(a => !a.staff_id || a.staff_id === 0).concat(breaks.filter(b => !b.staff_id || b.staff_id === 0));
-                 for (const item of genericAppts) {
-                     if (!item.start_time || !item.end_time) continue;
-                     
-                     let itemStart, itemEnd;
-                     try {
-                         if (typeof item.start_time !== 'string' || typeof item.end_time !== 'string') continue;
-                         
-                         // Handle both ISO format (with T) and SQL format (with space)
-                         let startTimePart, endTimePart;
-                         
-                         if (item.start_time.includes('T')) {
-                             startTimePart = item.start_time.split('T')[1];
-                         } else if (item.start_time.includes(' ')) {
-                             startTimePart = item.start_time.split(' ')[1];
-                         } else {
-                             continue;
-                         }
-                         
-                         if (item.end_time.includes('T')) {
-                             endTimePart = item.end_time.split('T')[1];
-                         } else if (item.end_time.includes(' ')) {
-                             endTimePart = item.end_time.split(' ')[1];
-                         } else {
-                             continue;
-                         }
-                         
-                         if (!startTimePart || !endTimePart) continue;
-                         
-                         itemStart = timeToMinutes(startTimePart.substring(0, 5));
-                         itemEnd = timeToMinutes(endTimePart.substring(0, 5));
-                     } catch (e) {
-                         console.error('Error processing generic appointment times:', e, item);
-                         continue;
-                     }
-
-                     if (currentTime < itemEnd && slotEndMinutes > itemStart) {
-                         overlapExists = true;
-                         break;
-                     }
-                 }
-                 if (!overlapExists) {
-                     isAvailable = true; 
-                 }
-            }
-        }
-
-        if (isAvailable) {
-            slots.push(minutesToTime(currentTime));
-        }
-        
-        currentTime += slotGranularity; 
-    }
-    
-    return slots;
-}
-
-let selectedTimePeriod = 'morning'; // Default to morning
 
 function getCurrentUserDate() {
     // Get user's local date and time in Palestine timezone
@@ -3660,568 +2823,25 @@ function getTimePeriodFromCurrentTime() {
     return 'evening';
 }
 
-function isPastTimePeriod(period) {
-    const selectedDate = document.getElementById('date-input').value;
-    const todayDate = getCurrentUserDate();
-    
-    // If not today, no periods are past
-    if (selectedDate !== todayDate) {
-        return false;
-    }
-    
-    const { hours } = getCurrentUserTime();
-    
-    switch (period) {
-        case 'morning': return hours >= 12; // Past if it's noon or later
-        case 'noon': return hours >= 16; // Past if it's 4pm or later
-        case 'afternoon': return hours >= 19; // Past if it's 7pm or later
-        case 'evening': return false; // Evening is never past (includes late night)
-        default: return false;
-    }
-}
-
-function filterSlotsByPeriod(slots, period) {
-    const selectedDate = document.getElementById('date-input').value;
-    const todayDate = getCurrentUserDate();
-    const isToday = selectedDate === todayDate;
-    const { hours: currentHour, minutes: currentMinute, totalMinutes: currentMinutes } = getCurrentUserTime();
-    
-    console.log('Filtering slots:', {
-        period,
-        isToday,
-        currentTime: `${currentHour}:${currentMinute}`,
-        selectedDate,
-        todayDate,
-        totalSlots: slots.length
-    });
-    
-    const filtered = slots.filter(slot => {
-        const [hours, minutes] = slot.split(':').map(Number);
-        const hour24 = hours;
-        
-        // First filter by time period
-        let inPeriod = false;
-        switch (period) {
-            case 'morning': inPeriod = hour24 >= 5 && hour24 < 12; break;
-            case 'noon': inPeriod = hour24 >= 12 && hour24 < 16; break;
-            case 'afternoon': inPeriod = hour24 >= 16 && hour24 < 19; break;
-            case 'evening': inPeriod = hour24 >= 19 || hour24 < 5; break;
-            default: inPeriod = true;
-        }
-        
-        if (!inPeriod) return false;
-        
-        // If it's today, also filter out past slots
-        if (isToday) {
-            // Convert slot time to minutes for easier comparison
-            const slotMinutes = hour24 * 60 + minutes;
-            
-            console.log(`Slot ${slot}: ${slotMinutes} vs current ${currentMinutes}`);
-            
-            // Only show slots that are at least 5 minutes in the future
-            return slotMinutes >= currentMinutes + 5;
-        }
-        
-        return true;
-    });
-    
-    console.log('Filtered slots:', filtered);
-    return filtered;
-}
-
-function updateTimeFilterButtons() {
-    document.querySelectorAll('.time-filter').forEach(btn => {
-        const period = btn.dataset.period;
-        const isPast = isPastTimePeriod(period);
-        
-        // Reset all classes
-        btn.classList.remove('border-primary-dark', 'bg-secondary-soft', 'text-primary-dark', 
-                           'border-gray-300', 'text-gray-600', 'opacity-50', 'cursor-not-allowed',
-                           'bg-gray-100', 'text-gray-400');
-        
-        if (isPast) {
-            // Past time period styling
-            btn.classList.add('border-gray-200', 'bg-gray-100', 'text-gray-400', 'opacity-50', 'cursor-not-allowed');
-        } else if (period === selectedTimePeriod) {
-            // Selected period styling
-            btn.classList.add('border-primary-dark', 'bg-secondary-soft', 'text-primary-dark');
-        } else {
-            // Normal period styling
-            btn.classList.add('border-gray-300', 'text-gray-600');
-        }
-    });
-}
-
-async function loadTimeSlots() {
-    document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full">جاري البحث عن أوقات متاحة...</p>';
-
-    // FIX: Add validation for salonId
-    if (!selectedSalon || !selectedSalon.salonId || isNaN(parseInt(selectedSalon.salonId))) {
-        document.getElementById('slots-grid').innerHTML = '<p class="text-red-500 col-span-full">خطأ: لم يتم تحديد الصالون.</p>';
-        return;
-    }
-    
-    // FIX: Add validation for selectedDate
-    if (!selectedDate) {
-        document.getElementById('slots-grid').innerHTML = '<p class="text-red-500 col-span-full">يرجى اختيار تاريخ أولاً.</p>';
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/salon/${selectedSalon.salonId}/appointments/${selectedDate}`);
-        const data = await response.json();
-        salonScheduleData.appointments = data.appointments || []; 
-        console.log('Fetched appointments for availability:', salonScheduleData.appointments);
-        console.log('Selected salon ID:', selectedSalon.salonId);
-        console.log('Selected date:', selectedDate);
-    } catch (e) {
-         console.error('Failed to fetch daily appointments:', e);
-         displayMessage('فشل في تحديث المواعيد المحجوزة.', 'error');
-         return;
-    }
-    
-    const slots = calculateTimeSlots(selectedDate);
-    renderTimeSlots(slots);
-}
-
-function renderTimeSlots(slots) {
-    const container = document.getElementById('slots-grid');
-    
-    if (!slots || slots.length === 0) {
-        container.innerHTML = '<p class="text-red-500 col-span-full font-bold">عذراً، لا توجد أوقات متاحة في هذا التاريخ.</p>';
-        return;
-    }
-    
-    // Always filter slots by selected time period AND current time
-    const filteredSlots = filterSlotsByPeriod(slots, selectedTimePeriod);
-    
-    // Check if selected period is past (entire period)
-    const isPast = isPastTimePeriod(selectedTimePeriod);
-    
-    if (isPast) {
-        container.innerHTML = `
-            <div class="col-span-full text-center py-8">
-                <div class="text-gray-400 text-6xl mb-4">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <p class="text-gray-500 font-medium text-lg">لقد انتهت هذه الفترة الزمنية</p>
-                <p class="text-gray-400 text-sm mt-2">اختر فترة زمنية أخرى أو يوم آخر</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (filteredSlots.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 col-span-full">لا توجد أوقات متاحة في هذه الفترة.</p>';
-        return;
-    }
-    
-    container.innerHTML = filteredSlots.map(slot => `
-        <button class="time-slot p-3 border-2 border-gray-300 rounded-xl text-center hover:border-secondary transition-all duration-200 text-primary-dark font-medium" data-time="${slot}">
-            ${formatTime(slot)}
-        </button>
-    `).join('');
-    
-    document.querySelectorAll('.time-slot').forEach(slot => {
-        slot.addEventListener('click', () => {
-            document.querySelectorAll('.time-slot').forEach(s => {
-                s.classList.remove('border-primary-dark', 'bg-secondary-soft');
-                s.classList.add('border-gray-300');
-            });
-            
-            slot.classList.add('border-primary-dark', 'bg-secondary-soft');
-            slot.classList.remove('border-gray-300');
-            
-            selectedTime = slot.dataset.time;
-            document.getElementById('confirm-booking-btn').disabled = false;
-        });
-    });
-}
 
 
-async function confirmBooking() {
-    // Hide the pre-booking modal first
-    hidePreBookingModal();
-    
-    // CRITICAL FIX: Ensure check relies on currentUser.strikes_count
-    if (currentUser.strikes_count >= 3) {
-        displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error');
-        return;
-    }
-
-    if (selectedServices.length === 0 || !selectedSalon || !selectedStaff || !selectedDate || !selectedTime) {
-        displayMessage('يرجى التأكد من اختيار جميع متطلبات الحجز (خدمة، مختص، تاريخ، وقت).', 'error');
-        return;
-    }
-    
-    // FIX: Final validation check for critical IDs
-    if (!selectedSalon.salonId || !currentUser.userId || isNaN(parseInt(selectedSalon.salonId)) || isNaN(parseInt(currentUser.userId))) {
-        displayMessage('خطأ: بيانات الصالون أو المستخدم غير متوفرة لإتمام الحجز.', 'error');
-        return;
-    }
-    
-    const btn = document.getElementById('final-confirm-booking-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحجز...';
-
-    // Proactively ensure push subscription is created before booking triggers server-side push
-    try { await ensurePushSubscription(); } catch (e) {}
-    
-    const totalDuration = selectedServices
-        .filter(service => service.service_type === 'main')
-        .reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
-    const totalPrice = selectedServices.reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
-    const mainService = selectedServices[0]; 
-
-    const [h, m] = selectedTime.split(':').map(Number);
-    
-    // Create proper local date-time without timezone conversion
-    const start = new Date(selectedDate + 'T' + selectedTime + ':00');
-    const end = new Date(start.getTime() + totalDuration * 60000);
-    
-    const startTimeMinutes = timeToMinutes(selectedTime);
-    const endTimeMinutes = timeToMinutes(end.toTimeString().substring(0, 5));
-    
-    let finalStaff = selectedStaff;
-    if (selectedStaff.id === 0) {
-        const availableStaff = findAvailableStaff(startTimeMinutes, endTimeMinutes);
-        if (availableStaff) {
-            finalStaff = availableStaff;
-            displayMessage(`تم تحديد المختص: ${availableStaff.name}.`, 'info');
-        } else {
-            displayMessage('عذراً، لم نتمكن من إيجاد مختص متاح في هذا الوقت.', 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check ml-2"></i> تأكيد الحجز';
-            return;
-        }
-    }
-
-    const localConfirmationData = {
-        salonName: selectedSalon.salon_name, 
-        staffName: finalStaff.name,
-        date: formatDateDDMMYYYY(selectedDate),
-        time: formatTime(selectedTime),
-        price: totalPrice,
-        services: selectedServices, 
-        totalDuration: totalDuration
-    };
-
-    try {
-        const bookingData = {
-            salon_id: selectedSalon.salonId,
-            // CRITICAL FIX: Use currentUser.userId
-            user_id: currentUser.userId, 
-            staff_id: finalStaff.id, 
-            service_id: mainService.id, // Keep for backward compatibility
-            services: selectedServices.map(service => ({
-                id: service.id,
-                price: service.price
-            })),
-            start_time: formatDateTimeForDB(start),
-            end_time: formatDateTimeForDB(end),
-            price: totalPrice,
-        };
-        
-        const response = await fetch('/api/appointment/book', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bookingData)
-        });
-        
-        const result = await response.json();
-
-        if (!response.ok) throw new Error(result.message || 'فشل في حجز الموعد');
-        
-        hideBookingModal();
-        showConfirmationModal(localConfirmationData); 
-        try {
-            const notifTitle = 'تم تأكيد الحجز';
-            const notifBody = `تم حجز موعدك في ${selectedSalon.salon_name} بتاريخ ${formatDateDDMMYYYY(selectedDate)} الساعة ${formatTime(selectedTime)}.`;
-            notifyLocal({ title: notifTitle, body: notifBody, url: '/home_user.html#appointments', isSuccess: true, tag: 'appointment_booked' });
-        } catch (e) { }
-        
-        if (currentView === 'appointments-view') {
-            loadUserAppointments('upcoming');
-        }
-        
-    } catch (error) {
-        console.error('Error confirming booking:', error);
-        displayMessage(error.message || 'حدث خطأ في حجز الموعد', 'error');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check ml-2"></i> تأكيد الحجز';
-    } 
-}
 
 
-async function loadSalonServices(salonId) {
-    // FIX: Add validation for salon ID (prevents 500 on /api/salons/undefined/services)
-    if (!salonId || isNaN(parseInt(salonId))) {
-        console.error("loadSalonServices: Salon ID is missing or invalid.");
-        document.getElementById('service-selection-container').innerHTML = 
-            '<p class="text-red-500 col-span-full">خطأ: لم يتم تحديد الصالون لتحميل الخدمات.</p>';
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/salons/${salonId}/services`);
-        
-        if (!response.ok) throw new Error('Failed to load salon services');
-        
-        const services = await response.json();
-        renderServiceSelection(services.services); 
-        
-    } catch (error) {
-        console.error('Error loading salon services:', error);
-        document.getElementById('service-selection-container').innerHTML = 
-            '<p class="text-red-500 col-span-full">حدث خطأ في تحميل الخدمات</p>';
-    }
-}
 
-function renderServiceSelection(services) {
-    const container = document.getElementById('service-selection-container');
-    
-    if (!services || services.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 col-span-full">لا توجد خدمات متاحة للحجز حالياً.</p>';
-        return;
-    }
-    
-    // Separate main services and add-ons
-    const mainServices = services.filter(service => service.service_type === 'main');
-    const addOnServices = services.filter(service => service.service_type === 'add_on');
-    
-    let html = '';
-    
-    // Render main services section
-    if (mainServices.length > 0) {
-        html += `
-            <div class="col-span-full mb-4">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-bold text-primary-dark mb-2">
-                        <i class="fas fa-cut ml-2 text-secondary"></i>الخدمات الأساسية
-                    </h3>
-                    <button id="btn-more-services-main" class="py-1.5 px-3 rounded-xl border hover:bg-gray-100">
-                        المزيد من الخدمات
-                    </button>
-                </div>
-                <p class="text-gray-600 text-sm">اختر الخدمات التي تحتاجها (تحتاج وقت محدد)</p>
-            </div>
-        `;
-        
-        html += mainServices.map(service => `
-            <div class="selection-card p-4 rounded-xl service-option cursor-pointer" 
-                 data-service-id="${service.id}" 
-                 data-service-name="${service.name_ar}" 
-                 data-service-type="${service.service_type}"
-                 data-price="${service.price}" 
-                 data-duration="${service.duration || 30}">
-                <div class="flex items-center justify-between space-x-3 space-x-reverse">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-primary-dark">${service.name_ar}</h4>
-                        <p class="text-sm text-gray-600 duration-display">${service.duration || 30} دقيقة</p>
-                    </div>
-                    <p class="text-lg font-bold text-secondary flex-shrink-0 price-display">${service.price} شيكل</p>
-                </div>
-            </div>
-        `).join('');
-    }
-    
-    // Render add-ons section
-    if (addOnServices.length > 0) {
-        html += `
-            <div class="col-span-full mb-4 ${mainServices.length > 0 ? 'mt-8' : ''}">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-bold text-primary-dark mb-2">
-                        <i class="fas fa-plus-circle ml-2 text-orange-500"></i>الإضافات
-                    </h3>
-                    <button id="btn-more-services-addons" class="py-1.5 px-3 rounded-xl border hover:bg-gray-100">
-                        المزيد من الإضافات
-                    </button>
-                </div>
-                <p class="text-gray-600 text-sm">خدمات إضافية (لا تحتاج وقت إضافي)</p>
-            </div>
-        `;
-        
-        html += addOnServices.map(service => `
-            <div class="selection-card p-4 rounded-xl service-option cursor-pointer border-orange-200 hover:border-orange-400" 
-                 data-service-id="${service.id}" 
-                 data-service-name="${service.name_ar}" 
-                 data-service-type="${service.service_type}"
-                 data-price="${service.price}" 
-                 data-duration="${service.duration || 0}">
-                <div class="flex items-center justify-between space-x-3 space-x-reverse">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-primary-dark">${service.name_ar} 
-                            <span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>
-                        </h4>
-                        <p class="text-sm text-orange-600">لا يحتاج وقت إضافي</p>
-                    </div>
-                    <p class="text-lg font-bold text-orange-500 flex-shrink-0 price-display">${service.price} شيكل</p>
-                </div>
-            </div>
-        `).join('');
-    }
-    
-    container.innerHTML = html;
-    
-    const updateTotals = () => {
-        // Only count main services for duration (add-ons don't take time)
-        let totalDuration = selectedServices
-            .filter(service => service.service_type === 'main')
-            .reduce((sum, service) => sum + (parseInt(service.duration) || 0), 0);
-        let totalPrice = selectedServices.reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
-        
-        // Count main services and add-ons separately for display
-        const mainServicesCount = selectedServices.filter(s => s.service_type === 'main').length;
-        const addOnsCount = selectedServices.filter(s => s.service_type === 'add_on').length;
-        
-        // Null-safe updates to avoid errors if elements were temporarily missing
-        const durationEl = document.getElementById('selected-duration');
-        if (durationEl) {
-            durationEl.textContent = totalDuration > 0 ? `${totalDuration} دقيقة` : '--';
-        }
-        const priceEl = document.getElementById('final-price');
-        if (priceEl) {
-            priceEl.textContent = totalPrice > 0 ? totalPrice.toFixed(0) : '...';
-        }
-        
-        // Enable next step if at least one main service is selected
-        document.getElementById('next-step-2-btn').disabled = mainServicesCount === 0;
-    };
-    
-    document.querySelectorAll('.service-option').forEach(option => {
-        option.addEventListener('click', () => {
-            const serviceType = option.dataset.serviceType;
-            
-            // Different styling for add-ons vs main services
-            if (serviceType === 'add_on') {
-                option.classList.toggle('checked');
-                if (option.classList.contains('checked')) {
-                    option.classList.add('bg-orange-50', 'border-orange-400');
-                } else {
-                    option.classList.remove('bg-orange-50', 'border-orange-400');
-                }
-            } else {
-                option.classList.toggle('checked');
-            }
-            
-            const serviceId = parseInt(option.dataset.serviceId);
-            const price = parseFloat(option.dataset.price);
-            const duration = parseInt(option.dataset.duration);
-            const name = option.dataset.serviceName;
-            
-            const existingIndex = selectedServices.findIndex(s => s.id === serviceId);
 
-            if (existingIndex > -1) {
-                selectedServices.splice(existingIndex, 1);
-            } else {
-                selectedServices.push({ 
-                    id: serviceId, 
-                    name_ar: name, 
-                    price, 
-                    duration: serviceType === 'add_on' ? 0 : duration,
-                    service_type: serviceType 
-                });
-                selectedServices.sort((a, b) => a.id - b.id);
-            }
-            
-            updateTotals();
-            
-            if (!document.getElementById('step-3').classList.contains('hidden') && selectedDate) {
-                 loadTimeSlots();
-            }
-        });
-    });
-    
-    updateTotals(); 
 
-    // Expose for modal actions
-    window.availableSalonServices = services;
-    window.updateTotals = updateTotals;
 
-    // More options triggers
-    document.getElementById('btn-more-services-main')?.addEventListener('click', () => {
-        openServicesExplorer('main');
-    });
-    document.getElementById('btn-more-services-addons')?.addEventListener('click', () => {
-        openServicesExplorer('add_on');
-    });
-}
 
-function findAvailableStaff(startTimeMinutes, endTimeMinutes) {
-    const appointments = salonScheduleData.appointments || [];
-    const breaks = salonScheduleData.breaks || [];
 
-    for (const staff of staffOptions.filter(s => s.id !== 0)) {
-        let isAvailable = true;
 
-        for (const breakItem of breaks) {
-            const breakStart = timeToMinutes(breakItem.start_time);
-            const breakEnd = timeToMinutes(breakItem.end_time);
-            const breakStaffId = breakItem.staff_id || 0; 
-            
-            const staffMatch = breakStaffId === 0 || breakItem.staff_id === staff.id;
 
-            if (staffMatch && startTimeMinutes < breakEnd && endTimeMinutes > breakStart) {
-                isAvailable = false;
-                break;
-            }
-        }
-        
-        if (!isAvailable) continue;
 
-        for (const appt of appointments) {
-            if (appt.status !== 'Scheduled' || !appt.start_time || !appt.end_time) continue;
 
-            let apptStartMinutes, apptEndMinutes;
-            try {
-                if (typeof appt.start_time !== 'string' || typeof appt.end_time !== 'string') continue;
-                
-                // Handle both ISO format (with T) and SQL format (with space)
-                let startTimePart, endTimePart;
-                
-                if (appt.start_time.includes('T')) {
-                    startTimePart = appt.start_time.split('T')[1];
-                } else if (appt.start_time.includes(' ')) {
-                    startTimePart = appt.start_time.split(' ')[1];
-                } else {
-                    continue;
-                }
-                
-                if (appt.end_time.includes('T')) {
-                    endTimePart = appt.end_time.split('T')[1];
-                } else if (appt.end_time.includes(' ')) {
-                    endTimePart = appt.end_time.split(' ')[1];
-                } else {
-                    continue;
-                }
-                
-                if (!startTimePart || !endTimePart) continue;
-                
-                apptStartMinutes = timeToMinutes(startTimePart.substring(0, 5));
-                apptEndMinutes = timeToMinutes(endTimePart.substring(0, 5));
-            } catch (e) {
-                console.error('Error processing appointment times in staff availability check:', e, appt);
-                continue;
-            }
-            
-            // Normalize staff_id to a number to avoid strict equality mismatches
-            const apptStaffId = appt.staff_id === null || appt.staff_id === undefined ? 0 : parseInt(appt.staff_id);
 
-            if (apptStaffId === staff.id) {
-                 // Check for overlap using the proposed slot (startTimeMinutes to endTimeMinutes)
-                 if (startTimeMinutes < apptEndMinutes && endTimeMinutes > apptStartMinutes) {
-                    isAvailable = false;
-                    break;
-                }
-            }
-        }
 
-        if (isAvailable) {
-            return staff; 
-        }
-    }
-    return null; 
-}
+
+
+
 
 
 // ---------------------------------------------
@@ -4257,53 +2877,63 @@ function initializeEventListeners() {
         showLogoutModal();
     });
     
-    document.getElementById('close-modal-btn').addEventListener('click', hideBookingModal);
-    
     // Search functionality
     const searchInput = document.getElementById('search-input');
     const searchBtn = document.getElementById('search-btn');
     
-    function performSearch() {
-        const query = searchInput.value.trim().toLowerCase();
-        if (!query) {
-            // If search is empty, show all salons
-            displayFilteredSalons(allSalons);
-            return;
+    if (searchInput && searchBtn) {
+        function performSearch() {
+            const query = searchInput.value.trim().toLowerCase();
+            console.log('Search query:', query);
+            console.log('All salons:', allSalons);
+            
+            if (!query) {
+                // If search is empty, show all salons
+                displayFilteredSalons(allSalons);
+                return;
+            }
+            
+            // Filter salons based on search query
+            const filteredSalons = allSalons.filter(salon => {
+                console.log('Checking salon:', salon);
+                
+                // Search in salon name - FIX: use salon_name instead of name
+                const nameMatch = salon.salon_name && salon.salon_name.toLowerCase().includes(query);
+                console.log('Name match for', salon.salon_name, ':', nameMatch);
+                
+                // Search in city
+                const cityMatch = salon.city && salon.city.toLowerCase().includes(query);
+                console.log('City match:', cityMatch);
+                
+                // Search in address
+                const addressMatch = salon.address && salon.address.toLowerCase().includes(query);
+                console.log('Address match:', addressMatch);
+                
+                const result = nameMatch || cityMatch || addressMatch;
+                console.log('Final match result:', result);
+                
+                return result;
+            });
+            
+            console.log('Filtered salons:', filteredSalons);
+            displayFilteredSalons(filteredSalons);
+            
+            // Scroll to results
+            const featuredSection = document.getElementById('featured-salons-container');
+            if (featuredSection) {
+                featuredSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
         
-        // Filter salons based on search query
-        const filteredSalons = allSalons.filter(salon => {
-            // Search in salon name
-            const nameMatch = salon.name && salon.name.toLowerCase().includes(query);
-            
-            // Search in services
-            const servicesMatch = salon.services && salon.services.some(service => 
-                service.name_ar && service.name_ar.toLowerCase().includes(query)
-            );
-            
-            // Search in city
-            const cityMatch = salon.city && salon.city.toLowerCase().includes(query);
-            
-            return nameMatch || servicesMatch || cityMatch;
+        // Add event listeners for search
+        searchInput.addEventListener('input', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
         });
-        
-        displayFilteredSalons(filteredSalons);
-        
-        // Scroll to results
-        const featuredSection = document.getElementById('featured-salons-container');
-        if (featuredSection) {
-            featuredSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        searchBtn.addEventListener('click', performSearch);
     }
-    
-    // Add event listeners for search
-    searchInput.addEventListener('input', performSearch);
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            performSearch();
-        }
-    });
-    searchBtn.addEventListener('click', performSearch);
     
     // Time filter event listeners
     document.querySelectorAll('.time-filter').forEach(btn => {
@@ -4312,26 +2942,9 @@ function initializeEventListeners() {
             if (isPastTimePeriod(btn.dataset.period)) {
                 return;
             }
-            
-            selectedTimePeriod = btn.dataset.period;
-            updateTimeFilterButtons();
-            
-            // Reload time slots with new filter
-            const selectedDate = document.getElementById('date-input').value;
-            if (selectedDate) {
-                loadTimeSlots();
-            }
         });
     });
     
-    document.getElementById('conf-understood-btn').addEventListener('click', () => {
-        hideConfirmationModal();
-        switchView('home-view');
-    });
-    document.getElementById('conf-view-appointments-btn').addEventListener('click', () => {
-        hideConfirmationModal();
-        switchView('appointments-view');
-    });
     // Cancellation Modal Listeners
     document.getElementById('cancel-modal-dismiss').addEventListener('click', hideCancellationModal);
     document.getElementById('cancel-modal-confirm').addEventListener('click', confirmCancellation);
@@ -4354,8 +2967,7 @@ function initializeEventListeners() {
         }
     });
     
-    // Review Modal Listeners
-    document.getElementById('add-review-btn').addEventListener('click', () => checkExistingReviewAndShow(selectedSalon));
+    // Review Modal Listeners (only for elements that exist in this page)
     document.getElementById('close-review-modal-btn').addEventListener('click', hideReviewModal);
     document.getElementById('review-form').addEventListener('submit', submitReview);
     
@@ -4399,101 +3011,7 @@ function initializeEventListeners() {
         window.location.replace('/auth.html');
     });
 
-    // Active Appointment Block Modal Listeners
-    const closeActiveBtn = document.getElementById('close-active-appointment-modal-btn');
-    const dismissActiveBtn = document.getElementById('active-modal-dismiss');
-    const viewAppointmentsBtn = document.getElementById('active-modal-view-appointments');
-    if (closeActiveBtn) closeActiveBtn.addEventListener('click', hideActiveAppointmentModal);
-    if (dismissActiveBtn) dismissActiveBtn.addEventListener('click', hideActiveAppointmentModal);
-    if (viewAppointmentsBtn) viewAppointmentsBtn.addEventListener('click', () => { hideActiveAppointmentModal(); switchView('appointments-view'); });
-    document.querySelectorAll('.star-rating i').forEach(star => {
-        star.addEventListener('click', (e) => {
-            currentReviewRating = parseInt(e.currentTarget.dataset.rating);
-            document.getElementById('review-rating-input').value = currentReviewRating;
-            updateStarDisplay(currentReviewRating);
-        });
-        star.addEventListener('mouseover', (e) => updateStarDisplay(parseInt(e.currentTarget.dataset.rating)));
-        star.addEventListener('mouseout', () => updateStarDisplay(currentReviewRating));
-    });
 
-    document.getElementById('next-step-1-btn').addEventListener('click', async () => {
-        try {
-            const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
-            if (uid) {
-                const res = await fetch(`/api/appointments/user/${uid}/upcoming`);
-                const data = await res.json().catch(() => ({}));
-                if (data && data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
-                    showActiveAppointmentModal();
-                    return;
-                }
-            }
-        } catch (e) {
-            console.debug('Active appointment check failed:', e);
-            // Fail open: allow booking flow to proceed
-        }
-
-        showBookingStep(1);
-        if (selectedSalon && selectedSalon.salonId) {
-             loadSalonServices(selectedSalon.salonId);
-        }
-    });
-
-    document.getElementById('back-step-0-btn').addEventListener('click', () => {
-        showBookingStep(0);
-    });
-
-    document.getElementById('next-step-2-btn').addEventListener('click', () => {
-        showBookingStep(2);
-        if (selectedSalon && selectedSalon.salonId) {
-            loadSalonStaff(selectedSalon.salonId, true);
-        }
-    });
-    
-    document.getElementById('back-step-1-btn').addEventListener('click', () => {
-        showBookingStep(1);
-    });
-    
-    document.getElementById('next-step-3-btn').addEventListener('click', () => {
-        if (!selectedStaff) {
-             displayMessage('يرجى اختيار مختص أولاً.', 'error');
-             return;
-        }
-        showBookingStep(3);
-        const today = getCurrentUserDate();
-        document.getElementById('date-input').min = today;
-        document.getElementById('date-input').value = today;
-        selectedDate = today;
-        
-        // Load time slots for today by default
-        if (selectedServices.length > 0 && selectedStaff) {
-            loadTimeSlots();
-        }
-    });
-    
-    document.getElementById('back-step-2-btn').addEventListener('click', () => {
-        showBookingStep(2);
-    });
-    
-    document.getElementById('date-input').addEventListener('change', (e) => {
-        selectedDate = e.target.value;
-        document.getElementById('confirm-booking-btn').disabled = true; 
-        selectedTime = null; 
-        
-        // Update time filter buttons when date changes (past periods might change)
-        updateTimeFilterButtons();
-        
-        if (selectedDate && selectedServices.length > 0 && selectedStaff) {
-            loadTimeSlots();
-        } else {
-             document.getElementById('slots-grid').innerHTML = '<p class="text-gray-500 col-span-full">يرجى التأكد من اختيار الخدمة والمختص.</p>';
-        }
-    });
-    
-    document.getElementById('confirm-booking-btn').addEventListener('click', showPreBookingModal);
-
-    // Pre-booking modal event listeners
-    document.getElementById('cancel-booking-btn').addEventListener('click', hidePreBookingModal);
-    document.getElementById('final-confirm-booking-btn').addEventListener('click', confirmBooking);
 
     setupDiscoveryServiceListeners();
     
@@ -4598,117 +3116,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>
 // Shared services explorer modal (search + category + add)
-function openServicesExplorer(prefCategory = 'all') {
-    const allServices = Array.isArray(window.availableSalonServices) ? window.availableSalonServices : [];
-    if (!allServices.length) return;
 
-    let modal = document.getElementById('services-explorer-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'services-explorer-modal';
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
-        modal.innerHTML = `
-          <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-2xl p-4 text-right">
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-center">
-                <i class="fas fa-search text-secondary ml-2 text-xl"></i>
-                <h3 class="text-lg font-bold text-primary-dark">المزيد من الخدمات</h3>
-              </div>
-              <button id="services-explorer-close" class="py-1 px-3 rounded-xl border">إغلاق</button>
-            </div>
-            <div class="flex items-center gap-2 mb-3">
-              <input id="services-explorer-search" type="text" class="flex-1 border rounded-xl px-3 py-2"
-                     placeholder="ابحث باسم الخدمة...">
-              <select id="services-explorer-category" class="border rounded-xl px-2 py-2">
-                <option value="all">الكل</option>
-                <option value="main">الأساسية</option>
-                <option value="add_on">الإضافات</option>
-              </select>
-            </div>
-            <div id="services-explorer-list" class="max-h-96 overflow-y-auto space-y-2"></div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-    }
-
-    const closeBtn = modal.querySelector('#services-explorer-close');
-    const searchInput = modal.querySelector('#services-explorer-search');
-    const categorySelect = modal.querySelector('#services-explorer-category');
-    const listEl = modal.querySelector('#services-explorer-list');
-
-    const renderList = () => {
-        const q = (searchInput.value || '').trim();
-        const cat = categorySelect.value;
-        const filtered = allServices.filter(s => {
-            const matchesCat = cat === 'all' ? true : s.service_type === cat;
-            const matchesQuery = q ? (s.name_ar || '').includes(q) : true;
-            return matchesCat && matchesQuery;
-        });
-
-        listEl.innerHTML = filtered.map(s => `
-            <div class="border rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <div class="font-bold text-primary-dark">${s.name_ar}</div>
-                <div class="text-sm ${s.service_type === 'add_on' ? 'text-orange-600' : 'text-gray-600'}">
-                    ${s.service_type === 'add_on' ? 'إضافة - بدون وقت' : `${s.duration} دقيقة`} • ${s.price} شيكل
-                </div>
-              </div>
-              <button class="py-1.5 px-3 rounded-xl btn-action add-service-btn" data-id="${s.id}">إضافة</button>
-            </div>
-        `).join('');
-
-        listEl.querySelectorAll('.add-service-btn').forEach(btn => {
-            btn.addEventListener('click', () => addServiceById(parseInt(btn.dataset.id)));
-        });
-    };
-
-    const addServiceById = (id) => {
-        const s = allServices.find(x => x.id === id);
-        if (!s) return;
-
-        const existingIndex = selectedServices.findIndex(x => x.id === id);
-        if (existingIndex > -1) {
-            selectedServices.splice(existingIndex, 1);
-        } else {
-            selectedServices.push({
-                id: s.id,
-                name_ar: s.name_ar,
-                price: parseFloat(s.price) || 0,
-                duration: s.service_type === 'add_on' ? 0 : (parseInt(s.duration) || 30),
-                service_type: s.service_type
-            });
-            selectedServices.sort((a, b) => a.id - b.id);
-        }
-
-        const card = document.querySelector(`[data-service-id="${id}"]`);
-        if (card) {
-            card.classList.toggle('checked');
-            if (s.service_type === 'add_on') {
-                if (card.classList.contains('checked')) {
-                    card.classList.add('bg-orange-50', 'border-orange-400');
-                } else {
-                    card.classList.remove('bg-orange-50', 'border-orange-400');
-                }
-            }
-        }
-
-        window.updateTotals && window.updateTotals();
-        if (!document.getElementById('step-3').classList.contains('hidden') && selectedDate) {
-            loadTimeSlots();
-        }
-    };
-
-    modal.classList.remove('hidden');
-    categorySelect.value = ['main', 'add_on'].includes(prefCategory) ? prefCategory : 'all';
-    renderList();
-
-    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-    modal.addEventListener('click', (e) => {
-        if (e.target.id === 'services-explorer-modal') modal.classList.add('hidden');
-    });
-    searchInput.addEventListener('input', renderList);
-    categorySelect.addEventListener('change', renderList);
-}
 </script>
 <!-- Header is non-sticky now -->
 <!-- Update Available Modal -->
@@ -4869,11 +3277,8 @@ function openServicesExplorer(prefCategory = 'all') {
             // Handle time slots updates (for booking flow)
             socket.on('time_slots_updated', (payload) => {
                 try {
-                    // Refresh time slots if user is in step 3 of booking
-                    const step3Visible = !document.getElementById('step-3').classList.contains('hidden');
-                    if (step3Visible && selectedDate && selectedServices.length > 0 && selectedStaff) {
-                        loadTimeSlots();
-                    }
+                    // Time slots update handler - no longer needed for booking
+                    console.log('Time slots updated');
                 } catch (e) {
                     console.warn('WebSocket time_slots_updated handler error:', e.message);
                 }
@@ -4882,10 +3287,8 @@ function openServicesExplorer(prefCategory = 'all') {
             // Also refresh time slots on salon room events affecting availability
             const refreshSlotsIfActive = () => {
                 try {
-                    const step3Visible = !document.getElementById('step-3').classList.contains('hidden');
-                    if (step3Visible && selectedDate && selectedServices.length > 0 && selectedStaff && selectedSalon && selectedSalon.salonId) {
-                        loadTimeSlots();
-                    }
+                    // Refresh slots handler - no longer needed for booking
+                    console.log('Refresh slots called');
                 } catch (e) {
                     console.warn('refreshSlotsIfActive error:', e.message);
                 }
