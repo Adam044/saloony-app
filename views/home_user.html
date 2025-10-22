@@ -2723,17 +2723,32 @@ function renderSalonCard(salon, cardType = 'detail') {
     const addressDisplay = salon.address ? salon.address.split(',')[0].trim() : 'غير محدد'; // Use ternary check
     
     if (cardType === 'minimal') {
-         // Clean minimal card for City Salons section - bigger images and better spacing
+         // Beautiful circular card design inspired by Uber Eats - clean and modern
          return `
-            <div class="flex flex-col items-center p-3 hover:bg-gray-50 transition-all duration-200 cursor-pointer salon-card flex-shrink-0 w-28" data-salon-id="${safeSalonId}" data-city="${salon.city}" data-address="${salon.address || ''}" data-salon-name="${salon.salon_name}">
-                <div class="relative">
-                    <img src="${imageUrl}" 
-                        alt="${salon.salon_name}" 
-                        onerror="this.onerror=null;this.src='https://placehold.co/96x96/F9FAFB/1E293B?text=صالون';"
-                        class="w-24 h-24 rounded-2xl object-cover shadow-md" loading="lazy" decoding="async" fetchpriority="low" width="96" height="96">
-                    ${salon.special ? '<span class="absolute -top-1 -right-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">مميز</span>' : ''}
+            <div class="flex flex-col items-center cursor-pointer salon-card flex-shrink-0 w-32 group" data-salon-id="${safeSalonId}" data-city="${salon.city}" data-address="${salon.address || ''}" data-salon-name="${salon.salon_name}">
+                <div class="relative mb-3">
+                    <!-- Circular image with elegant border and shadow -->
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 p-1 shadow-lg group-hover:shadow-xl transition-all duration-300">
+                        <img src="${imageUrl}" 
+                            alt="${salon.salon_name}" 
+                            onerror="this.onerror=null;this.src='https://placehold.co/80x80/F9FAFB/1E293B?text=صالون';"
+                            class="w-full h-full rounded-full object-cover" loading="lazy" decoding="async" fetchpriority="low" width="80" height="80">
+                    </div>
+                    <!-- Subtle hover effect overlay -->
+                    <div class="absolute inset-0 rounded-full bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
-                <h3 class="font-medium text-sm text-primary-dark text-center mt-2 leading-tight line-clamp-2">${salon.salon_name}</h3>
+                
+                <!-- Salon name with elegant typography -->
+                <h3 class="font-semibold text-sm text-gray-800 text-center leading-tight line-clamp-2 group-hover:text-primary-dark transition-colors duration-200">${salon.salon_name}</h3>
+                
+                <!-- Rating display with subtle styling -->
+                ${avgRating > 0 ? `
+                    <div class="flex items-center mt-1 text-xs text-gray-500">
+                        <i class="fas fa-star text-yellow-400 mr-1"></i>
+                        <span class="font-medium">${avgRating.toFixed(1)}</span>
+                        ${reviewCount > 0 ? `<span class="mx-1">•</span><span>${reviewCount}</span>` : ''}
+                    </div>
+                ` : ''}
             </div>
         `;
     }
@@ -3334,7 +3349,7 @@ function calculateTimeSlots(dateString) {
     if (serviceDuration === 0 || !selectedStaff) return []; 
 
     const slots = [];
-    const now = new Date();
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
     const selectedDateObj = new Date(dateString);
     const dayOfWeek = selectedDateObj.getDay(); 
     const todayString = getCurrentUserDate();
@@ -3607,10 +3622,10 @@ function calculateTimeSlots(dateString) {
 let selectedTimePeriod = 'morning'; // Default to morning
 
 function getCurrentUserDate() {
-    // Get user's local date and time
-    const now = new Date();
+    // Get user's local date and time in Palestine timezone
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
     
-    // Format as YYYY-MM-DD in user's local timezone
+    // Format as YYYY-MM-DD in Palestine timezone
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -3619,7 +3634,7 @@ function getCurrentUserDate() {
 }
 
 function getCurrentUserTime() {
-    const now = new Date();
+    const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
     return {
         hours: now.getHours(),
         minutes: now.getMinutes(),

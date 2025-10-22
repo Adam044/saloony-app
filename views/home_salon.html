@@ -1896,7 +1896,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Check if 10 minutes have passed since appointment start time
-        const now = new Date();
+        const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
         const appointmentStartTime = new Date(appointment.start_time);
         const tenMinutesAfterStart = new Date(appointmentStartTime.getTime() + 10 * 60 * 1000);
         // Only allow status change if the appointment has started AND it is currently Scheduled

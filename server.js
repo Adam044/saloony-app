@@ -2253,7 +2253,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
 
              // Push notify salon about late cancellation (only for today's appointments)
              const appointmentDate = new Date(row.start_time);
-             const today = new Date();
+             const today = new Date(getPalestineTime());
              
              // Only send notification if appointment was for today (same day)
              if (appointmentDate.toDateString() === today.toDateString()) {
@@ -2298,7 +2298,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
         });
         // Only send push notification for cancellations happening today (same day)
         const appointmentDate = new Date(row.start_time);
-        const today = new Date();
+        const today = new Date(getPalestineTime());
         
         // Check if appointment is today
         const isRelevantCancellation = appointmentDate.toDateString() === today.toDateString();
@@ -2464,7 +2464,7 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
         const bookingDate = new Date(startTime);
         const dateString = bookingDate.toISOString().split('T')[0];
         const dayOfWeek = bookingDate.getDay();
-        const now = new Date();
+        const now = new Date(getPalestineTime());
         const isToday = dateString === now.toISOString().split('T')[0];
         
         // Convert times to minutes for easier comparison
@@ -3009,14 +3009,20 @@ const fetchSalonsWithAvailability = async (city, gender) => {
     }
 };
 
+// Helper function to get current time in Palestine timezone
+const getPalestineTime = () => {
+    return new Date().toLocaleString("en-US", {timeZone: "Asia/Jerusalem"});
+};
+
 // Helper function to check if salon is available today
 const checkSalonAvailabilityToday = async (salonId) => {
     try {
         console.log(`🔍 DEBUG: Checking availability for salon ID: ${salonId}`);
-        const today = new Date();
+        // Use Palestine timezone (Asia/Jerusalem)
+        const today = new Date(getPalestineTime());
         const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
         const currentTime = today.getHours() * 60 + today.getMinutes(); // Current time in minutes
-        console.log(`🔍 DEBUG: Current time: ${currentTime} minutes (${Math.floor(currentTime/60)}:${String(currentTime%60).padStart(2,'0')}), Day: ${dayOfWeek}`);
+        console.log(`🔍 DEBUG: Palestine time: ${currentTime} minutes (${Math.floor(currentTime/60)}:${String(currentTime%60).padStart(2,'0')}), Day: ${dayOfWeek}`);
         
         // Get salon schedule
         const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
