@@ -30,6 +30,23 @@
             background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 50%, #E5E7EB 100%); /* Subtle gradient background */
             min-height: 100vh;
             padding-bottom: 64px; /* Space for fixed bottom navigation */
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Staggered animation for main content */
+        .main-content {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.6s ease-out 0.2s forwards;
         }
         /* New Uber-Inspired Colors */
         .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
@@ -468,7 +485,7 @@
         </div>
     </header>
 
-    <main class="flex-grow pt-[60px] w-full pull-to-refresh">
+    <main class="flex-grow pt-[60px] w-full pull-to-refresh main-content">
         <div class="refresh-indicator">
             <i class="fas fa-arrow-down"></i>
         </div>
@@ -639,27 +656,27 @@
 
         </div>
     </main>
-
-    <!-- Bottom Navigation Bar (Fixed for PWA feel) -->
-<nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 w-full p-2 pb-5 flex justify-around shadow-2xl z-20">
-        <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
-            <i class="fas fa-home text-xl"></i>
-            <span class="text-xs font-bold mt-1">الرئيسية</span>
-        </button>
-        <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
-            <i class="fas fa-calendar-alt text-xl"></i>
-            <span class="text-xs font-medium mt-1">مواعيدي</span>
-        </button>
-        <button id="nav-favorites" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
-            <i class="fas fa-heart text-xl"></i>
-            <span class="text-xs font-medium mt-1">المفضلة</span>
-        </button>
-        <button id="nav-profile" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
-            <i class="fas fa-user-circle text-xl"></i>
-            <span class="text-xs font-medium mt-1">ملفي</span>
-        </button>
-    </nav>
 </div>
+
+<!-- Bottom Navigation Bar (Fixed for PWA feel) -->
+<nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 left-0 right-0 w-full p-2 pb-5 flex justify-around shadow-2xl z-50" style="position: fixed !important; bottom: 0 !important;">
+    <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
+        <i class="fas fa-home text-xl"></i>
+        <span class="text-xs font-bold mt-1">الرئيسية</span>
+    </button>
+    <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
+        <i class="fas fa-calendar-alt text-xl"></i>
+        <span class="text-xs font-medium mt-1">مواعيدي</span>
+    </button>
+    <button id="nav-favorites" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
+        <i class="fas fa-heart text-xl"></i>
+        <span class="text-xs font-medium mt-1">المفضلة</span>
+    </button>
+    <button id="nav-profile" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
+        <i class="fas fa-user-circle text-xl"></i>
+        <span class="text-xs font-medium mt-1">ملفي</span>
+    </button>
+</nav>
 
 <!-- Booking Modal Structure (Full Screen) -->
 

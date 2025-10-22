@@ -13,16 +13,57 @@
   <meta name="theme-color" content="#1E293B" />
   <style>
     html, body { height: 100%; margin: 0; }
-    body { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #F9FAFB, #E5E7EB); font-family: 'Segoe UI', Tahoma, sans-serif; }
-    .splash { text-align: center; }
-    .logo { width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+    body { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      background: linear-gradient(135deg, #F9FAFB, #E5E7EB); 
+      font-family: 'Segoe UI', Tahoma, sans-serif; 
+      transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    }
+    .splash { 
+      text-align: center; 
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: scale(1);
+      opacity: 1;
+    }
+    .splash.fade-out {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+    .logo { 
+      width: 120px; 
+      height: 120px; 
+      border-radius: 24px; 
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12); 
+      background: #fff; 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center;
+      transition: transform 0.3s ease-out;
+    }
+    .logo:hover {
+      transform: scale(1.05);
+    }
     .logo img { width: 80px; height: 80px; }
-    .title { margin-top: 18px; font-weight: 900; letter-spacing: 0.5px; color: #1E293B; }
+    .title { 
+      margin-top: 18px; 
+      font-weight: 900; 
+      letter-spacing: 0.5px; 
+      color: #1E293B;
+      transition: color 0.3s ease-out;
+    }
     .dots { margin-top: 24px; display: flex; gap: 10px; justify-content: center; }
     .dot { width: 10px; height: 10px; border-radius: 50%; background: #1E293B; opacity: 0.2; animation: pulse 1.2s infinite; }
     .dot:nth-child(2) { animation-delay: 0.2s; }
     .dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.2; } 50% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.2; } }
+    
+    /* Fade out animation for page transition */
+    body.page-transition {
+      opacity: 0;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 <body>
@@ -285,15 +326,34 @@
         // Start preloading immediately
         this.preloadResources(targetUrl);
         
-        // For browser mode, navigate immediately
+        // For browser mode, navigate immediately with animation
         if (!this.isStandalone) {
-          window.location.replace(targetUrl);
+          this.animateTransition(() => {
+            window.location.replace(targetUrl);
+          });
           return;
         }
 
-        // For PWA mode, wait for readiness
+        // For PWA mode, wait for readiness then animate
         await this.waitForReadiness(targetUrl);
-        window.location.replace(targetUrl);
+        this.animateTransition(() => {
+          window.location.replace(targetUrl);
+        });
+      }
+
+      // Add smooth transition animation before navigation
+      animateTransition(callback) {
+        const splashElement = document.querySelector('.splash');
+        const bodyElement = document.body;
+        
+        // Start fade out animation
+        splashElement.classList.add('fade-out');
+        bodyElement.classList.add('page-transition');
+        
+        // Wait for animation to complete before navigating
+        setTimeout(() => {
+          callback();
+        }, 600); // Match the CSS transition duration
       }
     }
 
