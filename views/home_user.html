@@ -1061,24 +1061,7 @@
                 </label>
                 <select id="city-filter" class="w-full p-2 border border-gray-300 rounded-lg">
                     <option value="all">جميع المدن</option>
-                    <option value="القدس">القدس</option>
-                    <option value="رام الله">رام الله</option>
-                    <option value="الخليل">الخليل</option>
-                    <option value="نابلس">نابلس</option>
-                    <option value="بيت لحم">بيت لحم</option>
-                    <option value="غزة">غزة</option>
-                    <option value="جنين">جنين</option>
-                    <option value="طولكرم">طولكرم</option>
-                    <option value="قلقيلية">قلقيلية</option>
-                    <option value="أريحا">أريحا</option>
-                    <option value="رفح">رفح</option>
-                    <option value="خان يونس">خان يونس</option>
-                    <option value="دير البلح">دير البلح</option>
-                    <option value="الناصرة">الناصرة</option>
-                    <option value="حيفا">حيفا</option>
-                    <option value="عكا">عكا</option>
-                    <option value="طبريا">طبريا</option>
-                    <option value="صفد">صفد</option>
+                    <!-- Cities will be populated dynamically -->
                 </select>
             </div>
             
@@ -1929,6 +1912,31 @@ function populateServiceFilter() {
     
     // Initialize dropdown functionality after populating
     initServiceDropdown();
+}
+
+async function populateCityFilter() {
+    const cityFilter = document.getElementById('city-filter');
+    if (!cityFilter) return;
+    
+    try {
+        const response = await fetch('/api/cities');
+        const cities = await response.json();
+        
+        // Clear existing options except "all cities"
+        cityFilter.innerHTML = '<option value="all">جميع المدن</option>';
+        
+        // Add all cities as options
+        cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city;
+            option.textContent = city;
+            cityFilter.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading cities for filter:', error);
+        // Keep the default "all cities" option if API fails
+    }
 }
 
 function displayFilteredSalons(salons) {
@@ -3077,6 +3085,7 @@ async function loadDiscoveryData(serviceFilterId = null) {
         addSalonCardListeners();
         setupDiscoveryServiceListeners(); 
         populateServiceFilter(); // Populate service filter based on user gender
+        populateCityFilter(); // Populate city filter from API
         
     } catch (error) {
         console.error('Error loading discovery data:', error);
