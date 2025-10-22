@@ -3018,9 +3018,11 @@ const fetchSalonsWithAvailability = async (city, gender) => {
 // Simple helper function to check salon status based on current time
 const checkSalonAvailabilityToday = async (salonId) => {
     try {
+        // Use Palestine timezone (Asia/Jerusalem) for accurate local time
         const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        const currentTime = today.getHours() * 60 + today.getMinutes(); // Current time in minutes
+        const palestineTime = new Date(today.toLocaleString("en-US", {timeZone: "Asia/Jerusalem"}));
+        const dayOfWeek = palestineTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const currentTime = palestineTime.getHours() * 60 + palestineTime.getMinutes(); // Current time in minutes
         
         // Get salon schedule
         const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
