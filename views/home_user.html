@@ -4259,6 +4259,52 @@ function initializeEventListeners() {
     
     document.getElementById('close-modal-btn').addEventListener('click', hideBookingModal);
     
+    // Search functionality
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    
+    function performSearch() {
+        const query = searchInput.value.trim().toLowerCase();
+        if (!query) {
+            // If search is empty, show all salons
+            displayFilteredSalons(allSalons);
+            return;
+        }
+        
+        // Filter salons based on search query
+        const filteredSalons = allSalons.filter(salon => {
+            // Search in salon name
+            const nameMatch = salon.name && salon.name.toLowerCase().includes(query);
+            
+            // Search in services
+            const servicesMatch = salon.services && salon.services.some(service => 
+                service.name_ar && service.name_ar.toLowerCase().includes(query)
+            );
+            
+            // Search in city
+            const cityMatch = salon.city && salon.city.toLowerCase().includes(query);
+            
+            return nameMatch || servicesMatch || cityMatch;
+        });
+        
+        displayFilteredSalons(filteredSalons);
+        
+        // Scroll to results
+        const featuredSection = document.getElementById('featured-salons-container');
+        if (featuredSection) {
+            featuredSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    
+    // Add event listeners for search
+    searchInput.addEventListener('input', performSearch);
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    searchBtn.addEventListener('click', performSearch);
+    
     // Time filter event listeners
     document.querySelectorAll('.time-filter').forEach(btn => {
         btn.addEventListener('click', () => {

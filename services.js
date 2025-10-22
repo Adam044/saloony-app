@@ -25,7 +25,6 @@ module.exports = {
     { name_ar: "حلاقة بالخيط", icon: "fa-cut", service_type: "add_on" }
   ],
   women: [
-    { name_ar: "قص شعر نسائي", icon: "fa-cut", service_type: "main" },
     { name_ar: "سشوار وتصفيف", icon: "fa-wind", service_type: "main" },
     { name_ar: "صبغة كاملة", icon: "fa-palette", service_type: "main" },
     { name_ar: "هايلايت/بالياج", icon: "fa-brush", service_type: "main" },
