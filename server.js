@@ -122,6 +122,7 @@ async function initializeDb() {
             gender_focus TEXT NOT NULL,
             image_url TEXT,
             status TEXT DEFAULT 'pending',
+            special BOOLEAN DEFAULT FALSE,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
         
@@ -2968,12 +2969,14 @@ const fetchSalonsWithAvailability = async (city, gender) => {
                 s.city, 
                 s.image_url, 
                 s.gender_focus,
+                s.special,
                 COALESCE(AVG(r.rating), 0) AS avg_rating,
                 COUNT(r.id) AS review_count
             FROM salons s
             LEFT JOIN reviews r ON s.id = r.salon_id
             WHERE s.gender_focus = $1 AND s.status = 'accepted'
-            GROUP BY s.id 
+            GROUP BY s.id, s.special
+            ORDER BY s.special DESC, COALESCE(AVG(r.rating), 0) DESC
         `;
         const result = await db.query(sql, [gender]);
         console.log(`🔍 DEBUG: Found ${result.length} salons matching gender ${gender} and status accepted`);
