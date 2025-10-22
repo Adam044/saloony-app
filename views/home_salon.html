@@ -27,24 +27,20 @@
         body { 
             font-family: 'Tajawal', sans-serif; 
             background-color: #F9FAFB; /* Very light gray */
-            padding-bottom: 64px; /* Space for the fixed bottom navigation */
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeInUp 0.8s ease-out forwards;
+            padding-bottom: 80px; /* Space for the fixed bottom navigation */
+            position: relative;
+            overflow-x: hidden;
         }
         
-        @keyframes fadeInUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* Staggered animation for main content */
-        .main-content {
-            opacity: 0;
-            transform: translateY(30px);
-            animation: fadeInUp 0.6s ease-out 0.2s forwards;
+        /* Force navigation to stay at bottom */
+        nav[style*="position: fixed"] {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100vw !important;
+            z-index: 99999 !important;
+            transform: none !important;
         }
         /* New Uber-Inspired Colors */
         .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
@@ -239,7 +235,7 @@
         </div>
     </header>
     
-    <main class="flex-grow p-4 pt-[60px] md:p-8 main-content">
+    <main class="flex-grow p-4 pt-[60px] md:p-8">
         <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
         <div class="max-w-6xl mx-auto space-y-8">
             
@@ -663,25 +659,35 @@
         </div>
     </main>
     
-<nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full p-1.5 pb-5 flex justify-around shadow-2xl z-20">
+<nav class="bg-white border-t border-gray-200 p-1.5 pb-5 flex justify-around shadow-2xl" 
+     style="position: fixed !important; 
+            bottom: 0 !important; 
+            left: 0 !important; 
+            right: 0 !important; 
+            width: 100vw !important; 
+            z-index: 99999 !important;
+            height: 70px !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            transform: none !important;">
         <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
-            <i class="fas fa-clipboard-list text-xl"></i>
+            <i class="fas fa-clipboard-list text-lg"></i>
             <span class="text-xs font-medium mt-1">المواعيد</span>
         </button>
         <button id="nav-management" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="management-view">
-            <i class="fas fa-calendar-alt text-xl"></i>
+            <i class="fas fa-calendar-alt text-lg"></i>
             <span class="text-xs font-medium mt-1">الإدارة</span>
         </button>
         <button id="nav-salon" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="salon-view">
-            <i class="fas fa-store-alt text-xl"></i>
+            <i class="fas fa-store-alt text-lg"></i>
             <span class="text-xs font-medium mt-1">الصالون</span>
         </button>
         <button id="nav-reviews" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="reviews-view">
-            <i class="fas fa-star text-xl"></i>
+            <i class="fas fa-star text-lg"></i>
             <span class="text-xs font-medium mt-1">المراجعات</span>
         </button>
         <button id="nav-invoices" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="invoices-view">
-            <i class="fas fa-receipt text-xl"></i>
+            <i class="fas fa-receipt text-lg"></i>
             <span class="text-xs font-medium mt-1">الفواتير</span>
         </button>
     </nav>

@@ -25,29 +25,54 @@
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+        html, body {
+            transform: none !important;
+            will-change: auto !important;
+            position: static !important;
+        }
+        
         body { 
             font-family: 'Tajawal', sans-serif; 
             background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 50%, #E5E7EB 100%); /* Subtle gradient background */
             min-height: 100vh;
-            padding-bottom: 64px; /* Space for fixed bottom navigation */
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeInUp 0.8s ease-out forwards;
+            padding-bottom: 80px; /* Space for fixed bottom navigation */
+            overflow-x: hidden;
         }
         
-        @keyframes fadeInUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* NUCLEAR OPTION - FORCE NAVIGATION BAR TO BOTTOM AT ALL COSTS */
+        nav[style*="position: fixed"],
+        nav.fixed-bottom,
+        .bottom-nav,
+        #bottom-navigation {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100vw !important;
+            z-index: 999999 !important;
+            transform: none !important;
+            will-change: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         
-        /* Staggered animation for main content */
-        .main-content {
-            opacity: 0;
-            transform: translateY(30px);
-            animation: fadeInUp 0.6s ease-out 0.2s forwards;
+        /* Override ANY page transitions that might affect navigation */
+        body.page-transition nav[style*="position: fixed"],
+        body.page-fade-in nav[style*="position: fixed"],
+        body.page-fade-out nav[style*="position: fixed"] {
+            position: fixed !important;
+            bottom: 0 !important;
+            transform: none !important;
+            z-index: 999999 !important;
         }
+        
         /* New Uber-Inspired Colors */
         .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
         .text-secondary { color: #06C167; } /* Vibrant Teal-Green Accent */
@@ -84,6 +109,7 @@
         .line-clamp-2 {
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -116,48 +142,43 @@
             transform: scale(1.1);
         }
 
-        /* Page Transition Animations */
+        /* Page Transition Animations - DISABLED FOR NAVBAR FIX */
         .page-transition {
-            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+            transition: opacity 0.4s ease-out;
         }
         .page-fade-out {
             opacity: 0;
-            transform: translateY(-20px);
         }
         .page-fade-in {
             opacity: 1;
-            transform: translateY(0);
         }
         
-        /* Section Slide Animations */
+        /* Section Slide Animations - DISABLED TO FIX NAVBAR */
         .view-content {
-            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-            transform: translateX(0);
+            transition: opacity 0.3s ease-out;
+            transform: none !important;
             opacity: 1;
         }
         
-        .slide-left-out {
-            transform: translateX(-100%);
-            opacity: 0;
+        .slide-left-out,
+        .slide-right-out,
+        .slide-left-in,
+        .slide-right-in,
+        .slide-in-active {
+            transform: none !important;
         }
         
+        .slide-left-out,
         .slide-right-out {
-            transform: translateX(100%);
             opacity: 0;
         }
         
-        .slide-left-in {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        
+        .slide-left-in,
         .slide-right-in {
-            transform: translateX(-100%);
             opacity: 0;
         }
         
         .slide-in-active {
-            transform: translateX(0);
             opacity: 1;
         }
         
@@ -485,7 +506,7 @@
         </div>
     </header>
 
-    <main class="flex-grow pt-[60px] w-full pull-to-refresh main-content">
+    <main class="flex-grow pt-[60px] w-full pull-to-refresh">
         <div class="refresh-indicator">
             <i class="fas fa-arrow-down"></i>
         </div>
@@ -656,27 +677,37 @@
 
         </div>
     </main>
-</div>
 
 <!-- Bottom Navigation Bar (Fixed for PWA feel) -->
-<nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 fixed bottom-0 left-0 right-0 w-full p-2 pb-5 flex justify-around shadow-2xl z-50" style="position: fixed !important; bottom: 0 !important;">
-    <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
-        <i class="fas fa-home text-xl"></i>
+<nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 p-2 pb-5 flex justify-around shadow-2xl" 
+     style="position: fixed !important; 
+            bottom: 0 !important; 
+            left: 0 !important; 
+            right: 0 !important; 
+            width: 100vw !important; 
+            z-index: 99999 !important;
+            height: 70px !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            transform: none !important;">
+    <button id="nav-home" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
+        <i class="fas fa-home text-lg"></i>
         <span class="text-xs font-bold mt-1">الرئيسية</span>
     </button>
-    <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
-        <i class="fas fa-calendar-alt text-xl"></i>
+    <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
+        <i class="fas fa-calendar-alt text-lg"></i>
         <span class="text-xs font-medium mt-1">مواعيدي</span>
     </button>
-    <button id="nav-favorites" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
-        <i class="fas fa-heart text-xl"></i>
+    <button id="nav-favorites" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
+        <i class="fas fa-heart text-lg"></i>
         <span class="text-xs font-medium mt-1">المفضلة</span>
     </button>
-    <button id="nav-profile" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
-        <i class="fas fa-user-circle text-xl"></i>
+    <button id="nav-profile" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
+        <i class="fas fa-user-circle text-lg"></i>
         <span class="text-xs font-medium mt-1">ملفي</span>
     </button>
 </nav>
+</div>
 
 <!-- Booking Modal Structure (Full Screen) -->
 
@@ -1997,6 +2028,7 @@ function switchView(viewId) {
         }
     }
     
+    // SLIDE ANIMATIONS DISABLED TO FIX NAVBAR ISSUE
     // Define view order for slide direction
     const viewOrder = ['home-view', 'appointments-view', 'favorites-view', 'profile-view'];
     const currentIndex = viewOrder.indexOf(currentView);
@@ -2010,28 +2042,11 @@ function switchView(viewId) {
     const newViewElement = document.getElementById(viewId);
     
     if (currentViewElement && newViewElement && currentView !== viewId) {
-        // Animate out current view
-        currentViewElement.classList.add(slideLeft ? 'slide-left-out' : 'slide-right-out');
+        // Hide current view immediately
+        currentViewElement.classList.add('hidden');
         
-        // Prepare new view for animation
+        // Show new view immediately
         newViewElement.classList.remove('hidden');
-        newViewElement.classList.add(slideLeft ? 'slide-left-in' : 'slide-right-in');
-        
-        // Force reflow
-        newViewElement.offsetHeight;
-        
-        // Animate in new view
-        setTimeout(() => {
-            newViewElement.classList.remove(slideLeft ? 'slide-left-in' : 'slide-right-in');
-            newViewElement.classList.add('slide-in-active');
-            
-            // Hide current view after animation
-            setTimeout(() => {
-                currentViewElement.classList.add('hidden');
-                currentViewElement.classList.remove('slide-left-out', 'slide-right-out');
-                newViewElement.classList.remove('slide-in-active');
-            }, 300);
-        }, 50);
     } else {
         // Fallback for same view or missing elements
         document.querySelectorAll('.view-content').forEach(view => {
@@ -3359,6 +3374,7 @@ document.addEventListener('DOMContentLoaded', function() {
         indicator.classList.remove('visible', 'refreshing');
         icon.className = 'fas fa-arrow-down';
         main.style.transform = '';
+        main.style.willChange = 'auto';
         isRefreshing = false;
     }
     
@@ -3381,6 +3397,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const translateY = pullDistance * 0.5;
             
             main.style.transform = `translateY(${translateY}px)`;
+            main.style.willChange = 'transform';
+            main.style.willChange = 'transform';
             
             if (pullDistance > threshold) {
                 if (!indicator.classList.contains('visible')) {
