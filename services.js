@@ -12,7 +12,7 @@ module.exports = {
     { name_ar: "حواجب رجال", icon: "fa-eye", service_type: "main" },
     { name_ar: "واكس الوجه", icon: "fa-th-large", service_type: "main" },
     { name_ar: "حمام زيت", icon: "fa-tint", service_type: "main" },
-    { name_ar: "مساج رأس", icon: "fa-head-side", service_type: "main" },
+    { name_ar: "مساج رأس", icon: "fa-spa", service_type: "main" },
 
     { name_ar: "بودرة/سبراي تثبيت", icon: "fa-spray-can", service_type: "add_on" },
     { name_ar: "سيروم شعر", icon: "fa-flask", service_type: "add_on" },
@@ -22,7 +22,7 @@ module.exports = {
     { name_ar: "ماسك مقشر", icon: "fa-leaf", service_type: "add_on" },
     { name_ar: "ماسك مغذي", icon: "fa-seedling", service_type: "add_on" },
     { name_ar: "معطر شعر", icon: "fa-burn", service_type: "add_on" },
-    { name_ar: "حلاقة بالخيط", icon: "fa-thread", service_type: "add_on" }
+    { name_ar: "حلاقة بالخيط", icon: "fa-cut", service_type: "add_on" }
   ],
   women: [
     { name_ar: "قص شعر نسائي", icon: "fa-cut", service_type: "main" },
