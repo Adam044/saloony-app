@@ -3015,22 +3015,18 @@ const fetchSalonsWithAvailability = async (city, gender) => {
     }
 };
 
-// Helper function to check if salon is available today
+// Simple helper function to check salon status based on current time
 const checkSalonAvailabilityToday = async (salonId) => {
     try {
-        console.log(`🔍 DEBUG: Checking availability for salon ID: ${salonId}`);
         const today = new Date();
         const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
         const currentTime = today.getHours() * 60 + today.getMinutes(); // Current time in minutes
-        console.log(`🔍 DEBUG: Current time: ${currentTime} minutes (${Math.floor(currentTime/60)}:${String(currentTime%60).padStart(2,'0')}), Day: ${dayOfWeek}`);
         
         // Get salon schedule
         const schedule = await dbGet('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
-        console.log(`🔍 DEBUG: Schedule for salon ${salonId}:`, schedule);
         
         if (!schedule) {
-            console.log(`🔍 DEBUG: No schedule found for salon ${salonId} - returning closed`);
-            return { is_available_today: false, status: 'closed' }; // No schedule means not available
+            return { is_available_today: false, status: 'closed' };
         }
         
         // Parse closed days
@@ -3040,127 +3036,92 @@ const checkSalonAvailabilityToday = async (salonId) => {
         } catch (e) {
             closedDays = [];
         }
-        console.log(`🔍 DEBUG: Closed days for salon ${salonId}:`, closedDays);
         
         // Check if today is a closed day
         if (closedDays.includes(dayOfWeek)) {
-            console.log(`🔍 DEBUG: Salon ${salonId} is closed today (day ${dayOfWeek})`);
             return { is_available_today: false, status: 'closed' };
         }
         
-        // Convert opening and closing times to minutes
+        // Convert time string to minutes
         const timeToMinutes = (timeStr) => {
             if (!timeStr) return 0;
             const [hours, minutes] = timeStr.split(':').map(Number);
-            // Handle midnight (00:00) as end of day (24:00 = 1440 minutes) when it's the closing time
-            if (hours === 0 && minutes === 0 && timeStr === schedule.closing_time) {
-                return 24 * 60; // 1440 minutes for midnight as closing time
-            }
             return hours * 60 + minutes;
         };
         
         const openMinutes = timeToMinutes(schedule.opening_time || '09:00');
         const closeMinutes = timeToMinutes(schedule.closing_time || '18:00');
-        console.log(`🔍 DEBUG: Salon ${salonId} hours - Open: ${openMinutes} minutes, Close: ${closeMinutes} minutes`);
         
-        // Check if salon is currently open
-        let isOpen = false;
-        if (closeMinutes > openMinutes) {
-            // Normal hours (e.g., 9:00 - 18:00 or 9:00 - 24:00)
-            isOpen = currentTime >= openMinutes && currentTime <= closeMinutes;
-            console.log(`🔍 DEBUG: Normal hours check - Current: ${currentTime}, Open: ${openMinutes}, Close: ${closeMinutes}, IsOpen: ${isOpen}`);
-        } else {
-            // Overnight hours (e.g., 22:00 - 02:00)
-            isOpen = currentTime >= openMinutes || currentTime <= closeMinutes;
-            console.log(`🔍 DEBUG: Overnight hours check - Current: ${currentTime}, Open: ${openMinutes}, Close: ${closeMinutes}, IsOpen: ${isOpen}`);
-        }
-        
-        // Determine status based on current time and opening/closing times
+        // Simple logic: compare current time with opening hours
         let status = 'closed';
-        const oneHour = 60; // 60 minutes = 1 hour
+        let is_available_today = false;
         
-        if (isOpen) {
-            // Salon is currently open
-            if (closeMinutes > openMinutes) {
-                // Normal hours - check if closing soon (but only if there's more than 30 minutes left)
-                const timeUntilClose = closeMinutes - currentTime;
-                if (timeUntilClose <= oneHour && timeUntilClose > 30) {
-                    status = 'closing_soon';
+        // Handle overnight schedules (e.g., 22:00 - 02:00)
+        if (closeMinutes <= openMinutes) {
+            // Overnight schedule
+            if (currentTime >= openMinutes || currentTime < closeMinutes) {
+                status = 'open';
+                is_available_today = true;
+                
+                // Check if closing soon (within 1 hour)
+                let timeUntilClose;
+                if (currentTime >= openMinutes) {
+                    // Evening part - time until midnight + morning part
+                    timeUntilClose = (24 * 60 - currentTime) + closeMinutes;
                 } else {
-                    status = 'open';
+                    // Morning part - direct calculation
+                    timeUntilClose = closeMinutes - currentTime;
+                }
+                
+                if (timeUntilClose <= 60) {
+                    status = 'closing_soon';
                 }
             } else {
-                // Overnight hours - more complex logic needed
-                if (currentTime >= openMinutes) {
-                    // We're in the evening part (before midnight)
-                    // Calculate time until closing (which is after midnight)
-                    const timeUntilMidnight = (24 * 60) - currentTime;
-                    const timeUntilClose = timeUntilMidnight + closeMinutes;
-                    
-                    if (timeUntilClose <= oneHour && timeUntilClose > 30) {
-                        status = 'closing_soon';
-                    } else {
-                        status = 'open';
-                    }
-                } else {
-                    // We're in the morning part (after midnight)
-                    const timeUntilClose = closeMinutes - currentTime;
-                    if (timeUntilClose <= oneHour && timeUntilClose > 30) {
-                        status = 'closing_soon';
-                    } else {
-                        status = 'open';
-                    }
+                // Check if opening soon (within 1 hour)
+                const timeUntilOpen = openMinutes - currentTime;
+                if (timeUntilOpen <= 60 && timeUntilOpen > 0) {
+                    status = 'opening_soon';
                 }
             }
         } else {
-            // Salon is currently closed - check if opening soon
-            if (closeMinutes > openMinutes) {
-                // Normal hours
-                if (currentTime < openMinutes && currentTime >= (openMinutes - oneHour)) {
-                    status = 'opening_soon';
+            // Normal schedule (e.g., 09:00 - 18:00)
+            if (currentTime >= openMinutes && currentTime < closeMinutes) {
+                status = 'open';
+                is_available_today = true;
+                
+                // Check if closing soon (within 1 hour)
+                const timeUntilClose = closeMinutes - currentTime;
+                if (timeUntilClose <= 60) {
+                    status = 'closing_soon';
                 }
-            } else {
-                // Overnight hours
-                if (currentTime < openMinutes && currentTime >= (openMinutes - oneHour)) {
+            } else if (currentTime < openMinutes) {
+                // Check if opening soon (within 1 hour)
+                const timeUntilOpen = openMinutes - currentTime;
+                if (timeUntilOpen <= 60) {
                     status = 'opening_soon';
-                } else if (currentTime > closeMinutes && currentTime < (openMinutes - oneHour)) {
-                    // In the gap between closing and opening (not opening soon)
-                    status = 'closed';
                 }
             }
         }
         
-        if (!isOpen) {
-            return { is_available_today: false, status: status };
-        }
-        
-        // Check for schedule modifications (closures) for today
-        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        // Check for any full-day closures today
+        const todayStr = today.toISOString().split('T')[0];
         const modifications = await dbAll(`
             SELECT * FROM schedule_modifications 
-            WHERE salon_id = $1 AND (
+            WHERE salon_id = $1 AND closure_type = 'full_day' AND (
                 (mod_type = 'date' AND mod_date = $2) OR
                 (mod_type = 'day' AND mod_day_index = $3)
             )
         `, [salonId, todayStr, dayOfWeek]);
         
-        // Check if there are any full-day closures
-        const hasFullDayClosure = modifications.some(mod => 
-            mod.closure_type === 'full_day' || (!mod.start_time && !mod.end_time)
-        );
-        
-        if (hasFullDayClosure) {
+        if (modifications.length > 0) {
             return { is_available_today: false, status: 'closed' };
         }
         
-        // For interval closures, we'll consider the salon available if there are any open slots
-        // This is a simplified check - in reality, you might want to check specific time slots
-        
-        return { is_available_today: true, status: status }; // Salon is available today
+        return { is_available_today, status };
         
     } catch (error) {
-        console.error(`🔍 DEBUG: Error checking salon ${salonId} availability:`, error);
-        return { is_available_today: false, status: 'closed' }; // Default to not available on error
+        console.error(`Error checking salon ${salonId} availability:`, error);
+        return { is_available_today: false, status: 'closed' };
     }
 };
 
