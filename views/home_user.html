@@ -196,6 +196,84 @@
             transform: none !important;
         }
         
+        /* Skeleton Loading Styles */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .skeleton-card {
+            height: 120px;
+            margin-bottom: 16px;
+        }
+        
+        .skeleton-text {
+            height: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .skeleton-text.short {
+            width: 60%;
+        }
+        
+        /* Toast Notification Styles */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 100000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: #10b981;
+        }
+        
+        .toast.error {
+            background: #ef4444;
+        }
+        
+        /* Ripple Effect Styles */
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ripple::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .ripple.active::before {
+            width: 300px;
+            height: 300px;
+        }
+
         .slide-left-out,
         .slide-right-out {
             opacity: 0;
@@ -990,6 +1068,19 @@ function displayMessage(message, type = 'info') {
     }, 5000);
 }
 
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 100);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+}
+
 // Unified notification helpers (sound, vibration, SW notification)
 const notificationAudio = new Audio('/sounds/salon_notifications.wav');
 notificationAudio.preload = 'auto';
@@ -1718,7 +1809,7 @@ async function loadUserAppointments(filter) {
     // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
     try {
         const container = document.getElementById('user-appointments-container');
-        container.innerHTML = '<p class="text-gray-500 text-center py-8">جاري تحميل مواعيدك...</p>';
+        container.innerHTML = Array(3).fill().map(() => '<div class="skeleton skeleton-card"></div>').join('');
         
         // FIX: Add validation for currentUser.userId
         if (!currentUser || !currentUser.userId || isNaN(parseInt(currentUser.userId))) {
@@ -2018,7 +2109,7 @@ async function loadUserFavorites() {
     // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
     try {
         const container = document.getElementById('favorites-list-container');
-        container.innerHTML = '<p class="text-gray-500 text-center py-8 col-span-full">جاري تحميل المفضلة...</p>';
+        container.innerHTML = Array(3).fill().map(() => '<div class="skeleton skeleton-card"></div>').join('');
         
         // FIX: Add validation for currentUser.userId
         if (!currentUser || !currentUser.userId || isNaN(parseInt(currentUser.userId))) {
@@ -2169,7 +2260,7 @@ async function confirmCancellation(isEarlyCancel = false) {
         
         if (response.ok && result.success) {
             hideCancellationModal();
-            displayMessage(result.message || 'تم إلغاء الموعد بنجاح.', 'success');
+            showToast(result.message || 'تم إلغاء الموعد بنجاح.', 'success');
             loadUserAppointments(filter);
             try {
                 notifyLocal({ title: 'تم إلغاء الموعد', body: 'تم إلغاء موعدك بنجاح.', url: '/home_user.html#appointments', isSuccess: true, tag: 'appointment_cancelled' });
@@ -2180,12 +2271,12 @@ async function confirmCancellation(isEarlyCancel = false) {
             }
         } else {
             hideCancellationModal();
-            displayMessage(result.message || 'فشل في إلغاء الموعد.', 'error');
+            showToast(result.message || 'فشل في إلغاء الموعد.', 'error');
         }
     } catch (error) {
         console.error('Cancellation error:', error);
         hideCancellationModal();
-        displayMessage('حدث خطأ في الشبكة أثناء الإلغاء.', 'error');
+        showToast('حدث خطأ في الشبكة أثناء الإلغاء.', 'error');
     } finally {
         if (confirmBtn) {
             confirmBtn.disabled = false;
@@ -2570,6 +2661,15 @@ async function loadSalonDetailView(salon) {
 async function loadDiscoveryData(serviceFilterId = null) {
     activeServiceFilterId = serviceFilterId; 
     
+    // Show skeleton loading
+    const servicesContainer = document.getElementById('discover-services-container');
+    const citySalonsContainer = document.getElementById('city-salons-container');
+    const featuredSalonsContainer = document.getElementById('featured-salons-container');
+    
+    servicesContainer.innerHTML = Array(3).fill().map(() => '<div class="skeleton skeleton-card scroll-item" style="width: 200px; margin-left: 16px;"></div>').join('');
+    citySalonsContainer.innerHTML = Array(3).fill().map(() => '<div class="skeleton skeleton-card"></div>').join('');
+    featuredSalonsContainer.innerHTML = Array(3).fill().map(() => '<div class="skeleton skeleton-card"></div>').join('');
+    
     let url = `/api/discovery/${currentUser.city}/${currentUser.gender}`;
     if (activeServiceFilterId) {
         url += `?service_ids=${activeServiceFilterId}`;
@@ -2675,11 +2775,11 @@ async function toggleFavorite(salonId, button) {
             }
         }
         
-        displayMessage(result.is_favorite ? 'تم إضافة الصالون للمفضلة' : 'تم إزالة الصالون من المفضلة', 'success');
+        showToast(result.is_favorite ? 'تم إضافة الصالون للمفضلة' : 'تم إزالة الصالون من المفضلة', 'success');
         
     } catch (error) {
         console.error('Error toggling favorite:', error);
-        displayMessage('حدث خطأ في تحديث المفضلة', 'error');
+        showToast('حدث خطأ في تحديث المفضلة', 'error');
     }
 }
 
@@ -2929,7 +3029,12 @@ function getTimePeriodFromCurrentTime() {
 
 function initializeEventListeners() {
     document.querySelectorAll('.nav-item').forEach(nav => {
-        nav.addEventListener('click', () => {
+        nav.classList.add('ripple');
+        nav.addEventListener('click', (e) => {
+            // Add ripple effect
+            nav.classList.add('active');
+            setTimeout(() => nav.classList.remove('active'), 600);
+            
             switchView(nav.dataset.view);
             // Scroll to the absolute top of the page and reset zoom if needed
             window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
