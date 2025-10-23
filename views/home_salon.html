@@ -47,7 +47,7 @@
             will-change: auto !important;
             margin: 0 !important;
             padding: 0.5rem !important;
-            padding-bottom: 1.25rem !important; /* pb-5 = 20px like admin dashboard */
+            padding-bottom: calc(1.25rem + env(safe-area-inset-bottom)) !important; /* iPhone safe-area */
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
