@@ -45,7 +45,7 @@
         .bottom-nav,
         #bottom-navigation {
             position: fixed !important;
-            bottom: 15px !important;
+            bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
             width: 100vw !important;
@@ -53,7 +53,8 @@
             transform: none !important;
             will-change: auto !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 0.5rem !important;
+            padding-bottom: 1.25rem !important; /* pb-5 = 20px like admin dashboard */
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
@@ -68,7 +69,7 @@
         body.page-fade-in nav[style*="position: fixed"],
         body.page-fade-out nav[style*="position: fixed"] {
             position: fixed !important;
-            bottom: 15px !important;
+            bottom: 0 !important;
             transform: none !important;
             z-index: 999999 !important;
         }
@@ -122,7 +123,7 @@
             box-shadow: 0 2px 8px rgba(6, 193, 103, 0.2) !important;
         } 
         .nav-item {
-             padding: 8px 16px; /* Increased standard padding for inactive state */
+             padding: 0.75rem; /* p-3 = 12px like admin dashboard */
         }
         
         /* Enhanced section card styling */
@@ -690,20 +691,20 @@
             box-sizing: border-box !important;
             margin: 0 !important;
             transform: none !important;">
-    <button id="nav-home" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
-        <i class="fas fa-home text-lg"></i>
+    <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
+        <i class="fas fa-home text-xl"></i>
         <span class="text-xs font-bold mt-1">الرئيسية</span>
     </button>
-    <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
-        <i class="fas fa-calendar-alt text-lg"></i>
+    <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
+        <i class="fas fa-calendar-alt text-xl"></i>
         <span class="text-xs font-medium mt-1">مواعيدي</span>
     </button>
-    <button id="nav-favorites" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
-        <i class="fas fa-heart text-lg"></i>
+    <button id="nav-favorites" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
+        <i class="fas fa-heart text-xl"></i>
         <span class="text-xs font-medium mt-1">المفضلة</span>
     </button>
-    <button id="nav-profile" class="nav-item flex flex-col items-center p-2 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
-        <i class="fas fa-user-circle text-lg"></i>
+    <button id="nav-profile" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
+        <i class="fas fa-user-circle text-xl"></i>
         <span class="text-xs font-medium mt-1">ملفي</span>
     </button>
 </nav>

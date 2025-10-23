@@ -38,7 +38,7 @@
         .bottom-nav,
         #bottom-navigation {
             position: fixed !important;
-            bottom: 15px !important;
+            bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
             width: 100vw !important;
@@ -46,7 +46,8 @@
             transform: none !important;
             will-change: auto !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 0.5rem !important;
+            padding-bottom: 1.25rem !important; /* pb-5 = 20px like admin dashboard */
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
@@ -61,7 +62,7 @@
         body.page-fade-in nav[style*="position: fixed"],
         body.page-fade-out nav[style*="position: fixed"] {
             position: fixed !important;
-            bottom: 15px !important;
+            bottom: 0 !important;
             transform: none !important;
             z-index: 999999 !important;
         }
@@ -100,7 +101,7 @@
             color: white !important; /* White text for active state */
         }
         .nav-item {
-             padding: 8px 16px; /* Increased standard padding for inactive state */
+             padding: 0.75rem; /* p-3 = 12px like admin dashboard */
         }
 
         /* RTL input fix for consistency */
@@ -699,24 +700,24 @@
             box-sizing: border-box !important;
             margin: 0 !important;
             transform: none !important;">
-        <button id="nav-appointments" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
-            <i class="fas fa-clipboard-list text-lg"></i>
+        <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
+            <i class="fas fa-clipboard-list text-xl"></i>
             <span class="text-xs font-medium mt-1">المواعيد</span>
         </button>
-        <button id="nav-management" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="management-view">
-            <i class="fas fa-calendar-alt text-lg"></i>
+        <button id="nav-management" class="nav-item flex flex-col items-center p-3 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="management-view">
+            <i class="fas fa-calendar-alt text-xl"></i>
             <span class="text-xs font-medium mt-1">الإدارة</span>
         </button>
-        <button id="nav-salon" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="salon-view">
-            <i class="fas fa-store-alt text-lg"></i>
+        <button id="nav-salon" class="nav-item flex flex-col items-center p-3 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="salon-view">
+            <i class="fas fa-store-alt text-xl"></i>
             <span class="text-xs font-medium mt-1">الصالون</span>
         </button>
-        <button id="nav-reviews" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="reviews-view">
-            <i class="fas fa-star text-lg"></i>
+        <button id="nav-reviews" class="nav-item flex flex-col items-center p-3 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="reviews-view">
+            <i class="fas fa-star text-xl"></i>
             <span class="text-xs font-medium mt-1">المراجعات</span>
         </button>
-        <button id="nav-invoices" class="nav-item flex flex-col items-center p-2 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="invoices-view">
-            <i class="fas fa-receipt text-lg"></i>
+        <button id="nav-invoices" class="nav-item flex flex-col items-center p-3 transition-all duration-300 text-gray-500 hover:text-primary-dark" data-view="invoices-view">
+            <i class="fas fa-receipt text-xl"></i>
             <span class="text-xs font-medium mt-1">الفواتير</span>
         </button>
     </nav>
