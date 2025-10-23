@@ -45,7 +45,7 @@
         .bottom-nav,
         #bottom-navigation {
             position: fixed !important;
-            bottom: 0 !important;
+            bottom: 10px !important;
             left: 0 !important;
             right: 0 !important;
             width: 100vw !important;
@@ -68,7 +68,7 @@
         body.page-fade-in nav[style*="position: fixed"],
         body.page-fade-out nav[style*="position: fixed"] {
             position: fixed !important;
-            bottom: 0 !important;
+            bottom: 10px !important;
             transform: none !important;
             z-index: 999999 !important;
         }
@@ -116,13 +116,20 @@
 
         /* Styling for active navigation item */
         .nav-active {
-            color: #06C167 !important; 
-            background-color: rgba(6, 193, 103, 0.1) !important; 
+            color: white !important; 
+            background-color: #06C167 !important; 
             border-radius: 0.75rem !important;
-            box-shadow: 0 2px 8px rgba(6, 193, 103, 0.2) !important;
+            box-shadow: 0 2px 8px rgba(6, 193, 103, 0.5) !important;
+            padding: 12px 20px !important; /* Larger click area for active state */
+        }
+        .nav-active i {
+            color: white !important; /* White icon for active state */
+        }
+        .nav-active span {
+            color: white !important; /* White text for active state */
         } 
         .nav-item {
-             padding: 0.75rem;
+             padding: 8px 16px; /* Increased standard padding for inactive state */
         }
         
         /* Enhanced section card styling */

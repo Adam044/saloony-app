@@ -32,15 +32,38 @@
             overflow-x: hidden;
         }
         
-        /* Force navigation to stay at bottom */
-        nav[style*="position: fixed"] {
+        /* NUCLEAR OPTION - FORCE NAVIGATION BAR TO BOTTOM AT ALL COSTS */
+        nav[style*="position: fixed"],
+        nav.fixed-bottom,
+        .bottom-nav,
+        #bottom-navigation {
             position: fixed !important;
-            bottom: 0 !important;
+            bottom: 10px !important;
             left: 0 !important;
             right: 0 !important;
             width: 100vw !important;
-            z-index: 99999 !important;
+            z-index: 999999 !important;
             transform: none !important;
+            will-change: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Override ANY page transitions that might affect navigation */
+        body.page-transition nav[style*="position: fixed"],
+        body.page-fade-in nav[style*="position: fixed"],
+        body.page-fade-out nav[style*="position: fixed"] {
+            position: fixed !important;
+            bottom: 10px !important;
+            transform: none !important;
+            z-index: 999999 !important;
         }
         /* New Uber-Inspired Colors */
         .bg-primary-dark { background-color: #1E293B; } /* Deep Charcoal Blue/Slate */
@@ -64,14 +87,20 @@
         
         /* Style for active nav item (Pill style) */
         .nav-active {
-            color: #1E293B; /* Primary Dark */
-            background-color: #06C167; /* Secondary Teal-Green */
+            color: white !important; /* White text for better contrast */
+            background-color: #06C167 !important; /* Secondary Teal-Green */
             border-radius: 9999px; /* Full rounded pill */
             box-shadow: 0 2px 8px rgba(6, 193, 103, 0.5);
-            padding: 8px 16px !important; /* Larger click area for active state */
+            padding: 12px 20px !important; /* Larger click area for active state */
+        }
+        .nav-active i {
+            color: white !important; /* White icon for active state */
+        }
+        .nav-active span {
+            color: white !important; /* White text for active state */
         }
         .nav-item {
-             padding: 4px 12px; /* Standard padding for inactive state */
+             padding: 8px 16px; /* Increased standard padding for inactive state */
         }
 
         /* RTL input fix for consistency */
