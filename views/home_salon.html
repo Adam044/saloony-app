@@ -696,9 +696,10 @@
             right: 0 !important; 
             width: 100vw !important; 
             z-index: 99999 !important;
-            height: 70px !important;
+            min-height: 70px !important;
             box-sizing: border-box !important;
             margin: 0 !important;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
             transform: none !important;">
         <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 transition-all duration-300 text-primary-dark nav-active" data-view="appointments-view">
             <i class="fas fa-clipboard-list text-xl"></i>
