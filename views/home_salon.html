@@ -3505,7 +3505,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="flex justify-between items-center mb-3">
           <div class="flex items-center space-x-3 space-x-reverse">
             <label class="text-lg font-bold text-primary-dark">
-              <i class="fas ${service.icon} ml-2 ${isAddOn ? 'text-orange-500' : 'text-secondary'}"></i> ${service.name_ar}
+              ${service.icon && (service.icon.startsWith('http') || service.icon.includes('supabase')) ? 
+                `<img src="${service.icon}" alt="${service.name_ar}" class="w-5 h-5 object-contain inline ml-2 ${isAddOn ? 'opacity-75' : ''}">` :
+                `<i class="fas ${service.icon} ml-2 ${isAddOn ? 'text-orange-500' : 'text-secondary'}"></i>`
+              } ${service.name_ar}
               ${isAddOn ? '<span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>' : ''}
             </label>
           </div>

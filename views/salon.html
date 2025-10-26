@@ -942,7 +942,14 @@
         const serviceTagsHtml = bookingData.services.map(s => {
             const masterService = allMasterServices.find(ms => ms.id === s.id) || {};
             const icon = masterService.icon || 'fa-cut';
-            return `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap"><i class="fas ${icon} ml-1"></i> ${s.name_ar}</span>`;
+            const isImageIcon = masterService.icon && (masterService.icon.startsWith('http') || masterService.icon.includes('supabase'));
+            
+            return `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap">
+                ${isImageIcon ? 
+                    `<img src="${masterService.icon}" alt="${s.name_ar}" class="w-3 h-3 object-contain ml-1">` :
+                    `<i class="fas ${icon} ml-1"></i>`
+                } ${s.name_ar}
+            </span>`;
         }).join('');
         servicesListContainer.innerHTML = `<h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5><div class="flex flex-wrap gap-2 justify-end">${serviceTagsHtml}</div><p class="text-xs font-bold text-blue-900 pt-3 border-t border-blue-200 mt-2 flex justify-end">إجمالي المدة: ${bookingData.totalDuration} دقيقة</p>`;
 
@@ -1071,7 +1078,14 @@
         const serviceTagsHtml = selectedServices.map(s => {
             const masterService = allMasterServices.find(ms => ms.id === s.id) || {};
             const icon = masterService.icon || 'fa-cut';
-            return `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap"><i class="fas ${icon} ml-1"></i> ${s.name_ar} (${s.price} شيكل)</span>`;
+            const isImageIcon = masterService.icon && (masterService.icon.startsWith('http') || masterService.icon.includes('supabase'));
+            
+            return `<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium ml-2 flex items-center justify-end whitespace-nowrap">
+                ${isImageIcon ? 
+                    `<img src="${masterService.icon}" alt="${s.name_ar}" class="w-3 h-3 object-contain ml-1">` :
+                    `<i class="fas ${icon} ml-1"></i>`
+                } ${s.name_ar} (${s.price} شيكل)
+            </span>`;
         }).join('');
         
         servicesListContainer.innerHTML = `<h5 class="text-sm font-semibold text-blue-900 mb-2">الخدمات المحجوزة:</h5><div class="flex flex-wrap gap-2 justify-end">${serviceTagsHtml}</div><p class="text-xs font-bold text-blue-900 pt-3 border-t border-blue-200 mt-2 flex justify-end">إجمالي المدة: ${totalDuration} دقيقة</p>`;

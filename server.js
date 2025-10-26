@@ -2447,6 +2447,289 @@ app.post('/api/salon/services/:salon_id', async (req, res) => {
     }
 });
 
+// ===== SERVICES MANAGEMENT API ENDPOINTS =====
+
+// Get all services for admin management
+app.get('/api/admin/services', async (req, res) => {
+    try {
+        const { gender, search } = req.query;
+        
+        let sql = "SELECT id, name_ar, icon, service_type, gender FROM services WHERE 1=1";
+        const params = [];
+        
+        if (gender && gender !== 'all') {
+            sql += " AND gender = $" + (params.length + 1);
+            params.push(gender);
+        }
+        
+        if (search && search.trim()) {
+            sql += " AND name_ar ILIKE $" + (params.length + 1);
+            params.push(`%${search.trim()}%`);
+        }
+        
+        sql += " ORDER BY name_ar";
+        
+        const services = await dbAll(sql, params);
+        res.json({ success: true, services });
+    } catch (err) {
+        console.error("Admin services fetch error:", err.message);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Add new service with image upload
+app.post('/api/admin/services', upload.single('icon'), async (req, res) => {
+    try {
+        const { name_ar, gender, service_type } = req.body;
+        
+        if (!name_ar || !gender || !service_type) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Service name, gender, and service type are required.' 
+            });
+        }
+        
+        let iconUrl = null;
+        
+        // Handle image upload if provided
+        if (req.file) {
+            try {
+                // Generate unique filename
+                const timestamp = Date.now();
+                const filename = `service-${timestamp}-${Math.random().toString(36).substring(7)}.webp`;
+                
+                // Optimize image using Sharp
+                const optimizedBuffer = await sharp(req.file.buffer)
+                    .resize(64, 64, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
+                    .webp({ quality: 90 })
+                    .toBuffer();
+                
+                // Upload to Supabase Storage
+                const { data, error } = await supabase.storage
+                    .from('service-icons')
+                    .upload(filename, optimizedBuffer, {
+                        contentType: 'image/webp',
+                        upsert: false
+                    });
+                
+                if (error) {
+                    console.error('Supabase upload error:', error);
+                    // If bucket doesn't exist, continue without uploading new icon
+                    if (error.status === 400 && error.statusCode === '404') {
+                        console.warn('Service icons bucket not found, keeping existing icon');
+                        // Keep the existing icon
+                    } else {
+                        return res.status(500).json({ 
+                            success: false, 
+                            message: 'Failed to upload service icon.' 
+                        });
+                    }
+                } else {
+                    // Get public URL only if upload was successful
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('service-icons')
+                        .getPublicUrl(filename);
+                    
+                    iconUrl = publicUrl;
+                }
+            } catch (uploadError) {
+                console.error('Image upload error:', uploadError);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Failed to process service icon.' 
+                });
+            }
+        }
+        
+        // Insert service into database
+        const sql = `
+            INSERT INTO services (name_ar, icon, service_type, gender) 
+            VALUES ($1, $2, $3, $4) 
+            RETURNING id, name_ar, icon, service_type, gender
+        `;
+        
+        const result = await dbGet(sql, [name_ar, iconUrl, service_type, gender]);
+        
+        res.json({ 
+            success: true, 
+            message: 'Service added successfully.',
+            service: result
+        });
+        
+    } catch (err) {
+        console.error("Add service error:", err.message);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Update existing service with optional image upload
+app.put('/api/admin/services/:service_id', upload.single('icon'), async (req, res) => {
+    try {
+        const serviceId = req.params.service_id;
+        const { name_ar, gender, service_type } = req.body;
+        
+        if (!serviceId || isNaN(parseInt(serviceId))) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Valid service ID is required.' 
+            });
+        }
+        
+        if (!name_ar || !gender || !service_type) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Service name, gender, and service type are required.' 
+            });
+        }
+        
+        // Get current service data
+        const currentService = await dbGet("SELECT * FROM services WHERE id = $1", [serviceId]);
+        if (!currentService) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Service not found.' 
+            });
+        }
+        
+        let iconUrl = currentService.icon; // Keep existing icon by default
+        
+        // Handle new image upload if provided
+        if (req.file) {
+            try {
+                // Delete old image from Supabase if it exists and is a Supabase URL
+                if (currentService.icon && currentService.icon.includes('supabase')) {
+                    const oldFilename = currentService.icon.split('/').pop();
+                    await supabase.storage
+                        .from('service-icons')
+                        .remove([oldFilename]);
+                }
+                
+                // Generate unique filename
+                const timestamp = Date.now();
+                const filename = `service-${timestamp}-${Math.random().toString(36).substring(7)}.webp`;
+                
+                // Optimize image using Sharp
+                const optimizedBuffer = await sharp(req.file.buffer)
+                    .resize(64, 64, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
+                    .webp({ quality: 90 })
+                    .toBuffer();
+                
+                // Upload to Supabase Storage
+                const { data, error } = await supabase.storage
+                    .from('service-icons')
+                    .upload(filename, optimizedBuffer, {
+                        contentType: 'image/webp',
+                        upsert: false
+                    });
+                
+                if (error) {
+                    console.error('Supabase upload error:', error);
+                    // If bucket doesn't exist, continue without uploading new icon
+                    if (error.status === 400 && error.statusCode === '404') {
+                        console.warn('Service icons bucket not found, keeping existing icon');
+                        // Keep the existing icon
+                    } else {
+                        return res.status(500).json({ 
+                            success: false, 
+                            message: 'Failed to upload service icon.' 
+                        });
+                    }
+                } else {
+                    // Get public URL only if upload was successful
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('service-icons')
+                        .getPublicUrl(filename);
+                    
+                    iconUrl = publicUrl;
+                }
+            } catch (uploadError) {
+                console.error('Image upload error:', uploadError);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Failed to process service icon.' 
+                });
+            }
+        }
+        
+        // Update service in database
+        const sql = `
+            UPDATE services 
+            SET name_ar = $1, icon = $2, service_type = $3, gender = $4 
+            WHERE id = $5 
+            RETURNING id, name_ar, icon, service_type, gender
+        `;
+        
+        const result = await dbGet(sql, [name_ar, iconUrl, service_type, gender, serviceId]);
+        
+        res.json({ 
+            success: true, 
+            message: 'Service updated successfully.',
+            service: result
+        });
+        
+    } catch (err) {
+        console.error("Update service error:", err.message);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Delete service
+app.delete('/api/admin/services/:service_id', async (req, res) => {
+    try {
+        const serviceId = req.params.service_id;
+        
+        if (!serviceId || isNaN(parseInt(serviceId))) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Valid service ID is required.' 
+            });
+        }
+        
+        // Get service data before deletion to clean up image
+        const service = await dbGet("SELECT * FROM services WHERE id = $1", [serviceId]);
+        if (!service) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Service not found.' 
+            });
+        }
+        
+        // Check if service is being used by any salons
+        const usageCheck = await dbGet("SELECT COUNT(*) as count FROM salon_services WHERE service_id = $1", [serviceId]);
+        if (usageCheck.count > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Cannot delete service. It is currently being used by salons.' 
+            });
+        }
+        
+        // Delete image from Supabase if it exists and is a Supabase URL
+        if (service.icon && service.icon.includes('supabase')) {
+            try {
+                const filename = service.icon.split('/').pop();
+                await supabase.storage
+                    .from('service-icons')
+                    .remove([filename]);
+            } catch (imageError) {
+                console.warn('Failed to delete service icon:', imageError);
+                // Continue with service deletion even if image deletion fails
+            }
+        }
+        
+        // Delete service from database
+        await dbRun("DELETE FROM services WHERE id = $1", [serviceId]);
+        
+        res.json({ 
+            success: true, 
+            message: 'Service deleted successfully.' 
+        });
+        
+    } catch (err) {
+        console.error("Delete service error:", err.message);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
 // API to book a new appointment - UPDATED for Smart Staff Assignment and Multiple Services
 // ===== SERVER-SIDE BOOKING VALIDATION FUNCTIONS =====
 

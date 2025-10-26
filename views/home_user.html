@@ -1621,6 +1621,7 @@ function populateServiceFilter() {
     // Add all services as checkboxes with Font Awesome icons
     allMasterServices.forEach((service, index) => {
         const icon = service.icon || 'fa-cut';
+        const isImageIcon = service.icon && (service.icon.startsWith('http') || service.icon.includes('supabase'));
         
         const serviceOption = document.createElement('div');
         serviceOption.className = 'p-2';
@@ -1629,7 +1630,10 @@ function populateServiceFilter() {
             <label class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer service-option">
                 <input type="checkbox" value="${service.id}" data-service-name="${service.name_ar}" class="service-checkbox" id="service-${index}">
                 <span class="service-icon w-5 h-5 flex items-center justify-center">
-                    <i class="fas ${icon} text-primary-dark"></i>
+                    ${isImageIcon ? 
+                        `<img src="${service.icon}" alt="${service.name_ar}" class="w-4 h-4 object-contain">` :
+                        `<i class="fas ${icon} text-primary-dark"></i>`
+                    }
                 </span>
                 <span class="text-sm flex-1">${service.name_ar}</span>
             </label>
@@ -2344,11 +2348,17 @@ async function deleteUserReview(salonId) {
 function renderServiceCard(service) {
     const isActive = activeServiceFilterId && parseInt(activeServiceFilterId) === service.id;
 
+    // Check if icon is an image URL or FontAwesome class
+    const isImageIcon = service.icon && (service.icon.startsWith('http') || service.icon.includes('supabase'));
+    
     return `
         <div class="scroll-item w-48 flex-shrink-0 rounded-2xl shadow-lg transition-all duration-300 border border-secondary-soft discovery-service-card ${isActive ? 'active' : 'hover:bg-gray-100 bg-white'}" data-service-id="${service.id}">
             <div class="p-4 text-center">
                 <div class="w-14 h-14 ${isActive ? 'bg-primary-dark/80' : 'bg-secondary-soft'} rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fas ${service.icon || 'fa-cut'} text-2xl ${isActive ? 'text-secondary' : 'text-primary-dark'}"></i>
+                    ${isImageIcon ? 
+                        `<img src="${service.icon}" alt="${service.name_ar}" class="w-8 h-8 object-contain">` :
+                        `<i class="fas ${service.icon || 'fa-cut'} text-2xl ${isActive ? 'text-secondary' : 'text-primary-dark'}"></i>`
+                    }
                 </div>
                 <h3 class="font-bold text-base ${isActive ? 'text-white' : 'text-primary-dark'}">${service.name_ar}</h3>
             </div>
@@ -2610,10 +2620,14 @@ async function loadSalonDetailView(salon) {
             servicesTagsContainer.innerHTML = data.services.map(service => {
                 const masterService = allMasterServices.find(ms => ms.id === service.id) || {};
                 const icon = masterService.icon || 'fa-cut';
+                const isImageIcon = masterService.icon && (masterService.icon.startsWith('http') || masterService.icon.includes('supabase'));
 
                 return `
                     <span class="px-3 py-1 rounded-full bg-secondary-soft text-primary-dark text-sm font-medium border border-secondary">
-                        <i class="fas ${icon} ml-1"></i> ${service.name_ar}
+                        ${isImageIcon ? 
+                            `<img src="${masterService.icon}" alt="${service.name_ar}" class="w-4 h-4 object-contain inline ml-1">` :
+                            `<i class="fas ${icon} ml-1"></i>`
+                        } ${service.name_ar}
                     </span>
                 `;
             }).join('');
