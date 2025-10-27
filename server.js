@@ -37,8 +37,7 @@ try {
     console.warn('WebPush VAPID setup warning:', e.message);
 }
 
-// --- Core Data: Master Service List & Cities ---
-const MASTER_SERVICES = require('./services');
+// --- Core Data: Cities ---
 
 const CITIES = [
     // Major Cities (Original)
@@ -308,9 +307,6 @@ async function initializeDb() {
 
         console.log("Database schema created successfully.");
         
-        // Insert master services if they don't exist
-        await insertMasterServices();
-        
     } catch (error) {
         console.error("Error initializing database:", error);
         throw error;
@@ -537,25 +533,6 @@ async function alignSchema() {
         console.log('AlignSchema: Schema alignment completed successfully.');
     } catch (error) {
         console.error('AlignSchema error:', error.message || error);
-    }
-}
-
-// Insert master services into the database
-async function insertMasterServices() {
-    try {
-        for (const gender of ['men', 'women']) {
-            for (const service of MASTER_SERVICES[gender]) {
-                await db.run(
-                    `INSERT INTO services (name_ar, icon, gender, service_type) 
-                     VALUES ($1, $2, $3, $4) 
-                     ON CONFLICT (name_ar, gender) DO NOTHING`,
-                    [service.name_ar, service.icon, gender, service.service_type]
-                );
-            }
-        }
-        console.log("Master services inserted successfully.");
-    } catch (error) {
-        console.error("Error inserting master services:", error);
     }
 }
 
