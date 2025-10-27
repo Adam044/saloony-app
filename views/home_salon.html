@@ -4399,14 +4399,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         
         <div class="space-y-4">
-            <!-- Native Share Button (if supported) -->
-            <div id="native-share-section" class="hidden">
-                <button id="native-share-btn" class="w-full btn-action py-3 rounded-xl font-bold text-center">
-                    <i class="fas fa-share-alt ml-2"></i>
-                    مشاركة مباشرة
-                </button>
-            </div>
-            
             <!-- URL Section -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">رابط الصالون</label>
@@ -4418,15 +4410,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         نسخ
                     </button>
                 </div>
-            </div>
-            
-            <!-- QR Code Section -->
-            <div class="text-center">
-                <label class="block text-sm font-medium text-gray-700 mb-2">رمز QR</label>
-                <div id="qr-code-container" class="flex justify-center p-4 bg-gray-50 rounded-xl">
-                    <div id="qr-code"></div>
-                </div>
-                <p class="text-xs text-gray-500 mt-2">امسح الرمز للوصول المباشر للصالون</p>
             </div>
         </div>
     </div>
@@ -4440,53 +4423,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeShareModal = document.getElementById('close-share-modal');
     const copyUrlBtn = document.getElementById('copy-url-btn');
     const salonShareUrl = document.getElementById('salon-share-url');
-    const qrCodeContainer = document.getElementById('qr-code');
-    const nativeShareSection = document.getElementById('native-share-section');
-    const nativeShareBtn = document.getElementById('native-share-btn');
     
     // Get salon info from localStorage
     const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
     const salonId = user.salon_id;
     
     if (shareBtn && salonId) {
-        shareBtn.addEventListener('click', async function() {
-            console.log('Share button clicked'); // Debug log
-            console.log('Current salon:', currentSalon); // Debug log
-            console.log('Salon ID:', salonId); // Debug log
-            
+        shareBtn.addEventListener('click', function() {
             // Get salon name from current salon data
             const salonName = currentSalon?.salon_name || 'صالون';
             
             // Generate clean share URL
             const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}&name=${encodeURIComponent(salonName)}`;
             
-            console.log('Generated share URL:', shareUrl); // Debug log
-            
-            // Try native sharing first (mobile devices)
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: `صالون ${salonName} - صالوني`,
-                        text: `اكتشف صالون ${salonName} واحجز موعدك الآن!`,
-                        url: shareUrl
-                    });
-                    return; // Exit if native sharing was successful
-                } catch (err) {
-                    console.log('Native sharing cancelled or failed:', err);
-                    // Continue to fallback modal
-                }
-            }
-            
-            // Fallback to modal for desktop or if native sharing fails
+            // Set URL in input field
             salonShareUrl.value = shareUrl;
-            
-            // Show native share button if supported
-            if (navigator.share && nativeShareSection) {
-                nativeShareSection.classList.remove('hidden');
-            }
-            
-            // Generate QR code
-            generateQRCode(shareUrl);
             
             // Show modal
             shareModal.classList.remove('hidden');
@@ -4497,12 +4448,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (closeShareModal) {
         closeShareModal.addEventListener('click', function() {
             shareModal.classList.add('hidden');
-            // Hide native share section when modal closes
-            if (nativeShareSection) {
-                nativeShareSection.classList.add('hidden');
+        });
+    }
+    
+    // Copy URL functionality
+    if (copyUrlBtn) {
+        copyUrlBtn.addEventListener('click', async function() {
+            try {
+                await navigator.clipboard.writeText(salonShareUrl.value);
+                
+                // Visual feedback
+                const originalText = copyUrlBtn.innerHTML;
+                copyUrlBtn.innerHTML = '<i class="fas fa-check ml-1"></i>تم النسخ';
+                copyUrlBtn.classList.add('bg-green-500');
+                
+                setTimeout(() => {
+                    copyUrlBtn.innerHTML = originalText;
+                    copyUrlBtn.classList.remove('bg-green-500');
+                }, 2000);
+                
+            } catch (err) {
+                console.error('Failed to copy URL:', err);
+                // Fallback for older browsers
+                salonShareUrl.select();
+                document.execCommand('copy');
             }
         });
     }
+    
+    // Close modal when clicking outside
+    shareModal?.addEventListener('click', function(e) {
+        if (e.target === shareModal) {
+            shareModal.classList.add('hidden');
+        }
+    });
+});
+            if (nativeShareSection) {
+                nativeShareSection.classList.add('hidden');
+            }
+    
     
     // Close modal when clicking outside
     shareModal?.addEventListener('click', function(e) {
@@ -4562,30 +4546,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    // Generate QR Code function
-    function generateQRCode(url) {
-        // Clear previous QR code
-        qrCodeContainer.innerHTML = '';
-        
-        // Create QR code using a simple method (you can replace with a proper QR library)
-        const qrSize = 150;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(url)}`;
-        
-        const qrImg = document.createElement('img');
-        qrImg.src = qrUrl;
-        qrImg.alt = 'QR Code';
-        qrImg.className = 'w-32 h-32 mx-auto';
-        qrImg.onerror = function() {
-            qrCodeContainer.innerHTML = '<div class="w-32 h-32 bg-gray-200 flex items-center justify-center rounded-lg"><i class="fas fa-qrcode text-gray-400 text-3xl"></i></div>';
-        };
-        
-        qrCodeContainer.appendChild(qrImg);
-    }
-});
 </script>
-
-<!-- Header is non-sticky now -->
 
 <!-- Update Manager Script -->
 <script src="/update-manager.js"></script>
