@@ -255,28 +255,6 @@
       // Determine target URL based on user state
       getTargetUrl() {
         try {
-          // Check for PWA launch redirect first
-          const redirectData = localStorage.getItem('pwa_launch_redirect');
-          if (redirectData) {
-            const data = JSON.parse(redirectData);
-            // Check if redirect is recent (within 30 seconds)
-            if (Date.now() - data.timestamp < 30000) {
-              localStorage.removeItem('pwa_launch_redirect'); // Clean up
-              
-              // Check if user is logged in
-              const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
-              const token = localStorage.getItem('salonni_token');
-              
-              if (user && token && user.user_type === 'user') {
-                // User is logged in, redirect to salon page
-                return `/salon.html?salon_id=${data.salonId}&name=${encodeURIComponent(data.salonName || '')}`;
-              }
-            } else {
-              // Old redirect data, clean it up
-              localStorage.removeItem('pwa_launch_redirect');
-            }
-          }
-
           const raw = localStorage.getItem('salonni_user');
           const user = raw ? JSON.parse(raw) : null;
           const token = localStorage.getItem('salonni_token');

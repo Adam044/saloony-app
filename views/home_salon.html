@@ -4430,8 +4430,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (shareBtn && salonId) {
         shareBtn.addEventListener('click', function() {
-            // Get salon name from current salon data
-            const salonName = currentSalon?.salon_name || 'صالون';
+            // Get salon name from localStorage user data
+            const salonName = user.salon_name || 'صالون';
             
             // Generate clean share URL
             const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}&name=${encodeURIComponent(salonName)}`;

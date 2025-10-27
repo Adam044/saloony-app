@@ -545,70 +545,25 @@
 
         // App Installation and Navigation
         function setupAppButtons() {
-            // Reserve Button
+            // Reserve Button - Simple redirect to index
             document.getElementById('reserve-btn').addEventListener('click', function() {
-                // Check if running as PWA
-                if (window.matchMedia('(display-mode: standalone)').matches || 
-                    window.navigator.standalone === true) {
-                    // Running as PWA, navigate within the app
-                    window.location.href = '/views/home_user.html';
-                } else {
-                    // Store salon info for direct navigation after PWA launch
-                    const salonData = {
-                        salonId: salonId,
-                        salonName: salonName,
-                        redirectTo: 'salon',
-                        timestamp: Date.now()
-                    };
-                    localStorage.setItem('pwa_launch_redirect', JSON.stringify(salonData));
-                    
-                    // Try to open the PWA start URL which should launch the installed app
-                    const pwaStartUrl = window.location.origin + '/splash.html';
-                    
-                    // Use window.open with specific parameters to try launching PWA
-                    const pwaWindow = window.open(pwaStartUrl, '_blank', 'noopener,noreferrer');
-                    
-                    // Check if PWA opened by monitoring if the new window closes quickly
-                    // (PWA launch usually closes the browser window and opens the app)
-                    setTimeout(() => {
-                        try {
-                            if (pwaWindow && pwaWindow.closed) {
-                                // PWA likely opened, do nothing
-                                return;
-                            } else if (pwaWindow) {
-                                // Close the extra window and fallback
-                                pwaWindow.close();
-                            }
-                        } catch (e) {
-                            // Cross-origin error means window is still open
-                        }
-                        
-                        // Fallback: redirect current window to index.html with salon info
-                        window.location.href = `/index.html?salon_id=${salonId}&name=${encodeURIComponent(salonName || '')}`;
-                    }, 2000);
-                }
+                // Clean, professional redirect to index
+                window.location.href = '/index.html';
             });
 
-            // App Button
+            // App Button - Simple redirect to index
             document.getElementById('app-btn').addEventListener('click', function() {
-                // Check if running as PWA
-                if (window.matchMedia('(display-mode: standalone)').matches || 
-                    window.navigator.standalone === true) {
-                    // Running as PWA, navigate within the app
-                    window.location.href = '/views/home_user.html';
-                } else {
-                    // Not PWA, redirect to main app
-                    window.location.href = '/index.html';
-                }
+                // Clean, professional redirect to index
+                window.location.href = '/index.html';
             });
 
             // Call buttons
-        document.getElementById('call-salon-btn').addEventListener('click', function() {
-            const phone = this.dataset.phone;
-            if (phone) {
-                window.location.href = `tel:${phone}`;
-            }
-        });
+            document.getElementById('call-salon-btn').addEventListener('click', function() {
+                const phone = this.dataset.phone;
+                if (phone) {
+                    window.location.href = `tel:${phone}`;
+                }
+            });
         }
 
         // PWA Install Prompt
