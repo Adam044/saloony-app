@@ -314,6 +314,40 @@
     </footer>
 
     <script>
+        // Helper function to format dates consistently as dd/mm/yyyy
+        function formatDateDDMMYYYY(dateInput) {
+            if (!dateInput) return '--/--/----';
+            let d = null;
+            if (dateInput instanceof Date) {
+                d = dateInput;
+            } else if (typeof dateInput === 'string') {
+                let s = dateInput.trim();
+                // Handle 'YYYY-MM-DD'
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                    s = `${s}T00:00:00`;
+                }
+                // Handle 'YYYY-MM-DD HH:MM(:SS)?'
+                else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(?::\d{2})?$/.test(s)) {
+                    s = s.replace(' ', 'T');
+                }
+                d = new Date(s);
+            } else if (typeof dateInput === 'number') {
+                d = new Date(dateInput);
+            } else {
+                d = new Date(dateInput);
+            }
+            if (isNaN(d.getTime())) return '--/--/----';
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatReviewDate(dateString) {
+            const formattedDate = formatDateDDMMYYYY(dateString);
+            return formattedDate;
+        }
+
         // Get salon ID from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const salonId = urlParams.get('salon_id');
@@ -471,7 +505,7 @@
                     </div>
                     <p class="text-gray-600 leading-relaxed">${review.comment || 'تجربة رائعة!'}</p>
                     <div class="text-xs text-gray-400 mt-3">
-                        ${new Date(review.created_at).toLocaleDateString('ar-EG')}
+                        ${formatReviewDate(review.created_at)}
                     </div>
                 `;
                 
@@ -513,12 +547,28 @@
         function setupAppButtons() {
             // Reserve Button
             document.getElementById('reserve-btn').addEventListener('click', function() {
-                window.location.href = '/index.html';
+                // Check if running as PWA
+                if (window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true) {
+                    // Running as PWA, navigate within the app
+                    window.location.href = '/views/home_user.html';
+                } else {
+                    // Not PWA, redirect to main app
+                    window.location.href = '/index.html';
+                }
             });
 
             // App Button
             document.getElementById('app-btn').addEventListener('click', function() {
-                window.location.href = '/index.html';
+                // Check if running as PWA
+                if (window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true) {
+                    // Running as PWA, navigate within the app
+                    window.location.href = '/views/home_user.html';
+                } else {
+                    // Not PWA, redirect to main app
+                    window.location.href = '/index.html';
+                }
             });
 
             // Call buttons

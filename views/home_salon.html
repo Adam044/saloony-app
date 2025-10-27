@@ -4450,15 +4450,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (shareBtn && salonId) {
         shareBtn.addEventListener('click', async function() {
-            // Generate share URL
-            const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}`;
+            console.log('Share button clicked'); // Debug log
+            console.log('Current salon:', currentSalon); // Debug log
+            console.log('Salon ID:', salonId); // Debug log
+            
+            // Get salon name from current salon data
+            const salonName = currentSalon?.salon_name || 'صالون';
+            
+            // Generate clean share URL
+            const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}&name=${encodeURIComponent(salonName)}`;
+            
+            console.log('Generated share URL:', shareUrl); // Debug log
             
             // Try native sharing first (mobile devices)
             if (navigator.share) {
                 try {
                     await navigator.share({
-                        title: 'صالون سالوني',
-                        text: 'تحقق من هذا الصالون الرائع!',
+                        title: `صالون ${salonName} - صالوني`,
+                        text: `اكتشف صالون ${salonName} واحجز موعدك الآن!`,
                         url: shareUrl
                     });
                     return; // Exit if native sharing was successful
@@ -4510,11 +4519,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (nativeShareBtn) {
         nativeShareBtn.addEventListener('click', async function() {
             const shareUrl = salonShareUrl.value;
+            const salonName = currentSalon?.salon_name || 'صالون';
+            
             if (navigator.share && shareUrl) {
                 try {
                     await navigator.share({
-                        title: 'صالون سالوني',
-                        text: 'تحقق من هذا الصالون الرائع!',
+                        title: `صالون ${salonName} - صالوني`,
+                        text: `اكتشف صالون ${salonName} واحجز موعدك الآن!`,
                         url: shareUrl
                     });
                     // Close modal after successful sharing
