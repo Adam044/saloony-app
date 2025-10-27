@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXS767C8SQ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXS767C8SQ');
+    </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title id="page-title">صالوني - احجز موعدك الآن</title>
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/png" href="/images/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/apple-touch-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/favicon-16x16.png">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1E293B">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="صالوني">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="صالوني - احجز موعدك الآن">
+    <meta property="og:description" content="احجز موعدك في أفضل الصالونات بسهولة وسرعة">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/images/Saloony_logo.png">
+    
+    <!-- Tailwind CSS and Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+        
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #F9FAFB;
+            min-height: 100vh;
+        }
+        
+        /* Saloony Brand Colors */
+        .bg-primary-dark { background-color: #1E293B; }
+        .text-secondary { color: #06C167; }
+        .border-secondary { border-color: #06C167; }
+        .bg-secondary { background-color: #06C167; }
+        .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.1); }
+        
+        .btn-primary { 
+            background-color: #06C167; 
+            color: white; 
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(6, 193, 103, 0.3);
+        }
+        .btn-primary:hover { 
+            background-color: #05ae5d; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 193, 103, 0.4);
+        }
+        
+        .btn-outline { 
+            border: 2px solid #06C167; 
+            color: #06C167; 
+            background-color: transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .btn-outline:hover { 
+            background-color: #06C167; 
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* Card Styles */
+        .card-glow {
+            box-shadow: 0 10px 15px -3px rgba(30, 41, 59, 0.1), 0 4px 6px -2px rgba(30, 41, 59, 0.05);
+            transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+        }
+        .card-glow:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 25px -5px rgba(30, 41, 59, 0.15), 0 10px 10px -5px rgba(30, 41, 59, 0.04);
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            height: 400px;
+            background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(30, 41, 59, 0.9) 0%, rgba(30, 41, 59, 0.3) 100%);
+            z-index: 2;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 3;
+        }
+        
+        /* Service Cards */
+        .service-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid #E5E7EB;
+        }
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            border-color: #06C167;
+        }
+        
+        /* Loading Animation */
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #06C167;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-section { height: 300px; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-gray-600 font-medium">جاري تحميل بيانات الصالون...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-[#152026] shadow-lg p-2 flex justify-between items-center w-full z-20">
+        <a href="/contact.html" class="px-3 text-white/80 hover:text-white" title="تواصل معنا">
+            <i class="fa-solid fa-question-circle text-2xl"></i>
+        </a>
+        <div class="flex items-center">
+            <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+        </div>
+        <div class="w-10"></div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section flex items-end">
+        <img id="salon-hero-image" class="hero-image hidden" alt="صورة الصالون">
+        <div class="hero-overlay"></div>
+        <div class="hero-content w-full p-6 md:p-8">
+            <div class="max-w-4xl mx-auto text-white">
+                <h1 id="salon-name" class="text-3xl md:text-5xl font-bold mb-4">جاري التحميل...</h1>
+                <div class="flex items-center text-lg md:text-xl mb-2">
+                    <i class="fas fa-map-marker-alt ml-2"></i>
+                    <span id="salon-address">جاري تحميل العنوان...</span>
+                </div>
+                <div class="flex items-center text-lg md:text-xl mb-2">
+                    <i class="fas fa-city ml-2"></i>
+                    <span id="salon-city">جاري تحميل المدينة...</span>
+                </div>
+                <div class="flex items-center text-lg md:text-xl">
+                    <div class="flex items-center">
+                        <i class="fas fa-star text-yellow-400 ml-2"></i>
+                        <span id="salon-rating" class="font-semibold">جاري تحميل التقييم...</span>
+                        <span id="salon-reviews-count" class="mr-2 opacity-90">(0 تقييم)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Call to Action Section -->
+        <section class="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-8">
+            <div class="text-center">
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">هل أنت مستعد لحجز موعدك؟</h2>
+                <p class="text-gray-600 text-lg mb-8">اختر الطريقة المناسبة لك للحصول على أفضل تجربة</p>
+                
+                <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    <!-- Already Have App -->
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border-2 border-green-200">
+                        <div class="text-center">
+                            <div class="bg-green-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-mobile-alt text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 mb-2">لديك تطبيق صالوني؟</h3>
+                            <p class="text-gray-600 mb-4">احجز موعدك الآن بسهولة وسرعة</p>
+                            <button id="reserve-btn" class="w-full bg-secondary text-white py-4 px-6 rounded-xl font-bold text-lg hover:bg-opacity-90 transition-all duration-300 transform hover:scale-105 shadow-lg">
+                                احجز الآن
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Install App -->
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200">
+                        <div class="text-center">
+                            <div class="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-download text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 mb-2">ليس لديك التطبيق؟</h3>
+                            <p class="text-gray-600 mb-4">حمل التطبيق الآن واستمتع بتجربة أفضل</p>
+                            <button id="app-btn" class="w-full bg-blue-500 text-white py-4 px-6 rounded-xl font-bold text-lg hover:bg-blue-600 transition-all duration-300 transform hover:scale-105 shadow-lg">
+                                حمل التطبيق الآن
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Salon Information -->
+        <section class="grid lg:grid-cols-3 gap-8 mb-8">
+            <!-- Services Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 card-glow">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-cut text-secondary ml-3"></i>
+                        خدماتنا
+                    </h3>
+                    <div id="services-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <!-- Services will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contact Information -->
+            <div class="space-y-6">
+                <!-- Contact Information -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 card-glow">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-phone text-secondary ml-3"></i>
+                        اتصل بالصالون
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <button id="call-salon-btn" class="w-full bg-secondary text-white py-3 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-colors flex items-center justify-center hidden">
+                            <i class="fas fa-phone ml-2"></i>
+                            اتصل الآن
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Reviews Section -->
+    <section class="bg-gray-50 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">آراء العملاء</h2>
+                <p class="text-gray-600 text-lg">اكتشف تجارب عملائنا السابقين</p>
+            </div>
+            
+            <div id="reviews-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Reviews will be loaded here -->
+                <div class="text-center py-8 col-span-full">
+                    <div class="text-gray-400 text-4xl mb-4">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <p class="text-gray-500">جاري تحميل التقييمات...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-primary-dark text-white py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <img src="/images/Saloony_logo.png" alt="صالوني" class="h-12 w-auto mx-auto mb-4">
+                <p class="text-gray-300 mb-4">منصة حجز الصالونات الأولى في فلسطين</p>
+                <div class="flex justify-center space-x-6 space-x-reverse">
+                    <a href="/contact.html" class="text-gray-300 hover:text-white transition-colors">تواصل معنا</a>
+                    <a href="/" class="text-gray-300 hover:text-white transition-colors">الرئيسية</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Get salon ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const salonId = urlParams.get('salon_id');
+        const salonName = urlParams.get('name');
+
+        // DOM Elements
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const salonNameEl = document.getElementById('salon-name');
+        const salonAddressEl = document.getElementById('salon-address');
+        const salonCityEl = document.getElementById('salon-city');
+        const salonRatingEl = document.getElementById('salon-rating');
+        const salonReviewsCountEl = document.getElementById('salon-reviews-count');
+        const salonHeroImage = document.getElementById('salon-hero-image');
+        const servicesGrid = document.getElementById('services-grid');
+        const reviewsContainer = document.getElementById('reviews-container');
+
+        // PWA Detection
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        let deferredPrompt;
+
+        // Load salon data
+        async function loadSalonData() {
+            if (!salonId) {
+                showError('معرف الصالون غير صحيح');
+                return;
+            }
+
+            try {
+                // Load salon info
+                const response = await fetch(`/api/salon/info/${salonId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Salon not found');
+                }
+
+                const data = await response.json();
+                
+                if (data.success && data.info) {
+                    displaySalonData(data.info);
+                    await loadSalonServices();
+                    await loadSalonReviews();
+                } else {
+                    throw new Error('Salon data not available');
+                }
+            } catch (error) {
+                console.error('Error loading salon data:', error);
+                showError('عذراً، لم نتمكن من العثور على بيانات الصالون');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadSalonServices() {
+            try {
+                const response = await fetch(`/api/salon/services/${salonId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.services && data.services.length > 0) {
+                        displayServices(data.services);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading services:', error);
+            }
+        }
+
+        function displaySalonData(salon) {
+            // Update page title
+            document.title = `${salon.salon_name} - صالوني`;
+            
+            // Update salon information
+            salonNameEl.textContent = salon.salon_name || 'صالون غير محدد';
+            salonAddressEl.textContent = salon.address || 'العنوان غير متوفر';
+            salonCityEl.textContent = salon.city || 'المدينة غير متوفرة';
+            
+            // Update rating information
+            const rating = salon.rating || 0;
+            const reviewsCount = salon.reviews_count || 0;
+            salonRatingEl.textContent = rating > 0 ? rating.toFixed(1) : 'غير مقيم';
+            salonReviewsCountEl.textContent = `(${reviewsCount} تقييم)`;
+            
+            // Update salon image
+            if (salon.image_url) {
+                salonHeroImage.src = salon.image_url;
+                salonHeroImage.alt = salon.salon_name;
+                salonHeroImage.classList.remove('hidden');
+            }
+            
+            // Update contact information
+            if (salon.salon_phone) {
+                const callSalonBtn = document.getElementById('call-salon-btn');
+                callSalonBtn.dataset.phone = salon.salon_phone;
+                callSalonBtn.classList.remove('hidden');
+            }
+        }
+
+        function displayServices(services) {
+            servicesGrid.innerHTML = '';
+            
+            services.forEach(service => {
+                const serviceCard = document.createElement('div');
+                serviceCard.className = 'service-card';
+                serviceCard.innerHTML = `
+                    <div class="text-secondary text-2xl mb-2">
+                        ${service.icon ? 
+                            `<img src="${service.icon}" alt="${service.name_ar}" class="w-8 h-8 object-cover rounded-full mx-auto" onerror="this.outerHTML='<i class=\'fas fa-cut\'></i>'">` :
+                            `<i class="fas fa-cut"></i>`
+                        }
+                    </div>
+                    <h4 class="font-semibold text-gray-900 text-sm">${service.name_ar}</h4>
+                    <p class="text-xs text-gray-600 mt-1">${service.duration} دقيقة</p>
+                    <p class="text-secondary font-bold mt-1">${service.price} ₪</p>
+                `;
+                servicesGrid.appendChild(serviceCard);
+            });
+        }
+
+        async function loadSalonReviews() {
+            try {
+                const response = await fetch(`/api/reviews/salon/${salonId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.reviews && data.reviews.length > 0) {
+                        displayReviews(data.reviews);
+                    } else {
+                        showNoReviews();
+                    }
+                } else {
+                    showNoReviews();
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                showNoReviews();
+            }
+        }
+
+        function displayReviews(reviews) {
+            reviewsContainer.innerHTML = '';
+            
+            reviews.slice(0, 6).forEach(review => {
+                const reviewCard = document.createElement('div');
+                reviewCard.className = 'bg-white rounded-xl p-6 shadow-lg';
+                
+                const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+                
+                reviewCard.innerHTML = `
+                    <div class="flex items-center mb-4">
+                        <div class="bg-secondary text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
+                            ${review.user_name ? review.user_name.charAt(0).toUpperCase() : 'ع'}
+                        </div>
+                        <div class="mr-3">
+                            <h4 class="font-semibold text-gray-900">${review.user_name || 'عميل'}</h4>
+                            <div class="text-yellow-400 text-sm">${stars}</div>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 leading-relaxed">${review.comment || 'تجربة رائعة!'}</p>
+                    <div class="text-xs text-gray-400 mt-3">
+                        ${new Date(review.created_at).toLocaleDateString('ar-EG')}
+                    </div>
+                `;
+                
+                reviewsContainer.appendChild(reviewCard);
+            });
+        }
+
+        function showNoReviews() {
+             reviewsContainer.innerHTML = `
+                 <div class="text-center py-8 col-span-full">
+                     <div class="text-gray-400 text-4xl mb-4">
+                         <i class="fas fa-star"></i>
+                     </div>
+                     <p class="text-gray-500">لا توجد تقييمات بعد</p>
+                 </div>
+             `;
+         }
+
+        function showError(message) {
+            loadingOverlay.innerHTML = `
+                <div class="text-center">
+                    <div class="text-red-500 text-6xl mb-4">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">حدث خطأ</h2>
+                    <p class="text-gray-600">${message}</p>
+                    <button onclick="window.location.reload()" class="btn-primary mt-4 px-6 py-2 rounded-lg">
+                        إعادة المحاولة
+                    </button>
+                </div>
+            `;
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        // App Installation and Navigation
+        function setupAppButtons() {
+            // Reserve Button
+            document.getElementById('reserve-btn').addEventListener('click', function() {
+                window.location.href = '/index.html';
+            });
+
+            // App Button
+            document.getElementById('app-btn').addEventListener('click', function() {
+                window.location.href = '/index.html';
+            });
+
+            // Call buttons
+        document.getElementById('call-salon-btn').addEventListener('click', function() {
+            const phone = this.dataset.phone;
+            if (phone) {
+                window.location.href = `tel:${phone}`;
+            }
+        });
+        }
+
+        // PWA Install Prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupAppButtons();
+            loadSalonData();
+        });
+    </script>
+</body>
+</html>

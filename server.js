@@ -591,6 +591,11 @@ app.get('/salon/:salon_id', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'salon.html'));
 });
 
+// Serve salon share landing page
+app.get('/salon-share', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'salon-share.html'));
+});
+
 // ===============================
 // Push Notification Endpoints
 // ===============================

@@ -282,10 +282,16 @@
                             <button id="book-now-btn" class="btn-secondary px-4 py-2 rounded-xl font-bold transition duration-200 shadow-md hover:shadow-lg">
                                 ابدأ الحجز
                             </button>
-                            <button id="call-salon-btn" class="bg-secondary text-primary-dark px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-secondary/90" style="display: none;">
-                                <i class="fas fa-phone"></i>
-                                <span id="call-button-text">اتصل</span>
-                            </button>
+                            <div class="flex gap-2">
+                                <button id="share-salon-btn" class="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-blue-600">
+                                    <i class="fas fa-share-alt"></i>
+                                    <span>مشاركة</span>
+                                </button>
+                                <button id="call-salon-btn" class="bg-secondary text-primary-dark px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-secondary/90" style="display: none;">
+                                    <i class="fas fa-phone"></i>
+                                    <span id="call-button-text">اتصل</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1442,6 +1448,73 @@
             } else { callButton.style.display = 'none'; }
         }
         setupCallButton(salon.salon_phone, salon.owner_phone);
+
+        // Setup Share Button
+        function setupShareButton(salonId, salonName) {
+            const shareButton = document.getElementById('share-salon-btn');
+            if (shareButton && salonId) {
+                shareButton.addEventListener('click', () => {
+                    const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}&name=${encodeURIComponent(salonName)}`;
+                    
+                    // Try native sharing first (mobile devices)
+                    if (navigator.share) {
+                        navigator.share({
+                            title: `صالون ${salonName} - صالوني`,
+                            text: `اكتشف صالون ${salonName} واحجز موعدك الآن!`,
+                            url: shareUrl
+                        }).catch(err => {
+                            console.log('Error sharing:', err);
+                            fallbackShare(shareUrl);
+                        });
+                    } else {
+                        fallbackShare(shareUrl);
+                    }
+                });
+            }
+        }
+
+        // Fallback sharing method
+        function fallbackShare(url) {
+            // Copy to clipboard
+            navigator.clipboard.writeText(url).then(() => {
+                // Show success message
+                showMessage('تم نسخ رابط المشاركة!', 'success');
+            }).catch(() => {
+                // If clipboard fails, show the URL in a modal or alert
+                showShareModal(url);
+            });
+        }
+
+        // Show share modal with URL
+        function showShareModal(url) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-6 m-4 max-w-md w-full text-center">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4">مشاركة الصالون</h3>
+                    <p class="text-gray-600 mb-4">انسخ الرابط أدناه لمشاركة الصالون:</p>
+                    <div class="bg-gray-100 p-3 rounded-lg mb-4 text-sm break-all">${url}</div>
+                    <div class="flex gap-2">
+                        <button onclick="navigator.clipboard.writeText('${url}').then(() => { this.textContent = 'تم النسخ!'; setTimeout(() => this.closest('.fixed').remove(), 1000); })" 
+                                class="flex-1 bg-secondary text-primary-dark py-2 px-4 rounded-xl font-bold">
+                            نسخ الرابط
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-xl font-bold">
+                            إغلاق
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+        }
+
+        setupShareButton(salonIdSafe, salon.salon_name);
 
 
         // Load Services Tags (Step 0)
