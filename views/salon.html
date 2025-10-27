@@ -1454,7 +1454,7 @@
             const shareButton = document.getElementById('share-salon-btn');
             if (shareButton && salonId) {
                 shareButton.addEventListener('click', () => {
-                    const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}&name=${encodeURIComponent(salonName)}`;
+                    const shareUrl = `${window.location.origin}/salon-share.html?id=${salonId}`;
                     
                     // Try native sharing first (mobile devices)
                     if (navigator.share) {

@@ -959,6 +959,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.debug('Failed to register push subscription:', e);
     }
+
+    // --- Share Salon Functionality ---
+    const shareBtn = document.getElementById('share-salon-btn');
+    const shareModal = document.getElementById('share-salon-modal');
+    const closeShareModal = document.getElementById('close-share-modal');
+    const copyUrlBtn = document.getElementById('copy-url-btn');
+    const salonShareUrl = document.getElementById('salon-share-url');
+    
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function() {
+            if (salonId) {
+                // Generate clean, short share URL using only salon ID
+                const shareUrl = `${window.location.origin}/salon-share.html?id=${salonId}`;
+                
+                // Set URL in input field
+                salonShareUrl.value = shareUrl;
+                
+                // Show modal
+                shareModal.classList.remove('hidden');
+            } else {
+                console.error('No salon ID available');
+            }
+        });
+    }
+    
+    // Close modal
+    if (closeShareModal) {
+        closeShareModal.addEventListener('click', function() {
+            shareModal.classList.add('hidden');
+        });
+    }
+    
+    // Copy URL functionality
+    if (copyUrlBtn) {
+        copyUrlBtn.addEventListener('click', async function() {
+            try {
+                await navigator.clipboard.writeText(salonShareUrl.value);
+                
+                // Visual feedback
+                const originalText = copyUrlBtn.innerHTML;
+                copyUrlBtn.innerHTML = '<i class="fas fa-check ml-1"></i>تم النسخ';
+                copyUrlBtn.classList.add('bg-green-500');
+                
+                setTimeout(() => {
+                    copyUrlBtn.innerHTML = originalText;
+                    copyUrlBtn.classList.remove('bg-green-500');
+                }, 2000);
+                
+            } catch (err) {
+                console.error('Failed to copy URL:', err);
+                // Fallback for older browsers
+                salonShareUrl.select();
+                document.execCommand('copy');
+            }
+        });
+    }
+    
+    // Close modal when clicking outside
+    shareModal?.addEventListener('click', function(e) {
+        if (e.target === shareModal) {
+            shareModal.classList.add('hidden');
+        }
+    });
+
     let staffList = []; // Array to hold staff data
     const daysOfWeekNames = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -4385,6 +4449,8 @@ document.addEventListener('DOMContentLoaded', function() {
       showMessage(servicesMessage, 'حدث خطأ أثناء إضافة الخدمة. يرجى المحاولة مرة أخرى.', false);
     }
   });
+
+
 });
 </script>
 
@@ -4415,138 +4481,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<script>
-// Share salon functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const shareBtn = document.getElementById('share-salon-btn');
-    const shareModal = document.getElementById('share-salon-modal');
-    const closeShareModal = document.getElementById('close-share-modal');
-    const copyUrlBtn = document.getElementById('copy-url-btn');
-    const salonShareUrl = document.getElementById('salon-share-url');
-    
-    // Get salon info from localStorage
-    const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
-    const salonId = user.salon_id;
-    
-    if (shareBtn && salonId) {
-        shareBtn.addEventListener('click', function() {
-            // Get salon name from localStorage user data
-            const salonName = user.salon_name || 'صالون';
-            
-            // Generate clean share URL
-            const shareUrl = `${window.location.origin}/salon-share.html?salon_id=${salonId}&name=${encodeURIComponent(salonName)}`;
-            
-            // Set URL in input field
-            salonShareUrl.value = shareUrl;
-            
-            // Show modal
-            shareModal.classList.remove('hidden');
-        });
-    }
-    
-    // Close modal
-    if (closeShareModal) {
-        closeShareModal.addEventListener('click', function() {
-            shareModal.classList.add('hidden');
-        });
-    }
-    
-    // Copy URL functionality
-    if (copyUrlBtn) {
-        copyUrlBtn.addEventListener('click', async function() {
-            try {
-                await navigator.clipboard.writeText(salonShareUrl.value);
-                
-                // Visual feedback
-                const originalText = copyUrlBtn.innerHTML;
-                copyUrlBtn.innerHTML = '<i class="fas fa-check ml-1"></i>تم النسخ';
-                copyUrlBtn.classList.add('bg-green-500');
-                
-                setTimeout(() => {
-                    copyUrlBtn.innerHTML = originalText;
-                    copyUrlBtn.classList.remove('bg-green-500');
-                }, 2000);
-                
-            } catch (err) {
-                console.error('Failed to copy URL:', err);
-                // Fallback for older browsers
-                salonShareUrl.select();
-                document.execCommand('copy');
-            }
-        });
-    }
-    
-    // Close modal when clicking outside
-    shareModal?.addEventListener('click', function(e) {
-        if (e.target === shareModal) {
-            shareModal.classList.add('hidden');
-        }
-    });
-});
-            if (nativeShareSection) {
-                nativeShareSection.classList.add('hidden');
-            }
-    
-    
-    // Close modal when clicking outside
-    shareModal?.addEventListener('click', function(e) {
-        if (e.target === shareModal) {
-            shareModal.classList.add('hidden');
-            // Hide native share section when modal closes
-            if (nativeShareSection) {
-                nativeShareSection.classList.add('hidden');
-            }
-        }
-    });
-    
-    // Native share button functionality
-    if (nativeShareBtn) {
-        nativeShareBtn.addEventListener('click', async function() {
-            const shareUrl = salonShareUrl.value;
-            const salonName = currentSalon?.salon_name || 'صالون';
-            
-            if (navigator.share && shareUrl) {
-                try {
-                    await navigator.share({
-                        title: `صالون ${salonName} - صالوني`,
-                        text: `اكتشف صالون ${salonName} واحجز موعدك الآن!`,
-                        url: shareUrl
-                    });
-                    // Close modal after successful sharing
-                    shareModal.classList.add('hidden');
-                    nativeShareSection.classList.add('hidden');
-                } catch (err) {
-                    console.log('Native sharing cancelled or failed:', err);
-                }
-            }
-        });
-    }
-    
-    // Copy URL functionality
-    if (copyUrlBtn) {
-        copyUrlBtn.addEventListener('click', async function() {
-            try {
-                await navigator.clipboard.writeText(salonShareUrl.value);
-                const originalText = copyUrlBtn.innerHTML;
-                copyUrlBtn.innerHTML = '<i class="fas fa-check ml-1"></i>تم النسخ!';
-                copyUrlBtn.classList.add('bg-green-500', 'hover:bg-green-600');
-                copyUrlBtn.classList.remove('btn-action');
-                
-                setTimeout(() => {
-                    copyUrlBtn.innerHTML = originalText;
-                    copyUrlBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
-                    copyUrlBtn.classList.add('btn-action');
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy URL:', err);
-                // Fallback for older browsers
-                salonShareUrl.select();
-                document.execCommand('copy');
-                copyUrlBtn.innerHTML = '<i class="fas fa-check ml-1"></i>تم النسخ!';
-            }
-        });
-    }
-</script>
+
 
 <!-- Update Manager Script -->
 <script src="/update-manager.js"></script>
