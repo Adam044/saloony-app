@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>صالوني - انضم إلى شبكة الصالونات الذكية</title>
+<!-- Favicon -->
+<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/images/icons/favicon-32x32.png">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+    body { 
+        font-family: 'Tajawal', sans-serif; 
+        background: #152026; 
+        color: #fff; 
+    }
+    .feature-card { 
+        background: #fff; 
+        color: #1E293B; 
+        border-radius: 1rem; 
+        padding: 2rem; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
+        transition: transform 0.3s ease, box-shadow 0.3s ease; 
+        height: 100%;
+    }
+    .feature-card:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2); 
+    }
+    .bg-hero { 
+        background-image: url('/images/auth.jpg'); 
+    }
+    .gradient-text {
+         background: linear-gradient(135deg, #06C167, #05AE5D);
+         -webkit-background-clip: text;
+         -webkit-text-fill-color: transparent;
+         background-clip: text;
+     }
+     .section-divider {
+         background: linear-gradient(90deg, transparent, #06C167, transparent);
+         height: 2px;
+         margin: 3rem 0;
+     }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Header -->
+<header class="bg-[#152026] shadow-lg p-2 flex justify-between items-center fixed top-0 w-full z-20">
+    <a href="/" class="px-3 text-white/80 hover:text-white" title="الصفحة الرئيسية">
+        <i class="fa-solid fa-home text-2xl"></i>
+    </a>
+    <div class="flex items-center">
+        <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+    </div>
+    <div class="w-10"></div>
+</header>
+
+<main class="pt-[60px]">
+
+<!-- Hero Section -->
+<section class="relative bg-hero bg-cover bg-center min-h-[85vh] flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/70"></div>
+    <div class="relative text-center max-w-5xl px-6">
+        <h1 class="text-5xl sm:text-7xl font-extrabold mb-8 text-white leading-tight">
+            انضم إلى <span class="gradient-text">صالوني</span>
+        </h1>
+        <p class="text-white/90 text-2xl sm:text-3xl mb-12 leading-relaxed max-w-4xl mx-auto font-medium">
+            التطبيق الذكي الذي سيغير طريقة إدارة صالونك ويجلب لك عملاء جدد كل يوم
+        </p>
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 max-w-3xl mx-auto">
+            <h2 class="text-xl font-bold mb-4 text-[#06C167]">لماذا صالوني؟</h2>
+            <p class="text-white/90 text-lg leading-relaxed">
+                منصة شاملة تربط صالونك بآلاف العملاء المحتملين، تنظم مواعيدك، تعرض خدماتك بشكل احترافي، وتجلب لك حجوزات مضمونة من عملاء مهتمين فعلاً بما تقدمه
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Video Introduction Section -->
+<section class="bg-gradient-to-br from-gray-50 to-gray-100 py-20">
+    <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-extrabold mb-6 text-[#1E293B]">
+                <i class="fas fa-play-circle text-[#06C167] ml-3"></i>
+                شاهد كيف يعمل صالوني
+            </h2>
+            <p class="text-gray-600 text-xl max-w-3xl mx-auto">
+                ثواني قليلة ستوضح لك كيف سيحول صالوني طريقة عملك ويزيد أرباحك
+            </p>
+        </div>
+        
+        <div class="max-w-4xl mx-auto">
+             <div class="bg-black rounded-xl overflow-hidden shadow-2xl">
+                 <video controls preload="metadata" class="w-full h-auto" style="max-height: 70vh;">
+                     <source src="videos/app.mp4" type="video/mp4">
+                     <source src="/videos/app.mp4" type="video/mp4">
+                     <p class="text-center text-white p-8">
+                         متصفحك لا يدعم تشغيل الفيديو. 
+                         <a href="videos/app.mp4" class="text-[#06C167] underline">اضغط هنا لتحميل الفيديو</a>
+                     </p>
+                 </video>
+             </div>
+         </div>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Smart Features Section -->
+<section class="bg-[#152026] py-20">
+    <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-extrabold mb-6 text-white">
+                صالوني يجعل صالونك <span class="gradient-text">أذكى</span>
+            </h2>
+            <p class="text-white/80 text-xl max-w-3xl mx-auto">
+                تقنيات متطورة تساعدك على إدارة أفضل وعملاء أكثر
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Smart Scheduling -->
+            <div class="feature-card">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-[#06C167]/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-calendar-alt text-[#06C167] text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl">جدولة ذكية</h3>
+                </div>
+                <p class="text-gray-600 leading-relaxed">
+                    نظام متطور ينظم مواعيدك تلقائياً، يمنع التداخل، ويرسل تذكيرات للعملاء لتقليل الغياب
+                </p>
+            </div>
+
+            <!-- Customer Discovery -->
+            <div class="feature-card">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-[#06C167]/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-search text-[#06C167] text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl">اكتشاف العملاء</h3>
+                </div>
+                <p class="text-gray-600 leading-relaxed">
+                    عملاء جدد يكتشفون صالونك يومياً من خلال البحث الذكي والتوصيات المخصصة
+                </p>
+            </div>
+
+            <!-- Instant Booking -->
+            <div class="feature-card">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-[#06C167]/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-bolt text-[#06C167] text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl">حجز فوري</h3>
+                </div>
+                <p class="text-gray-600 leading-relaxed">
+                    العملاء يحجزون مواعيدهم بضغطة واحدة، 24/7، حتى خارج ساعات العمل
+                </p>
+            </div>
+
+            <!-- Reviews & Trust -->
+            <div class="feature-card">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-[#06C167]/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-star text-[#06C167] text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl">تقييمات وثقة</h3>
+                </div>
+                <p class="text-gray-600 leading-relaxed">
+                    عملاؤك السعداء يتركون تقييمات إيجابية تجذب عملاء جدد وتبني سمعة قوية
+                </p>
+            </div>
+
+            <!-- Smart Marketing -->
+            <div class="feature-card">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-[#06C167]/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-bullhorn text-[#06C167] text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl">تسويق ذكي</h3>
+                </div>
+                <p class="text-gray-600 leading-relaxed">
+                    حملات تسويقية مستهدفة تجلب لك عملاء مهتمين حقاً بخدماتك، بدون إعلانات مكلفة
+                </p>
+            </div>
+
+            <!-- Future Features -->
+            <div class="feature-card">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-[#06C167]/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-rocket text-[#06C167] text-2xl"></i>
+                    </div>
+                    <h3 class="font-bold text-xl">قريباً: بيع المنتجات</h3>
+                </div>
+                <p class="text-gray-600 leading-relaxed">
+                    قريباً ستتمكن من بيع منتجاتك عبر التطبيق والاستفادة من المزيد من الميزات المتطورة
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Inclusivity Section -->
+<section class="bg-gradient-to-br from-gray-50 to-gray-100 py-16">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+        <h2 class="text-3xl font-extrabold mb-8 text-[#1E293B]">
+            <i class="fas fa-users text-[#06C167] ml-3"></i>
+            صالوني للجميع
+        </h2>
+        <p class="text-gray-700 text-xl leading-relaxed mb-8">
+            صالونات الرجال والنساء، مراكز التجميل، صالونات الحلاقة، مراكز العناية بالبشرة والأظافر - 
+            كل من يقدم خدمات التجميل والعناية الشخصية مرحب به في شبكة صالوني
+        </p>
+        <div class="bg-white rounded-2xl p-8 shadow-lg">
+             <h3 class="font-bold text-2xl mb-4 text-[#1E293B]">انضم الآن ولا تفوت هذه الفرصة</h3>
+             <p class="text-gray-600 text-lg">
+                 كن من أوائل الصالونات التي تستفيد من هذه التقنية المتطورة
+             </p>
+         </div>
+    </div>
+</section>
+
+</main>
+
+<!-- Footer with Contact -->
+<footer class="bg-[#1E293B] py-12">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+        <h2 class="text-2xl font-bold text-white mb-8">
+            <i class="fas fa-phone text-[#06C167] ml-2"></i>
+            تواصل معنا الآن
+        </h2>
+        
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                 <h3 class="font-bold text-xl text-[#06C167] mb-3">ادم حواش</h3>
+                 <a href="https://wa.me/970594444403" class="inline-flex items-center gap-2 text-white hover:text-[#06C167] transition text-lg">
+                     <i class="fab fa-whatsapp text-2xl"></i>
+                     <span dir="ltr">+970 59 4444403</span>
+                 </a>
+             </div>
+             
+             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                 <h3 class="font-bold text-xl text-[#06C167] mb-3">اسامة الصيفي</h3>
+                 <a href="tel:+972595522004" class="inline-flex items-center gap-2 text-white hover:text-[#06C167] transition text-lg">
+                     <i class="fas fa-phone text-xl"></i>
+                     <span dir="ltr">+972 59 5522004</span>
+                 </a>
+             </div>
+         </div>
+
+        <div class="mb-8">
+            <a href="/" class="inline-flex items-center gap-2 bg-[#06C167] text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-[#05AE5D] transition transform hover:scale-105">
+                <i class="fas fa-home"></i>
+                الصفحة الرئيسية
+            </a>
+        </div>
+        
+        <p class="text-white/60">© صالوني 2025 - نحو مستقبل أذكى لصالونات التجميل</p>
+    </div>
+</footer>
+
+</body>
+</html>

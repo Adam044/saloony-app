@@ -574,6 +574,24 @@ app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
 app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
 // Serve notification sounds
 app.use('/sounds', express.static(path.join(__dirname, 'Sounds'), { maxAge: '7d', etag: true }));
+// Serve videos with proper MIME type handling
+app.use('/videos', express.static(path.join(__dirname, 'videos'), { 
+    maxAge: '1d', 
+    etag: true,
+    setHeaders: (res, path) => {
+        if (path.endsWith('.mp4')) {
+            res.setHeader('Content-Type', 'video/mp4');
+        }
+    }
+}));
+
+// Test route for video
+app.get('/test-video', (req, res) => {
+    const videoPath = path.join(__dirname, 'videos', 'app.mp4');
+    console.log('Video path:', videoPath);
+    console.log('File exists:', require('fs').existsSync(videoPath));
+    res.sendFile(videoPath);
+});
 
 // Root route should serve index for browser launches
 app.get('/', (req, res) => {
