@@ -74,6 +74,18 @@
             opacity: 1 !important;
         }
         
+        /* Extra specific rule for the navigation bar */
+        nav[class*="bg-white"][style*="position: fixed"] {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100vw !important;
+            z-index: 999999 !important;
+            transform: translateY(0) !important;
+            transition: none !important;
+        }
+        
         /* Override ANY page transitions that might affect navigation */
         body.page-transition nav[style*="position: fixed"],
         body.page-fade-in nav[style*="position: fixed"],
