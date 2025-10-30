@@ -388,23 +388,6 @@
                     <p id="auth-subtitle" class="text-gray-600">استخدم بصمتك أو أدخل كلمة المرور</p>
                 </div>
 
-                <!-- Biometric Authentication Section -->
-                <div id="biometric-section" class="text-center mb-8 hidden">
-                    <div class="w-20 h-20 bg-gradient-to-br from-secondary to-green-400 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                        <i class="fas fa-fingerprint text-white text-2xl"></i>
-                    </div>
-                    <p class="text-secondary font-semibold mb-4">اضغط للمصادقة بالبصمة</p>
-                    <button id="biometric-auth-btn" class="bg-gradient-to-r from-secondary to-green-400 text-white px-8 py-3 rounded-full font-bold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
-                        <i class="fas fa-fingerprint ml-2"></i>
-                        استخدام البصمة
-                    </button>
-                    <div class="mt-4">
-                        <button id="use-pin-instead" class="text-gray-500 hover:text-primary-dark text-sm underline">
-                            استخدام كلمة المرور بدلاً من ذلك
-                        </button>
-                    </div>
-                </div>
-
                 <!-- PIN Section -->
                 <div id="pin-section">
                     <!-- PIN Display -->
@@ -435,13 +418,6 @@
                         </button>
                     </div>
 
-                    <!-- Biometric Option (if available) -->
-                    <div id="biometric-option" class="text-center hidden">
-                        <button id="switch-to-biometric" class="text-secondary hover:text-secondary/80 text-sm font-medium flex items-center justify-center gap-2 mx-auto">
-                            <i class="fas fa-fingerprint"></i>
-                            استخدام البصمة بدلاً من ذلك
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Error Message -->
@@ -5285,31 +5261,13 @@ const showPinScreen = () => {
     pinAuthScreen.classList.remove('hidden');
     mainAppContent.classList.add('hidden');
     
-    // Check if biometric authentication is available and enabled for any role
-    const hasBiometricRoles = availableBiometricRoles.length > 0;
-    const biometricSupported = isBiometricSupported();
+    // Always show PIN section only (biometric disabled for now)
+    biometricSection.classList.add('hidden');
+    pinSection.classList.remove('hidden');
+    authSubtitle.textContent = 'أدخل كلمة المرور الرقمية الخاصة بك';
     
-    if (hasBiometricRoles && biometricSupported) {
-        // Show biometric section first
-        biometricSection.classList.remove('hidden');
-        pinSection.classList.add('hidden');
-        authSubtitle.textContent = 'استخدم بصمتك أو أدخل كلمة المرور';
-        
-        // Auto-trigger biometric authentication after a short delay
-        setTimeout(() => {
-            triggerBiometricAuth();
-        }, 1000);
-    } else {
-        // Show PIN section only
-        biometricSection.classList.add('hidden');
-        pinSection.classList.remove('hidden');
-        authSubtitle.textContent = 'أدخل كلمة المرور الرقمية الخاصة بك';
-        
-        // Show biometric option if available
-        if (hasBiometricRoles && biometricSupported) {
-            biometricOption.classList.remove('hidden');
-        }
-    }
+    // Hide biometric options completely
+    biometricOption.classList.add('hidden');
 };
 
 // Trigger biometric authentication
