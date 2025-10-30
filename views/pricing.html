@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>صالوني - الأسعار | وفر آلاف الشواكل مع الحل الشامل</title>
+<!-- Favicon -->
+<link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/images/icons/favicon-32x32.png">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+    body { 
+        font-family: 'Tajawal', sans-serif; 
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        color: #fff; 
+    }
+    
+    .gradient-text {
+         background: linear-gradient(135deg, #06C167, #10b981, #34d399);
+         -webkit-background-clip: text;
+         -webkit-text-fill-color: transparent;
+         background-clip: text;
+    }
+    
+    .pricing-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .pricing-card:hover {
+        transform: translateY(-10px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(6, 193, 103, 0.3);
+        box-shadow: 0 25px 50px rgba(6, 193, 103, 0.15);
+    }
+    
+    .popular-badge {
+        background: linear-gradient(135deg, #06C167, #10b981);
+        animation: pulse 2s infinite;
+    }
+    
+    .value-card {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    
+    .saloony-card {
+        background: linear-gradient(135deg, rgba(6, 193, 103, 0.2), rgba(16, 185, 129, 0.1));
+        border: 2px solid #06C167;
+        box-shadow: 0 0 40px rgba(6, 193, 103, 0.3);
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    .float-animation {
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    .explosion-text {
+        background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+        background-size: 400% 400%;
+        animation: gradient 3s ease infinite;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Header -->
+<header class="bg-black/20 backdrop-blur-sm shadow-lg p-4 flex justify-between items-center fixed top-0 w-full z-50">
+    <a href="/" class="px-3 text-white/80 hover:text-white transition" title="الصفحة الرئيسية">
+        <i class="fa-solid fa-home text-2xl"></i>
+    </a>
+    <div class="flex items-center">
+        <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+    </div>
+    <div class="w-10"></div>
+</header>
+
+<main class="pt-[80px]">
+
+<!-- Hero Section -->
+<section class="relative py-16">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+        <h1 class="text-5xl font-bold mb-6 text-white leading-tight">
+            اكتشف أسعارنا
+        </h1>
+        <p class="text-xl text-white/80 mb-8 max-w-2xl mx-auto leading-relaxed">
+            باقات مرنة ومناسبة لجميع أحجام الصالونات مع أفضل قيمة في السوق
+        </p>
+    </div>
+</section>
+
+<!-- Value Comparison Section -->
+<section class="py-20 relative">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-5xl font-black mb-6 text-white">
+                <i class="fas fa-calculator text-[#06C167] ml-4"></i>
+                احسب التوفير بنفسك
+            </h2>
+            <p class="text-2xl text-white/80 max-w-3xl mx-auto">
+                شاهد كم ستدفع لو أردت بناء نفس النظام بنفسك
+            </p>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12 items-start">
+            <!-- Traditional Way -->
+            <div class="value-card rounded-3xl p-8">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-triangle text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-red-400 mb-2">الطريقة التقليدية</h3>
+                    <p class="text-white/70">بناء كل شيء من الصفر</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center p-4 bg-black/20 rounded-xl">
+                        <div>
+                            <div class="font-bold text-lg">موقع إلكتروني احترافي</div>
+                            <div class="text-sm text-white/60">تصميم + برمجة + استضافة</div>
+                        </div>
+                        <div class="text-2xl font-bold text-red-400">₪1,500</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-black/20 rounded-xl">
+                        <div>
+                            <div class="font-bold text-lg">تطبيق حجوزات ذكي</div>
+                            <div class="text-sm text-white/60">نظام متكامل + قاعدة بيانات</div>
+                        </div>
+                        <div class="text-2xl font-bold text-red-400">₪12,000</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-black/20 rounded-xl">
+                        <div>
+                            <div class="font-bold text-lg">حملات تسويقية شهرية</div>
+                            <div class="text-sm text-white/60">إعلانات مستهدفة + إدارة</div>
+                        </div>
+                        <div class="text-2xl font-bold text-red-400">₪300/شهر</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-black/20 rounded-xl">
+                        <div>
+                            <div class="font-bold text-lg">متجر إلكتروني</div>
+                            <div class="text-sm text-white/60">بوابة دفع + إدارة منتجات</div>
+                        </div>
+                        <div class="text-2xl font-bold text-red-400">₪4,500</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-black/20 rounded-xl">
+                        <div>
+                            <div class="font-bold text-lg">نظام إدارة الموظفين</div>
+                            <div class="text-sm text-white/60">أدوار + صلاحيات + أمان</div>
+                        </div>
+                        <div class="text-2xl font-bold text-red-400">₪2,500</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-black/20 rounded-xl">
+                        <div>
+                            <div class="font-bold text-lg">صيانة وتحديثات</div>
+                            <div class="text-sm text-white/60">دعم فني + تطوير مستمر</div>
+                        </div>
+                        <div class="text-2xl font-bold text-red-400">₪500/شهر</div>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-6 bg-red-500/20 rounded-2xl border-2 border-red-500">
+                    <div class="text-center">
+                        <div class="text-4xl font-black text-red-400 mb-2">₪20,500+</div>
+                        <div class="text-lg text-white/80">التكلفة الأولية</div>
+                        <div class="text-2xl font-bold text-red-400 mt-4">+ ₪800/شهر</div>
+                        <div class="text-sm text-white/60">تكاليف شهرية</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saloony Way -->
+            <div class="saloony-card rounded-3xl p-8 float-animation">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-[#06C167] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-rocket text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-[#06C167] mb-2">طريقة صالوني</h3>
+                    <p class="text-white/70">كل شيء جاهز ومتكامل</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center p-4 bg-[#06C167]/10 rounded-xl border border-[#06C167]/30">
+                        <div>
+                            <div class="font-bold text-lg text-[#06C167]">✅ موقع إلكتروني احترافي</div>
+                            <div class="text-sm text-white/60">جاهز فوراً</div>
+                        </div>
+                        <div class="text-lg font-bold text-[#06C167]">مشمول</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-[#06C167]/10 rounded-xl border border-[#06C167]/30">
+                        <div>
+                            <div class="font-bold text-lg text-[#06C167]">✅ تطبيق حجوزات ذكي</div>
+                            <div class="text-sm text-white/60">أذكى من المنافسين</div>
+                        </div>
+                        <div class="text-lg font-bold text-[#06C167]">مشمول</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-[#06C167]/10 rounded-xl border border-[#06C167]/30">
+                        <div>
+                            <div class="font-bold text-lg text-[#06C167]">✅ حملات تسويقية مستهدفة</div>
+                            <div class="text-sm text-white/60">عملاء حقيقيين مهتمين</div>
+                        </div>
+                        <div class="text-lg font-bold text-[#06C167]">مشمول</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-[#06C167]/10 rounded-xl border border-[#06C167]/30">
+                        <div>
+                            <div class="font-bold text-lg text-[#06C167]">✅ متجر إلكتروني</div>
+                            <div class="text-sm text-white/60">قريباً - بدون تكلفة إضافية</div>
+                        </div>
+                        <div class="text-lg font-bold text-[#06C167]">مشمول</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-[#06C167]/10 rounded-xl border border-[#06C167]/30">
+                        <div>
+                            <div class="font-bold text-lg text-[#06C167]">✅ نظام إدارة متقدم</div>
+                            <div class="text-sm text-white/60">أمان على مستوى البنوك</div>
+                        </div>
+                        <div class="text-lg font-bold text-[#06C167]">مشمول</div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-4 bg-[#06C167]/10 rounded-xl border border-[#06C167]/30">
+                        <div>
+                            <div class="font-bold text-lg text-[#06C167]">✅ دعم وتحديثات</div>
+                            <div class="text-sm text-white/60">24/7 دعم فني</div>
+                        </div>
+                        <div class="text-lg font-bold text-[#06C167]">مشمول</div>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-6 bg-[#06C167]/20 rounded-2xl border-2 border-[#06C167]">
+                    <div class="text-center">
+                        <div class="text-sm text-white/60 mb-2">في صالوني، أسعارنا تبدأ من</div>
+                        <div class="text-6xl font-black text-[#06C167] mb-2">₪59.90</div>
+                        <div class="text-lg text-white/80">فقط شهرياً!</div>
+                        <div class="text-sm text-white/60 mt-2">بدون تكاليف إضافية</div>
+                        
+                        <div class="mt-6 p-4 bg-[#06C167] rounded-xl">
+                            <div class="text-2xl font-bold text-white">وفر ₪20,301</div>
+                            <div class="text-sm text-white/90">في السنة الأولى فقط!</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Plans Section -->
+<section class="py-20 relative">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-5xl font-black mb-6 text-white">
+                اختر الباقة المناسبة لك
+            </h2>
+            <p class="text-2xl text-white/80 max-w-3xl mx-auto">
+                كل الباقات تشمل نفس المزايا - الفرق فقط في طريقة الدفع
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8 mb-16">
+            <!-- Per Chair -->
+            <div class="pricing-card rounded-3xl p-8 text-center">
+                <div class="mb-6">
+                    <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chair text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">لكل كرسي</h3>
+                    <p class="text-white/60">مثالي للصالونات الصغيرة</p>
+                </div>
+
+                <div class="mb-8">
+                    <div class="text-5xl font-black text-blue-400 mb-2">₪59.90</div>
+                    <div class="text-white/60">لكل كرسي شهرياً</div>
+                </div>
+
+                <div class="space-y-3 mb-8 text-right">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">جميع المزايا مشمولة</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">دعم فني كامل</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">تحديثات مجانية</span>
+                    </div>
+                </div>
+
+                <div class="bg-orange-500/20 p-4 rounded-xl mb-6">
+                    <div class="text-sm text-orange-300">
+                        <i class="fas fa-calculator ml-2"></i>
+                        كرسيين = ₪99.8/شهر
+                    </div>
+                </div>
+
+                <div class="text-center text-white/60">
+                    مناسب للصالونات الصغيرة
+                </div>
+            </div>
+
+            <!-- Per Booking -->
+            <div class="pricing-card rounded-3xl p-8 text-center">
+                <div class="mb-6">
+                    <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-calendar-check text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">لكل حجز</h3>
+                    <p class="text-white/60">ادفع عند النجاح فقط</p>
+                </div>
+
+                <div class="mb-8">
+                    <div class="text-5xl font-black text-purple-400 mb-2">₪1</div>
+                    <div class="text-white/60">لكل حجز ناجح</div>
+                </div>
+
+                <div class="space-y-3 mb-8 text-right">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">بدون رسوم شهرية</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">ادفع عند النجاح</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">مخاطر صفر</span>
+                    </div>
+                </div>
+
+                <div class="bg-red-500/20 p-4 rounded-xl mb-6">
+                    <div class="text-sm text-red-300">
+                        <i class="fas fa-exclamation-triangle ml-2"></i>
+                        10 حجوزات يومياً = ₪300/شهر
+                    </div>
+                </div>
+
+                <div class="text-center text-white/60">
+                    للصالونات ذات الحجوزات القليلة
+                </div>
+            </div>
+
+            <!-- Salon Package -->
+            <div class="pricing-card rounded-3xl p-8 text-center relative">
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span class="popular-badge text-white px-6 py-2 rounded-full text-sm font-bold">
+                        الأكثر اختياراً
+                    </span>
+                </div>
+
+                <div class="mb-6 mt-4">
+                    <div class="w-16 h-16 bg-[#06C167] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-crown text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">باقة الصالون الشهرية</h3>
+                    <p class="text-white/60">الحل الأمثل لجميع الصالونات</p>
+                </div>
+
+                <div class="mb-8">
+                    <div class="text-5xl font-black text-[#06C167] mb-2">₪199</div>
+                    <div class="text-white/60">شهرياً - كراسي غير محدودة</div>
+                </div>
+
+                <div class="space-y-3 mb-8 text-right">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">كراسي غير محدودة</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">حجوزات غير محدودة</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-check text-[#06C167]"></i>
+                        <span class="text-white/80">أولوية في الدعم</span>
+                    </div>
+                </div>
+
+                <div class="bg-[#06C167]/20 p-4 rounded-xl mb-6">
+                    <div class="text-sm text-[#06C167]">
+                        <i class="fas fa-star ml-2"></i>
+                        أفضل قيمة للصالونات الكبيرة
+                    </div>
+                </div>
+
+                <div class="text-center text-white/60">
+                    الخيار الأمثل والأكثر شعبية
+                </div>
+            </div>
+        </div>
+
+        <!-- Special Offer -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-12 text-center relative overflow-hidden border border-white/10">
+            <div class="relative z-10">
+                <h3 class="text-4xl font-bold text-white mb-6">
+                    جاهز للبدء؟
+                </h3>
+                <p class="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+                    استمتع بعرض البداية الخاص - شهرين كاملين مقابل ₪199 فقط
+                </p>
+                
+                <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 max-w-3xl mx-auto">
+                    <div class="text-5xl font-bold text-[#06C167] mb-4">₪199</div>
+                    <div class="text-xl text-white/90 mb-6">شهرين كاملين</div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 text-right">
+                        <div class="flex items-center gap-3 text-white/80">
+                            <i class="fas fa-check text-[#06C167]"></i>
+                            <span>موقع إلكتروني احترافي</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-white/80">
+                            <i class="fas fa-check text-[#06C167]"></i>
+                            <span>تطبيق حجوزات ذكي</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-white/80">
+                            <i class="fas fa-check text-[#06C167]"></i>
+                            <span>حملات تسويقية مستهدفة</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-white/80">
+                            <i class="fas fa-check text-[#06C167]"></i>
+                            <span>نظام إدارة الموظفين</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-white/80">
+                            <i class="fas fa-check text-[#06C167]"></i>
+                            <span>ملصقات QR مجانية</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-white/80">
+                            <i class="fas fa-check text-[#06C167]"></i>
+                            <span>دعم فني 24/7</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    <a href="/" class="bg-[#06C167] text-white px-10 py-4 rounded-xl font-bold text-xl hover:bg-[#05ae5d] transition transform hover:scale-105">
+                        ابدأ الآن
+                    </a>
+                    
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <div class="text-sm text-white/70 mb-1">تواصل مباشرة</div>
+                        <a href="tel:+972595522004" class="flex items-center gap-2 text-white hover:text-[#06C167] transition text-lg font-bold">
+                            <i class="fas fa-phone"></i>
+                            <span dir="ltr">+972 59 5522004</span>
+                        </a>
+                        <div class="text-sm text-white/60">اسامة الصيفي</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-20">
+    <div class="max-w-4xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-black mb-6 text-white">
+                أسئلة شائعة
+            </h2>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                <h3 class="text-xl font-bold text-white mb-3">هل يمكنني تغيير الباقة لاحقاً؟</h3>
+                <p class="text-white/70">نعم، يمكنك تغيير باقتك في أي وقت. سنحسب الفرق بالتناسب.</p>
+            </div>
+
+            <div class="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                <h3 class="text-xl font-bold text-white mb-3">هل هناك رسوم إعداد؟</h3>
+                <p class="text-white/70">لا، الإعداد مجاني تماماً. سنساعدك في إعداد صالونك في نفس اليوم.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<!-- Footer -->
+<footer class="bg-black/30 backdrop-blur-sm py-12">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+        <h2 class="text-2xl font-bold text-white mb-8">
+            <i class="fas fa-phone text-[#06C167] ml-2"></i>
+            تواصل معنا الآن
+        </h2>
+        
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                 <h3 class="font-bold text-xl text-[#06C167] mb-3">ادم حواش</h3>
+                 <a href="https://wa.me/970594444403" class="inline-flex items-center gap-2 text-white hover:text-[#06C167] transition text-lg">
+                     <i class="fab fa-whatsapp text-2xl"></i>
+                     <span dir="ltr">+970 59 4444403</span>
+                 </a>
+             </div>
+             
+             <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                 <h3 class="font-bold text-xl text-[#06C167] mb-3">اسامة الصيفي</h3>
+                 <a href="tel:+972595522004" class="inline-flex items-center gap-2 text-white hover:text-[#06C167] transition text-lg">
+                     <i class="fas fa-phone text-xl"></i>
+                     <span dir="ltr">+972 59 5522004</span>
+                 </a>
+             </div>
+         </div>
+
+        <div class="mb-8">
+            <a href="/" class="inline-flex items-center gap-2 bg-[#06C167] text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-[#05AE5D] transition transform hover:scale-105">
+                <i class="fas fa-home"></i>
+                الصفحة الرئيسية
+            </a>
+        </div>
+        
+        <p class="text-white/60">© صالوني 2025 - الحل الأذكى لصالونات التجميل</p>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1072,6 +1072,11 @@ app.get('/salon-share', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'salon-share.html'));
 });
 
+// Pricing page route
+app.get('/pricing', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'pricing.html'));
+});
+
 // ===============================
 // Push Notification Endpoints
 // ===============================
