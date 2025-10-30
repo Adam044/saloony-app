@@ -4230,9 +4230,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         // Use the unified confirmation modal for logout confirmation
         showConfirmationModal('هل أنت متأكد من أنك تريد تسجيل الخروج؟', () => {
+            // Clear main salon authentication
             localStorage.removeItem('salonni_user');
             localStorage.removeItem('salonni_token');
-            console.log('Salon logging out.');
+            
+            // Reset role session completely
+            const salonId = window.salonId;
+            if (salonId && sessionToken) {
+                // Call server logout to invalidate session server-side
+                fetch(`/api/salon/roles/${salonId}/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_token: sessionToken })
+                }).catch(error => {
+                    console.error('Error logging out role session:', error);
+                });
+            }
+            
+            // Reset all role session data
+            resetRoleSession();
+            
+            console.log('Salon logging out with complete role session reset.');
             window.location.replace('/auth.html');
         }, 'تسجيل الخروج');
     });
@@ -5152,6 +5170,24 @@ let currentStaffId = null;
 let currentStaffName = '';
 let sessionToken = null;
 let availableBiometricRoles = []; // Store roles with biometric enabled
+
+// Reset all role session data
+const resetRoleSession = () => {
+    currentPin = '';
+    currentUserRole = null;
+    currentStaffId = null;
+    currentStaffName = '';
+    sessionToken = null;
+    availableBiometricRoles = [];
+    
+    // Clear any stored session
+    const salonId = window.salonId;
+    if (salonId) {
+        localStorage.removeItem(`saloony_role_session_${salonId}`);
+    }
+    
+    console.log('🔄 Role session data reset');
+};
 
 // PIN Authentication Elements
 const pinAuthScreen = document.getElementById('pin-auth-screen');
