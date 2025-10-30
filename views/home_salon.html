@@ -95,6 +95,98 @@
             20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
         
+        /* Disable zoom and double-tap on PIN screen */
+        #pin-auth-screen {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #pin-auth-screen * {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Prevent zoom on PIN buttons */
+        .pin-btn, #pin-backspace {
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Enhanced smooth animations for PIN screen */
+        .pin-dot {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(1);
+        }
+        
+        .pin-dot.filled {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 2px rgba(6, 193, 103, 0.3);
+        }
+        
+        .pin-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(1);
+        }
+        
+        .pin-btn:active {
+            transform: scale(0.95);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #pin-backspace:active {
+            transform: scale(0.95);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Smooth fade transitions */
+        #pin-auth-screen, #main-app-content {
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #pin-auth-screen.hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+        }
+        
+        #main-app-content.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+        
+        /* Loading animation enhancement */
+        #pin-loading {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Error message smooth animation */
+        #pin-error {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(0);
+        }
+        
+        #pin-error.hidden {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        
         .btn-action { 
             background-color: #06C167; 
             color: #1E293B; 
@@ -5338,13 +5430,14 @@ const resetPin = () => {
 };
 
 // Update PIN display
+// Update PIN display with smooth animations
 const updatePinDisplay = () => {
     pinDots.forEach((dot, index) => {
         if (index < currentPin.length) {
-            dot.classList.add('bg-secondary', 'border-secondary');
+            dot.classList.add('bg-secondary', 'border-secondary', 'filled');
             dot.classList.remove('border-gray-300');
         } else {
-            dot.classList.remove('bg-secondary', 'border-secondary');
+            dot.classList.remove('bg-secondary', 'border-secondary', 'filled');
             dot.classList.add('border-gray-300');
         }
     });

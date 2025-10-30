@@ -790,6 +790,31 @@ app.post('/api/salon/roles/:salon_id/staff', async (req, res) => {
             });
         }
 
+        // Check for duplicate PIN in the same salon (excluding current staff if updating)
+        const existingPinRole = await db.get(`
+            SELECT sr.staff_id, s.name as staff_name 
+            FROM staff_roles sr 
+            JOIN staff s ON sr.staff_id = s.id 
+            WHERE sr.salon_id = $1 AND sr.staff_id != $2 AND sr.is_active = TRUE
+        `, [salonId, staff_id]);
+
+        if (existingPinRole) {
+            // Check if the PIN matches any existing role
+            for (const role of await db.query(`
+                SELECT sr.pin_hash, s.name as staff_name 
+                FROM staff_roles sr 
+                JOIN staff s ON sr.staff_id = s.id 
+                WHERE sr.salon_id = $1 AND sr.staff_id != $2 AND sr.is_active = TRUE
+            `, [salonId, staff_id])) {
+                if (await verifyPin(pin, role.pin_hash)) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `هذا الرقم السري مستخدم بالفعل من قبل ${role.staff_name}. يرجى اختيار رقم سري مختلف.` 
+                    });
+                }
+            }
+        }
+
         // Hash the PIN
         const hashedPin = await hashPin(pin);
 
