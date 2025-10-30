@@ -5168,12 +5168,7 @@ const resetRoleSession = () => {
 // PIN Authentication Elements
 const pinAuthScreen = document.getElementById('pin-auth-screen');
 const mainAppContent = document.getElementById('main-app-content');
-const biometricSection = document.getElementById('biometric-section');
 const pinSection = document.getElementById('pin-section');
-const biometricAuthBtn = document.getElementById('biometric-auth-btn');
-const usePinInstead = document.getElementById('use-pin-instead');
-const switchToBiometric = document.getElementById('switch-to-biometric');
-const biometricOption = document.getElementById('biometric-option');
 const authSubtitle = document.getElementById('auth-subtitle');
 const pinDots = document.querySelectorAll('.pin-dot');
 const pinButtons = document.querySelectorAll('.pin-btn');
@@ -5261,13 +5256,9 @@ const showPinScreen = () => {
     pinAuthScreen.classList.remove('hidden');
     mainAppContent.classList.add('hidden');
     
-    // Always show PIN section only (biometric disabled for now)
-    biometricSection.classList.add('hidden');
+    // Always show PIN section only
     pinSection.classList.remove('hidden');
     authSubtitle.textContent = 'أدخل كلمة المرور الرقمية الخاصة بك';
-    
-    // Hide biometric options completely
-    biometricOption.classList.add('hidden');
 };
 
 // Trigger biometric authentication
@@ -5546,11 +5537,6 @@ pinButtons.forEach(button => {
 });
 
 pinBackspace.addEventListener('click', removeDigit);
-
-// Event listeners for biometric authentication
-biometricAuthBtn.addEventListener('click', triggerBiometricAuth);
-usePinInstead.addEventListener('click', switchToPinMode);
-switchToBiometric.addEventListener('click', switchToBiometricMode);
 
 // Keyboard support
 document.addEventListener('keydown', (e) => {
