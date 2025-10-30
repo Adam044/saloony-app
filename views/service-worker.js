@@ -48,6 +48,11 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
+  // Skip service worker for Socket.IO requests entirely
+  if (url.pathname.startsWith('/socket.io/')) {
+    return; // Let the browser handle Socket.IO requests directly
+  }
+
   // Network-only for API requests to avoid caching dynamic data
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(

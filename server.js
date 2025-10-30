@@ -842,7 +842,7 @@ app.delete('/api/salon/roles/:salon_id/staff/:staff_id', async (req, res) => {
 app.post('/api/salon/roles/:salon_id/auth', async (req, res) => {
     try {
         const salonId = req.params.salon_id;
-        const { pin } = req.body;
+        const { pin, staff_id, biometric } = req.body;
 
         if (!salonId || !pin) {
             return res.status(400).json({ 
@@ -873,18 +873,42 @@ app.post('/api/salon/roles/:salon_id/auth', async (req, res) => {
         `, [salonId]);
 
         let authenticatedRole = null;
-        for (const role of staffRoles) {
-            if (await verifyPin(pin, role.pin_hash)) {
-                authenticatedRole = role;
-                break;
+        
+        // Handle biometric authentication
+        if (biometric && pin === 'BIOMETRIC_AUTH' && staff_id) {
+            // Find the specific staff role for biometric auth
+            authenticatedRole = staffRoles.find(role => 
+                role.staff_id === parseInt(staff_id) && role.biometric_enabled
+            );
+            
+            if (!authenticatedRole) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Biometric authentication not enabled for this staff member.' 
+                });
             }
-        }
+        } else {
+            // Regular PIN authentication
+            if (pin.length !== 6) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'PIN must be exactly 6 digits.' 
+                });
+            }
 
-        if (!authenticatedRole) {
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Invalid PIN.' 
-            });
+            for (const role of staffRoles) {
+                if (await verifyPin(pin, role.pin_hash)) {
+                    authenticatedRole = role;
+                    break;
+                }
+            }
+
+            if (!authenticatedRole) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Invalid PIN.' 
+                });
+            }
         }
 
         // Generate session token

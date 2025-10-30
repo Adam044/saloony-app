@@ -88,6 +88,13 @@
             background-color: #06C167 !important;
         }
         
+        /* Shake animation for PIN error feedback */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
         .btn-action { 
             background-color: #06C167; 
             color: #1E293B; 
@@ -267,62 +274,99 @@
 <body>
 
     <!-- PIN Authentication Screen (Only shown for salons with roles enabled) -->
-    <div id="pin-auth-screen" class="fixed inset-0 bg-primary-dark z-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-            <!-- Header -->
-            <div class="text-center mb-8">
-                <div class="w-20 h-20 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-user-shield text-secondary text-3xl"></i>
+    <div id="pin-auth-screen" class="fixed inset-0 bg-gradient-to-br from-primary-dark via-slate-800 to-primary-dark z-50 flex items-center justify-center hidden">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-20 left-20 w-32 h-32 bg-secondary rounded-full blur-3xl animate-pulse"></div>
+            <div class="absolute bottom-20 right-20 w-40 h-40 bg-blue-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+        
+        <div class="bg-white/95 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl border border-white/20 relative overflow-hidden">
+            <!-- Animated Background Gradient -->
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-3xl"></div>
+            
+            <!-- Content -->
+            <div class="relative z-10">
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-2 border-blue-200">
+                        <i class="fas fa-fingerprint text-blue-800 text-4xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-primary-dark mb-2">مرحباً بك</h2>
+                    <p id="auth-subtitle" class="text-gray-600">استخدم بصمتك أو أدخل كلمة المرور</p>
                 </div>
-                <h2 class="text-2xl font-bold text-primary-dark mb-2">تسجيل الدخول</h2>
-                <p class="text-gray-600">أدخل كلمة المرور الرقمية الخاصة بك</p>
-            </div>
 
-            <!-- PIN Display -->
-            <div class="flex justify-center gap-3 mb-8">
-                <div class="pin-dot w-4 h-4 rounded-full border-2 border-gray-300 transition-all duration-200"></div>
-                <div class="pin-dot w-4 h-4 rounded-full border-2 border-gray-300 transition-all duration-200"></div>
-                <div class="pin-dot w-4 h-4 rounded-full border-2 border-gray-300 transition-all duration-200"></div>
-                <div class="pin-dot w-4 h-4 rounded-full border-2 border-gray-300 transition-all duration-200"></div>
-                <div class="pin-dot w-4 h-4 rounded-full border-2 border-gray-300 transition-all duration-200"></div>
-                <div class="pin-dot w-4 h-4 rounded-full border-2 border-gray-300 transition-all duration-200"></div>
-            </div>
+                <!-- Biometric Authentication Section -->
+                <div id="biometric-section" class="text-center mb-8 hidden">
+                    <div class="w-20 h-20 bg-gradient-to-br from-secondary to-green-400 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                        <i class="fas fa-fingerprint text-white text-2xl"></i>
+                    </div>
+                    <p class="text-secondary font-semibold mb-4">اضغط للمصادقة بالبصمة</p>
+                    <button id="biometric-auth-btn" class="bg-gradient-to-r from-secondary to-green-400 text-white px-8 py-3 rounded-full font-bold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                        <i class="fas fa-fingerprint ml-2"></i>
+                        استخدام البصمة
+                    </button>
+                    <div class="mt-4">
+                        <button id="use-pin-instead" class="text-gray-500 hover:text-primary-dark text-sm underline">
+                            استخدام كلمة المرور بدلاً من ذلك
+                        </button>
+                    </div>
+                </div>
 
-            <!-- PIN Keypad -->
-            <div class="grid grid-cols-3 gap-4 mb-6">
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="1">1</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="2">2</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="3">3</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="4">4</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="5">5</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="6">6</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="7">7</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="8">8</button>
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="9">9</button>
-                <button class="h-16 bg-transparent"></button> <!-- Empty space -->
-                <button class="pin-btn h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95" data-digit="0">0</button>
-                <button id="pin-backspace" class="h-16 bg-gray-100 hover:bg-gray-200 rounded-xl text-xl text-gray-600 transition-all duration-200 active:scale-95">
-                    <i class="fas fa-backspace"></i>
-                </button>
-            </div>
+                <!-- PIN Section -->
+                <div id="pin-section">
+                    <!-- PIN Display -->
+                    <div class="flex justify-center gap-3 mb-8" dir="ltr">
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                    </div>
 
-            <!-- Error Message -->
-            <div id="pin-error" class="text-center text-red-500 text-sm mb-4 hidden">
-                كلمة المرور غير صحيحة. حاول مرة أخرى.
-            </div>
+                    <!-- PIN Keypad -->
+                    <div class="grid grid-cols-3 gap-4 mb-6" dir="ltr">
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="1">1</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="2">2</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="3">3</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="4">4</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="5">5</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="6">6</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="7">7</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="8">8</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="9">9</button>
+                        <button class="h-16 bg-transparent"></button> <!-- Empty space -->
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="0">0</button>
+                        <button id="pin-backspace" class="h-16 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-2xl text-xl text-red-600 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-red-200">
+                            <i class="fas fa-backspace"></i>
+                        </button>
+                    </div>
 
-            <!-- Loading State -->
-            <div id="pin-loading" class="text-center text-gray-600 text-sm hidden">
-                <i class="fas fa-spinner fa-spin ml-2"></i>
-                جاري التحقق...
-            </div>
+                    <!-- Biometric Option (if available) -->
+                    <div id="biometric-option" class="text-center hidden">
+                        <button id="switch-to-biometric" class="text-secondary hover:text-secondary/80 text-sm font-medium flex items-center justify-center gap-2 mx-auto">
+                            <i class="fas fa-fingerprint"></i>
+                            استخدام البصمة بدلاً من ذلك
+                        </button>
+                    </div>
+                </div>
 
-            <!-- Biometric Option (Future) -->
-            <div class="text-center">
-                <button id="biometric-btn" class="text-secondary hover:text-secondary/80 text-sm font-medium hidden">
-                    <i class="fas fa-fingerprint ml-1"></i>
-                    استخدام البصمة
-                </button>
+                <!-- Error Message -->
+                <div id="pin-error" class="text-center text-red-500 text-sm mb-4 hidden bg-red-50 p-3 rounded-lg border border-red-200">
+                    <i class="fas fa-exclamation-circle ml-1"></i>
+                    كلمة المرور غير صحيحة. حاول مرة أخرى.
+                </div>
+
+                <!-- Loading State -->
+                <div id="pin-loading" class="text-center text-secondary text-sm hidden">
+                    <div class="flex items-center justify-center gap-2">
+                        <div class="w-4 h-4 bg-secondary rounded-full animate-bounce"></div>
+                        <div class="w-4 h-4 bg-secondary rounded-full animate-bounce delay-100"></div>
+                        <div class="w-4 h-4 bg-secondary rounded-full animate-bounce delay-200"></div>
+                    </div>
+                    <p class="mt-2">جاري التحقق...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -5015,43 +5059,67 @@ let currentUserRole = null;
 let currentStaffId = null;
 let currentStaffName = '';
 let sessionToken = null;
+let availableBiometricRoles = []; // Store roles with biometric enabled
 
 // PIN Authentication Elements
 const pinAuthScreen = document.getElementById('pin-auth-screen');
 const mainAppContent = document.getElementById('main-app-content');
+const biometricSection = document.getElementById('biometric-section');
+const pinSection = document.getElementById('pin-section');
+const biometricAuthBtn = document.getElementById('biometric-auth-btn');
+const usePinInstead = document.getElementById('use-pin-instead');
+const switchToBiometric = document.getElementById('switch-to-biometric');
+const biometricOption = document.getElementById('biometric-option');
+const authSubtitle = document.getElementById('auth-subtitle');
 const pinDots = document.querySelectorAll('.pin-dot');
 const pinButtons = document.querySelectorAll('.pin-btn');
 const pinBackspace = document.getElementById('pin-backspace');
 const pinError = document.getElementById('pin-error');
 const pinLoading = document.getElementById('pin-loading');
 
+// Check for biometric support
+const isBiometricSupported = () => {
+    return 'credentials' in navigator && 'create' in navigator.credentials;
+};
+
 // Check if role system is enabled for this salon
 const checkRoleSystemEnabled = async () => {
+    console.log('🔍 Checking role system for salon:', window.salonId);
     try {
         const salonId = window.salonId; // Get salonId from global scope
         const response = await fetch(`/api/salon/roles/${salonId}`);
         const data = await response.json();
         
+        console.log('📋 Role system response:', data);
+        
         if (data.success && data.config.roles_enabled) {
+            console.log('🔐 Role system is ENABLED, showing PIN screen');
+            // Store available biometric roles
+            availableBiometricRoles = data.staff_roles.filter(role => role.biometric_enabled);
+            
             // Check if we have a valid session
             const storedToken = localStorage.getItem(`saloony_role_session_${salonId}`);
             if (storedToken) {
                 const isValid = await verifySession(storedToken);
                 if (isValid) {
+                    console.log('✅ Valid session found, showing main app');
                     showMainApp();
                     return;
                 }
             }
             
-            // Show PIN screen
+            // Show PIN screen with biometric options
+            console.log('📱 Showing PIN screen');
             showPinScreen();
         } else {
             // Role system disabled, show main app directly
+            console.log('🚫 Role system is DISABLED, showing main app directly');
             showMainApp();
         }
     } catch (error) {
-        console.error('Error checking role system:', error);
+        console.error('❌ Error checking role system:', error);
         // On error, show main app (fallback to normal behavior)
+        console.log('🔄 Fallback: showing main app due to error');
         showMainApp();
     }
 };
@@ -5088,6 +5156,135 @@ const verifySession = async (token) => {
 const showPinScreen = () => {
     pinAuthScreen.classList.remove('hidden');
     mainAppContent.classList.add('hidden');
+    
+    // Check if biometric authentication is available and enabled for any role
+    const hasBiometricRoles = availableBiometricRoles.length > 0;
+    const biometricSupported = isBiometricSupported();
+    
+    if (hasBiometricRoles && biometricSupported) {
+        // Show biometric section first
+        biometricSection.classList.remove('hidden');
+        pinSection.classList.add('hidden');
+        authSubtitle.textContent = 'استخدم بصمتك أو أدخل كلمة المرور';
+        
+        // Auto-trigger biometric authentication after a short delay
+        setTimeout(() => {
+            triggerBiometricAuth();
+        }, 1000);
+    } else {
+        // Show PIN section only
+        biometricSection.classList.add('hidden');
+        pinSection.classList.remove('hidden');
+        authSubtitle.textContent = 'أدخل كلمة المرور الرقمية الخاصة بك';
+        
+        // Show biometric option if available
+        if (hasBiometricRoles && biometricSupported) {
+            biometricOption.classList.remove('hidden');
+        }
+    }
+};
+
+// Trigger biometric authentication
+const triggerBiometricAuth = async () => {
+    try {
+        showLoading();
+        
+        // Simulate biometric authentication (in real app, this would use WebAuthn)
+        // For demo purposes, we'll use a simple prompt
+        const biometricResult = await simulateBiometricAuth();
+        
+        if (biometricResult.success) {
+            // Find the role that matches biometric authentication
+            const role = availableBiometricRoles.find(r => r.staff_id === biometricResult.staffId);
+            if (role) {
+                // Create session for biometric authentication
+                await createBiometricSession(role);
+            } else {
+                throw new Error('No matching biometric role found');
+            }
+        } else {
+            throw new Error('Biometric authentication failed');
+        }
+    } catch (error) {
+        console.error('Biometric authentication error:', error);
+        hideLoading();
+        // Fall back to PIN entry
+        switchToPinMode();
+    }
+};
+
+// Simulate biometric authentication (replace with real WebAuthn in production)
+const simulateBiometricAuth = () => {
+    return new Promise((resolve) => {
+        // In a real app, this would use navigator.credentials.get() with WebAuthn
+        // For demo, we'll simulate success for the first biometric role
+        setTimeout(() => {
+            if (availableBiometricRoles.length > 0) {
+                resolve({
+                    success: true,
+                    staffId: availableBiometricRoles[0].staff_id
+                });
+            } else {
+                resolve({ success: false });
+            }
+        }, 2000); // Simulate biometric scan time
+    });
+};
+
+// Create session for biometric authentication
+const createBiometricSession = async (role) => {
+    try {
+        const salonId = window.salonId;
+        const response = await fetch(`/api/salon/roles/${salonId}/auth`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                pin: 'BIOMETRIC_AUTH', // Special identifier for biometric auth
+                staff_id: role.staff_id,
+                biometric: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            sessionToken = data.session_token;
+            currentUserRole = data.role_type;
+            currentStaffId = data.staff_id;
+            currentStaffName = data.staff_name;
+            
+            localStorage.setItem(`saloony_role_session_${salonId}`, sessionToken);
+            
+            hideLoading();
+            showMainApp();
+        } else {
+            throw new Error('Failed to create biometric session');
+        }
+    } catch (error) {
+        console.error('Error creating biometric session:', error);
+        hideLoading();
+        switchToPinMode();
+    }
+};
+
+// Switch to PIN mode
+const switchToPinMode = () => {
+    biometricSection.classList.add('hidden');
+    pinSection.classList.remove('hidden');
+    authSubtitle.textContent = 'أدخل كلمة المرور الرقمية الخاصة بك';
+    
+    // Show biometric option if available
+    if (availableBiometricRoles.length > 0 && isBiometricSupported()) {
+        biometricOption.classList.remove('hidden');
+    }
+};
+
+// Switch to biometric mode
+const switchToBiometricMode = () => {
+    pinSection.classList.add('hidden');
+    biometricSection.classList.remove('hidden');
+    authSubtitle.textContent = 'استخدم بصمتك أو أدخل كلمة المرور';
+    resetPin();
 };
 
 // Show main application
@@ -5120,6 +5317,24 @@ const applyStaffRestrictions = () => {
     if (headerTitle && currentStaffName) {
         headerTitle.innerHTML = `<i class="fas fa-user ml-2"></i>${currentStaffName} - المواعيد`;
     }
+};
+
+// Show loading state
+const showLoading = () => {
+    pinLoading.classList.remove('hidden');
+    pinError.classList.add('hidden');
+};
+
+// Hide loading state
+const hideLoading = () => {
+    pinLoading.classList.add('hidden');
+};
+
+// Reset PIN
+const resetPin = () => {
+    currentPin = '';
+    updatePinDisplay();
+    pinError.classList.add('hidden');
 };
 
 // Update PIN display
@@ -5163,6 +5378,7 @@ const removeDigit = () => {
 const authenticatePin = async () => {
     if (currentPin.length !== 6) return; // Require exactly 6 digits
     
+    console.log('🔐 Authenticating PIN for salon:', window.salonId);
     showLoading();
     hideError();
     
@@ -5175,8 +5391,10 @@ const authenticatePin = async () => {
         });
         
         const data = await response.json();
+        console.log('🔍 Authentication response:', data);
         
         if (data.success) {
+            console.log('✅ PIN authentication successful');
             // Store session token
             sessionToken = data.session_token;
             currentUserRole = data.role_type;
@@ -5188,43 +5406,48 @@ const authenticatePin = async () => {
             // Show main app
             showMainApp();
         } else {
-            showError();
+            console.log('❌ PIN authentication failed:', data.message);
+            showError(data.message || 'كلمة المرور غير صحيحة. حاول مرة أخرى.');
             resetPin();
         }
     } catch (error) {
-        console.error('Error authenticating PIN:', error);
-        showError();
+        console.error('❌ Error authenticating PIN:', error);
+        showError('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
         resetPin();
     } finally {
         hideLoading();
     }
 };
 
-// Reset PIN input
-const resetPin = () => {
-    currentPin = '';
-    updatePinDisplay();
-};
-
-// Show error message
-const showError = () => {
+// Show error message with animation
+const showError = (message = 'كلمة المرور غير صحيحة. حاول مرة أخرى.') => {
+    // Update error message
+    const errorText = pinError.querySelector('p') || pinError;
+    if (errorText.tagName === 'P') {
+        errorText.textContent = message;
+    }
+    
+    // Show error with shake animation
     pinError.classList.remove('hidden');
-    setTimeout(hideError, 3000);
+    
+    // Add shake animation to the PIN dots
+    const pinDotsContainer = document.querySelector('.pin-dot').parentElement;
+    pinDotsContainer.classList.add('animate-pulse');
+    pinDotsContainer.style.animation = 'shake 0.5s ease-in-out';
+    
+    // Remove animation after it completes
+    setTimeout(() => {
+        pinDotsContainer.style.animation = '';
+        pinDotsContainer.classList.remove('animate-pulse');
+    }, 500);
+    
+    // Auto-hide error after 4 seconds
+    setTimeout(hideError, 4000);
 };
 
 // Hide error message
 const hideError = () => {
     pinError.classList.add('hidden');
-};
-
-// Show loading state
-const showLoading = () => {
-    pinLoading.classList.remove('hidden');
-};
-
-// Hide loading state
-const hideLoading = () => {
-    pinLoading.classList.add('hidden');
 };
 
 // Event listeners for PIN keypad
@@ -5236,6 +5459,11 @@ pinButtons.forEach(button => {
 });
 
 pinBackspace.addEventListener('click', removeDigit);
+
+// Event listeners for biometric authentication
+biometricAuthBtn.addEventListener('click', triggerBiometricAuth);
+usePinInstead.addEventListener('click', switchToPinMode);
+switchToBiometric.addEventListener('click', switchToBiometricMode);
 
 // Keyboard support
 document.addEventListener('keydown', (e) => {
