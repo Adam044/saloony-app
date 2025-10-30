@@ -305,6 +305,50 @@ async function initializeDb() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at)`);
 
+        // Create role system tables for salon staff management
+        await db.run(`CREATE TABLE IF NOT EXISTS salon_roles (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL UNIQUE,
+            roles_enabled BOOLEAN DEFAULT FALSE,
+            session_duration_hours INTEGER DEFAULT 24,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+        )`);
+
+        await db.run(`CREATE TABLE IF NOT EXISTS staff_roles (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL,
+            staff_id INTEGER NOT NULL,
+            role_type VARCHAR(20) NOT NULL CHECK (role_type IN ('admin', 'staff')),
+            pin_hash VARCHAR(255) NOT NULL,
+            biometric_enabled BOOLEAN DEFAULT FALSE,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE,
+            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE,
+            UNIQUE(salon_id, staff_id)
+        )`);
+
+        await db.run(`CREATE TABLE IF NOT EXISTS role_sessions (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL,
+            staff_role_id INTEGER NOT NULL,
+            session_token VARCHAR(255) NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE,
+            FOREIGN KEY (staff_role_id) REFERENCES staff_roles(id) ON DELETE CASCADE
+        )`);
+
+        // Create indexes for role system tables
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_roles_salon_id ON salon_roles(salon_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_staff_roles_salon_id ON staff_roles(salon_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_staff_roles_staff_id ON staff_roles(staff_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_role_sessions_token ON role_sessions(session_token)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_role_sessions_expires ON role_sessions(expires_at)`);
+
         console.log("Database schema created successfully.");
         
     } catch (error) {
@@ -530,6 +574,47 @@ async function alignSchema() {
             }
         }
 
+        // Role system schema alignment for both PostgreSQL and SQLite
+        if (db.isProduction) {
+            // PostgreSQL: Check if role system tables exist and have proper constraints
+            try {
+                const roleTablesCheck = await db.query(`
+                    SELECT table_name FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND table_name IN ('salon_roles', 'staff_roles', 'role_sessions')
+                `);
+                
+                if (roleTablesCheck.length < 3) {
+                    console.log('AlignSchema: Role system tables missing, they will be created on next restart...');
+                } else {
+                    // Check if salon_roles has unique constraint on salon_id
+                    const constraintCheck = await db.query(`
+                        SELECT constraint_name FROM information_schema.table_constraints 
+                        WHERE table_name = 'salon_roles' AND constraint_type = 'UNIQUE'
+                    `);
+                    
+                    if (constraintCheck.length === 0) {
+                        console.log('AlignSchema: Adding unique constraint to salon_roles.salon_id (PostgreSQL)...');
+                        await db.run(`ALTER TABLE salon_roles ADD CONSTRAINT salon_roles_salon_id_unique UNIQUE (salon_id)`);
+                    }
+                }
+            } catch (error) {
+                console.log('AlignSchema: Role system tables will be created on next restart if needed.');
+            }
+        } else {
+            // SQLite: Check if role system tables exist
+            try {
+                const roleTablesCheck = await db.query(`
+                    SELECT name FROM sqlite_master WHERE type='table' AND name IN ('salon_roles', 'staff_roles', 'role_sessions')
+                `);
+                
+                if (roleTablesCheck.length < 3) {
+                    console.log('AlignSchema: Role system tables missing, they will be created on next restart...');
+                }
+            } catch (error) {
+                console.log('AlignSchema: Role system tables will be created on next restart if needed.');
+            }
+        }
+
         console.log('AlignSchema: Schema alignment completed successfully.');
     } catch (error) {
         console.error('AlignSchema error:', error.message || error);
@@ -567,6 +652,330 @@ const upload = multer({
         }
     }
 });
+
+
+// --- Role Management System ---
+
+// Helper functions for role system
+async function generateSessionToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+async function hashPin(pin) {
+    return await bcrypt.hash(pin.toString(), 10);
+}
+
+async function verifyPin(pin, hashedPin) {
+    return await bcrypt.compare(pin.toString(), hashedPin);
+}
+
+async function cleanExpiredSessions() {
+    try {
+        await db.run('DELETE FROM role_sessions WHERE expires_at < CURRENT_TIMESTAMP');
+    } catch (error) {
+        console.error('Error cleaning expired sessions:', error);
+    }
+}
+
+// Clean expired sessions every hour
+setInterval(cleanExpiredSessions, 60 * 60 * 1000);
+
+// Get salon role configuration
+app.get('/api/salon/roles/:salon_id', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        
+        if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+            return res.status(400).json({ success: false, message: 'Valid salon ID is required.' });
+        }
+
+        // Get role configuration
+        const roleConfig = await db.get(
+            'SELECT * FROM salon_roles WHERE salon_id = $1',
+            [salonId]
+        );
+
+        // Get staff roles if roles are enabled
+        let staffRoles = [];
+        if (roleConfig && roleConfig.roles_enabled) {
+            staffRoles = await db.query(`
+                SELECT sr.*, s.name as staff_name 
+                FROM staff_roles sr 
+                JOIN staff s ON sr.staff_id = s.id 
+                WHERE sr.salon_id = $1 AND sr.is_active = TRUE
+                ORDER BY sr.role_type, s.name
+            `, [salonId]);
+        }
+
+        res.json({
+            success: true,
+            config: roleConfig || { salon_id: salonId, roles_enabled: false, session_duration_hours: 24 },
+            staff_roles: staffRoles
+        });
+    } catch (error) {
+        console.error('Error fetching salon roles:', error);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Enable/disable role system for salon
+app.post('/api/salon/roles/:salon_id/toggle', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        const { enabled, session_duration_hours = 24 } = req.body;
+
+        if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+            return res.status(400).json({ success: false, message: 'Valid salon ID is required.' });
+        }
+
+        // Upsert salon role configuration
+        await db.run(`
+            INSERT INTO salon_roles (salon_id, roles_enabled, session_duration_hours, updated_at)
+            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+            ON CONFLICT (salon_id) DO UPDATE SET
+                roles_enabled = $2,
+                session_duration_hours = $3,
+                updated_at = CURRENT_TIMESTAMP
+        `, [salonId, enabled, session_duration_hours]);
+
+        // If disabling, clean up sessions
+        if (!enabled) {
+            await db.run('DELETE FROM role_sessions WHERE salon_id = $1', [salonId]);
+        }
+
+        res.json({ success: true, message: 'Role system updated successfully.' });
+    } catch (error) {
+        console.error('Error toggling role system:', error);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Add staff role
+app.post('/api/salon/roles/:salon_id/staff', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        const { staff_id, role_type, pin, biometric_enabled = false } = req.body;
+
+        if (!salonId || !staff_id || !role_type || !pin) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Salon ID, staff ID, role type, and PIN are required.' 
+            });
+        }
+
+        if (!['admin', 'staff'].includes(role_type)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Role type must be either "admin" or "staff".' 
+            });
+        }
+
+        if (pin.length !== 6) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'PIN must be exactly 6 digits.' 
+            });
+        }
+
+        // Verify staff exists and belongs to salon
+        const staff = await db.get(
+            'SELECT id FROM staff WHERE id = $1 AND salon_id = $2',
+            [staff_id, salonId]
+        );
+
+        if (!staff) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Staff member not found or does not belong to this salon.' 
+            });
+        }
+
+        // Hash the PIN
+        const hashedPin = await hashPin(pin);
+
+        // Insert or update staff role
+        await db.run(`
+            INSERT INTO staff_roles (salon_id, staff_id, role_type, pin_hash, biometric_enabled, updated_at)
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            ON CONFLICT (salon_id, staff_id) DO UPDATE SET
+                role_type = $3,
+                pin_hash = $4,
+                biometric_enabled = $5,
+                is_active = TRUE,
+                updated_at = CURRENT_TIMESTAMP
+        `, [salonId, staff_id, role_type, hashedPin, biometric_enabled]);
+
+        res.json({ success: true, message: 'Staff role added successfully.' });
+    } catch (error) {
+        console.error('Error adding staff role:', error);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Remove staff role
+app.delete('/api/salon/roles/:salon_id/staff/:staff_id', async (req, res) => {
+    try {
+        const { salon_id, staff_id } = req.params;
+
+        // Deactivate the role instead of deleting (for audit trail)
+        await db.run(
+            'UPDATE staff_roles SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE salon_id = $1 AND staff_id = $2',
+            [salon_id, staff_id]
+        );
+
+        // Clean up any active sessions for this staff member
+        await db.run(`
+            DELETE FROM role_sessions 
+            WHERE staff_role_id IN (
+                SELECT id FROM staff_roles WHERE salon_id = $1 AND staff_id = $2
+            )
+        `, [salon_id, staff_id]);
+
+        res.json({ success: true, message: 'Staff role removed successfully.' });
+    } catch (error) {
+        console.error('Error removing staff role:', error);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// PIN authentication
+app.post('/api/salon/roles/:salon_id/auth', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        const { pin } = req.body;
+
+        if (!salonId || !pin) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Salon ID and PIN are required.' 
+            });
+        }
+
+        // Check if role system is enabled for this salon
+        const roleConfig = await db.get(
+            'SELECT * FROM salon_roles WHERE salon_id = $1 AND roles_enabled = TRUE',
+            [salonId]
+        );
+
+        if (!roleConfig) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Role system is not enabled for this salon.' 
+            });
+        }
+
+        // Find staff with matching PIN
+        const staffRoles = await db.query(`
+            SELECT sr.*, s.name as staff_name 
+            FROM staff_roles sr 
+            JOIN staff s ON sr.staff_id = s.id 
+            WHERE sr.salon_id = $1 AND sr.is_active = TRUE
+        `, [salonId]);
+
+        let authenticatedRole = null;
+        for (const role of staffRoles) {
+            if (await verifyPin(pin, role.pin_hash)) {
+                authenticatedRole = role;
+                break;
+            }
+        }
+
+        if (!authenticatedRole) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid PIN.' 
+            });
+        }
+
+        // Generate session token
+        const sessionToken = await generateSessionToken();
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + roleConfig.session_duration_hours);
+
+        // Create session
+        await db.run(`
+            INSERT INTO role_sessions (salon_id, staff_role_id, session_token, expires_at)
+            VALUES ($1, $2, $3, $4)
+        `, [salonId, authenticatedRole.id, sessionToken, expiresAt.toISOString()]);
+
+        res.json({
+            success: true,
+            session_token: sessionToken,
+            role_type: authenticatedRole.role_type,
+            staff_id: authenticatedRole.staff_id,
+            staff_name: authenticatedRole.staff_name,
+            expires_at: expiresAt.toISOString()
+        });
+    } catch (error) {
+        console.error('Error authenticating PIN:', error);
+        res.status(500).json({ success: false, message: 'Authentication error.' });
+    }
+});
+
+// Verify session token
+app.post('/api/salon/roles/:salon_id/verify', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        const { session_token } = req.body;
+
+        if (!salonId || !session_token) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Salon ID and session token are required.' 
+            });
+        }
+
+        // Find valid session
+        const session = await db.get(`
+            SELECT rs.*, sr.role_type, sr.staff_id, s.name as staff_name
+            FROM role_sessions rs
+            JOIN staff_roles sr ON rs.staff_role_id = sr.id
+            JOIN staff s ON sr.staff_id = s.id
+            WHERE rs.salon_id = $1 AND rs.session_token = $2 AND rs.expires_at > CURRENT_TIMESTAMP
+        `, [salonId, session_token]);
+
+        if (!session) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid or expired session.' 
+            });
+        }
+
+        res.json({
+            success: true,
+            valid: true,
+            role_type: session.role_type,
+            staff_id: session.staff_id,
+            staff_name: session.staff_name,
+            expires_at: session.expires_at
+        });
+    } catch (error) {
+        console.error('Error verifying session:', error);
+        res.status(500).json({ success: false, message: 'Verification error.' });
+    }
+});
+
+// Logout (invalidate session)
+app.post('/api/salon/roles/:salon_id/logout', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        const { session_token } = req.body;
+
+        if (session_token) {
+            await db.run(
+                'DELETE FROM role_sessions WHERE salon_id = $1 AND session_token = $2',
+                [salonId, session_token]
+            );
+        }
+
+        res.json({ success: true, message: 'Logged out successfully.' });
+    } catch (error) {
+        console.error('Error logging out:', error);
+        res.status(500).json({ success: false, message: 'Logout error.' });
+    }
+});
+
+// --- End Role Management System ---
 
 // Serve static files (views, Images)
 // Serve static assets with mild caching for images; keep HTML no-cache via discovery route headers
