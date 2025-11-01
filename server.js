@@ -14,6 +14,7 @@ const multer = require('multer'); // File upload handling
 const fs = require('fs'); // File system for saving uploads
 const sharp = require('sharp'); // Image optimization
 const { createClient } = require('@supabase/supabase-js'); // Supabase client
+const { aiAssistant } = require('./ai-chat-assistant'); // AI Chat Assistant Module
 require('dotenv').config(); // Load environment variables (.env)
 
 // Initialize Supabase client for storage
@@ -111,9 +112,10 @@ async function initializeDb() {
             city TEXT,
             password TEXT NOT NULL,
             strikes INTEGER DEFAULT 0,
-            user_type TEXT DEFAULT 'user'
+            user_type TEXT DEFAULT 'user',
+            language_preference VARCHAR(10) DEFAULT 'auto'
         )`);
-        
+
         // Create salons table - Linked to users by user_id, no redundant email/password
         await db.run(`CREATE TABLE IF NOT EXISTS salons (
             id SERIAL PRIMARY KEY,
@@ -349,7 +351,67 @@ async function initializeDb() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_role_sessions_token ON role_sessions(session_token)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_role_sessions_expires ON role_sessions(expires_at)`);
 
-        console.log("Database schema created successfully.");
+        // Create AI chat messages table for analytics and conversation history
+        await db.run(`CREATE TABLE IF NOT EXISTS ai_chat_messages (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50),
+            user_message TEXT NOT NULL,
+            ai_response TEXT NOT NULL,
+            language_detected VARCHAR(10) DEFAULT 'auto',
+            session_id TEXT,
+            response_time_ms INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        )`);
+
+        // Create AI Analytics Tables (Optimized for Performance)
+        await db.run(`CREATE TABLE IF NOT EXISTS ai_token_usage (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50),
+            model VARCHAR(20) DEFAULT 'deepseek-chat',
+            input_tokens SMALLINT DEFAULT 0,
+            output_tokens SMALLINT DEFAULT 0,
+            total_tokens SMALLINT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        await db.run(`CREATE TABLE IF NOT EXISTS conversation_analytics (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50),
+            message_length SMALLINT,
+            response_length SMALLINT,
+            language CHAR(2) DEFAULT 'ar',
+            response_time SMALLINT DEFAULT 0,
+            salon_context_used BOOLEAN DEFAULT FALSE,
+            recommendations_shown SMALLINT DEFAULT 0,
+            error_occurred BOOLEAN DEFAULT FALSE,
+            session_id VARCHAR(100),
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        await db.run(`CREATE TABLE IF NOT EXISTS user_preferences (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50),
+            category VARCHAR(30),
+            preference VARCHAR(50),
+            context TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, category, preference)
+        )`);
+
+        // Create indexes for AI chat messages table
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_id ON ai_chat_messages(user_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_created_at ON ai_chat_messages(created_at)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_session_id ON ai_chat_messages(session_id)`);
+
+        // Create indexes for AI analytics tables (separate statements for PostgreSQL)
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_token_usage_user_date ON ai_token_usage(user_id, created_at)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_conversation_analytics_date ON conversation_analytics(timestamp)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_conversation_analytics_user ON conversation_analytics(user_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_user_preferences_user_cat ON user_preferences(user_id, category)`);
+
+        console.log("✅ Database schema created successfully (including optimized AI Analytics tables).");
         
     } catch (error) {
         console.error("Error initializing database:", error);
@@ -650,6 +712,171 @@ const upload = multer({
         } else {
             cb(new Error('Only image files are allowed'), false);
         }
+    }
+});
+
+// ===============================
+// AI Beauty Assistant Endpoints
+// ===============================
+
+// === AI Analytics Dashboard ===
+
+// AI Analytics Dashboard Route
+app.get('/ai-analytics', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'ai_analytics.html'));
+});
+
+// AI Analytics API Route
+app.get('/api/ai-analytics', async (req, res) => {
+    try {
+        const timeframe = req.query.timeframe || '24h';
+        
+        // Get analytics from AI assistant
+        const analytics = await aiAssistant.getConversationInsights(timeframe);
+        
+        if (analytics) {
+            // Add token usage data
+            const tokenUsage = await getTokenUsage(timeframe);
+            analytics.tokens = tokenUsage;
+            
+            res.json({
+                success: true,
+                analytics: analytics,
+                timeframe: timeframe,
+                last_updated: new Date().toISOString()
+            });
+        } else {
+            res.json({
+                success: false,
+                error: 'Failed to retrieve analytics data'
+            });
+        }
+    } catch (error) {
+        console.error('Analytics API error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
+
+// Helper function to get token usage
+async function getTokenUsage(timeframe) {
+    try {
+        const timeCondition = getTimeConditionForAnalytics(timeframe);
+        
+        const tokenStats = await dbGet(`
+            SELECT 
+                SUM(input_tokens) as total_input_tokens,
+                SUM(output_tokens) as total_output_tokens,
+                SUM(input_tokens + output_tokens) as total_tokens,
+                AVG(input_tokens + output_tokens) as avg_tokens_per_request,
+                COUNT(*) as total_requests
+            FROM ai_token_usage 
+            WHERE created_at > ${timeCondition}
+        `);
+        
+        return {
+            total: tokenStats?.total_tokens || 0,
+            input: tokenStats?.total_input_tokens || 0,
+            output: tokenStats?.total_output_tokens || 0,
+            average: Math.round(tokenStats?.avg_tokens_per_request || 0),
+            requests: tokenStats?.total_requests || 0
+        };
+    } catch (error) {
+        console.warn('Failed to get token usage:', error);
+        return {
+            total: 0,
+            input: 0,
+            output: 0,
+            average: 0,
+            requests: 0
+        };
+    }
+}
+
+function getTimeConditionForAnalytics(timeframe) {
+    const conditions = {
+        '1h': "NOW() - INTERVAL '1 hour'",
+        '24h': "NOW() - INTERVAL '1 day'",
+        '7d': "NOW() - INTERVAL '7 days'",
+        '30d': "NOW() - INTERVAL '30 days'"
+    };
+    return conditions[timeframe] || conditions['24h'];
+}
+
+// === AI Chat Endpoints ===
+
+// Main AI Chat Endpoint
+app.post('/api/ai-chat', async (req, res) => {
+    try {
+        const { message, user_id, context } = req.body;
+        
+        if (!message?.trim()) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'الرسالة مطلوبة' 
+            });
+        }
+
+        const result = await aiAssistant.processChat(message, user_id, context);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result.error,
+                fallback_response: result.fallback_response
+            });
+        }
+
+    } catch (error) {
+        console.error('AI Chat endpoint error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'عذراً، حدث خطأ في المساعد الذكي. يرجى المحاولة مرة أخرى.'
+        });
+    }
+});
+
+// Clear conversation history
+app.post('/api/ai-chat/clear', async (req, res) => {
+    try {
+        const { user_id } = req.body;
+        
+        if (!user_id) {
+            return res.status(400).json({
+                success: false,
+                error: 'معرف المستخدم مطلوب'
+            });
+        }
+
+        const result = aiAssistant.clearConversation(user_id);
+        res.json(result);
+
+    } catch (error) {
+        console.error('Clear conversation error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'فشل في مسح المحادثة'
+        });
+    }
+});
+
+// Get conversation statistics
+app.get('/api/ai-chat/stats/:user_id', async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const result = await aiAssistant.getConversationStats(user_id);
+        res.json(result);
+
+    } catch (error) {
+        console.error('Get conversation stats error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'فشل في جلب إحصائيات المحادثة'
+        });
     }
 });
 
@@ -1075,6 +1302,11 @@ app.get('/salon-share', (req, res) => {
 // Pricing page route
 app.get('/pricing', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'pricing.html'));
+});
+
+// AI Chat page route
+app.get('/ai-chat.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'ai-chat.html'));
 });
 
 // ===============================

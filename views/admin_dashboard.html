@@ -122,6 +122,16 @@
             <!-- 1. Dashboard -->
             <div id="dashboard-view" class="view-content">
                 <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">نظرة عامة</h2>
+                
+                <!-- AI Analytics Button -->
+                <div class="mb-6">
+                    <button onclick="window.location.href='/ai-analytics'" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-3">
+                        <i class="fas fa-robot text-xl"></i>
+                        <span>تحليلات نوڤا - المساعد الذكي</span>
+                        <i class="fas fa-chart-line"></i>
+                    </button>
+                </div>
+                
                 <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <p class="col-span-full text-center text-gray-500">جاري تحميل الإحصائيات...</p>
                 </div>

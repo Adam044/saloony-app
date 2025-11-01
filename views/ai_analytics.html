@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحليلات نوڤا - صالوني</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .header .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #06C167, #059652);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(6, 193, 103, 0.3);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .metric-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-change {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .metric-change.positive {
+            color: #38a169;
+        }
+
+        .metric-change.negative {
+            color: #e53e3e;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .time-filter {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .time-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .time-btn.active {
+            background: #06C167;
+            color: white;
+            border-color: #06C167;
+        }
+
+        .chart-placeholder {
+            height: 300px;
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        .insight-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .insight-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .insight-list {
+            list-style: none;
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .insight-item:last-child {
+            border-bottom: none;
+        }
+
+        .insight-label {
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .insight-value {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+        }
+
+        .status-online {
+            background: #38a169;
+            box-shadow: 0 0 10px rgba(56, 161, 105, 0.5);
+        }
+
+        .status-warning {
+            background: #ed8936;
+            box-shadow: 0 0 10px rgba(237, 137, 54, 0.5);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #06C167;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 1rem;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Color schemes for different metrics */
+        .tokens { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .messages { background: linear-gradient(135deg, #06C167, #059652); }
+        .users { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        .performance { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+        .errors { background: linear-gradient(135deg, #ffa726, #ff7043); }
+        .languages { background: linear-gradient(135deg, #ab47bc, #8e24aa); }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="window.location.href='/admin_dashboard'">
+        <i class="fas fa-arrow-right"></i>
+    </button>
+
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-robot"></i>
+                لوحة تحليلات نوڤا
+            </h1>
+            <p class="subtitle">مراقبة شاملة لأداء المساعد الذكي وإحصائيات الاستخدام</p>
+            <button class="refresh-btn" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i>
+                تحديث البيانات
+            </button>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">إجمالي الرسائل</span>
+                    <div class="metric-icon messages">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                </div>
+                <div class="metric-value" id="totalMessages">
+                    <div class="loading"></div>
+                </div>
+                <div class="metric-change positive" id="messagesChange">
+                    <i class="fas fa-arrow-up"></i>
+                    +12% من الأمس
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">استهلاك التوكن</span>
+                    <div class="metric-icon tokens">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                </div>
+                <div class="metric-value" id="totalTokens">
+                    <div class="loading"></div>
+                </div>
+                <div class="metric-change" id="tokensChange">
+                    <i class="fas fa-info-circle"></i>
+                    اليوم
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">المستخدمين النشطين</span>
+                    <div class="metric-icon users">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+                <div class="metric-value" id="activeUsers">
+                    <div class="loading"></div>
+                </div>
+                <div class="metric-change positive" id="usersChange">
+                    <i class="fas fa-arrow-up"></i>
+                    +8% من الأسبوع الماضي
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">متوسط وقت الاستجابة</span>
+                    <div class="metric-icon performance">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                </div>
+                <div class="metric-value" id="avgResponseTime">
+                    <div class="loading"></div>
+                </div>
+                <div class="metric-change positive" id="responseTimeChange">
+                    <i class="fas fa-arrow-down"></i>
+                    -15% تحسن
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">معدل الأخطاء</span>
+                    <div class="metric-icon errors">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div class="metric-value" id="errorRate">
+                    <div class="loading"></div>
+                </div>
+                <div class="metric-change positive" id="errorRateChange">
+                    <i class="fas fa-arrow-down"></i>
+                    -5% تحسن
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">حالة النظام</span>
+                    <div class="metric-icon languages">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                </div>
+                <div class="metric-value" id="systemStatus">
+                    متصل
+                    <span class="status-indicator status-online"></span>
+                </div>
+                <div class="metric-change" id="systemUptime">
+                    <i class="fas fa-clock"></i>
+                    وقت التشغيل: 99.9%
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">إحصائيات الاستخدام</h3>
+                <div class="time-filter">
+                    <button class="time-btn active" onclick="changeTimeframe('24h')">24 ساعة</button>
+                    <button class="time-btn" onclick="changeTimeframe('7d')">7 أيام</button>
+                    <button class="time-btn" onclick="changeTimeframe('30d')">30 يوم</button>
+                </div>
+            </div>
+            <div class="chart-placeholder" id="usageChart">
+                <i class="fas fa-chart-line" style="margin-left: 0.5rem;"></i>
+                سيتم عرض الرسم البياني هنا
+            </div>
+        </div>
+
+        <!-- Insights Grid -->
+        <div class="insights-grid">
+            <div class="insight-card">
+                <h3 class="insight-title">
+                    <i class="fas fa-language"></i>
+                    توزيع اللغات
+                </h3>
+                <ul class="insight-list" id="languageDistribution">
+                    <li class="insight-item">
+                        <span class="insight-label">العربية</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                    <li class="insight-item">
+                        <span class="insight-label">الإنجليزية</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                    <li class="insight-item">
+                        <span class="insight-label">مختلط</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="insight-card">
+                <h3 class="insight-title">
+                    <i class="fas fa-fire"></i>
+                    المواضيع الشائعة
+                </h3>
+                <ul class="insight-list" id="popularTopics">
+                    <li class="insight-item">
+                        <span class="insight-label">جاري التحميل...</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="insight-card">
+                <h3 class="insight-title">
+                    <i class="fas fa-clock"></i>
+                    النشاط حسب الساعة
+                </h3>
+                <ul class="insight-list" id="hourlyActivity">
+                    <li class="insight-item">
+                        <span class="insight-label">الساعة الأكثر نشاطاً</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                    <li class="insight-item">
+                        <span class="insight-label">الساعة الأقل نشاطاً</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="insight-card">
+                <h3 class="insight-title">
+                    <i class="fas fa-chart-pie"></i>
+                    إحصائيات الأداء
+                </h3>
+                <ul class="insight-list" id="performanceStats">
+                    <li class="insight-item">
+                        <span class="insight-label">الاستجابات السريعة (&lt;1s)</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                    <li class="insight-item">
+                        <span class="insight-label">الاستجابات المتوسطة (1-3s)</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                    <li class="insight-item">
+                        <span class="insight-label">الاستجابات البطيئة (&gt;3s)</span>
+                        <span class="insight-value"><div class="loading"></div></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTimeframe = '24h';
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAnalytics();
+            // Auto-refresh every 30 seconds
+            setInterval(loadAnalytics, 30000);
+        });
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`/api/ai-analytics?timeframe=${currentTimeframe}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateMetrics(data.analytics);
+                } else {
+                    console.error('Failed to load analytics:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        function updateMetrics(analytics) {
+            // Update main metrics
+            document.getElementById('totalMessages').textContent = analytics.overview.total_conversations.toLocaleString();
+            document.getElementById('totalTokens').textContent = (analytics.tokens?.total || 0).toLocaleString();
+            document.getElementById('activeUsers').textContent = analytics.overview.unique_users.toLocaleString();
+            document.getElementById('avgResponseTime').textContent = analytics.overview.avg_response_time + 'ms';
+            document.getElementById('errorRate').textContent = analytics.overview.error_rate + '%';
+
+            // Update language distribution
+            const langList = document.getElementById('languageDistribution');
+            langList.innerHTML = '';
+            Object.entries(analytics.language_trends).forEach(([lang, count]) => {
+                const langName = lang === 'ar' ? 'العربية' : lang === 'en' ? 'الإنجليزية' : 'مختلط';
+                langList.innerHTML += `
+                    <li class="insight-item">
+                        <span class="insight-label">${langName}</span>
+                        <span class="insight-value">${count.toLocaleString()}</span>
+                    </li>
+                `;
+            });
+
+            // Update popular topics
+            const topicsList = document.getElementById('popularTopics');
+            topicsList.innerHTML = '';
+            analytics.popular_topics.slice(0, 5).forEach(topic => {
+                topicsList.innerHTML += `
+                    <li class="insight-item">
+                        <span class="insight-label">${topic.topic}</span>
+                        <span class="insight-value">${topic.frequency}</span>
+                    </li>
+                `;
+            });
+
+            // Update performance stats
+            const perfList = document.getElementById('performanceStats');
+            perfList.innerHTML = '';
+            Object.entries(analytics.performance).forEach(([speed, count]) => {
+                const speedName = speed === 'fast' ? 'سريع (<1s)' : 
+                                 speed === 'medium' ? 'متوسط (1-3s)' : 'بطيء (>3s)';
+                perfList.innerHTML += `
+                    <li class="insight-item">
+                        <span class="insight-label">${speedName}</span>
+                        <span class="insight-value">${count.toLocaleString()}</span>
+                    </li>
+                `;
+            });
+
+            // Update hourly activity
+            const hourlyList = document.getElementById('hourlyActivity');
+            const hourlyData = analytics.user_behavior.hourly_activity || {};
+            const maxHour = Object.keys(hourlyData).reduce((a, b) => hourlyData[a] > hourlyData[b] ? a : b, '0');
+            const minHour = Object.keys(hourlyData).reduce((a, b) => hourlyData[a] < hourlyData[b] ? a : b, '0');
+            
+            hourlyList.innerHTML = `
+                <li class="insight-item">
+                    <span class="insight-label">الساعة الأكثر نشاطاً</span>
+                    <span class="insight-value">${maxHour}:00 (${hourlyData[maxHour] || 0})</span>
+                </li>
+                <li class="insight-item">
+                    <span class="insight-label">الساعة الأقل نشاطاً</span>
+                    <span class="insight-value">${minHour}:00 (${hourlyData[minHour] || 0})</span>
+                </li>
+            `;
+        }
+
+        function changeTimeframe(timeframe) {
+            currentTimeframe = timeframe;
+            
+            // Update active button
+            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Reload data
+            loadAnalytics();
+        }
+
+        function refreshData() {
+            const btn = document.querySelector('.refresh-btn i');
+            btn.style.animation = 'spin 1s linear infinite';
+            
+            loadAnalytics().then(() => {
+                setTimeout(() => {
+                    btn.style.animation = '';
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+</html>

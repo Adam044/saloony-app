@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>نوڤا - مساعد الجمال الذكي</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/favicon-32x32.png">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#06C167">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="صالوني">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #06C167;
+            --primary-dark: #05A855;
+            --secondary-color: #FF6B6B;
+            --neon-cyan: #00ffff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff00;
+            --neon-blue: #0080ff;
+            --background-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            --chat-bg: #ffffff;
+            --user-message: #06C167;
+            --ai-message: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--background-gradient);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            direction: rtl;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Header */
+        .chat-header {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1) 0%, rgba(0, 128, 255, 0.1) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 0.75rem;
+            border-radius: 50%;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-btn:hover {
+            background: rgba(6, 193, 103, 0.1);
+            color: var(--primary-color);
+            transform: scale(1.05);
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .ai-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 10px rgba(6, 193, 103, 0.3);
+            animation: avatarGlow 3s ease-in-out infinite alternate;
+            overflow: hidden;
+            background: var(--primary-color);
+        }
+
+        .ai-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        @keyframes avatarGlow {
+            from {
+                box-shadow: 0 0 10px rgba(6, 193, 103, 0.3);
+            }
+            to {
+                box-shadow: 0 0 15px rgba(6, 193, 103, 0.5);
+            }
+        }
+
+        .header-text h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--neon-cyan);
+            margin-bottom: 0.125rem;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+            animation: subtleGlow 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes subtleGlow {
+            from {
+                text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+            }
+            to {
+                text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+            }
+        }
+
+        .header-text p {
+            font-size: 0.875rem;
+            color: var(--neon-blue);
+            text-shadow: 0 0 5px rgba(0, 128, 255, 0.5);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 50%;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            background: var(--ai-message);
+            color: var(--text-primary);
+            transform: scale(1.05);
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            background: var(--chat-bg);
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            box-shadow: var(--shadow-heavy);
+            overflow: hidden;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            /* CRITICAL FIX: Ensure smooth scroll is enabled */
+            scroll-behavior: smooth; 
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 0;
+        }
+
+        /* Messages */
+        .message {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.75rem;
+            animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+            align-self: flex-end;
+        }
+
+        .message.ai {
+            align-self: flex-start;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, var(--secondary-color), #ff5252);
+            color: white;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 0.875rem 1.125rem;
+            border-radius: var(--border-radius);
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+            position: relative;
+        }
+        
+        /* Highlight strong text for AI responses (Structured Output) */
+        .message.ai .message-content strong {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .message.user .message-content {
+            background: var(--user-message);
+            color: white;
+            border-bottom-left-radius: 6px;
+        }
+
+        .message.ai .message-content {
+            background: var(--ai-message);
+            color: var(--text-primary);
+            border-bottom-right-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Error state for AI messages */
+        .message.ai .message-content.error {
+            background: #fef2f2;
+            color: #b91c1c;
+            border-color: #fca5a5;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.25rem;
+            text-align: center;
+        }
+
+        .message.ai .message-time {
+            color: var(--text-secondary);
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 0;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: var(--transition);
+        }
+
+        .typing-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.75rem 1rem;
+            background: var(--ai-message);
+            border-radius: var(--border-radius);
+            border-bottom-right-radius: 6px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: typingPulse 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingPulse {
+            0%, 60%, 100% { transform: scale(1); opacity: 0.5; }
+            30% { transform: scale(1.2); opacity: 1; }
+        }
+
+        /* Input Area */
+        .input-container {
+            padding: 1.5rem;
+            background: var(--chat-bg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.75rem;
+            background: var(--ai-message);
+            border-radius: 24px;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.1);
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            max-height: 120px;
+            min-height: 24px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            /* CRITICAL FIX: Default text alignment for LTR text in RTL context */
+            text-align: right; 
+        }
+
+        .message-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Dynamic Send Button Styling */
+        .send-btn-wrapper {
+            width: 40px;
+            height: 40px;
+            transition: opacity 0.2s, transform 0.2s;
+            position: relative;
+        }
+        
+        .action-icon {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: var(--primary-color);
+            border: none;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            color: white;
+            font-size: 1.125rem;
+        }
+        
+        .action-icon:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .action-icon:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Quick Replies */
+        .quick-replies {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0 1.5rem 1rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .quick-replies::-webkit-scrollbar {
+            display: none;
+        }
+
+        .quick-reply {
+            background: var(--ai-message);
+            border: 2px solid var(--neon-blue);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            color: var(--text-primary);
+            font-weight: 500;
+            box-shadow: 0 0 10px rgba(0, 128, 255, 0.3);
+        }
+
+        .quick-reply:hover {
+            background: var(--neon-blue);
+            color: white;
+            border-color: var(--neon-cyan);
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 30px rgba(0, 128, 255, 0.4);
+        }
+
+        /* Welcome Message */
+        .welcome-message {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .welcome-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .welcome-message h2 {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .welcome-message p {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        
+        /* Toast Notification (Non-blocking alert replacement) */
+        #toast-container {
+            position: fixed;
+            top: calc(1rem + 80px); /* Below the header */
+            right: 1.5rem;
+            left: 1.5rem;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+        
+        .app-toast {
+            max-width: 400px;
+            background: #b91c1c; /* red-700 */
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-medium);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.4s ease-out;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-align: right;
+        }
+        
+        .app-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .chat-container {
+                border-radius: 0;
+                height: 100vh;
+            }
+
+            .header-content {
+                padding: 0;
+            }
+
+            .messages-container {
+                padding: 1rem;
+            }
+
+            .input-container {
+                padding: 1rem;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+            
+            #toast-container {
+                right: 0.5rem;
+                left: 0.5rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                --chat-bg: #1e293b;
+                --ai-message: #334155;
+                --text-primary: #f8fafc;
+                --text-secondary: #94a3b8;
+                --border-color: #475569;
+            }
+        }
+
+        /* Salon Cards styles unchanged */
+        .salon-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .salon-cards-container {
+                grid-template-columns: 1fr;
+                max-width: 100%;
+            }
+        }
+
+        .salon-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-medium);
+            overflow: hidden;
+            transition: var(--transition);
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: row;
+            min-height: 140px;
+        }
+
+        .salon-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+            border-color: var(--neon-blue);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .salon-card {
+                background: var(--chat-bg);
+                border-color: var(--border-color);
+            }
+        }
+
+        .salon-card-image {
+            width: 120px;
+            height: 140px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .salon-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .salon-card-content {
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .salon-card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .salon-card-title {
+                color: var(--text-primary);
+            }
+        }
+
+        .salon-card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .salon-card-info span {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .salon-card-rating {
+            color: #fbbf24;
+            font-weight: 500;
+        }
+
+        .salon-card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .salon-card-btn {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .salon-card-btn.primary {
+            background: var(--neon-blue);
+            color: white;
+        }
+
+        .salon-card-btn.primary:hover {
+            background: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
+
+        .salon-card-btn.secondary {
+            background: var(--ai-message);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .salon-card-btn.secondary:hover {
+            background: var(--neon-blue);
+            color: white;
+            border-color: var(--neon-blue);
+        }
+
+        /* Salon Modal styles unchanged */
+        .salon-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        .salon-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .salon-modal-content {
+            background: white;
+            border-radius: var(--border-radius);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            transform: scale(0.9);
+            transition: var(--transition);
+            color: #1e293b !important;
+        }
+
+        .salon-modal.show .salon-modal-content {
+            transform: scale(1);
+        }
+
+        .salon-modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .salon-modal-header h3 {
+            color: #1e293b !important;
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .salon-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .salon-modal-close:hover {
+            background: var(--ai-message);
+            color: var(--text-primary);
+        }
+
+        .salon-modal-body {
+            padding: 1.5rem;
+        }
+
+        .salon-modal-body h4 {
+            color: #1e293b !important;
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .salon-services-list {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .salon-service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--ai-message);
+            border-radius: 8px;
+        }
+
+        .salon-service-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .salon-service-price {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-medium);
+            overflow: hidden;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: row;
+            min-height: 140px;
+        }
+
+        .skeleton-image {
+            width: 120px;
+            height: 140px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            flex-shrink: 0;
+        }
+
+        .skeleton-content {
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .skeleton-title {
+            height: 20px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            width: 70%;
+        }
+
+        .skeleton-text {
+            height: 16px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+            margin-bottom: 0.25rem;
+        }
+
+        .skeleton-text.short { width: 50%; }
+        .skeleton-text.medium { width: 80%; }
+
+        .skeleton-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .skeleton-button {
+            flex: 1;
+            height: 36px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Toast Notification Container (Above all content) -->
+    <div id="toast-container"></div>
+    
+    <!-- Header -->
+    <header class="chat-header">
+        <div class="header-content">
+            <button class="back-btn" onclick="goBack()" aria-label="العودة">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            
+            <div class="header-info">
+                <div class="ai-avatar">
+                    <img src="/images/Saloony_logo.png" alt="صالوني" style="width: 36px; height: 36px; object-fit: contain;">
+                </div>
+                <div class="header-text">
+                    <h1>نوڤا</h1>
+                    <p id="status-text">مساعد الجمال الذكي</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="action-btn" onclick="clearChat()" aria-label="مسح المحادثة" title="مسح المحادثة">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <button class="action-btn" onclick="toggleLanguage()" aria-label="تغيير اللغة" title="تغيير اللغة">
+                    <i class="fas fa-language"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <!-- Messages Area -->
+        <div class="messages-container" id="messagesContainer">
+            <!-- Welcome Message -->
+            <div class="welcome-message" id="welcomeMessage">
+                <div class="welcome-icon">
+                    <i class="fas fa-sparkles"></i>
+                </div>
+                <h2>مرحباً بك! 😊</h2>
+                <p>أنا نوڤا، مساعد الجمال الذكي. أسعد بمساعدتك في كل ما يخص الجمال والعناية. كيف يمكنني مساعدتك اليوم؟</p>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-avatar">
+                    <img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">
+                </div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Replies -->
+        <div class="quick-replies" id="quickReplies">
+            <button class="quick-reply" onclick="sendQuickReply('أريد قصة شعر جديدة')">قصة شعر جديدة</button>
+            <button class="quick-reply" onclick="sendQuickReply('نصائح للعناية بالبشرة')">العناية بالبشرة</button>
+            <button class="quick-reply" onclick="sendQuickReply('أريد حجز موعد')">حجز موعد</button>
+            <button class="quick-reply" onclick="sendQuickReply('ألوان مناسبة لي')">ألوان مناسبة</button>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    class="message-input" 
+                    id="messageInput" 
+                    placeholder="اكتب رسالتك هنا..."
+                    rows="1"
+                    maxlength="1000"
+                    oninput="handleDirectionChange(this); updateSendButton(this);"
+                ></textarea>
+                
+                <!-- Dynamic Send Button Wrapper -->
+                <div class="send-btn-wrapper">
+                    <button class="action-icon" id="sendBtn" onclick="sendMessage()" aria-label="إرسال">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <button class="action-icon" id="micBtn" onclick="simulateVoiceInput()" aria-label="إدخال صوتي" style="opacity: 1; transform: scale(1);">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Salon Modal -->
+    <div class="salon-modal" id="salonModal">
+        <div class="salon-modal-content">
+            <div class="salon-modal-header">
+                <h3 id="salonModalTitle">تفاصيل الصالون</h3>
+                <button class="salon-modal-close" onclick="closeSalonModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="salon-modal-body" id="salonModalBody">
+                <!-- Salon details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = {};
+        let conversationHistory = [];
+        let isTyping = false;
+        let currentLanguage = 'ar';
+        let shownSalons = new Set(); // Track shown salon IDs to prevent duplicates
+        
+        // === Global Functions (accessible by inline event handlers) ===
+        
+        // Dynamic Send Button Function
+        function updateSendButton(textarea) {
+            const sendBtn = document.getElementById('sendBtn');
+            const micBtn = document.getElementById('micBtn');
+            
+            if (!sendBtn || !micBtn) return; // Safety check
+            
+            const text = textarea.value.trim();
+            if (text.length > 0) {
+                // Show Send
+                sendBtn.style.opacity = '1';
+                sendBtn.style.transform = 'scale(1)';
+                micBtn.style.opacity = '0';
+                micBtn.style.transform = 'scale(0)';
+                sendBtn.disabled = false;
+            } else {
+                // Show Mic
+                sendBtn.style.opacity = '0';
+                sendBtn.style.transform = 'scale(0)';
+                micBtn.style.opacity = '1';
+                micBtn.style.transform = 'scale(1)';
+                sendBtn.disabled = true;
+            }
+        }
+        
+        // Simulates a future voice input feature
+        function simulateVoiceInput() {
+            showToast('الإدخال الصوتي غير متاح حالياً. يرجى الكتابة.', false);
+        }
+        
+        // Send message function (global scope)
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value;
+            
+            // Validate input first
+            try {
+                const validatedMessage = validateInput(message);
+                
+                if (isTyping) {
+                    showInputError('انتظر حتى ينتهي نوڤا من الرد...');
+                    return;
+                }
+
+                // Add user message to chat
+                addMessage(validatedMessage, 'user');
+                messageInput.value = '';
+                updateSendButton(messageInput);
+                
+                // Show typing indicator
+                isTyping = true;
+                showTypingIndicator();
+
+                // Send to AI
+                const userId = currentUser?.userId || currentUser?.id || currentUser?.user_id;
+                console.log('Current user for AI:', currentUser, 'Using ID:', userId);
+                
+                const response = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: validatedMessage,
+                        user_id: userId || 'anonymous',
+                        context: {
+                            conversation_history: conversationHistory.slice(-6)
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Hide typing indicator
+                hideTypingIndicator();
+                isTyping = false;
+
+                if (data.success) {
+                    addMessage(data.response, 'ai');
+                    conversationHistory.push({
+                        user: validatedMessage,
+                        ai: data.response,
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    addMessage(data.fallback_response || 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.', 'ai', true);
+                }
+
+            } catch (error) {
+                console.error('Send message error:', error);
+                hideTypingIndicator();
+                isTyping = false;
+                
+                if (error.message.includes('طويلة جداً')) {
+                    showInputError('الرسالة طويلة جداً. يرجى تقصيرها.');
+                } else if (error.message.includes('فارغة')) {
+                    showInputError('يرجى كتابة رسالة قبل الإرسال.');
+                } else if (error.message.includes('غير صالحة')) {
+                    showInputError('الرسالة تحتوي على محتوى غير صالح.');
+                } else if (isTyping) {
+                    showInputError('انتظر حتى ينتهي نوڤا من الرد...');
+                } else {
+                    addMessage('عذراً، حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.', 'ai', true);
+                }
+            }
+        }
+        
+        // --- UTILITY: Non-blocking Toast Function (Replaced alert) ---
+        function showToast(message, isSuccess = false) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = 'app-toast';
+            toast.textContent = message;
+            
+            if (isSuccess) {
+                 toast.style.backgroundColor = '#10b981'; // green-600
+                 toast.style.borderColor = '#34d399'; // green-400
+            } else {
+                 toast.style.backgroundColor = '#b91c1c'; // red-700
+                 toast.style.borderColor = '#f87171'; // red-400
+            }
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => container.removeChild(toast), 400);
+            }, 4000);
+        }
+        
+        // --- UX: Adaptive Input Direction (RTL/LTR FIX) ---
+        function handleDirectionChange(textarea) {
+            const text = textarea.value.trim();
+            if (text.length === 0) {
+                // Default to RTL when empty
+                textarea.style.textAlign = 'right';
+                textarea.dir = 'rtl';
+                return;
+            }
+
+            // Check the first non-space character
+            const firstChar = text.match(/[a-zA-Z\u0600-\u06FF]/);
+            if (firstChar) {
+                const charCode = firstChar[0].charCodeAt(0);
+                // Check if it's an Arabic character
+                const isArabic = charCode >= 0x0600 && charCode <= 0x06FF;
+
+                if (isArabic) {
+                    textarea.style.textAlign = 'right';
+                    textarea.dir = 'rtl';
+                } else {
+                    // Treat English and numbers as LTR
+                    textarea.style.textAlign = 'left';
+                    textarea.dir = 'ltr';
+                }
+            }
+        }
+        
+        // --- UX: Auto Scroll Fix ---
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            // FIX: Using requestAnimationFrame + setTimeout to ensure DOM render before scroll
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }, 50); 
+            });
+        }
+
+
+        // Initialize the chat
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChat();
+            setupEventListeners();
+            loadUserData();
+            
+            updateSendButton(document.getElementById('messageInput'));
+        });
+
+        // Initialize chat functionality
+        function initializeChat() {
+            const messageInput = document.getElementById('messageInput');
+            
+            // Auto-resize textarea
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            // Send on Enter (but not Shift+Enter)
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (this.value.trim() && !isTyping) {
+                        sendMessage();
+                    }
+                }
+            });
+            
+            messageInput.dir = 'rtl';
+            messageInput.style.textAlign = 'right';
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    updateStatus('مستشار الجمال الذكي');
+                }
+            });
+
+            window.addEventListener('online', () => updateStatus('متصل'));
+            window.addEventListener('offline', () => updateStatus('غير متصل'));
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                let userData = localStorage.getItem('salonni_user') || localStorage.getItem('currentUser');
+                if (userData) {
+                    currentUser = JSON.parse(userData);
+                    currentUser.userId = currentUser.userId || currentUser.id || currentUser.user_id;
+                    updateWelcomeMessage();
+                }
+                
+                // CRITICAL FIX: Set initial language based on preference or default
+                const savedLang = localStorage.getItem('chat_language');
+                if (savedLang) {
+                    currentLanguage = savedLang;
+                    toggleLanguage(false); // Apply saved language without toggling (pass false to prevent saving/toggling state)
+                }
+                
+            } catch (error) {
+                console.warn('Failed to load user data:', error);
+            }
+        }
+
+        // Update welcome message with user info
+        function updateWelcomeMessage() {
+            if (currentUser && currentUser.name) {
+                const welcomeMessage = document.getElementById('welcomeMessage');
+                const userName = currentUser.name;
+                welcomeMessage.querySelector('h2').textContent = `مرحباً ${userName}! 😊`;
+            }
+        }
+
+        // Send message function
+        // Input validation and security
+        function validateInput(message) {
+            if (!message || typeof message !== 'string') {
+                throw new Error('Invalid message format');
+            }
+
+            message = message.trim();
+
+            if (message.length === 0) {
+                throw new Error('Message cannot be empty');
+            }
+
+            if (message.length > 1000) {
+                throw new Error('Message too long. Please keep it under 1000 characters.');
+            }
+
+            // Check for suspicious patterns
+            const suspiciousPatterns = [
+                /<script/i,
+                /javascript:/i,
+                /on\w+\s*=/i,
+                /eval\s*\(/i,
+                /document\./i,
+                /window\./i
+            ];
+
+            for (const pattern of suspiciousPatterns) {
+                if (pattern.test(message)) {
+                    throw new Error('Invalid characters detected');
+                }
+            }
+
+            return message.replace(/\s+/g, ' ').trim();
+        }
+
+        function showInputError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'input-error';
+            errorDiv.textContent = message;
+            errorDiv.style.cssText = `
+                background: #fee;
+                color: #c33;
+                padding: 0.5rem;
+                border-radius: 8px;
+                margin: 0.5rem 0;
+                font-size: 0.875rem;
+                border: 1px solid #fcc;
+            `;
+            
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.appendChild(errorDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, 5000);
+            
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Add message to chat
+        function addMessage(content, sender, isError = false) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('ar-SA', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+
+            const avatarContent = sender === 'user' 
+                ? '<i class="fas fa-user"></i>' 
+                : '<img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">';
+
+            // Convert markdown ** to HTML <strong> and remove salon markers
+            let processedContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\[SHOW_SALON:.*?\]\s*/g, '')
+                .replace(/\[SHOW_ALL_SALONS\]\s*/g, '');
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    ${avatarContent}
+                </div>
+                <div class="message-content ${isError ? 'error' : ''}">
+                    ${processedContent}
+                    <div class="message-time">${timeString}</div>
+                </div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+            
+            // Check if this is an AI response about salons and trigger cards
+            if (sender === 'ai' && !isError) {
+                let shouldShowCards = false;
+                let specificSalon = null;
+                
+                // Check for specific salon request marker
+                const salonMatch = content.match(/\[SHOW_SALON:(.*?)\]/);
+                if (salonMatch) {
+                    shouldShowCards = true;
+                    specificSalon = salonMatch[1];
+                }
+                // Check for all salons request marker
+                else if (content.includes('[SHOW_ALL_SALONS]')) {
+                    shouldShowCards = true;
+                }
+                
+                if (shouldShowCards) {
+                     // Add salon cards after a short delay
+                     setTimeout(async () => {
+                         try {
+                             let salons = await fetchSalonsForUser();
+                             
+                             // Filter for specific salon if requested
+                             if (specificSalon && salons && salons.length > 0) {
+                                 salons = salons.filter(salon => 
+                                     salon.salon_name === specificSalon ||
+                                     salon.salon_name.includes(specificSalon) ||
+                                     specificSalon.includes(salon.salon_name)
+                                 );
+                             }
+                             
+                             if (salons && salons.length > 0) {
+                                 const cardsHtml = await displaySalonCards(salons);
+                                 const cardsDiv = document.createElement('div');
+                                 cardsDiv.className = 'message ai';
+                                 cardsDiv.innerHTML = `
+                                     <div class="message-avatar">
+                                         <img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">
+                                     </div>
+                                     <div class="message-content">
+                                         ${cardsHtml}
+                                     </div>
+                                 `;
+                                 messagesContainer.appendChild(cardsDiv);
+                                 scrollToBottom();
+                             }
+                         } catch (error) {
+                             console.error('Error displaying salon cards:', error);
+                         }
+                     }, 1000);
+                 }
+             }
+            
+            conversationHistory.push({
+                content: content,
+                sender: sender,
+                timestamp: now.toISOString()
+            });
+
+            scrollToBottom();
+        }
+
+        // Quick reply functions
+        function sendQuickReply(message) {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = message;
+            sendMessage();
+        }
+
+        function showContextualQuickReplies(aiResponse) {
+            const quickReplies = document.getElementById('quickReplies');
+            const lowerResponse = aiResponse.toLowerCase();
+            
+            let replies = [];
+            
+            // Smart suggestions based on AI response content
+            if (lowerResponse.includes('صالونات') || lowerResponse.includes('الصالونات')) {
+                replies = ['أريد حجز موعد', 'ما الأسعار؟', 'أين الموقع؟'];
+            } else if (lowerResponse.includes('شعر') || lowerResponse.includes('قصة') || lowerResponse.includes('قصات')) {
+                replies = ['أريد رؤية أمثلة', 'ما الأنسب لوجهي؟', 'شو في صالونات'];
+            } else if (lowerResponse.includes('بشرة') || lowerResponse.includes('عناية')) {
+                replies = ['مشاكل البشرة', 'روتين يومي', 'منتجات مناسبة'];
+            } else if (lowerResponse.includes('منتجات') || lowerResponse.includes('كريم') || lowerResponse.includes('شامبو')) {
+                replies = ['أين أجدها؟', 'كم السعر؟', 'بدائل أخرى'];
+            } else if (lowerResponse.includes('نصائح') || lowerResponse.includes('أنصحك')) {
+                replies = ['شكراً', 'معلومات أكثر', 'شو في صالونات'];
+            } else {
+                // Default suggestions
+                replies = ['أريد رؤية أمثلة', 'ما الأنسب لوجهي؟', 'شو في صالونات'];
+            }
+
+            quickReplies.innerHTML = replies.map(reply => 
+                `<button class="quick-reply" onclick="sendQuickReply('${reply}')">${reply}</button>`
+            ).join('');
+            
+            quickReplies.style.display = 'flex';
+            
+            // Auto-hide after 15 seconds
+            setTimeout(() => {
+                quickReplies.style.display = 'none';
+            }, 15000);
+        }
+
+        // UI Helper functions
+        function hideWelcomeMessage() {
+            const welcomeMessage = document.getElementById('welcomeMessage');
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+        }
+
+        function hideQuickReplies() {
+            const quickReplies = document.getElementById('quickReplies');
+            quickReplies.style.display = 'none';
+        }
+
+        function showTypingIndicator() {
+            isTyping = true;
+            const indicator = document.getElementById('typingIndicator');
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            indicator.remove();
+            messagesContainer.appendChild(indicator);
+            
+            indicator.classList.add('show');
+            updateStatus('يكتب...');
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            isTyping = false;
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.remove('show');
+            updateStatus(currentLanguage === 'ar' ? 'مستشار الجمال الذكي' : 'Smart Beauty Consultant');
+        }
+
+        function updateStatus(status) {
+            document.getElementById('status-text').textContent = status;
+        }
+
+        // Action functions
+        function goBack() {
+            const defaultHome = currentUser?.user_type === 'salon' ? '/home_salon.html' : '/home_user.html';
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = defaultHome;
+            }
+        }
+
+        async function clearChat() {
+            if (confirm('هل تريد مسح المحادثة؟')) {
+                try {
+                    const userId = currentUser?.userId || currentUser?.id || currentUser?.user_id;
+                    if (userId) {
+                        await fetch('/api/ai-chat/clear', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: userId })
+                        });
+                    }
+
+                    conversationHistory = [];
+                    
+                    const messagesContainer = document.getElementById('messagesContainer');
+                    messagesContainer.innerHTML = '';
+                    
+                    // Re-add welcome message and typing indicator
+                    const welcomeDiv = document.createElement('div');
+                    welcomeDiv.className = 'welcome-message';
+                    welcomeDiv.id = 'welcomeMessage';
+                    welcomeDiv.innerHTML = `
+                        <div class="welcome-icon"><i class="fas fa-sparkles"></i></div>
+                        <h2>مرحباً بك! 😊</h2>
+                        <p>أنا نوڤا، مساعد الجمال الذكي. أسعد بمساعدتك في كل ما يخص الجمال والعناية. كيف يمكنني مساعدتك اليوم؟</p>
+                    `;
+                    messagesContainer.appendChild(welcomeDiv);
+                    
+                    const typingDiv = document.createElement('div');
+                    typingDiv.className = 'typing-indicator';
+                    typingDiv.id = 'typingIndicator';
+                    typingDiv.innerHTML = `
+                        <div class="message-avatar">
+                            <img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">
+                        </div>
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    `;
+                    messagesContainer.appendChild(typingDiv);
+                    
+                    updateWelcomeMessage();
+                    
+                    const quickReplies = document.getElementById('quickReplies');
+                    quickReplies.innerHTML = `
+                        <button class="quick-reply" onclick="sendQuickReply('أريد قصة شعر جديدة')">قصة شعر جديدة</button>
+                        <button class="quick-reply" onclick="sendQuickReply('نصائح للعناية بالبشرة')">العناية بالبشرة</button>
+                        <button class="quick-reply" onclick="sendQuickReply('أريد حجز موعد')">حجز موعد</button>
+                        <button class="quick-reply" onclick="sendQuickReply('ألوان مناسبة لي')">ألوان مناسبة</button>
+                    `;
+                    quickReplies.style.display = 'flex';
+                    
+                } catch (error) {
+                    console.error('Error clearing chat:', error);
+                }
+            }
+        }
+
+        // --- LANGUAGE TOGGLE FIX ---
+        function toggleLanguage(toggle = true) {
+            const messageInput = document.getElementById('messageInput');
+            
+            if (toggle) {
+                currentLanguage = currentLanguage === 'ar' ? 'en' : 'ar';
+            }
+            
+            // Set base direction and language
+            if (currentLanguage === 'en') {
+                document.documentElement.lang = 'en';
+                document.documentElement.dir = 'ltr';
+                messageInput.placeholder = 'Type your message here...';
+                updateStatus('Smart Beauty Consultant');
+                showToast('Language switched to English', true);
+            } else {
+                document.documentElement.lang = 'ar';
+                document.documentElement.dir = 'rtl';
+                messageInput.placeholder = 'اكتب رسالتك هنا...';
+                updateStatus('مستشار الجمال الذكي');
+                if (toggle) { // Only show toast if explicitly toggled
+                     showToast('تم تحويل اللغة إلى العربية', true);
+                }
+            }
+            
+            // Apply new direction to input field, resetting alignment
+            handleDirectionChange(messageInput);
+            
+            // Save preference locally
+            localStorage.setItem('chat_language', currentLanguage);
+        }
+        // --- END LANGUAGE TOGGLE FIX ---
+
+        function initializeUserData() {
+            try {
+                let userData = localStorage.getItem('salonni_user') || localStorage.getItem('currentUser');
+                if (userData) {
+                    currentUser = JSON.parse(userData);
+                    currentUser.userId = currentUser.userId || currentUser.id || currentUser.user_id;
+                }
+            } catch (error) {
+                console.warn('Failed to load user data:', error);
+            }
+        }
+
+        initializeUserData();
+
+        // Salon Cards Functions
+        function generateSkeletonCards(count = 3) {
+            const skeletonCards = Array(count).fill().map(() => `
+                <div class="salon-card skeleton-card">
+                    <div class="skeleton-image"></div>
+                    <div class="skeleton-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text medium"></div>
+                        <div class="skeleton-text short"></div>
+                        <div class="skeleton-text medium"></div>
+                        <div class="skeleton-buttons">
+                            <div class="skeleton-button"></div>
+                            <div class="skeleton-button"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            return `<div class="salon-cards-container">${skeletonCards}</div>`;
+        }
+
+        async function displaySalonCards(salons) {
+            if (!salons || salons.length === 0) {
+                return '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">لا توجد صالونات متاحة في منطقتك حالياً.</p>';
+            }
+
+            // Filter out already shown salons
+            const newSalons = salons.filter(salon => {
+                const salonId = salon.id || salon.salonId;
+                return !shownSalons.has(salonId);
+            });
+
+            // If no new salons, show a message
+            if (newSalons.length === 0) {
+                return '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">تم عرض جميع الصالونات المتاحة في منطقتك.</p>';
+            }
+
+            // Limit to 3 salons at a time
+            const salonsToShow = newSalons.slice(0, 3);
+            
+            // Add shown salon IDs to the set
+            salonsToShow.forEach(salon => {
+                const salonId = salon.id || salon.salonId;
+                shownSalons.add(salonId);
+            });
+
+            const cardsHtml = salonsToShow.map(salon => `
+                <div class="salon-card">
+                    <div class="salon-card-image">
+                        ${salon.image_url && !salon.image_url.includes('placehold.co') ? 
+                            `<img src="${salon.image_url}" alt="${salon.salon_name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div style="display: none; align-items: center; justify-content: center; width: 100%; height: 100%; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; font-size: 2rem;">
+                                <i class="fas fa-cut"></i>
+                             </div>` :
+                            `<div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; font-size: 2rem;">
+                                <i class="fas fa-cut"></i>
+                             </div>`
+                        }
+                    </div>
+                    <div class="salon-card-content">
+                        <div class="salon-card-title">${salon.salon_name}</div>
+                        <div class="salon-card-info">
+                            <span><i class="fas fa-map-marker-alt"></i> ${salon.city}</span>
+                            <span><i class="fas fa-location-dot"></i> ${salon.address || 'العنوان غير متوفر'}</span>
+                            ${salon.avg_rating && salon.avg_rating > 0 ? 
+                                `<span class="salon-card-rating"><i class="fas fa-star"></i> ${parseFloat(salon.avg_rating).toFixed(1)} (${salon.review_count || 0} تقييم)</span>` :
+                                '<span class="salon-card-rating"><i class="fas fa-star"></i> جديد</span>'
+                            }
+                        </div>
+                        <div class="salon-card-actions">
+                            <button class="salon-card-btn secondary" onclick="showSalonDetails(${salon.id || salon.salonId})">
+                                <i class="fas fa-info-circle"></i> التفاصيل
+                            </button>
+                            <a href="/salon/${salon.id || salon.salonId}" class="salon-card-btn primary">
+                                <i class="fas fa-calendar-check"></i> احجز الآن
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            return `<div class="salon-cards-container">${cardsHtml}</div>`;
+        }
+
+        async function fetchSalonsForUser() {
+            try {
+                const userCity = currentUser?.city || 'رام الله';
+                const userGender = currentUser?.gender || 'male';
+                
+                const response = await fetch(`/api/discovery/${encodeURIComponent(userCity)}/${userGender}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const allSalons = [
+                        ...(data.citySalons || []),
+                        ...(data.featuredSalons || [])
+                    ];
+                    
+                    const uniqueSalons = allSalons.filter((salon, index, self) => 
+                        index === self.findIndex(s => (s.id || s.salonId) === (salon.id || salon.salonId))
+                    );
+                    
+                    return uniqueSalons;
+                } else {
+                    console.warn('Failed to fetch salons:', response.status);
+                    return [];
+                }
+            } catch (error) {
+                console.error('Error fetching salons:', error);
+                return [];
+            }
+        }
+
+        async function showSalonDetails(salonId) {
+            if (!salonId) return;
+
+            try {
+                const response = await fetch(`/api/salon/details/${salonId}`);
+                if (!response.ok) throw new Error('Failed to fetch salon details');
+                
+                const data = await response.json();
+                if (!data.success) throw new Error('Salon not found');
+                
+                const salon = data.salon;
+                
+                const servicesResponse = await fetch(`/api/salons/${salonId}/services`);
+                const servicesData = servicesResponse.ok ? await servicesResponse.json() : { services: [] };
+                
+                const modalTitle = document.getElementById('salonModalTitle');
+                const modalBody = document.getElementById('salonModalBody');
+                
+                modalTitle.textContent = salon.salon_name;
+                
+                const servicesHtml = servicesData.services && servicesData.services.length > 0 ?
+                    `<div class="salon-services-list">
+                        ${servicesData.services.map(service => `
+                            <div class="salon-service-item">
+                                <span class="salon-service-name">${service.name_ar}</span>
+                                <span class="salon-service-price">${service.price ? parseFloat(service.price).toFixed(0) + ' ₪' : 'السعر عند الاستفسار'}</span>
+                            </div>
+                        `).join('')}
+                    </div>` :
+                    '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">لا توجد خدمات محددة</p>';
+                
+                modalBody.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">معلومات الصالون</h4>
+                        <p style="color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fas fa-location-dot"></i> ${salon.address || 'العنوان غير متوفر'}</p>
+                        ${salon.salon_phone ? `<p style="color: var(--text-secondary); margin-bottom: 0.5rem;"><i class="fas fa-phone"></i> ${salon.salon_phone}</p>` : ''}
+                        ${salon.avg_rating && salon.avg_rating > 0 ? `<p style="color: #fbbf24; margin-bottom: 1rem;"><i class="fas fa-star"></i> ${parseFloat(salon.avg_rating).toFixed(1)} (${salon.review_count || 0} تقييم)</p>` : ''}
+                    </div>
+                    
+                    <div>
+                        <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">الخدمات المتاحة</h4>
+                        ${servicesHtml}
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <a href="/salon/${salonId}" class="salon-card-btn primary" style="display: inline-block; padding: 0.75rem 2rem;">
+                            <i class="fas fa-calendar-check"></i> احجز موعد الآن
+                        </a>
+                    </div>
+                `;
+                
+                document.getElementById('salonModal').classList.add('show');
+                
+            } catch (error) {
+                console.error('Error showing salon details:', error);
+                showToast('عذراً، حدث خطأ في تحميل تفاصيل الصالون', false);
+            }
+        }
+
+        function closeSalonModal() {
+            document.getElementById('salonModal').classList.remove('show');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('salonModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSalonModal();
+            }
+        });
+    </script>
+</body>
+</html>
