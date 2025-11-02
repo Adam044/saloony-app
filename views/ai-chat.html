@@ -2071,6 +2071,9 @@
         }
 
         function showContextualQuickReplies(aiResponse) {
+            // Quick replies disabled - function disabled to prevent overlap with AI responses
+            return; // Early return to disable all quick reply functionality
+            
             const quickReplies = document.getElementById('quickReplies');
             const lowerResponse = aiResponse.toLowerCase();
             
@@ -2215,14 +2218,15 @@
                     
                     updateWelcomeMessage();
                     
-                    const quickReplies = document.getElementById('quickReplies');
-                    quickReplies.innerHTML = `
-                        <button class="quick-reply" onclick="sendQuickReply('أريد قصة شعر جديدة')">قصة شعر جديدة</button>
-                        <button class="quick-reply" onclick="sendQuickReply('نصائح للعناية بالبشرة')">العناية بالبشرة</button>
-                        <button class="quick-reply" onclick="sendQuickReply('أريد حجز موعد')">حجز موعد</button>
-                        <button class="quick-reply" onclick="sendQuickReply('ألوان مناسبة لي')">ألوان مناسبة</button>
-                    `;
-                    quickReplies.style.display = 'flex';
+                    // Quick replies disabled - commented out to prevent overlap with AI responses
+                    // const quickReplies = document.getElementById('quickReplies');
+                    // quickReplies.innerHTML = `
+                    //     <button class="quick-reply" onclick="sendQuickReply('أريد قصة شعر جديدة')">قصة شعر جديدة</button>
+                    //     <button class="quick-reply" onclick="sendQuickReply('نصائح للعناية بالبشرة')">العناية بالبشرة</button>
+                    //     <button class="quick-reply" onclick="sendQuickReply('أريد حجز موعد')">حجز موعد</button>
+                    //     <button class="quick-reply" onclick="sendQuickReply('ألوان مناسبة لي')">ألوان مناسبة</button>
+                    // `;
+                    // quickReplies.style.display = 'flex';
                     
                 } catch (error) {
                     console.error('Error clearing chat:', error);
@@ -2230,8 +2234,11 @@
             }
         }
 
-        // --- DYNAMIC SUGGESTIONS SYSTEM ---
+        // --- DYNAMIC SUGGESTIONS SYSTEM --- (DISABLED)
         function updateDynamicSuggestions(aiResponse, userMessage) {
+            // Quick replies disabled - function disabled to prevent overlap with AI responses
+            return; // Early return to disable all quick reply functionality
+            
             const quickReplies = document.getElementById('quickReplies');
             if (!quickReplies) return;
             
