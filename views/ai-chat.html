@@ -603,7 +603,7 @@
             transform: scale(1.05);
         }
 
-        /* Initial state - show send button by default, hide microphone */
+        /* Initial state - show send button by default, show microphone */
         #sendBtn {
             opacity: 1;
             transform: scale(1);
@@ -611,10 +611,12 @@
         }
 
         #micBtn {
-            opacity: 0;
-            transform: scale(0);
-            pointer-events: none;
-            display: none; /* Temporarily hidden */
+            opacity: 1; /* Changed from 0 to 1 to make visible */
+            transform: scale(1); /* Changed from scale(0) to scale(1) */
+            pointer-events: auto; /* Changed from none to auto */
+            position: absolute; /* Ensure same positioning as sendBtn */
+            top: 0;
+            left: 0;
         }
 
         /* Quick Replies - Smooth Integration */
@@ -625,7 +627,7 @@
             scrollbar-width: none;
             -ms-overflow-style: none;
             position: fixed;
-            bottom: 60px;
+            bottom: 80px; /* Increased from 60px for better mobile spacing */
             left: 0;
             right: 0;
             z-index: 99;
@@ -783,7 +785,7 @@
             }
 
             .quick-replies {
-                bottom: 70px; /* Adjust for mobile input height */
+                bottom: 90px; /* Increased for mobile input height + safe area */
                 padding: 0.5rem 0.75rem;
             }
 
