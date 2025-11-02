@@ -68,6 +68,7 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             padding: 1rem 1.5rem;
+            padding-top: calc(1rem + env(safe-area-inset-top));
             box-shadow: 0 4px 20px rgba(0, 255, 255, 0.2);
             position: sticky;
             top: 0;
@@ -353,6 +354,7 @@
         /* Input Area */
         .input-container {
             padding: 1.5rem;
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
             background: var(--chat-bg);
             border-top: 1px solid var(--border-color);
         }
@@ -1247,6 +1249,19 @@
                     updateWelcomeMessage();
                 }
                 
+                // Load conversation history from localStorage
+                const savedConversation = localStorage.getItem('ai_conversation_history');
+                if (savedConversation) {
+                    try {
+                        conversationHistory = JSON.parse(savedConversation);
+                        // Restore conversation in UI
+                        restoreConversationUI();
+                    } catch (error) {
+                        console.warn('Failed to parse saved conversation:', error);
+                        conversationHistory = [];
+                    }
+                }
+                
                 // CRITICAL FIX: Set initial language based on preference or default
                 const savedLang = localStorage.getItem('chat_language');
                 if (savedLang) {
@@ -1424,6 +1439,59 @@
                 timestamp: now.toISOString()
             });
 
+            // Save conversation to localStorage
+            saveConversationToStorage();
+
+            scrollToBottom();
+        }
+
+        // Save conversation to localStorage
+        function saveConversationToStorage() {
+            try {
+                localStorage.setItem('ai_conversation_history', JSON.stringify(conversationHistory));
+            } catch (error) {
+                console.warn('Failed to save conversation:', error);
+            }
+        }
+
+        // Restore conversation UI from saved history
+        function restoreConversationUI() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.innerHTML = ''; // Clear existing messages
+            
+            conversationHistory.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.sender}`;
+                
+                const timestamp = new Date(msg.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ar-SA', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+
+                const avatarContent = msg.sender === 'user' 
+                    ? '<i class="fas fa-user"></i>' 
+                    : '<img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">';
+
+                // Process content (same as addMessage)
+                let processedContent = msg.content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\[SHOW_SALON:.*?\]\s*/g, '')
+                    .replace(/\[SHOW_ALL_SALONS\]\s*/g, '');
+
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">
+                        ${avatarContent}
+                    </div>
+                    <div class="message-content">
+                        ${processedContent}
+                        <div class="message-time">${timeString}</div>
+                    </div>
+                `;
+
+                messagesContainer.appendChild(messageDiv);
+            });
+            
             scrollToBottom();
         }
 
@@ -1507,7 +1575,7 @@
 
         // Action functions
         function goBack() {
-            const defaultHome = currentUser?.user_type === 'salon' ? '/home_salon.html' : '/home_user.html';
+            const defaultHome = currentUser?.user_type === 'salon' ? '/home_salon.html' : '/home_user.html?view=home';
             if (window.history.length > 1) {
                 window.history.back();
             } else {
@@ -1528,6 +1596,9 @@
                     }
 
                     conversationHistory = [];
+                    
+                    // Clear conversation from localStorage
+                    localStorage.removeItem('ai_conversation_history');
                     
                     const messagesContainer = document.getElementById('messagesContainer');
                     messagesContainer.innerHTML = '';

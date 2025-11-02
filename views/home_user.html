@@ -827,9 +827,12 @@
         <i class="fas fa-calendar-alt text-xl"></i>
         <span class="text-xs font-medium mt-1">مواعيدي</span>
     </button>
-    <button id="nav-ai-chat" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" onclick="openAIChat()">
-        <i class="fas fa-robot text-xl"></i>
-        <span class="text-xs font-medium mt-1">مساعد الجمال</span>
+    <button id="nav-ai-chat" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-green-600 hover:bg-green-50" onclick="openAIChat()">
+        <div class="relative">
+            <i class="fas fa-brain text-xl text-green-600"></i>
+            <div class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        </div>
+        <span class="text-xs font-medium mt-1">نوڤا AI</span>
     </button>
     <button id="nav-favorites" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
         <i class="fas fa-heart text-xl"></i>
@@ -3262,14 +3265,37 @@ function initializeEventListeners() {
 
 // AI Chat Navigation Function
 function openAIChat() {
-    // Add fade out animation
-    document.body.style.opacity = '0.7';
-    document.body.style.transition = 'opacity 0.3s ease';
+    // Create modern loading overlay
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.innerHTML = `
+        <div class="fixed inset-0 bg-gradient-to-br from-green-50 to-blue-50 z-50 flex items-center justify-center">
+            <div class="text-center">
+                <div class="relative mb-6">
+                    <div class="w-16 h-16 border-4 border-green-200 rounded-full animate-spin border-t-green-600 mx-auto"></div>
+                    <div class="absolute inset-0 w-16 h-16 border-4 border-transparent rounded-full animate-ping border-t-green-400 mx-auto"></div>
+                </div>
+                <div class="text-green-700 font-medium text-lg mb-2">جاري تحميل نوڤا...</div>
+                <div class="text-green-600 text-sm">مساعد الجمال الذكي</div>
+                <div class="flex justify-center mt-4 space-x-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+            </div>
+        </div>
+    `;
     
-    // Navigate to AI chat page
+    document.body.appendChild(loadingOverlay);
+    
+    // Add button click animation
+    const button = document.getElementById('nav-ai-chat');
+    button.style.transform = 'scale(0.95)';
+    button.style.transition = 'transform 0.1s ease';
+    
+    // Navigate after animation
     setTimeout(() => {
         window.location.href = '/ai-chat.html';
-    }, 150);
+    }, 800);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

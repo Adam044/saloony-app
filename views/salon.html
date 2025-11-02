@@ -2636,7 +2636,13 @@
             
             // Wait for animation to complete before navigation
             setTimeout(() => {
-                window.location.href = '/home_user.html';
+                // Use browser history to go back to previous page (AI chat, home, etc.)
+                if (window.history.length > 1) {
+                    window.history.back();
+                } else {
+                    // Fallback to home if no history
+                    window.location.href = '/home_user.html';
+                }
             }, 200); // Short delay for smooth transition
         });
 
