@@ -2636,8 +2636,17 @@
             
             // Wait for animation to complete before navigation
             setTimeout(() => {
-                // Use browser history to go back to previous page (AI chat, home, etc.)
-                if (window.history.length > 1) {
+                // Check if we came from home_user and have a stored section
+                const previousSection = sessionStorage.getItem('previousSection');
+                const referrer = document.referrer;
+                
+                if (referrer && referrer.includes('/home_user.html') && previousSection) {
+                    // Navigate back to home_user with the specific section
+                    sessionStorage.setItem('restoreSection', previousSection);
+                    sessionStorage.removeItem('previousSection'); // Clean up
+                    window.location.href = '/home_user.html';
+                } else if (window.history.length > 1) {
+                    // Use browser history to go back to previous page (AI chat, home, etc.)
                     window.history.back();
                 } else {
                     // Fallback to home if no history

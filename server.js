@@ -881,6 +881,35 @@ app.get('/api/ai-chat/stats/:user_id', async (req, res) => {
     }
 });
 
+// Learn from user interactions
+app.post('/api/ai-chat/learn', async (req, res) => {
+    try {
+        const { user_id, interaction } = req.body;
+        
+        if (!user_id || !interaction) {
+            return res.status(400).json({
+                success: false,
+                error: 'معرف المستخدم وبيانات التفاعل مطلوبة'
+            });
+        }
+
+        const result = await aiAssistant.learnFromInteraction(user_id, interaction);
+        
+        res.json({
+            success: true,
+            message: 'تم تسجيل التفاعل بنجاح',
+            preferences: result
+        });
+
+    } catch (error) {
+        console.error('Learn interaction error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'عذراً، حدث خطأ في تسجيل التفاعل'
+        });
+    }
+});
+
 
 // --- Role Management System ---
 

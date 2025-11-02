@@ -2969,6 +2969,9 @@ async function handleSalonCardClick(e) {
         return;
     }
 
+    // Store current section for back navigation
+    sessionStorage.setItem('previousSection', currentView);
+
     // Add click animation to the salon card
     salonCard.classList.add('salon-card-clicked');
     
@@ -3377,6 +3380,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.debug('Push subscription error (user):', err);
             }
         })();
+    }
+
+    // Check if we need to restore a specific section after returning from salon page
+    const restoreSection = sessionStorage.getItem('restoreSection');
+    if (restoreSection) {
+        sessionStorage.removeItem('restoreSection'); // Clean up
+        // Wait a bit for the page to fully load before switching sections
+        setTimeout(() => {
+            switchView(restoreSection);
+        }, 100);
     }
 });
 </script>

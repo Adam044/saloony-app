@@ -15,6 +15,7 @@ class SaloonyAIAssistant {
         
         // Initialize caching system
         this.initializeCache();
+        this.initializeLocalStorageCache(); // Initialize localStorage caching
     }
 
     // === Optimized Token Usage Tracking ===
@@ -186,6 +187,208 @@ class SaloonyAIAssistant {
     }
 
     /**
+     * Enhanced localStorage caching system for better performance
+     */
+    initializeLocalStorageCache() {
+        // Check if we're in a browser environment
+        if (typeof window !== 'undefined' && window.localStorage) {
+            this.hasLocalStorage = true;
+            this.localStoragePrefix = 'saloony_ai_';
+            
+            // Clean expired localStorage entries on initialization
+            this.cleanExpiredLocalStorage();
+        } else {
+            this.hasLocalStorage = false;
+        }
+    }
+
+    /**
+     * Get data from localStorage with expiration check
+     */
+    getFromLocalStorage(key) {
+        if (!this.hasLocalStorage) return null;
+        
+        try {
+            const fullKey = this.localStoragePrefix + key;
+            const item = localStorage.getItem(fullKey);
+            
+            if (!item) return null;
+            
+            const data = JSON.parse(item);
+            
+            // Check if expired
+            if (data.expiry && Date.now() > data.expiry) {
+                localStorage.removeItem(fullKey);
+                return null;
+            }
+            
+            return data.value;
+        } catch (error) {
+            console.warn('Error reading from localStorage:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Set data to localStorage with expiration
+     */
+    setToLocalStorage(key, value, ttlMinutes = 30) {
+        if (!this.hasLocalStorage) return false;
+        
+        try {
+            const fullKey = this.localStoragePrefix + key;
+            const data = {
+                value: value,
+                expiry: Date.now() + (ttlMinutes * 60 * 1000),
+                created: Date.now()
+            };
+            
+            localStorage.setItem(fullKey, JSON.stringify(data));
+            return true;
+        } catch (error) {
+            console.warn('Error writing to localStorage:', error);
+            // If localStorage is full, try to clean old entries
+            this.cleanExpiredLocalStorage();
+            return false;
+        }
+    }
+
+    /**
+     * Clean expired localStorage entries
+     */
+    cleanExpiredLocalStorage() {
+        if (!this.hasLocalStorage) return;
+        
+        try {
+            const keysToRemove = [];
+            const now = Date.now();
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(this.localStoragePrefix)) {
+                    try {
+                        const item = localStorage.getItem(key);
+                        const data = JSON.parse(item);
+                        
+                        if (data.expiry && now > data.expiry) {
+                            keysToRemove.push(key);
+                        }
+                    } catch (e) {
+                        // Invalid JSON, remove it
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            if (keysToRemove.length > 0) {
+                console.log(`Cleaned ${keysToRemove.length} expired localStorage entries`);
+            }
+        } catch (error) {
+            console.warn('Error cleaning localStorage:', error);
+        }
+    }
+
+    /**
+     * Enhanced caching with localStorage fallback
+     */
+    getCachedEnhanced(cacheType, key) {
+        // First try memory cache
+        const memoryResult = this.getCached(cacheType, key);
+        if (memoryResult) {
+            return memoryResult;
+        }
+        
+        // Fallback to localStorage
+        const localStorageKey = `${cacheType}_${key}`;
+        const localResult = this.getFromLocalStorage(localStorageKey);
+        
+        if (localResult) {
+            // Store back in memory cache for faster access
+            this.setCached(cacheType, key, localResult, 10 * 60 * 1000); // 10 minutes in memory
+            return localResult;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Enhanced caching with localStorage backup
+     */
+    setCachedEnhanced(cacheType, key, data, memoryTTL = 10 * 60 * 1000, localStorageTTL = 60) {
+        // Store in memory cache
+        this.setCached(cacheType, key, data, memoryTTL);
+        
+        // Also store in localStorage for persistence
+        const localStorageKey = `${cacheType}_${key}`;
+        this.setToLocalStorage(localStorageKey, data, localStorageTTL);
+    }
+
+    /**
+     * Cache user preferences for personalization
+     */
+    cacheUserPreferences(userId, preferences) {
+        const key = `user_prefs_${userId}`;
+        this.setToLocalStorage(key, preferences, 24 * 60); // 24 hours
+    }
+
+    /**
+     * Get cached user preferences
+     */
+    getCachedUserPreferences(userId) {
+        const key = `user_prefs_${userId}`;
+        return this.getFromLocalStorage(key);
+    }
+
+    /**
+     * Cache salon search results for faster repeated queries
+     */
+    cacheSalonSearchResults(searchParams, results) {
+        const searchKey = this.generateSearchKey(searchParams);
+        const key = `salon_search_${searchKey}`;
+        this.setToLocalStorage(key, results, 30); // 30 minutes
+    }
+
+    /**
+     * Get cached salon search results
+     */
+    getCachedSalonSearchResults(searchParams) {
+        const searchKey = this.generateSearchKey(searchParams);
+        const key = `salon_search_${searchKey}`;
+        return this.getFromLocalStorage(key);
+    }
+
+    /**
+     * Generate search key from parameters
+     */
+    generateSearchKey(params) {
+        const keyParts = [
+            params.city || 'all',
+            params.gender || 'all',
+            params.queryType || 'general',
+            params.serviceSearchTerm || 'none'
+        ];
+        return keyParts.join('_').toLowerCase();
+    }
+
+    /**
+     * Cache conversation context for better continuity
+     */
+    cacheConversationContext(userId, context) {
+        const key = `conv_context_${userId}`;
+        this.setToLocalStorage(key, context, 120); // 2 hours
+    }
+
+    /**
+     * Get cached conversation context
+     */
+    getCachedConversationContext(userId) {
+        const key = `conv_context_${userId}`;
+        return this.getFromLocalStorage(key);
+    }
+
+    /**
      * Generate cache key for responses (optimized)
      */
     generateResponseCacheKey(message, userId) {
@@ -317,71 +520,59 @@ ${recommendationsContext}
 • **مهم جداً**: لا تذكر الصالونات في التحيات العادية - انتظر المستخدم يسأل عنها
 • في التحيات البسيطة مثل "مرحبا" أو "كيفك"، رد بطريقة ودودة بدون ذكر صالونات
 • اذكر الصالونات فقط عندما يسأل المستخدم عنها مباشرة
-• **لا تذكر الأسعار إلا إذا سأل المستخدم عنها مباشرة**
+
+🚨 **قواعد مهمة للأسعار والخدمات:**
+• **لا تتحدث عن الأسعار نهائياً** - اقترح الصالونات بشكل عام فقط
+• **إذا سأل عن الأسعار أو "أرخص صالون"**: اعرض كارت الصالون وقل "كل التفاصيل والأسعار موجودة هنا"
+• **اعرض الكارت مرة واحدة فقط** - إذا كان معروض من قبل، لا تعرضه مرة تانية
+• **ركز على اقتراح الصالونات بناءً على الجودة والموقع والتقييمات**
 • **كن مختصر ومحادث طبيعي - لا تعطي كل المعلومات مرة وحدة**
 • **اقترح عرض التفاصيل بدلاً من إعطائها مباشرة**
+
 • إذا سأل عن صالون معين بالاسم، تحدث عنه إذا كان في القائمة أعلاه مع ذكر الخدمات والأسعار
-• إذا سأل عن أسعار أو "أرخص" أو "أغلى"، قارن الأسعار من المعلومات المتوفرة
 • إذا طلب رؤية صالون معين أو قال "فرجيني" أو "شوفلي"، اعرض الصالونات
 • عند السؤال عن الصالونات عموماً، قل فقط "هاي الصالونات المتاحة في منطقتك:"
 • لا تقل أبداً "ما بقدر أعرضلك صالون بالاسم" - أنت تعرف الصالونات وتقدر تتحدث عنها
 • كن متسق في إجاباتك - إذا ذكرت معلومات عن صالون، يعني تقدر تعرضه
 
-📝 **قواعد التنسيق والعرض:**
-• **استخدم التنسيق المناسب** لجعل الإجابات واضحة ومنظمة
-• **للقوائم والخطوات**: استخدم النقاط (•) أو الأرقام (1. 2. 3.)
-• **للعناوين المهمة**: استخدم <strong>العنوان:</strong>
-• **للمعلومات المهمة**: استخدم <strong>النص المهم</strong>
-• **للخطوات المتسلسلة**: رقمها بوضوح
-• **للمقارنات**: استخدم جداول أو قوائم منظمة
-• **للنصائح**: اجعلها في نقاط واضحة ومرقمة
+📝 **قواعد التنسيق والعرض الطبيعية:**
+• **كن طبيعي في المحادثة** - استخدم التنسيق فقط عند الضرورة
+• **للمحادثات العادية**: تحدث بشكل طبيعي بدون تنسيق مفرط
+• **للقوائم القصيرة**: استخدم النقاط (•) فقط عند الحاجة
+• **للمعلومات المهمة جداً**: استخدم **النص العريض** بحذر
+• **للمقارنات المعقدة فقط**: استخدم الجداول
+• **تجنب العناوين الكبيرة** في المحادثات البسيطة
+• **اجعل الردود قصيرة ومفيدة** - لا تفرط في التفاصيل
 
-🎨 **أمثلة على التنسيق الصحيح:**
+🎨 **أمثلة على الردود الطبيعية:**
 
-للنصائح:
-"إليك أفضل النصائح للعناية بالشعر الكيرلي:
+للمحادثات العادية:
+"للشعر الكيرلي الناشف، أنصحك بكريم ترطيب يومي وزيت أرغان مرة بالأسبوع. بدك أسماء منتجات محددة؟"
 
-<strong>1. الترطيب اليومي:</strong>
-• استخدم كريم ترطيب خالي من الكبريتات
-• طبقه على الشعر المبلل للحصول على أفضل النتائج
+للمقارنات البسيطة فقط:
+"أرخص أسعار اللحية:
+• [اسم الصالون]: [السعر]
+• [اسم الصالون]: [السعر]
 
-<strong>2. التصفيف الصحيح:</strong>
-• تجنب الفرشاة واستخدم مشط واسع الأسنان
-• صفف الشعر وهو مبلل فقط
+أنصحك بـ [الأرخص] لأنه أرخص سعر."
 
-<strong>3. الحماية الليلية:</strong>
-• استخدم وسادة من الحرير أو الساتان
-• اربط الشعر بربطة حرير ناعمة"
+للنصائح القصيرة:
+"للعناية بالبشرة الدهنية: غسول مرتين يومياً، تونر خالي من الكحول، ومرطب خفيف. بدك تفاصيل أكتر؟"
 
-للمقارنات:
-"مقارنة بين أنواع قصات الشعر:
+🎯 **قواعد مهمة للردود الطبيعية:**
+• **كن طبيعي ومختصر** - تحدث كأنك صديق يساعد، مش بوت رسمي
+• **لا تكرر المعلومات**: إذا طلب المستخدم "تفاصيل أكتر"، اعرض الكارت فقط
+• **لا تفترض أن الصالون "جديد"**: عدم وجود تقييم لا يعني أن الصالون جديد
+• **استخدم التنسيق بحذر**: فقط للمقارنات المهمة أو القوائم الضرورية
+• **اقترح بدلاً من أن تعطي كل شي**: "بدك تفاصيل أكتر؟" أفضل من كتابة فقرات طويلة
+• **استخدم الكارت للتفاصيل**: عندما يطلب تفاصيل صالون، اعرض الكارت
+• **لا تذكر الأوقات المتاحة**: قل "للحجز والأوقات، اضغط على اسم الصالون"
 
-<strong>القصة القصيرة (البوب):</strong>
-• مناسبة للوجه البيضاوي والمربع
-• سهلة التصفيف والعناية
-• تعطي مظهر عصري وأنيق
+مثال على رد طبيعي للأسعار:
+"بدك صالونات للحية في رام الله؟ أنصحك بـ [اسم الصالون] - جودة ممتازة وتقييمات حلوة. بدك تشوف تفاصيل الصالون والأسعار؟"
 
-<strong>القصة المتوسطة (اللوب):</strong>
-• مناسبة لجميع أشكال الوجه
-• متعددة الاستخدامات
-• يمكن تصفيفها بطرق مختلفة"
-
-للخطوات:
-"خطوات العناية بالبشرة الدهنية:
-
-<strong>الخطوة 1: التنظيف</strong>
-غسل الوجه مرتين يومياً بغسول مناسب للبشرة الدهنية
-
-<strong>الخطوة 2: التونر</strong>
-استخدام تونر خالي من الكحول لتوازن البشرة
-
-<strong>الخطوة 3: الترطيب</strong>
-تطبيق مرطب خفيف خالي من الزيوت
-
-<strong>الخطوة 4: الحماية</strong>
-استخدام واقي الشمس يومياً حتى في الأيام الغائمة"
-
-🎯 أمثلة على الردود الذكية:
+المستخدم: "أرخص صالون للحية"
+أنت: "أنصحك بـ [اسم الصالون] - جودة ممتازة. كل التفاصيل والأسعار موجودة هنا: [SHOW_SALON:salon_name]"
 
 المستخدم: "أريد رؤية أمثلة"
 أنت: "أمثلة على إيش ${genderGreeting}؟ قصات شعر، عناية بالبشرة، ولا شي تاني؟"
@@ -403,20 +594,31 @@ ${recommendationsContext}
 المستخدم: "شو وضع ابو جبرا؟" أو "بتعرف صالون ابو جبرا؟"
 أنت: "اه! Abo jabra صالون حلو في رام الله، موجود في الماسيون بجانب فندق الميلينيم. بدك تشوف تفاصيل أكتر عنه؟"
 
-المستخدم: "اه" أو "نعم" أو "بدي تفاصيل" (بعد سؤال عن صالون معين)
-أنت: "[SHOW_SALON:Abo jabra] هاي تفاصيل Abo jabra:"
+المستخدم: "اه" أو "نعم" أو "بدي تفاصيل" أو "اشوف تفاصيل اكتر" (بعد سؤال عن صالون معين)
+أنت: "[SHOW_SALON:Abo jabra]" (فقط عرض الكارت بدون نص إضافي)
 
 المستخدم: "شوفلي صالون الاناقة" أو "فرجيني صالون الاناقة"
-أنت: "[SHOW_SALON:صالون الاناقة] صالون الاناقة موجود في شارع الإرسال في رام الله، وعنده تقييم ممتاز 5.0 نجوم. بيقدم خدمات زي تنظيف البشرة بـ25 شيكل وماسك مرطب بـ25 شيكل. بدك تشوف تفاصيل أكتر ولا تحجز موعد؟"
+أنت: "[SHOW_SALON:صالون الاناقة]"
 
 المستخدم: "شوفلي Abo jabra" أو "فرجيني ابو جبرا"
-أنت: "[SHOW_SALON:Abo jabra] Abo jabra صالون حلو في الماسيون بجانب فندق الميلينيم في رام الله. صالون جديد وبيقدم خدمات متنوعة زي السشوار بـ15 شيكل واللحية بـ20 شيكل. بدك تحجز موعد؟"
+أنت: "[SHOW_SALON:Abo jabra]"
 
 المستخدم: "شو أحسن من ابو جبرا؟"
 أنت: "حسب شو بدك بالضبط؟ إذا بدك أرخص أسعار، ولا خدمات معينة، ولا صالون بتقييم أعلى؟ قولي شو نوع الخدمة اللي بدك إياها عشان أقدر أنصحك أحسن."
 
 المستخدم: "أرخص صالون؟"
-أنت: "أرخص الأسعار في صالون الاناقة - الحلاقة بـ 20 شيكل، وفي Abo jabra بـ 25 شيكل. بدك تشوف كل الصالونات ولا معلومات أكثر عن صالون معين؟"
+أنت: "أرخص صالون لأي خدمة؟ حلاقة، لحية، سشوار، ولا شي تاني؟"
+
+المستخدم: "أرخص صالون للحية"
+أنت: "<strong>أرخص أسعار اللحية في رام الله:</strong>
+
+• **[اسم الصالون الأرخص]**: [السعر من قاعدة البيانات]
+• **[اسم الصالون الثاني]**: [السعر من قاعدة البيانات]  
+• **[اسم الصالون الثالث]**: [السعر من قاعدة البيانات]
+
+أنصحك بـ [اسم الصالون الأرخص] لأنه أرخص سعر.
+
+للحجز والأوقات المتاحة، اضغط على اسم الصالون أو بدك تشوف تفاصيل الصالون؟"
 
 المستخدم: "شو في صالونات" أو "شوفلي الصالونات"
 أنت: "[SHOW_ALL_SALONS] هاي الصالونات المتاحة في ${city || 'منطقتك'}:"
@@ -1429,106 +1631,298 @@ Be a smart and natural consultant, not just a bot answering questions!`;
         }
     }
     /**
-     * Get salon context for AI awareness (super optimized)
+     * Classify user query to determine the type of information needed
      */
-    async getSalonContext(userId) {
+    classifyQuery(message) {
+        const msg = message.toLowerCase();
+        
+        // Service-specific queries
+        const serviceKeywords = ['خدمة', 'خدمات', 'سعر', 'أسعار', 'كم', 'تكلفة', 'مدة', 'وقت', 'service', 'price', 'cost', 'duration'];
+        const locationKeywords = ['قريب', 'منطقة', 'مدينة', 'عندي', 'هنا', 'near', 'location', 'area', 'city'];
+        const recommendationKeywords = ['أفضل', 'أحسن', 'مميز', 'ممتاز', 'نصحني', 'اقترح', 'best', 'recommend', 'suggest', 'good'];
+        const appointmentKeywords = ['موعد', 'حجز', 'متاح', 'فاضي', 'appointment', 'booking', 'available', 'schedule'];
+        
+        let queryType = 'general';
+        let priority = 0;
+        
+        if (serviceKeywords.some(keyword => msg.includes(keyword))) {
+            queryType = 'service_inquiry';
+            priority = 3;
+        }
+        if (locationKeywords.some(keyword => msg.includes(keyword))) {
+            queryType = 'location_based';
+            priority = Math.max(priority, 2);
+        }
+        if (recommendationKeywords.some(keyword => msg.includes(keyword))) {
+            queryType = 'recommendation';
+            priority = Math.max(priority, 2);
+        }
+        if (appointmentKeywords.some(keyword => msg.includes(keyword))) {
+            queryType = 'appointment';
+            priority = Math.max(priority, 1);
+        }
+        
+        return { type: queryType, priority };
+    }
+
+    /**
+     * Extract service search terms from user message
+     */
+    getServiceSearchTerm(message) {
+        const msg = message.toLowerCase();
+        
+        // Common beauty service terms in Arabic and English
+        const serviceTerms = {
+            'شعر': ['قص', 'صبغة', 'فرد', 'كيراتين', 'بروتين', 'تسريح'],
+            'أظافر': ['مانيكير', 'باديكير', 'جل', 'أكريليك'],
+            'وجه': ['تنظيف', 'ماسك', 'فيشل', 'تقشير'],
+            'حواجب': ['تشقير', 'تهذيب', 'رسم', 'تاتو'],
+            'رموش': ['تركيب', 'رفع', 'صبغة', 'كيرلي'],
+            'جسم': ['مساج', 'تدليك', 'سكراب', 'تقشير'],
+            'إزالة شعر': ['ليزر', 'شمع', 'حلاوة', 'خيط']
+        };
+        
+        for (const [category, terms] of Object.entries(serviceTerms)) {
+            if (msg.includes(category) || terms.some(term => msg.includes(term))) {
+                return category;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get focused salon data based on query classification and user context
+     */
+    async getFocusedSalonData(userId, queryClassification, serviceSearchTerm = null) {
         try {
-            // Get user's city to fetch relevant salons
             const userProfile = await this.getUserProfile(userId);
             const city = userProfile.city || 'رام الله';
+            const gender = userProfile.gender || 'female';
             
-            // Check cache first (extended to 15 minutes for better performance)
-            const cacheKey = `salon_context_${city}`;
-            const cachedContext = this.getCached('salons', cacheKey);
-            if (cachedContext) {
-                return cachedContext;
+            // Create cache key based on query type and parameters
+            const cacheKey = `focused_salon_${city}_${queryClassification.type}_${serviceSearchTerm || 'all'}_${gender}`;
+            
+            // Use enhanced caching (memory + localStorage)
+            const cachedData = this.getCachedEnhanced('salons', cacheKey);
+            if (cachedData) {
+                return cachedData;
             }
             
-            // Use internal server call instead of external fetch
             const db = require('./database');
+            let salonData = '';
             
-            console.log('Getting salon context for city:', city);
-            
-            // Handle undefined city
-            if (!city || city === 'غير محدد' || city === 'undefined') {
-                city = 'رام الله'; // Default to Ramallah
+            switch (queryClassification.type) {
+                case 'service_inquiry':
+                    if (serviceSearchTerm) {
+                        // Get salons that offer specific service category
+                        const salons = await dbAll(`
+                            SELECT DISTINCT s.id, s.salon_name, s.city, s.special, s.address,
+                                   srv.name_ar as service_name, ss.price, ss.duration
+                            FROM salons s
+                            JOIN salon_services ss ON s.id = ss.salon_id
+                            JOIN services srv ON ss.service_id = srv.id
+                            WHERE s.city = $1 AND s.status = 'accepted' 
+                            AND (srv.gender = $2 OR srv.gender = 'both')
+                            AND srv.name_ar LIKE '%' || $3 || '%'
+                            ORDER BY s.special DESC, ss.price ASC
+                            LIMIT 8
+                        `, [city, gender, serviceSearchTerm]);
+                        
+                        salonData = this.formatServiceSpecificData(salons);
+                    } else {
+                        salonData = await this.getGeneralSalonContext(city, gender);
+                    }
+                    break;
+                    
+                case 'location_based':
+                case 'recommendation':
+                    // Get top-rated salons with diverse services
+                    const topSalons = await dbAll(`
+                        SELECT s.id, s.salon_name, s.city, s.special, s.address,
+                               COUNT(ss.service_id) as service_count,
+                               AVG(ss.price) as avg_price
+                        FROM salons s
+                        LEFT JOIN salon_services ss ON s.id = ss.salon_id
+                        LEFT JOIN services srv ON ss.service_id = srv.id
+                        WHERE s.city = $1 AND s.status = 'accepted'
+                        AND (srv.gender = $2 OR srv.gender = 'both' OR srv.gender IS NULL)
+                        GROUP BY s.id, s.salon_name, s.city, s.special, s.address
+                        ORDER BY s.special DESC, service_count DESC, avg_price ASC
+                        LIMIT 6
+                    `, [city, gender]);
+                    
+                    salonData = await this.formatRecommendationData(topSalons);
+                    break;
+                    
+                case 'appointment':
+                    // Get salons with basic info for appointment context
+                    salonData = await this.getAppointmentContext(city, gender);
+                    break;
+                    
+                default:
+                    salonData = await this.getGeneralSalonContext(city, gender);
             }
             
-            // Optimized query: only get essential fields and limit results
-            const salons = await dbAll(`
-                SELECT id, salon_name, address, city, special
-                FROM salons 
-                WHERE city = $1 AND status = 'accepted'
-                ORDER BY special DESC, id DESC
-                LIMIT 10
-            `, [city]);
+            // Cache for 20 minutes in memory and 60 minutes in localStorage
+            this.setCachedEnhanced('salons', cacheKey, salonData, 20 * 60 * 1000, 60);
+            return salonData;
             
-            // Only get services for top 5 salons to reduce DB load
-            const topSalons = salons.slice(0, 5);
-            const detailedSalons = await Promise.all(
-                topSalons.map(async (salon) => {
-                    try {
-                        // Check cache for services first
-                        const servicesCacheKey = `services_${salon.id}`;
-                        let services = this.getCached('salons', servicesCacheKey);
-                        
-                        if (!services) {
-                            // Fetch only top 3 services per salon with correct JOIN
-                            services = await dbAll(`
-                                SELECT s.name_ar, ss.price 
-                                FROM salon_services ss
-                                JOIN services s ON ss.service_id = s.id
-                                WHERE ss.salon_id = $1
-                                ORDER BY ss.price ASC
-                                LIMIT 3
-                            `, [salon.id]);
-                            
-                            // Cache services for 30 minutes
-                            this.setCached('salons', servicesCacheKey, services, 30 * 60 * 1000);
-                        }
-                        
-                        return {
-                            ...salon,
-                            services: services || []
-                        };
-                    } catch (error) {
-                        return salon;
-                    }
-                })
-            );
+        } catch (error) {
+            console.warn('Failed to get focused salon data:', error);
+            return await this.getGeneralSalonContext(userProfile?.city || 'رام الله', userProfile?.gender || 'female');
+        }
+    }
+
+    /**
+     * Format service-specific salon data
+     */
+    formatServiceSpecificData(salons) {
+        if (!salons || salons.length === 0) {
+            return 'لا توجد صالونات متاحة لهذه الخدمة في منطقتك حالياً.';
+        }
+        
+        const groupedSalons = {};
+        salons.forEach(salon => {
+            if (!groupedSalons[salon.id]) {
+                groupedSalons[salon.id] = {
+                    ...salon,
+                    services: []
+                };
+            }
+            if (salon.service_name) {
+                groupedSalons[salon.id].services.push({
+                    name: salon.service_name,
+                    price: salon.price,
+                    duration: salon.duration
+                });
+            }
+        });
+        
+        return Object.values(groupedSalons).map(salon => {
+            let info = `🏪 ${salon.salon_name} (${salon.city})`;
+            if (salon.special) info += ' ⭐';
             
-            // Add remaining salons without services (for basic info)
-            const remainingSalons = salons.slice(5).map(salon => ({
-                ...salon,
-                services: []
-            }));
+            if (salon.services.length > 0) {
+                const serviceInfo = salon.services.map(s => 
+                    `${s.name}: ${s.price}ش (${s.duration}د)`
+                ).join(', ');
+                info += `\n   📋 ${serviceInfo}`;
+            }
             
-            const allSalons = [...detailedSalons, ...remainingSalons];
-            
-            // Create optimized salon knowledge string (shorter for fewer tokens)
-            const salonInfo = allSalons.map(salon => {
-                let info = `- ${salon.salon_name}: ${salon.city}`;
-                if (salon.special) info += ` ⭐ مميز`;
-                
-                if (salon.services && salon.services.length > 0) {
-                    const topServices = salon.services.slice(0, 2); // Only top 2 services
-                    const servicesList = topServices.map(service => 
-                        `${service.name_ar} ${parseFloat(service.price).toFixed(0)}ش`
-                    ).join(', ');
-                    info += ` | ${servicesList}`;
+            return info;
+        }).join('\n\n');
+    }
+
+    /**
+     * Format recommendation data with service variety
+     */
+    async formatRecommendationData(salons) {
+        if (!salons || salons.length === 0) {
+            return 'لا توجد صالونات متاحة في منطقتك حالياً.';
+        }
+        
+        const db = require('./database');
+        const detailedSalons = await Promise.all(
+            salons.map(async (salon) => {
+                try {
+                    // Get top 3 popular services for each salon
+                    const services = await dbAll(`
+                        SELECT srv.name_ar, ss.price, ss.duration
+                        FROM salon_services ss
+                        JOIN services srv ON ss.service_id = srv.id
+                        WHERE ss.salon_id = $1
+                        ORDER BY ss.price ASC
+                        LIMIT 3
+                    `, [salon.id]);
+                    
+                    return { ...salon, topServices: services };
+                } catch (error) {
+                    return { ...salon, topServices: [] };
                 }
-                
-                return info;
-            }).join('\n');
+            })
+        );
+        
+        return detailedSalons.map(salon => {
+            let info = `🏪 ${salon.salon_name}`;
+            if (salon.special) info += ' ⭐ مميز';
+            info += `\n   📍 ${salon.address || salon.city}`;
+            info += `\n   📊 ${salon.service_count || 0} خدمة متاحة`;
             
-            // Cache the result for 15 minutes (longer for better performance)
-            this.setCached('salons', cacheKey, salonInfo, 15 * 60 * 1000);
+            if (salon.topServices && salon.topServices.length > 0) {
+                const servicesList = salon.topServices.map(s => 
+                    `${s.name_ar} (${s.price}ش)`
+                ).join(', ');
+                info += `\n   💅 ${servicesList}`;
+            }
             
-            return salonInfo;
+            return info;
+        }).join('\n\n');
+    }
+
+    /**
+     * Get appointment-focused context
+     */
+    async getAppointmentContext(city, gender) {
+        const db = require('./database');
+        
+        const salons = await dbAll(`
+            SELECT id, salon_name, city, special, address
+            FROM salons 
+            WHERE city = $1 AND status = 'accepted'
+            ORDER BY special DESC
+            LIMIT 5
+        `, [city]);
+        
+        return salons.map(salon => 
+            `🏪 ${salon.salon_name}${salon.special ? ' ⭐' : ''} - ${salon.city}`
+        ).join('\n');
+    }
+
+    /**
+     * Get general salon context (fallback)
+     */
+    async getGeneralSalonContext(city, gender) {
+        const db = require('./database');
+        
+        const salons = await dbAll(`
+            SELECT s.id, s.salon_name, s.city, s.special
+            FROM salons s
+            WHERE s.city = $1 AND s.status = 'accepted'
+            ORDER BY s.special DESC
+            LIMIT 8
+        `, [city]);
+        
+        return salons.map(salon => 
+            `- ${salon.salon_name}${salon.special ? ' ⭐' : ''}: ${salon.city}`
+        ).join('\n');
+    }
+
+    /**
+     * Enhanced salon context with smart query classification
+     */
+    async getSalonContext(userId, userMessage = '') {
+        try {
+            // Classify the user's query
+            const queryClassification = this.classifyQuery(userMessage);
+            
+            // Extract service search terms if applicable
+            const serviceSearchTerm = queryClassification.type === 'service_inquiry' 
+                ? this.getServiceSearchTerm(userMessage) 
+                : null;
+            
+            // Get focused salon data based on classification
+            return await this.getFocusedSalonData(userId, queryClassification, serviceSearchTerm);
+            
         } catch (error) {
             console.warn('Failed to get salon context:', error);
+            // Fallback to basic context
+            const userProfile = await this.getUserProfile(userId);
+            return await this.getGeneralSalonContext(
+                userProfile?.city || 'رام الله', 
+                userProfile?.gender || 'female'
+            );
         }
-        return '';
     }
 
     /**
@@ -1561,8 +1955,8 @@ Be a smart and natural consultant, not just a bot answering questions!`;
             
             const detectedLanguage = this.detectLanguage(message);
             
-            // Get salon context for AI awareness
-            const salonContext = await this.getSalonContext(userId);
+            // Get salon context for AI awareness with smart classification
+            const salonContext = await this.getSalonContext(userId, message);
             
             // Build conversation context
             const conversationHistory = this.buildConversationContext(userId);
@@ -1701,6 +2095,155 @@ Be a smart and natural consultant, not just a bot answering questions!`;
                 success: false,
                 error: 'فشل في جلب إحصائيات المحادثة'
             };
+        }
+    }
+
+    /**
+     * Learn from user interactions to improve recommendations
+     * @param {string} userId - User identifier
+     * @param {Object} interaction - Interaction data
+     */
+    async learnFromInteraction(userId, interaction) {
+        try {
+            const userPreferences = this.getCached('user_preferences', userId) || {
+                preferredCities: {},
+                preferredServices: {},
+                viewedSalons: {},
+                bookedSalons: {},
+                interactionCount: 0,
+                lastUpdated: Date.now()
+            };
+
+            userPreferences.interactionCount++;
+            userPreferences.lastUpdated = Date.now();
+
+            switch (interaction.type) {
+                case 'salon_view':
+                    userPreferences.viewedSalons[interaction.data.salonId] = 
+                        (userPreferences.viewedSalons[interaction.data.salonId] || 0) + 1;
+                    
+                    if (interaction.data.city) {
+                        userPreferences.preferredCities[interaction.data.city] = 
+                            (userPreferences.preferredCities[interaction.data.city] || 0) + 1;
+                    }
+                    break;
+
+                case 'salon_book':
+                    userPreferences.bookedSalons[interaction.data.salonId] = 
+                        (userPreferences.bookedSalons[interaction.data.salonId] || 0) + 1;
+                    
+                    if (interaction.data.city) {
+                        userPreferences.preferredCities[interaction.data.city] = 
+                            (userPreferences.preferredCities[interaction.data.city] || 0) + 3; // Higher weight for bookings
+                    }
+                    break;
+
+                case 'service_interest':
+                    if (interaction.data.service) {
+                        userPreferences.preferredServices[interaction.data.service] = 
+                            (userPreferences.preferredServices[interaction.data.service] || 0) + 1;
+                    }
+                    break;
+            }
+
+            // Cache user preferences for 30 days
+            this.setCachedEnhanced('user_preferences', userId, userPreferences, 
+                30 * 24 * 60 * 60 * 1000, // 30 days memory cache
+                90 * 24 * 60 * 60 * 1000  // 90 days localStorage cache
+            );
+
+            return userPreferences;
+        } catch (error) {
+            console.error('Error learning from interaction:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get personalized salon recommendations based on user preferences
+     * @param {string} userId - User identifier
+     * @param {Array} salons - Available salons
+     * @param {number} limit - Maximum number of recommendations
+     */
+    getPersonalizedRecommendations(userId, salons, limit = 3) {
+        try {
+            const userPreferences = this.getCached('user_preferences', userId);
+            
+            if (!userPreferences || !salons || salons.length === 0) {
+                return salons ? salons.slice(0, limit) : [];
+            }
+
+            // Score salons based on user preferences
+            const scoredSalons = salons.map(salon => {
+                let score = 0;
+
+                // City preference scoring
+                if (userPreferences.preferredCities[salon.city]) {
+                    score += userPreferences.preferredCities[salon.city] * 2;
+                }
+
+                // Previously viewed salon scoring
+                if (userPreferences.viewedSalons[salon.id]) {
+                    score += userPreferences.viewedSalons[salon.id] * 1.5;
+                }
+
+                // Previously booked salon scoring (higher weight)
+                if (userPreferences.bookedSalons[salon.id]) {
+                    score += userPreferences.bookedSalons[salon.id] * 5;
+                }
+
+                // Rating boost
+                if (salon.avg_rating) {
+                    score += parseFloat(salon.avg_rating) * 0.5;
+                }
+
+                return { ...salon, personalizedScore: score };
+            });
+
+            // Sort by personalized score and return top recommendations
+            return scoredSalons
+                .sort((a, b) => b.personalizedScore - a.personalizedScore)
+                .slice(0, limit);
+
+        } catch (error) {
+            console.error('Error getting personalized recommendations:', error);
+            return salons ? salons.slice(0, limit) : [];
+        }
+    }
+
+    /**
+     * Generate AI response with personalized recommendations
+     * @param {string} userId - User identifier
+     * @param {string} message - User message
+     * @param {Array} salons - Available salons
+     */
+    async generatePersonalizedResponse(userId, message, salons) {
+        try {
+            const personalizedSalons = this.getPersonalizedRecommendations(userId, salons, 3);
+            const userPreferences = this.getCached('user_preferences', userId);
+
+            let personalizedContext = '';
+            
+            if (userPreferences && userPreferences.interactionCount > 5) {
+                const topCities = Object.entries(userPreferences.preferredCities)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 2)
+                    .map(([city]) => city);
+
+                const topServices = Object.entries(userPreferences.preferredServices)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 3)
+                    .map(([service]) => service);
+
+                personalizedContext = `\n\nملاحظة: بناءً على تفضيلاتك السابقة، لاحظت اهتمامك بـ${topCities.length > 0 ? ` المناطق: ${topCities.join('، ')}` : ''}${topServices.length > 0 ? ` والخدمات: ${topServices.join('، ')}` : ''}. سأركز على هذه التفضيلات في اقتراحاتي.`;
+            }
+
+            const response = await this.generateResponse(message, personalizedSalons);
+            return response + personalizedContext;
+
+        } catch (error) {
+            console.error('Error generating personalized response:', error);
+            return await this.generateResponse(message, salons);
         }
     }
 }
