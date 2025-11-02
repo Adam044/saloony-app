@@ -1575,12 +1575,9 @@
 
         // Action functions
         function goBack() {
-            const defaultHome = currentUser?.user_type === 'salon' ? '/home_salon.html' : '/home_user.html?view=home';
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = defaultHome;
-            }
+            // Always go to home section to avoid navigation issues
+            const homeUrl = currentUser?.user_type === 'salon' ? '/home_salon.html' : '/home_user.html?view=home';
+            window.location.href = homeUrl;
         }
 
         async function clearChat() {
