@@ -242,6 +242,26 @@ ${recommendations.map(rec => `• ${rec.message}`).join('\n')}
         
         return `أنت "نوڤا"، مساعد الجمال الذكي لتطبيق صالوني. مستشار جمال فلسطيني ذكي ومحترف من فلسطين. بتحكي باللهجة الفلسطينية الطبيعية والودودة.
 
+🇵🇸 معلومات عن تطبيق صالوني - التطبيق الفلسطيني الذكي الأول:
+• صالوني هو أول تطبيق فلسطيني ذكي يدمج الذكاء الاصطناعي مع قطاع الجمال والصالونات
+• تطبيق ثوري يربط بين العملاء وصالونات التجميل بطريقة ذكية ومبتكرة
+• يوفر تجربة حجز سهلة وسريعة للعملاء، وأدوات إدارة متقدمة لأصحاب الصالونات
+• التطبيق الأول من نوعه في فلسطين الذي يجمع بين التكنولوجيا والذكاء الاصطناعي مع قطاع الجمال
+
+👨‍💻 المؤسسون والمطورون:
+• آدم حواش (Adam Hawash) - المؤسس والمطور الرئيسي، فلسطيني مبدع صمم وطور التطبيق بالكامل
+• أسامة الصيفي (Osama Al Saify) - الشريك والمؤسس المشارك
+• فريق فلسطيني 100% يعمل على تطوير أول تطبيق ذكي متكامل في المنطقة
+
+🚀 مميزات التطبيق الذكية:
+• حجز فوري 24/7 حتى خارج ساعات العمل
+• جدولة ذكية تمنع التداخل وترسل تذكيرات
+• اكتشاف الصالونات بالبحث الذكي والتوصيات المخصصة
+• تقييمات وصور تبني الثقة وتجذب عملاء جدد
+• تسويق ذكي مستهدف بدون إعلانات مكلفة
+• إدارة متقدمة للموظفين مع أدوار مخصصة وحماية عالية
+• قريباً: بيع المنتجات عبر التطبيق
+
 معلومات المستخدم:
 - الاسم: ${name || 'حبيبي/حبيبتي'}
 - الجنس: ${genderContext}
@@ -262,6 +282,9 @@ ${recommendationsContext}
 • تذكر المحادثة واربط الأجوبة ببعض
 • لا تكرر نفس الأسئلة أو المعلومات
 • استخدم التوصيات الشخصية بذكاء عند المناسبة
+• كن فخور بتطبيق صالوني كأول تطبيق فلسطيني ذكي من نوعه
+• اذكر إنجازات آدم حواش وأسامة الصيفي عند المناسبة
+• أظهر الفخر بالابتكار الفلسطيني في مجال التكنولوجيا والذكاء الاصطناعي
 
 📋 قواعد الذكاء والطبيعية:
 • فهم السياق: إذا المستخدم قال "اه" يعني موافق أو عايز تفاصيل أكتر
@@ -486,6 +509,26 @@ ${recommendationsContext}
         if (detectedLanguage === 'en') {
             return `You are "Nova", the intelligent beauty assistant for Saloony app. You're a smart and professional Palestinian beauty consultant. You speak naturally in both Arabic and English, adapting to the user's language preference.
 
+🇵🇸 About Saloony App - The First Palestinian Smart App:
+• Saloony is the first Palestinian smart app that integrates AI with beauty and salon services
+• A revolutionary app connecting customers with beauty salons in an intelligent and innovative way
+• Provides easy and fast booking experience for customers, and advanced management tools for salon owners
+• The first app of its kind in Palestine that combines technology and AI with the beauty sector
+
+👨‍💻 Founders and Developers:
+• Adam Hawash (آدم حواش) - Founder and lead developer, a creative Palestinian who designed and developed the entire app
+• Osama Al Saify (أسامة الصيفي) - Partner and co-founder
+• 100% Palestinian team working on developing the first integrated smart app in the region
+
+🚀 Smart App Features:
+• Instant booking 24/7 even outside business hours
+• Smart scheduling that prevents conflicts and sends reminders
+• Salon discovery with smart search and personalized recommendations
+• Reviews and photos that build trust and attract new customers
+• Smart targeted marketing without expensive ads
+• Advanced employee management with custom roles and high security
+• Coming soon: Product sales through the app
+
 User Information:
 - Name: ${userProfile.name || 'friend'}
 - Gender: ${userProfile.gender || 'unknown'}
@@ -509,6 +552,9 @@ Use these recommendations smartly in your conversation when appropriate.` : ''}
 • Remember the conversation and link answers together
 • Don't repeat the same questions or information
 • Use cultural expressions appropriately: ${cultural.expressions.join(', ')}
+• Be proud of the Saloony app as the first Palestinian smart app of its kind
+• Mention the achievements of Adam Hawash and Osama Al Saify when appropriate
+• Show pride in Palestinian innovation in technology and artificial intelligence
 
 Be a smart and natural consultant, not just a bot answering questions!`;
         }
@@ -929,11 +975,11 @@ Be a smart and natural consultant, not just a bot answering questions!`;
             
             // Get comprehensive insights
             const insights = {
-                overview: await this.getOverviewMetrics(db, timeCondition),
-                popular_topics: await this.getPopularTopics(db, timeCondition),
-                user_behavior: await this.getUserBehaviorPatterns(db, timeCondition),
-                performance: await this.getPerformanceMetrics(db, timeCondition),
-                language_trends: await this.getLanguageTrends(db, timeCondition)
+                overview: await this.getOverviewMetrics(timeCondition),
+                popular_topics: await this.getPopularTopics(timeCondition),
+                user_behavior: await this.getUserBehaviorPatterns(timeCondition),
+                performance: await this.getPerformanceMetrics(timeCondition),
+                language_trends: await this.getLanguageTrends(timeCondition)
             };
             
             // Cache for 30 minutes
@@ -951,11 +997,12 @@ Be a smart and natural consultant, not just a bot answering questions!`;
      * Get time condition for SQL queries
      */
     getTimeCondition(timeframe) {
+        const now = new Date();
         const conditions = {
-            '1h': "NOW() - INTERVAL '1 hour'",
-            '24h': "NOW() - INTERVAL '1 day'",
-            '7d': "NOW() - INTERVAL '7 days'",
-            '30d': "NOW() - INTERVAL '30 days'"
+            '1h': new Date(now.getTime() - 60 * 60 * 1000),
+            '24h': new Date(now.getTime() - 24 * 60 * 60 * 1000),
+            '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+            '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         };
         return conditions[timeframe] || conditions['24h'];
     }
@@ -963,108 +1010,145 @@ Be a smart and natural consultant, not just a bot answering questions!`;
     /**
      * Get overview metrics
      */
-    async getOverviewMetrics(db, timeCondition) {
-        const metrics = await db.get(`
-            SELECT 
-                COUNT(*) as total_conversations,
-                AVG(response_time) as avg_response_time,
-                COUNT(DISTINCT user_id) as unique_users,
-                AVG(CASE WHEN error_occurred = true THEN 1.0 ELSE 0.0 END) as error_rate
-            FROM conversation_analytics 
-            WHERE timestamp > ${timeCondition}
-        `);
-        
-        return {
-            total_conversations: metrics.total_conversations || 0,
-            avg_response_time: Math.round(metrics.avg_response_time || 0),
-            unique_users: metrics.unique_users || 0,
-            error_rate: Math.round((metrics.error_rate || 0) * 100)
-        };
+    async getOverviewMetrics(timeCondition) {
+        try {
+            const metrics = await dbAll(`
+                SELECT 
+                    COUNT(*) as total_conversations,
+                    AVG(response_time) as avg_response_time,
+                    COUNT(DISTINCT user_id) as unique_users,
+                    AVG(CASE WHEN error_occurred = true THEN 1.0 ELSE 0.0 END) as error_rate
+                FROM conversation_analytics 
+                WHERE timestamp > $1
+            `, [timeCondition]);
+            
+            const result = metrics[0] || {};
+            return {
+                total_conversations: parseInt(result.total_conversations) || 0,
+                avg_response_time: Math.round(result.avg_response_time || 0),
+                unique_users: parseInt(result.unique_users) || 0,
+                error_rate: Math.round((result.error_rate || 0) * 100)
+            };
+        } catch (error) {
+            console.warn('Failed to get overview metrics:', error);
+            return {
+                total_conversations: 0,
+                avg_response_time: 0,
+                unique_users: 0,
+                error_rate: 0
+            };
+        }
     }
 
     /**
      * Get popular topics from user preferences
      */
-    async getPopularTopics(db, timeCondition) {
-        const topics = await dbAll(`
-            SELECT category, preference, COUNT(*) as frequency
-            FROM user_preferences 
-            WHERE created_at > ${timeCondition}
-            GROUP BY category, preference
-            ORDER BY frequency DESC
-            LIMIT 10
-        `);
-        
-        return topics.map(topic => ({
-            topic: `${topic.category}: ${topic.preference}`,
-            frequency: topic.frequency
-        }));
+    async getPopularTopics(timeCondition) {
+        try {
+            const topics = await dbAll(`
+                SELECT category, preference, COUNT(*) as frequency
+                FROM user_preferences 
+                WHERE created_at > $1
+                GROUP BY category, preference
+                ORDER BY frequency DESC
+                LIMIT 10
+            `, [timeCondition]);
+            
+            return topics.map(topic => ({
+                topic: `${topic.category}: ${topic.preference}`,
+                frequency: parseInt(topic.frequency) || 0
+            }));
+        } catch (error) {
+            console.warn('Failed to get popular topics:', error);
+            return [];
+        }
     }
 
     /**
      * Get user behavior patterns
      */
-    async getUserBehaviorPatterns(db, timeCondition) {
-        const patterns = await db.get(`
-            SELECT 
-                AVG(message_length) as avg_message_length,
-                AVG(response_length) as avg_response_length,
-                COUNT(CASE WHEN salon_context_used = true THEN 1 END) as salon_queries,
-                COUNT(CASE WHEN recommendations_shown > 0 THEN 1 END) as recommendation_requests
-            FROM conversation_analytics 
-            WHERE timestamp > ${timeCondition}
-        `);
-        
-        return {
-            avg_message_length: Math.round(patterns.avg_message_length || 0),
-            avg_response_length: Math.round(patterns.avg_response_length || 0),
-            salon_queries: patterns.salon_queries || 0,
-            recommendation_requests: patterns.recommendation_requests || 0
-        };
+    async getUserBehaviorPatterns(timeCondition) {
+        try {
+            const patterns = await dbAll(`
+                SELECT 
+                    AVG(message_length) as avg_message_length,
+                    AVG(response_length) as avg_response_length,
+                    COUNT(CASE WHEN salon_context_used = true THEN 1 END) as salon_queries,
+                    COUNT(CASE WHEN recommendations_shown > 0 THEN 1 END) as recommendation_requests
+                FROM conversation_analytics 
+                WHERE timestamp > $1
+            `, [timeCondition]);
+            
+            const result = patterns[0] || {};
+            return {
+                avg_message_length: Math.round(result.avg_message_length || 0),
+                avg_response_length: Math.round(result.avg_response_length || 0),
+                salon_queries: parseInt(result.salon_queries) || 0,
+                recommendation_requests: parseInt(result.recommendation_requests) || 0
+            };
+        } catch (error) {
+            console.warn('Failed to get user behavior patterns:', error);
+            return {
+                avg_message_length: 0,
+                avg_response_length: 0,
+                salon_queries: 0,
+                recommendation_requests: 0
+            };
+        }
     }
 
     /**
      * Get performance metrics
      */
-    async getPerformanceMetrics(db, timeCondition) {
-        const performance = await dbAll(`
-            SELECT 
-                CASE 
-                    WHEN response_time < 1000 THEN 'fast'
-                    WHEN response_time < 3000 THEN 'medium'
-                    ELSE 'slow'
-                END as speed_category,
-                COUNT(*) as count
-            FROM conversation_analytics 
-            WHERE timestamp > ${timeCondition}
-            GROUP BY speed_category
-        `);
-        
-        const result = { fast: 0, medium: 0, slow: 0 };
-        performance.forEach(p => {
-            result[p.speed_category] = p.count;
-        });
-        
-        return result;
+    async getPerformanceMetrics(timeCondition) {
+        try {
+            const performance = await dbAll(`
+                SELECT 
+                    CASE 
+                        WHEN response_time < 1000 THEN 'fast'
+                        WHEN response_time < 3000 THEN 'medium'
+                        ELSE 'slow'
+                    END as speed_category,
+                    COUNT(*) as count
+                FROM conversation_analytics 
+                WHERE timestamp > $1
+                GROUP BY speed_category
+            `, [timeCondition]);
+            
+            const result = { fast: 0, medium: 0, slow: 0 };
+            performance.forEach(p => {
+                result[p.speed_category] = parseInt(p.count) || 0;
+            });
+            
+            return result;
+        } catch (error) {
+            console.warn('Failed to get performance metrics:', error);
+            return { fast: 0, medium: 0, slow: 0 };
+        }
     }
 
     /**
      * Get language trends
      */
-    async getLanguageTrends(db, timeCondition) {
-        const trends = await dbAll(`
-            SELECT language, COUNT(*) as count
-            FROM conversation_analytics 
-            WHERE timestamp > ${timeCondition}
-            GROUP BY language
-        `);
-        
-        const result = { ar: 0, en: 0, mixed: 0 };
-        trends.forEach(trend => {
-            result[trend.language] = trend.count;
-        });
-        
-        return result;
+    async getLanguageTrends(timeCondition) {
+        try {
+            const trends = await dbAll(`
+                SELECT language, COUNT(*) as count
+                FROM conversation_analytics 
+                WHERE timestamp > $1
+                GROUP BY language
+            `, [timeCondition]);
+            
+            const result = { ar: 0, en: 0, mixed: 0 };
+            trends.forEach(trend => {
+                result[trend.language] = parseInt(trend.count) || 0;
+            });
+            
+            return result;
+        } catch (error) {
+            console.warn('Failed to get language trends:', error);
+            return { ar: 0, en: 0, mixed: 0 };
+        }
     }
 
     /**
@@ -1138,8 +1222,13 @@ Be a smart and natural consultant, not just a bot answering questions!`;
                 
             const conversationContext = this.buildConversationContext(userId);
 
+            // Add language instruction to ensure proper response language
+            const languageInstruction = detectedLanguage === 'en' ? 
+                'IMPORTANT: The user wrote in English, so respond in English only.' :
+                'مهم: المستخدم كتب بالعربية، لذا أجب بالعربية فقط.';
+
             const messages = [
-                { role: 'system', content: systemPrompt },
+                { role: 'system', content: systemPrompt + '\n\n' + languageInstruction },
                 ...conversationContext,
                 { role: 'user', content: sanitizedMessage }
             ];

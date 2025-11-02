@@ -773,15 +773,15 @@ async function getTokenUsage(timeframe) {
                 AVG(input_tokens + output_tokens) as avg_tokens_per_request,
                 COUNT(*) as total_requests
             FROM ai_token_usage 
-            WHERE created_at > ${timeCondition}
-        `);
+            WHERE created_at > $1
+        `, [timeCondition]);
         
         return {
-            total: tokenStats?.total_tokens || 0,
-            input: tokenStats?.total_input_tokens || 0,
-            output: tokenStats?.total_output_tokens || 0,
+            total: parseInt(tokenStats?.total_tokens) || 0,
+            input: parseInt(tokenStats?.total_input_tokens) || 0,
+            output: parseInt(tokenStats?.total_output_tokens) || 0,
             average: Math.round(tokenStats?.avg_tokens_per_request || 0),
-            requests: tokenStats?.total_requests || 0
+            requests: parseInt(tokenStats?.total_requests) || 0
         };
     } catch (error) {
         console.warn('Failed to get token usage:', error);
@@ -796,11 +796,12 @@ async function getTokenUsage(timeframe) {
 }
 
 function getTimeConditionForAnalytics(timeframe) {
+    const now = new Date();
     const conditions = {
-        '1h': "NOW() - INTERVAL '1 hour'",
-        '24h': "NOW() - INTERVAL '1 day'",
-        '7d': "NOW() - INTERVAL '7 days'",
-        '30d': "NOW() - INTERVAL '30 days'"
+        '1h': new Date(now.getTime() - 60 * 60 * 1000),
+        '24h': new Date(now.getTime() - 24 * 60 * 60 * 1000),
+        '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     };
     return conditions[timeframe] || conditions['24h'];
 }
