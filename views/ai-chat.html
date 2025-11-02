@@ -349,15 +349,15 @@
 
         .messages-container {
             flex: 1;
-            padding: 1.5rem;
-            padding-bottom: 120px; /* Add space for fixed input container */
             overflow-y: auto;
-            /* CRITICAL FIX: Ensure smooth scroll is enabled */
             scroll-behavior: smooth; 
             display: flex;
             flex-direction: column;
             gap: 1rem;
             min-height: 0;
+            padding: 1rem;
+            /* Add bottom margin to account for fixed quick-replies and input */
+            margin-bottom: 120px;
         }
 
         /* Messages */
@@ -500,10 +500,8 @@
             30% { transform: scale(1.2); opacity: 1; }
         }
 
-        /* Input Area */
+        /* Input Area - Completely reconstructed */
         .input-container {
-            padding: 1.5rem;
-            padding-bottom: calc(2rem + env(safe-area-inset-bottom));
             background: var(--chat-bg);
             border-top: 1px solid var(--border-color);
             position: fixed;
@@ -511,6 +509,8 @@
             left: 0;
             right: 0;
             z-index: 100;
+            /* Only safe area padding for mobile compatibility */
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .input-wrapper {
@@ -617,14 +617,24 @@
             display: none; /* Temporarily hidden */
         }
 
-        /* Quick Replies */
+        /* Quick Replies - Smooth Integration */
         .quick-replies {
             display: flex;
             gap: 0.5rem;
-            padding: 0 1.5rem 1rem;
             overflow-x: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
+            position: fixed;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            z-index: 99;
+            /* Remove background and border for seamless integration */
+            padding: 0.5rem 1rem;
+            /* Add subtle gradient fade effect */
+            background: linear-gradient(to top, var(--chat-bg) 70%, transparent);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .quick-replies::-webkit-scrollbar {
@@ -632,25 +642,64 @@
         }
 
         .quick-reply {
-            background: var(--ai-message);
-            border: 2px solid var(--neon-blue);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.875rem;
             cursor: pointer;
-            transition: var(--transition);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
             color: var(--text-primary);
             font-weight: 500;
-            box-shadow: 0 0 10px rgba(0, 128, 255, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 
+                        0 0 0 rgba(6, 193, 103, 0);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-reply::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(6, 193, 103, 0.2), transparent);
+            transition: left 0.5s;
         }
 
         .quick-reply:hover {
-            background: var(--neon-blue);
-            color: white;
-            border-color: var(--neon-cyan);
-            transform: translateY(-1px);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6), 0 0 30px rgba(0, 128, 255, 0.4);
+            background: rgba(6, 193, 103, 0.15);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(6, 193, 103, 0.3),
+                        0 0 20px rgba(6, 193, 103, 0.4),
+                        inset 0 0 20px rgba(6, 193, 103, 0.1);
+            text-shadow: 0 0 8px rgba(6, 193, 103, 0.6);
+        }
+
+        .quick-reply:hover::before {
+            left: 100%;
+        }
+
+        /* Dark mode neon adjustments */
+        [data-theme="dark"] .quick-reply:hover {
+            box-shadow: 0 4px 12px rgba(6, 193, 103, 0.4),
+                        0 0 25px rgba(6, 193, 103, 0.5),
+                        inset 0 0 25px rgba(6, 193, 103, 0.15);
+            text-shadow: 0 0 10px rgba(6, 193, 103, 0.8);
+        }
+
+        /* Light mode neon adjustments */
+        [data-theme="light"] .quick-reply:hover {
+            box-shadow: 0 4px 12px rgba(6, 193, 103, 0.25),
+                        0 0 15px rgba(6, 193, 103, 0.3),
+                        inset 0 0 15px rgba(6, 193, 103, 0.08);
+            text-shadow: 0 0 6px rgba(6, 193, 103, 0.4);
         }
 
         /* Welcome Message */
@@ -724,11 +773,18 @@
             }
 
             .messages-container {
-                padding: 1rem;
+                padding: 0.75rem;
+                margin-bottom: 130px; /* Slightly more space on mobile */
             }
 
             .input-container {
-                padding: 1rem;
+                /* Only safe area padding for mobile */
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .quick-replies {
+                bottom: 70px; /* Adjust for mobile input height */
+                padding: 0.5rem 0.75rem;
             }
 
             .message-content {
@@ -1422,18 +1478,6 @@
                 <h2>مرحباً بك! 😊</h2>
                 <p>أنا نوڤا، مساعد الجمال الذكي. أسعد بمساعدتك في كل ما يخص الجمال والعناية. كيف يمكنني مساعدتك اليوم؟</p>
             </div>
-
-            <!-- Typing Indicator -->
-            <div class="typing-indicator" id="typingIndicator">
-                <div class="message-avatar">
-                    <img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">
-                </div>
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            </div>
         </div>
 
         <!-- Quick Replies -->
@@ -1610,6 +1654,9 @@
                         ai: data.response,
                         timestamp: new Date().toISOString()
                     });
+                    
+                    // Update dynamic suggestions based on AI response
+                    updateDynamicSuggestions(data.response, validatedMessage);
                 } else {
                     addMessage(data.fallback_response || 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.', 'ai', true);
                 }
@@ -2061,11 +2108,30 @@
 
         function showTypingIndicator() {
             isTyping = true;
-            const indicator = document.getElementById('typingIndicator');
+            const messagesContainer = document.getElementById('messagesContainer');
             
-            if (indicator) {
-                indicator.classList.add('show');
+            // Remove existing typing indicator if any
+            const existingIndicator = document.getElementById('typingIndicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
             }
+            
+            // Create new typing indicator and append to messages container
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator show';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-avatar">
+                    <img src="/images/Saloony_logo.png" alt="صالوني" style="width: 28px; height: 28px; object-fit: contain;">
+                </div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(typingDiv);
             updateStatus('يكتب...');
             scrollToBottom();
         }
@@ -2151,6 +2217,56 @@
                     console.error('Error clearing chat:', error);
                 }
             }
+        }
+
+        // --- DYNAMIC SUGGESTIONS SYSTEM ---
+        function updateDynamicSuggestions(aiResponse, userMessage) {
+            const quickReplies = document.getElementById('quickReplies');
+            if (!quickReplies) return;
+            
+            // Define suggestion categories based on keywords and context
+            const suggestionCategories = {
+                haircut: ['قصة شعر أخرى؟', 'نصائح للعناية بالشعر', 'ألوان شعر مناسبة', 'تسريحات مختلفة'],
+                skincare: ['منتجات للبشرة', 'روتين يومي للعناية', 'علاج مشاكل البشرة', 'نصائح طبيعية'],
+                booking: ['تأكيد الموعد', 'تغيير الموعد', 'خدمات إضافية', 'معلومات الصالون'],
+                colors: ['ألوان أخرى', 'نصائح للصبغة', 'العناية بالشعر المصبوغ', 'تدرجات مناسبة'],
+                makeup: ['مكياج مناسب', 'منتجات مكياج', 'تطبيق المكياج', 'إزالة المكياج'],
+                nails: ['تصاميم أظافر', 'العناية بالأظافر', 'ألوان مناكير', 'أظافر صحية'],
+                general: ['خدمات أخرى', 'نصائح جمال', 'أسعار الخدمات', 'حجز موعد']
+            };
+            
+            // Analyze the conversation to determine context
+            let category = 'general';
+            const combinedText = (aiResponse + ' ' + userMessage).toLowerCase();
+            
+            if (combinedText.includes('شعر') || combinedText.includes('قص') || combinedText.includes('تسريح')) {
+                category = 'haircut';
+            } else if (combinedText.includes('بشرة') || combinedText.includes('وجه') || combinedText.includes('عناية')) {
+                category = 'skincare';
+            } else if (combinedText.includes('موعد') || combinedText.includes('حجز') || combinedText.includes('صالون')) {
+                category = 'booking';
+            } else if (combinedText.includes('لون') || combinedText.includes('صبغ') || combinedText.includes('تلوين')) {
+                category = 'colors';
+            } else if (combinedText.includes('مكياج') || combinedText.includes('ميك اب')) {
+                category = 'makeup';
+            } else if (combinedText.includes('أظافر') || combinedText.includes('مناكير')) {
+                category = 'nails';
+            }
+            
+            // Get suggestions for the determined category
+            const suggestions = suggestionCategories[category];
+            
+            // Update the quick replies with contextual suggestions
+            quickReplies.innerHTML = suggestions.map(suggestion => 
+                `<button class="quick-reply" onclick="sendQuickReply('${suggestion}')">${suggestion}</button>`
+            ).join('');
+            
+            // Show the quick replies with a smooth animation
+            quickReplies.style.display = 'flex';
+            quickReplies.style.opacity = '0';
+            setTimeout(() => {
+                quickReplies.style.opacity = '1';
+            }, 100);
         }
 
         // --- LANGUAGE TOGGLE FIX ---
