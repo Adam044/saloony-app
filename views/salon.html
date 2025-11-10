@@ -205,27 +205,31 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 10000;
-            display: none; 
-            justify-content: center;
-            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2000000;
+            display: none;
             padding: 20px;
             transition: opacity 0.3s ease;
             opacity: 0;
+            overflow-y: auto; /* Allow scrolling if content taller than viewport */
         }
         .confirmation-modal-content {
             background: #fff;
             border-radius: 20px;
             max-width: 500px;
             width: 100%;
+            max-height: 90vh; /* Prevent overflow off-screen */
+            overflow-y: auto;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
             transform: translateY(-20px);
             opacity: 0;
             transition: all 0.3s ease-out;
         }
         .confirmation-modal.modal-open {
-            display: flex;
+            /* Grid centering is more robust across browsers and scroll states */
+            display: grid;
+            place-items: center;
             opacity: 1;
         }
         .confirmation-modal.modal-open .confirmation-modal-content {
@@ -237,6 +241,23 @@
         .star-rating i {
             cursor: pointer;
             transition: color 0.2s;
+        }
+
+        /* Centering Fix Overrides (ensure modals are truly viewport-centered) */
+        .confirmation-modal {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            min-height: 100vh !important;
+        }
+        .confirmation-modal.modal-open {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .confirmation-modal .confirmation-modal-content {
+            margin: auto;
+            max-height: 90vh;
         }
 
         /* Empty State */
@@ -282,9 +303,8 @@
 <div class="min-h-screen flex flex-col">
     <!-- Header (Simple back navigation) -->
     <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 sticky top-0" style="padding-top: env(safe-area-inset-top);">
-        <button id="back-to-home-btn" class="text-white hover:text-secondary transition duration-150 p-2 rounded-lg">
+        <button id="back-to-home-btn" class="text-white hover:text-secondary transition duration-150 p-2 rounded-lg" aria-label="رجوع">
             <i class="fas fa-arrow-right text-lg ml-2"></i>
-            العودة للرئيسية
         </button>
         <button id="favorite-toggle-btn" class="text-white hover:text-red-400 transition duration-150 p-2 rounded-lg">
             <i class="fas fa-heart text-lg text-gray-300"></i>
@@ -326,6 +346,10 @@
                                 <button id="share-salon-btn" class="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-blue-600">
                                     <i class="fas fa-share-alt"></i>
                                     <span>مشاركة</span>
+                                </button>
+                                <button id="directions-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-indigo-700" style="display: none;">
+                                    <i class="fas fa-directions"></i>
+                                    <span>الاتجاهات</span>
                                 </button>
                                 <button id="call-salon-btn" class="bg-secondary text-primary-dark px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-secondary/90" style="display: none;">
                                     <i class="fas fa-phone"></i>
@@ -536,7 +560,7 @@
 </div>
 
 <!-- Booking Modal (overlay-based booking flow) -->
-<div id="booking-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+<div id="booking-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="z-index: 2000000; backdrop-filter: blur(4px);">
     <div id="booking-modal-content" class="bg-white rounded-2xl shadow-xl w-11/12 max-w-4xl max-h-[90vh] flex flex-col">
         <!-- Fixed Header -->
         <div class="flex justify-between items-center p-6 border-b border-gray-200 bg-white rounded-t-2xl">
@@ -795,6 +819,7 @@
             </div>
             <button id="services-explorer-close" class="py-1 px-3 rounded-xl border hover:bg-gray-100">إغلاق</button>
         </div>
+        <div id="services-explorer-feedback" class="hidden mb-3 p-3 rounded-xl border text-sm"></div>
         <div class="flex items-center gap-2 mb-3">
             <input id="services-explorer-search" type="text" class="flex-1 border rounded-xl px-3 py-2" placeholder="ابحث باسم الخدمة...">
             <select id="services-explorer-category" class="border rounded-xl px-2 py-2">
@@ -803,7 +828,21 @@
                 <option value="add_on">الإضافات</option>
             </select>
         </div>
+        <div id="services-explorer-selected" class="mb-3 hidden">
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="text-sm font-bold text-primary-dark">الخدمات المختارة (<span id="selected-count">0</span>)</h4>
+                <button id="clear-selected" class="text-xs px-2 py-1 rounded-lg border hover:bg-gray-100">إزالة الكل</button>
+            </div>
+            <div id="selected-chips" class="flex flex-wrap gap-2 justify-end"></div>
+        </div>
         <div id="services-explorer-list" class="max-h-96 overflow-y-auto space-y-2"></div>
+        <div class="sticky bottom-0 left-0 right-0 bg-white border-t mt-3 p-3 flex items-center justify-between">
+            <div class="text-sm text-gray-600">تم اختيار <span id="selected-count-footer">0</span> خدمة</div>
+            <div class="flex items-center gap-2">
+                <button id="services-explorer-done" class="btn-secondary text-primary-dark font-bold px-3 py-2 rounded-xl">تم</button>
+                <button id="services-explorer-close-2" class="px-3 py-2 rounded-xl border hover:bg-gray-100">إغلاق</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1157,36 +1196,36 @@
         currentReviewSalon = salon; 
         document.getElementById('review-salon-name').textContent = salon.salon_name;
         const modal = document.getElementById('review-modal');
+        // Ensure modal is a direct child of <body> to avoid transformed ancestors affecting fixed positioning
+        try { if (modal && modal.parentNode !== document.body) document.body.appendChild(modal); } catch(_) {}
         
         document.getElementById('review-form').reset();
         currentReviewRating = 0;
         document.getElementById('review-rating-input').value = '0';
         updateStarDisplay(0);
 
+        // Rely on CSS class for display and centering (grid-based)
         modal.classList.add('modal-open');
-        modal.style.display = 'flex';
         document.body.classList.add('overflow-hidden');
     }
     function hideReviewModal() {
         const modal = document.getElementById('review-modal');
         if (modal) {
             modal.classList.remove('modal-open');
-            modal.style.display = 'none';
             document.body.classList.remove('overflow-hidden');
         }
     }
     function showAlreadyReviewedModal(salon) {
         currentReviewSalon = salon;
         const modal = document.getElementById('already-reviewed-modal');
+        try { if (modal && modal.parentNode !== document.body) document.body.appendChild(modal); } catch(_) {}
         modal.classList.add('modal-open');
-        modal.style.display = 'flex';
         document.body.classList.add('overflow-hidden');
     }
     function hideAlreadyReviewedModal() {
         const modal = document.getElementById('already-reviewed-modal');
         if (modal) {
             modal.classList.remove('modal-open');
-            modal.style.display = 'none';
             document.body.classList.remove('overflow-hidden');
         }
     }
@@ -1194,15 +1233,14 @@
         pendingDeleteReview = { salonId, salonName };
         document.getElementById('delete-review-salon-name').textContent = salonName;
         const modal = document.getElementById('delete-review-modal');
+        try { if (modal && modal.parentNode !== document.body) document.body.appendChild(modal); } catch(_) {}
         modal.classList.add('modal-open');
-        modal.style.display = 'flex';
         document.body.classList.add('overflow-hidden');
     }
     function hideDeleteReviewModal() {
         const modal = document.getElementById('delete-review-modal');
         if (modal) {
             modal.classList.remove('modal-open');
-            modal.style.display = 'none';
             document.body.classList.remove('overflow-hidden');
         }
         pendingDeleteReview = null;
@@ -1210,8 +1248,10 @@
     function showActiveAppointmentModal() {
         const modal = document.getElementById('active-appointment-modal');
         if (!modal) return;
-        modal.style.display = 'flex';
-        setTimeout(() => modal.classList.add('modal-open'), 10);
+        // Move to body to avoid transformed ancestors
+        try { if (modal.parentNode !== document.body) document.body.appendChild(modal); } catch(_) {}
+        // Use class-based open for consistent centering
+        modal.classList.add('modal-open');
         document.body.classList.add('overflow-hidden');
     }
     function hideActiveAppointmentModal() {
@@ -1559,14 +1599,60 @@
                 </div>
             `;
             document.body.appendChild(modal);
-            
-            // Close on backdrop click
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.remove();
-            });
+            // Ensure share modal sits above nav and uses blurred backdrop
+            try { modal.style.zIndex = '2000000'; modal.style.backdropFilter = 'blur(4px)'; } catch (_) {}
+            // Disable backdrop click-to-close; use explicit close button only
         }
 
         setupShareButton(salonIdSafe, salon.salon_name);
+
+        // Setup Directions Button (cross-platform deep links)
+        function buildDirectionsUrl(lat, lng, label) {
+            const ua = navigator.userAgent || '';
+            const name = label || 'الصالون';
+            // iOS/macOS Apple Maps — open Directions with destination
+            if (/iP(hone|ad|od)|Macintosh/.test(ua)) {
+                if (lat && lng) return `maps://?daddr=${lat},${lng}&q=${encodeURIComponent(name)}`;
+                return `maps://?q=${encodeURIComponent(name)}`;
+            }
+            // Android — prefer Google Maps navigation intent
+            if (/Android/i.test(ua)) {
+                if (lat && lng) return `google.navigation:q=${lat},${lng}(${encodeURIComponent(name)})`;
+                return `geo:0,0?q=${encodeURIComponent(name)}`;
+            }
+            // Desktop/web — Google Maps Directions
+            if (lat && lng) return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+            return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(name)}`;
+        }
+
+        async function setupDirectionsButton(salonId, salonObj) {
+            const btn = document.getElementById('directions-btn');
+            if (!btn || !salonId) return;
+            let lat = null, lng = null;
+            const label = salonObj?.salon_name || salonObj?.address || salonObj?.city || 'الصالون';
+            try {
+                const r = await fetch(`/api/salon/location/${salonId}`);
+                const j = await r.json();
+                if (j && j.success && j.location && j.location.latitude && j.location.longitude) {
+                    lat = Number(j.location.latitude);
+                    lng = Number(j.location.longitude);
+                } else {
+                    // Fallback geocode using Nominatim
+                    const q = [salonObj?.salon_name, salonObj?.address, salonObj?.city].filter(Boolean).join('، ');
+                    const u = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ar`;
+                    const g = await fetch(u).then(x => x.json()).catch(() => []);
+                    if (Array.isArray(g) && g[0]) { lat = Number(g[0].lat); lng = Number(g[0].lon); }
+                }
+            } catch (_) { /* ignore */ }
+            const url = buildDirectionsUrl(lat, lng, label);
+            btn.style.display = 'flex';
+            btn.addEventListener('click', () => {
+                try { btn.classList.add('animate-pulse'); setTimeout(() => btn.classList.remove('animate-pulse'), 800); } catch (_) {}
+                window.location.href = url;
+            });
+        }
+
+        await setupDirectionsButton(salonIdSafe, salon);
 
 
         // Load Services Tags (Step 0)
@@ -2309,7 +2395,12 @@
             };
             
             const response = await fetch('/api/appointment/book', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bookingData)
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
+                },
+                body: JSON.stringify(bookingData)
             });
             const result = await response.json();
 
@@ -2333,7 +2424,7 @@
         
         try {
             const response = await fetch('/api/favorites/toggle', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` },
                 body: JSON.stringify({ user_id: currentUser.userId, salon_id: salonId })
             });
             if (!response.ok) throw new Error('Failed to toggle favorite');
@@ -2369,7 +2460,12 @@
 
         try {
             const response = await fetch('/api/reviews/submit', { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reviewData)
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
+                },
+                body: JSON.stringify(reviewData)
             });
             const result = await response.json();
             
@@ -2391,7 +2487,9 @@
     async function checkExistingReviewAndShow(salon) {
         if (!currentUser || !currentUser.userId || !salon || !salon.salonId) { displayMessage('يرجى تسجيل الدخول أولاً', 'error'); return; }
         try {
-            const response = await fetch(`/api/reviews/user/${currentUser.userId}`);
+            const response = await fetch(`/api/reviews/user/${currentUser.userId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` }
+            });
             const result = await response.json();
             if (response.ok && result.success) {
                 const existingReview = result.reviews.find(review => review.salon_id == salon.salonId);
@@ -2409,7 +2507,7 @@
         if (!salonId || !currentUser || !currentUser.userId) { displayMessage('خطأ: فشل تحديد التقييم للحذف أو بيانات المستخدم غير متوفرة.', 'error'); hideDeleteReviewModal(); return; }
         try {
             const response = await fetch('/api/reviews/delete', {
-                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` },
                 body: JSON.stringify({ user_id: currentUser.userId, salon_id: salonId })
             });
             const result = await response.json();
@@ -2436,6 +2534,60 @@
         const searchInput = modal.querySelector('#services-explorer-search');
         const categorySelect = modal.querySelector('#services-explorer-category');
         const listEl = modal.querySelector('#services-explorer-list');
+        const selectedEl = modal.querySelector('#services-explorer-selected');
+        const selectedCountEl = modal.querySelector('#selected-count');
+        const selectedChipsEl = modal.querySelector('#selected-chips');
+        const selectedCountFooterEl = modal.querySelector('#selected-count-footer');
+        const feedbackEl = modal.querySelector('#services-explorer-feedback');
+
+        const flashExplorerMessage = (text, type = 'success') => {
+            if (!feedbackEl) return;
+            feedbackEl.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'border-green-300', 'bg-blue-100', 'text-blue-800', 'border-blue-300');
+            if (type === 'success') {
+                feedbackEl.classList.add('bg-green-100', 'text-green-800', 'border-green-300');
+            } else {
+                feedbackEl.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
+            }
+            feedbackEl.textContent = text;
+            setTimeout(() => feedbackEl.classList.add('hidden'), 1200);
+        };
+
+        const renderSelectedSummary = () => {
+            const cat = categorySelect.value;
+            const selectedInCat = selectedServices.filter(s => cat === 'all' ? true : s.service_type === cat);
+            selectedCountEl.textContent = selectedInCat.length.toString();
+            selectedCountFooterEl.textContent = selectedServices.length.toString();
+            if (selectedInCat.length === 0) {
+                selectedEl.classList.add('hidden');
+                selectedChipsEl.innerHTML = '';
+                return;
+            }
+            selectedEl.classList.remove('hidden');
+            selectedChipsEl.innerHTML = selectedInCat.map(s => `
+                <span class="px-2 py-1 bg-secondary-soft text-primary-dark rounded-full text-xs font-medium ml-2 flex items-center whitespace-nowrap border border-secondary">
+                    ${s.name_ar}
+                    <button class="ml-2 text-red-600 hover:text-red-700" data-id="${s.id}" aria-label="إزالة">×</button>
+                </span>
+            `).join('');
+            selectedChipsEl.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = parseInt(btn.dataset.id);
+                    const card = document.querySelector(`.service-option[data-service-id="${id}"]`);
+                    if (card) card.click();
+                    flashExplorerMessage('تمت إزالة الخدمة', 'info');
+                    renderList();
+                });
+            });
+            const clearBtn = modal.querySelector('#clear-selected');
+            clearBtn.onclick = () => {
+                selectedInCat.forEach(s => {
+                    const card = document.querySelector(`.service-option[data-service-id="${s.id}"]`);
+                    if (card) card.click();
+                });
+                flashExplorerMessage('تمت إزالة كل الخدمات المحددة');
+                renderList();
+            };
+        };
 
         const renderList = () => {
             const q = (searchInput.value || '').trim();
@@ -2445,22 +2597,21 @@
             const filtered = allServices.filter(s => {
                 const matchesCat = cat === 'all' ? true : s.service_type === cat;
                 const matchesQuery = q ? (s.name_ar || '').includes(q) : true;
-                return matchesCat && matchesQuery;
+                return matchesCat && matchesQuery && !currentIds.has(s.id);
             });
 
             listEl.innerHTML = filtered.map(s => {
-                const isChecked = currentIds.has(s.id);
+                const name = s.name_ar || '';
+                const highlightName = q ? name.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), (m) => `<mark class="bg-yellow-200">${m}</mark>`) : name;
                 return `
-                    <div class="border rounded-xl p-3 flex items-center justify-between ${isChecked ? 'bg-gray-100' : 'hover:bg-gray-50'}">
+                    <div class="border rounded-xl p-3 flex items-center justify-between hover:bg-gray-50">
                         <div>
-                            <div class="font-bold text-primary-dark">${s.name_ar}</div>
+                            <div class="font-bold text-primary-dark">${highlightName}</div>
                             <div class="text-sm ${s.service_type === 'add_on' ? 'text-orange-600' : 'text-gray-600'}">
                                 ${s.service_type === 'add_on' ? 'إضافة - بدون وقت' : `${s.duration} دقيقة`} • ${s.price} شيكل
                             </div>
                         </div>
-                        <button class="py-1.5 px-3 rounded-xl ${isChecked ? 'bg-red-500 text-white' : 'btn-secondary text-primary-dark'}" data-id="${s.id}">
-                            ${isChecked ? 'إزالة' : 'إضافة'}
-                        </button>
+                        <button class="py-1.5 px-3 rounded-xl btn-secondary text-primary-dark" data-id="${s.id}">إضافة</button>
                     </div>`;
             }).join('');
 
@@ -2473,10 +2624,23 @@
                     const card = document.querySelector(`.service-option[data-service-id="${id}"]`);
                     if (card) {
                         card.click(); // Simulate click on the main card to toggle selection
+                    } else {
+                        // Fallback if card not found (ensure immediate selection)
+                        selectedServices.push({
+                            id: s.id,
+                            name_ar: s.name_ar,
+                            price: s.price,
+                            duration: s.service_type === 'add_on' ? 0 : s.duration,
+                            service_type: s.service_type
+                        });
+                        selectedServices.sort((a, b) => a.id - b.id);
+                        updateTotals();
                     }
+                    flashExplorerMessage('تمت إضافة الخدمة');
                     renderList(); // Re-render explorer list to update button state
                 });
             });
+            renderSelectedSummary();
         };
 
         // Open centered modal and lock background scroll
@@ -2493,14 +2657,37 @@
             document.body.classList.remove('overflow-hidden');
         };
 
-        // Bind close actions
+        // Bind close actions and footer actions
         closeBtn.onclick = closeServicesExplorer;
+        modal.querySelector('#services-explorer-close-2').onclick = closeServicesExplorer;
+        modal.querySelector('#services-explorer-done').onclick = closeServicesExplorer;
+        // Disable closing when clicking the backdrop to match non-clickable background behavior
         modal.onclick = (e) => {
-            if (e.target.id === 'services-explorer-modal') closeServicesExplorer();
+            if (e.target.id === 'services-explorer-modal') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
         };
         
         searchInput.addEventListener('input', renderList);
         categorySelect.addEventListener('change', renderList);
+
+        // Keyboard shortcuts: Enter adds the first visible item, Esc closes
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeServicesExplorer();
+            } else if (e.key === 'Enter') {
+                const firstBtn = listEl.querySelector('button[data-id]');
+                if (firstBtn) {
+                    firstBtn.click();
+                }
+            }
+        });
+        // Ensure modal captures focus for keyboard shortcuts
+        setTimeout(() => {
+            modal.querySelector('#services-explorer-search')?.focus();
+        }, 50);
     }
     
     // Horizontal service strips renderer for main page
@@ -2630,29 +2817,40 @@
         
         // --- Setup Navigation Listeners ---
         document.getElementById('back-to-home-btn').addEventListener('click', () => {
-            // Add page fade-out animation before navigation (similar to home_user)
+            // Page fade-out for smooth transition
             document.body.classList.remove('page-fade-in');
             document.body.classList.add('page-fade-out');
-            
-            // Wait for animation to complete before navigation
+
             setTimeout(() => {
-                // Check if we came from home_user and have a stored section
-                const previousSection = sessionStorage.getItem('previousSection');
                 const referrer = document.referrer;
-                
-                if (referrer && referrer.includes('/home_user.html') && previousSection) {
-                    // Navigate back to home_user with the specific section
-                    sessionStorage.setItem('restoreSection', previousSection);
-                    sessionStorage.removeItem('previousSection'); // Clean up
-                    window.location.href = '/home_user.html';
-                } else if (window.history.length > 1) {
-                    // Use browser history to go back to previous page (AI chat, home, etc.)
-                    window.history.back();
-                } else {
-                    // Fallback to home if no history
-                    window.location.href = '/home_user.html';
+                const prevView = sessionStorage.getItem('restoreSection') || sessionStorage.getItem('previousSection');
+
+                // Hint the target view for home_user when returning
+                if (prevView) {
+                    sessionStorage.setItem('restoreSection', prevView);
                 }
-            }, 200); // Short delay for smooth transition
+
+                // Prefer native back if possible (preserves exact previous state and query)
+                if (window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+
+                // If we have a referrer, navigate directly to it
+                if (referrer && referrer !== window.location.href) {
+                    window.location.href = referrer;
+                    return;
+                }
+
+                // Fallback: return to home with specific view if known
+                if (prevView) {
+                    window.location.href = `/home_user.html?view=${encodeURIComponent(prevView)}`;
+                    return;
+                }
+
+                // Final fallback to main home
+                window.location.href = '/home_user.html';
+            }, 150);
         });
 
         document.getElementById('favorite-toggle-btn').addEventListener('click', (e) => {
@@ -2874,7 +3072,11 @@
         try {
             const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
             if (uid) {
-                const res = await fetch(`/api/appointments/user/${uid}/upcoming`);
+                const res = await fetch(`/api/appointments/user/${uid}/upcoming`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
+                    }
+                });
                 const data = await res.json().catch(() => ({}));
                 if (data && data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
                     showActiveAppointmentModal();
@@ -2968,7 +3170,11 @@
             try {
                 const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
                 if (uid) {
-                    const res = await fetch(`/api/appointments/user/${uid}/upcoming`);
+                    const res = await fetch(`/api/appointments/user/${uid}/upcoming`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
+                        }
+                    });
                     const data = await res.json().catch(() => ({}));
                     if (data && data.success && Array.isArray(data.appointments) && data.appointments.length > 0) {
                         showActiveAppointmentModal();
@@ -2985,11 +3191,8 @@
         if (startBtn) startBtn.addEventListener('click', guardedOpen);
         if (bookBtn) bookBtn.addEventListener('click', guardedOpen);
         if (closeBtn) closeBtn.addEventListener('click', closeBookingModal);
-        if (overlay) {
-            overlay.addEventListener('click', (e) => {
-                if (e.target && e.target.id === 'booking-modal-overlay') closeBookingModal();
-            });
-        }
+        // Disable backdrop click-to-close to prevent accidental dismiss
+        // (Background remains non-clickable due to overlay, but won’t close on click)
 
         // Active appointment modal actions already wired
         document.getElementById('close-active-appointment-modal-btn')?.addEventListener('click', hideActiveAppointmentModal);

@@ -17,6 +17,9 @@
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Leaflet CSS/JS for map-based location picker -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         (function() {
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -498,6 +501,36 @@
                         إدارة الصالون والجدول
                     </span>
                 </h2>
+
+                <!-- Salon Location Management -->
+                <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xl font-bold text-primary-dark border-r-4 border-secondary pr-3">
+                            <i class="fas fa-map-marker-alt ml-2"></i>
+                            موقع الصالون
+                        </h3>
+                        <button id="add-location-btn" class="btn-action px-4 py-2 rounded-xl font-bold">
+                            <i class="fas fa-plus ml-2"></i>
+                            إضافة الموقع
+                        </button>
+                    </div>
+                    <p class="text-gray-600 text-sm">يمكنك إدخال العنوان أو اختيار الموقع من الخريطة.</p>
+                    <!-- Live Location Summary (simple, user-friendly) -->
+                    <div id="salon-location-summary" class="mt-4 bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-xl p-4 hidden">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-map-pin text-green-600"></i>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-green-800">تم اختيار موقعك</div>
+                                    <div class="text-sm text-gray-700">يمكنك عرضه على الخريطة أو تحديثه لاحقًا.</div>
+                                </div>
+                            </div>
+                            <button id="view-location-btn" class="px-3 py-2 bg-primary-dark text-white rounded-xl text-sm hover:bg-primary">عرض على الخريطة</button>
+                        </div>
+                    </div>
+                </section>
 
                 <section class="bg-white p-6 rounded-2xl shadow-xl mb-8">
                     <h3 class="text-xl font-bold text-primary-dark mb-4 border-r-4 border-secondary pr-3">إدارة فريق العمل</h3>
@@ -4138,13 +4171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            // Show overlay while saving and reloading
-            const overlay = document.createElement('div');
-            overlay.id = 'saving-overlay';
-            overlay.className = 'fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50';
-            overlay.innerHTML = '<div class="bg-white rounded-2xl shadow-xl p-4 text-center"><i class="fas fa-spinner fa-spin ml-2"></i> جاري حفظ الخدمات...</div>';
-            document.body.appendChild(overlay);
-
+            const hud = (typeof window.showActionProgress === 'function') ? window.showActionProgress('جاري حفظ الخدمات...') : null;
             if (saveServicesBtn) {
                 saveServicesBtn.disabled = true;
                 saveServicesBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
@@ -4160,21 +4187,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await response.json();
             
             if (data.success) {
-                showMessage(servicesMessage, 'تم حفظ الخدمات بنجاح!', true);
+                if (hud) hud.success('تم حفظ الخدمات بنجاح!');
                 await loadServiceManagement(currentSalon.gender_focus);
             } else {
-                showMessage(servicesMessage, data.message || 'فشل في حفظ الخدمات.', false);
+                if (hud) hud.error(data.message || 'فشل في حفظ الخدمات.');
             }
         } catch (error) {
             console.error('Save services error:', error);
-            showMessage(servicesMessage, 'خطأ في الشبكة أثناء عملية الحفظ.', false);
+            if (hud) hud.error('خطأ في الشبكة أثناء عملية الحفظ.');
         } finally {
             if (saveServicesBtn) {
                 saveServicesBtn.disabled = false;
                 saveServicesBtn.innerHTML = '<i class="fas fa-save ml-2"></i> حفظ الخدمات والأسعار';
             }
-            const ov = document.getElementById('saving-overlay');
-            if (ov) ov.remove();
+            // HUD auto-dismisses; no overlay cleanup needed
         }
     };
     // Manual save removed; guard listener
@@ -4623,7 +4649,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     if (saveButton) {
       saveButton.addEventListener('click', async function() {
         const messageBox = document.getElementById('profile-save-message');
-        
+        const hud = (typeof window.showActionProgress === 'function') ? window.showActionProgress('جاري حفظ التغييرات...') : null;
         try {
           saveButton.disabled = true;
           saveButton.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحفظ...';
@@ -4644,7 +4670,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
           };
 
           if (!salonData.salon_name) {
-            showMessage(messageBox, 'يرجى إدخال اسم الصالون.', false);
+            if (hud) hud.error('يرجى إدخال اسم الصالون.');
             return;
           }
           
@@ -4676,7 +4702,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
               salonData.image_url = uploadJson.image_url;
             } catch (error) {
               console.error('Error uploading image:', error);
-              showMessage(messageBox, 'خطأ في رفع الصورة', false);
+              if (hud) hud.error('خطأ في رفع الصورة');
               return;
             }
           }
@@ -4717,14 +4743,14 @@ function openSalonServicesExplorer(prefCategory = 'all') {
               if (imagePlaceholder) imagePlaceholder.classList.add('hidden');
             }
             
-            showMessage(messageBox, 'تم حفظ التغييرات بنجاح!', true);
+            if (hud) hud.success('تم حفظ التغييرات بنجاح!');
             hideSaveButton();
           } else {
             throw new Error(data.message || 'فشل في حفظ التغييرات');
           }
         } catch (error) {
           console.error('Error saving profile changes:', error);
-          showMessage(messageBox, error.message || 'حدث خطأ أثناء حفظ التغييرات', false);
+          if (hud) hud.error(error.message || 'حدث خطأ أثناء حفظ التغييرات');
         } finally {
           saveButton.disabled = false;
           saveButton.innerHTML = '<i class="fas fa-save ml-1"></i> حفظ التغييرات';
@@ -5579,6 +5605,699 @@ const logoutRole = async () => {
 
 // Note: PIN authentication is initialized after salon data loads (see line ~1113)
 </script>
+
+    <!-- Location Modal -->
+    <div id="location-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center" style="z-index: 2000000;">
+        <div class="bg-white w-[95vw] max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b">
+                <h3 class="text-lg font-bold text-primary-dark">
+                    <i class="fas fa-map-marker-alt ml-2"></i>
+                    إضافة/تعديل موقع الصالون
+                </h3>
+                <button id="close-location-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div class="space-y-2 relative">
+                    <label for="location-address-input" class="block text-sm font-medium text-gray-700">اسم المكان (يظهر تلقائيًا بعد تحريك العلامة)</label>
+                    <input id="location-address-input" type="text" placeholder="اسحب العلامة على الخريطة لتحديد موقعك" class="w-full p-3 border border-gray-300 rounded-xl text-right bg-gray-50" autocomplete="off" readonly>
+                    <!-- Loading spinner shown while resolving place name -->
+                    <div id="location-name-loading" class="absolute left-3 top-10 hidden" aria-hidden="true">
+                        <span class="inline-block w-5 h-5 border-2 border-gray-300 border-t-green-500 rounded-full animate-spin"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex gap-3 items-end flex-wrap">
+                        <button id="use-my-location-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold transition-colors w-full md:w-auto">
+                            <i class="fas fa-location-crosshairs ml-2"></i>
+                            استخدام موقعي الحالي
+                        </button>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <label for="location-city-select" class="text-sm text-gray-700 whitespace-nowrap">اختر المدينة</label>
+                            <select id="location-city-select" class="p-3 border border-gray-300 rounded-xl bg-white text-right w-full md:w-56">
+                                <option value="">— اختر المدينة —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Hidden fields to store lat/lng without showing them to user -->
+                    <input id="location-lat-input" type="hidden">
+                    <input id="location-lng-input" type="hidden">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">الخريطة</label>
+                    <div id="location-map" class="w-full h-72 rounded-xl border border-gray-200"></div>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button id="save-location-btn" class="btn-action flex-1 py-3 rounded-xl font-bold">
+                        <i class="fas fa-save ml-2"></i>
+                        حفظ الموقع
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const modal = document.getElementById('location-modal');
+        const openBtn = document.getElementById('add-location-btn');
+        const closeBtn = document.getElementById('close-location-modal');
+        const addressInput = document.getElementById('location-address-input');
+        const latInput = document.getElementById('location-lat-input');
+        const lngInput = document.getElementById('location-lng-input');
+        const mapContainer = document.getElementById('location-map');
+        const citySelect = document.getElementById('location-city-select');
+        const useMyLocationBtn = document.getElementById('use-my-location-btn');
+        const saveBtn = document.getElementById('save-location-btn');
+        const summaryEl = document.getElementById('salon-location-summary');
+        const viewLocationBtn = document.getElementById('view-location-btn');
+        // تم إزالة قائمة الاقتراحات النصية
+
+        let mapInstance = null;
+        let marker = null;
+        let currentLat = null;
+        let currentLng = null;
+        let currentCity = null;
+        let lastSuggestQuery = '';
+        let suggestTimer = null;
+
+        function notify(msg, type = 'info') {
+            try {
+                if (typeof showToast === 'function') {
+                    showToast(msg, type === 'success');
+                } else {
+                    alert(msg);
+                }
+            } catch (e) { alert(msg); }
+        }
+        // Non-interactive, sleek success animation (auto-dismiss)
+        function showActionSuccess(message = 'تم التنفيذ بنجاح') {
+            try {
+                const wrap = document.createElement('div');
+                wrap.className = 'fixed inset-0 pointer-events-none flex items-end justify-center p-4';
+                wrap.style.zIndex = '3000001';
+                wrap.innerHTML = `
+                  <div class="pointer-events-auto bg-white/90 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 border border-emerald-200">
+                    <div data-success-icon class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <div class="text-emerald-700 font-semibold">${message}</div>
+                  </div>`;
+                document.body.appendChild(wrap);
+                const card = wrap.firstElementChild;
+                const icon = card.querySelector('[data-success-icon]');
+                card.animate([
+                  { transform: 'translateY(16px)', opacity: 0 },
+                  { transform: 'translateY(0)', opacity: 1 }
+                ], { duration: 220, easing: 'ease-out' });
+                icon.animate([
+                  { transform: 'scale(0.85)' },
+                  { transform: 'scale(1)' }
+                ], { duration: 260, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+                setTimeout(() => {
+                  const anim = card.animate([
+                    { opacity: 1 },
+                    { opacity: 0 }
+                  ], { duration: 320, easing: 'ease-in' });
+                  anim.onfinish = () => wrap.remove();
+                }, 1600);
+            } catch (_) {}
+        }
+
+        // Clean loading HUD: spinner -> success/error, non-blocking, auto-dismiss
+        function showActionProgress(message = 'جارٍ المعالجة…') {
+            const wrap = document.createElement('div');
+            wrap.className = 'fixed inset-0 pointer-events-none flex items-end justify-center p-4';
+            wrap.style.zIndex = '3000001';
+            wrap.innerHTML = `
+              <div class="pointer-events-auto bg-white/90 backdrop-blur-md shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-3 border border-gray-200">
+                <div data-icon class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-white">
+                  <svg data-spinner viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9" stroke-opacity="0.3"></circle>
+                    <path d="M21 12a9 9 0 0 0-9-9" />
+                  </svg>
+                </div>
+                <div data-msg class="text-gray-800 font-semibold">${message}</div>
+              </div>`;
+            document.body.appendChild(wrap);
+            const card = wrap.firstElementChild;
+            const iconWrap = card.querySelector('[data-icon]');
+            const spinner = card.querySelector('[data-spinner]');
+            const msgEl = card.querySelector('[data-msg]');
+            const spinAnim = spinner && spinner.animate([
+              { transform: 'rotate(0deg)' },
+              { transform: 'rotate(360deg)' }
+            ], { duration: 900, iterations: Infinity, easing: 'linear' });
+
+            function animateIn() {
+              card.animate([
+                { transform: 'translateY(16px)', opacity: 0 },
+                { transform: 'translateY(0)', opacity: 1 }
+              ], { duration: 220, easing: 'ease-out' });
+            }
+            function animateOutAndRemove(delay = 1400) {
+              setTimeout(() => {
+                const anim = card.animate([
+                  { opacity: 1 },
+                  { opacity: 0 }
+                ], { duration: 280, easing: 'ease-in' });
+                anim.onfinish = () => wrap.remove();
+              }, delay);
+            }
+            animateIn();
+
+            return {
+              setMessage(text) { if (msgEl) msgEl.textContent = text; },
+              success(text = 'تم التنفيذ بنجاح') {
+                try { if (spinAnim) spinAnim.cancel(); } catch (_) {}
+                iconWrap.className = 'w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white';
+                iconWrap.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg>';
+                if (msgEl) msgEl.textContent = text;
+                iconWrap.animate([
+                  { transform: 'scale(0.9)' },
+                  { transform: 'scale(1)' }
+                ], { duration: 220, easing: 'ease-out' });
+                animateOutAndRemove(950);
+              },
+              error(text = 'حدث خطأ') {
+                try { if (spinAnim) spinAnim.cancel(); } catch (_) {}
+                iconWrap.className = 'w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white';
+                iconWrap.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>';
+                if (msgEl) msgEl.textContent = text;
+                animateOutAndRemove(1300);
+              },
+              remove() { try { wrap.remove(); } catch (_) {} }
+            };
+        }
+
+        // Expose HUD helpers globally so other inline scripts can reuse them
+        try {
+            window.showActionSuccess = showActionSuccess;
+            window.showActionProgress = showActionProgress;
+        } catch (_) {}
+
+        function updateButtonForExisting(hasLocation) {
+            if (!openBtn) return;
+            if (hasLocation) {
+                openBtn.innerHTML = '<i class="fas fa-edit ml-2"></i> تحديث موقعي';
+            } else {
+                openBtn.innerHTML = '<i class="fas fa-plus ml-2"></i> إضافة الموقع';
+            }
+        }
+
+        function renderLocationSummary(location) {
+            if (!summaryEl) return;
+            const { latitude, longitude, address, formatted_address, city } = location || {};
+            if (latitude != null && longitude != null) {
+                // Keep summary visible and update button
+                summaryEl.classList.remove('hidden');
+                updateButtonForExisting(true);
+
+                // Sync current state so the modal can show the exact saved pin
+                currentLat = Number(latitude);
+                currentLng = Number(longitude);
+                latInput.value = currentLat.toFixed(6);
+                lngInput.value = currentLng.toFixed(6);
+                currentCity = city || currentCity || null;
+                const addr = formatted_address || address || '';
+                if (addr) { addressInput.value = addr; addressInput.placeholder = addr; }
+
+                // If cities are loaded, try to select the saved city
+                if (citySelect && citySelect.options && currentCity) {
+                    for (let i = 0; i < citySelect.options.length; i++) {
+                        const opt = citySelect.options[i];
+                        if (opt.value === currentCity || opt.textContent === currentCity) {
+                            citySelect.value = opt.value;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                summaryEl.classList.add('hidden');
+                updateButtonForExisting(false);
+            }
+        }
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+            setTimeout(initMap, 50);
+            // Ensure cities are loaded for selection
+            try { populateCitySelect_v2(); } catch (_) {}
+            const salonId = window.salonId;
+            if (salonId) {
+                fetch(`/api/salon/location/${salonId}`)
+                  .then(r => r.json())
+                  .then(({ success, location }) => {
+                      if (success && location && location.latitude && location.longitude) {
+                          setMarker([location.latitude, location.longitude]);
+                          currentLat = location.latitude;
+                          currentLng = location.longitude;
+                          latInput.value = location.latitude;
+                          lngInput.value = location.longitude;
+                          addressInput.value = location.address || '';
+                          currentCity = location.city || null;
+                          renderLocationSummary(location);
+                          // Try to select city in dropdown
+                          if (citySelect && currentCity) {
+                              for (let i = 0; i < citySelect.options.length; i++) {
+                                  const opt = citySelect.options[i];
+                                  if (opt.value === currentCity || opt.textContent === currentCity) {
+                                      citySelect.value = opt.value;
+                                      break;
+                                  }
+                              }
+                          }
+                      }
+                  }).catch(() => {});
+            }
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        function initMap() {
+            if (mapInstance) return;
+            mapInstance = L.map(mapContainer).setView([31.95, 35.22], 12);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(mapInstance);
+            mapInstance.on('click', function(e) {
+                setMarker([e.latlng.lat, e.latlng.lng]);
+            });
+        }
+
+        async function populateCitySelect() {
+            if (!citySelect) return;
+            if (citySelect.dataset.loaded === '1') return; // prevent duplicate
+            try {
+                const resp = await fetch('/api/cities');
+                const data = await resp.json();
+                if (data && Array.isArray(data.cities)) {
+                    data.cities.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = `${c.lat},${c.lng}`;
+                        opt.textContent = c.name_ar || c.name || `${c.lat}, ${c.lng}`;
+                        citySelect.appendChild(opt);
+                    });
+                    citySelect.dataset.loaded = '1';
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function panToCity(e) {
+            const val = (e && e.target ? e.target.value : (citySelect ? citySelect.value : '')) || '';
+            if (!val) return;
+            const [latStr, lngStr] = val.split(',');
+            const lat = parseFloat(latStr);
+            const lng = parseFloat(lngStr);
+            if (isNaN(lat) || isNaN(lng)) return;
+            setMarker([lat, lng]);
+            notify('تم نقل الخريطة إلى المدينة المختارة، حرّك العلامة لتحديد المكان بدقة.', 'info');
+        }
+
+        function setMarker(latlng) {
+            if (!mapInstance) return;
+            if (!marker) {
+                marker = L.marker(latlng, { draggable: true }).addTo(mapInstance);
+                marker.on('dragend', function(ev) {
+                    const p = ev.target.getLatLng();
+                    currentLat = p.lat;
+                    currentLng = p.lng;
+                    latInput.value = p.lat.toFixed(6);
+                    lngInput.value = p.lng.toFixed(6);
+                    toggleNameLoading(true);
+                    reverseGeocode_v2(p.lat, p.lng);
+                });
+            } else {
+                marker.setLatLng(latlng);
+            }
+            mapInstance.setView(latlng, 15);
+            currentLat = Number(latlng[0]);
+            currentLng = Number(latlng[1]);
+            latInput.value = currentLat.toFixed(6);
+            lngInput.value = currentLng.toFixed(6);
+            toggleNameLoading(true);
+            reverseGeocode_v2(currentLat, currentLng);
+        }
+
+        // تم إزالة البحث اليدوي: الاعتماد على الخريطة وقائمة المدن
+
+        async function reverseGeocode(lat, lng) {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+                if (data && data.address) {
+                    addressInput.placeholder = data.display_name || addressInput.placeholder;
+                    currentCity = data.address.city || data.address.town || data.address.village || data.address.state || null;
+                }
+            } catch (e) {
+                // silent fail
+            }
+        }
+
+        async function useMyLocation() {
+            if (!navigator.geolocation) { notify('المتصفح لا يدعم تحديد الموقع الجغرافي', 'error'); return; }
+            const hud = showActionProgress('جاري تحديد موقعك الحالي...');
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setMarker([latitude, longitude]);
+                await reverseGeocode_v2(latitude, longitude);
+                hud.success('تم تحديد موقعك ووضع العلامة على الخريطة');
+            }, (err) => {
+                if (err && err.code === 1) hud.error('تم رفض إذن الوصول للموقع');
+                else hud.error('تعذر تحديد موقعك الحالي');
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        }
+
+        async function saveLocation() {
+            const salonId = window.salonId;
+            if (!salonId) { notify('تعذر تحديد الصالون', 'error'); return; }
+            const lat = currentLat;
+            const lng = currentLng;
+            if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) { notify('يرجى اختيار الموقع على الخريطة أو استخدام موقعك الحالي', 'error'); return; }
+            const hud = showActionProgress('جاري حفظ الموقع...');
+            const payload = {
+                address: addressInput.value.trim() || addressInput.placeholder || null,
+                city: currentCity || null,
+                latitude: lat,
+                longitude: lng,
+                place_id: null,
+                formatted_address: addressInput.value.trim() || addressInput.placeholder || null
+            };
+            try {
+                const resp = await fetch(`/api/salon/location/${salonId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await resp.json();
+                if (result && result.success) {
+                    hud.success('تم حفظ موقع الصالون بنجاح');
+                    renderLocationSummary(payload);
+                    setTimeout(() => { try { closeModal(); } catch (_) {} }, 700);
+                } else {
+                    hud.error(result.message || 'فشل في حفظ الموقع');
+                }
+            } catch (e) {
+                hud.error('خطأ في الشبكة أثناء حفظ الموقع');
+            }
+        }
+
+        // Initial load: fetch existing location AFTER DOM is ready and salonId is set
+        document.addEventListener('DOMContentLoaded', () => {
+            // salonId is set in the earlier DOMContentLoaded handler; add a safe fallback
+            const salonId = window.salonId || (JSON.parse(localStorage.getItem('salonni_user')) || {}).salonId;
+            if (!salonId) {
+                renderLocationSummary(null);
+                return;
+            }
+            fetch(`/api/salon/location/${salonId}`)
+              .then(r => r.json())
+              .then(({ success, location }) => {
+                  renderLocationSummary(success && location ? location : null);
+              })
+              .catch(() => renderLocationSummary(null));
+        });
+
+        // Open modal from summary "View on map"
+        if (viewLocationBtn) {
+            viewLocationBtn.addEventListener('click', function() {
+                openModal();
+                if (currentLat != null && currentLng != null) {
+                    setTimeout(() => setMarker([currentLat, currentLng]), 100);
+                }
+            });
+        }
+
+        // Address suggestions (autocomplete) — smarter parsing and biasing
+        function hideSuggestions() { suggestionsEl && suggestionsEl.classList.add('hidden'); }
+        function showSuggestions() { suggestionsEl && suggestionsEl.classList.remove('hidden'); }
+
+        // Normalize Arabic numerals and punctuation
+        function normalizeInput(str) {
+            if (!str) return '';
+            const arabicNums = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
+            return str
+                .replace(/[٠-٩]/g, d => arabicNums[d] || d)
+                .replace(/،/g, ',')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Detect "lat, lng" coordinates
+        function parseCoordinates(str) {
+            const m = str.match(/^\s*([+-]?\d{1,3}(?:\.\d+)?)\s*[;,\s]\s*([+-]?\d{1,3}(?:\.\d+)?)\s*$/);
+            if (!m) return null;
+            const lat = parseFloat(m[1]);
+            const lon = parseFloat(m[2]);
+            if (isNaN(lat) || isNaN(lon)) return null;
+            if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+            return { lat, lon };
+        }
+
+        async function nominatimSearch(q, opts = {}) {
+            const params = new URLSearchParams({
+                q,
+                format: 'json',
+                limit: '5',
+                addressdetails: '1',
+                'accept-language': 'ar'
+            });
+            // Prefer Palestine results first; can be removed in fallback
+            if (opts.countryFirst !== false) params.set('countrycodes', 'ps');
+            if (opts.viewbox) {
+                params.set('viewbox', opts.viewbox);
+                if (opts.bounded) params.set('bounded', '1');
+            }
+            const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+            const resp = await fetch(url);
+            return resp.json();
+        }
+
+        async function fetchSuggestions(input) {
+            const raw = normalizeInput(input);
+            if (!raw) { hideSuggestions(); return; }
+
+            // If user typed coordinates, set marker immediately and try to resolve address
+            const coords = parseCoordinates(raw);
+            if (coords) {
+                setMarker([coords.lat, coords.lon]);
+                try {
+                    const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lon}&format=json&zoom=16&addressdetails=1&accept-language=ar`;
+                    const r = await fetch(revUrl).then(x => x.json());
+                    addressInput.value = r.display_name || `${coords.lat}, ${coords.lon}`;
+                    currentCity = r?.address?.city || r?.address?.town || r?.address?.village || r?.address?.state || null;
+                } catch (_) {}
+                // Offer a single suggestion reflecting the resolved address
+                suggestionsEl.innerHTML = '';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'w-full text-right px-3 py-2 hover:bg-gray-100 border-b last:border-b-0';
+                btn.innerHTML = `<div class="font-bold text-gray-800">${addressInput.value}</div><div class="text-xs text-gray-500">${Number(coords.lat).toFixed(6)}, ${Number(coords.lon).toFixed(6)}</div>`;
+                btn.addEventListener('click', () => { hideSuggestions(); });
+                suggestionsEl.appendChild(btn);
+                showSuggestions();
+                return;
+            }
+
+            // Build smart query candidates
+            const candidates = [];
+            candidates.push(raw);
+            if (currentCity) candidates.push(`${raw}, ${currentCity}`);
+            // Bias to user location if available using a viewbox (approx ~20km)
+            let viewbox = null;
+            if (typeof currentLat === 'number' && typeof currentLng === 'number') {
+                const latMin = (currentLat - 0.2).toFixed(6);
+                const latMax = (currentLat + 0.2).toFixed(6);
+                const lonMin = (currentLng - 0.2).toFixed(6);
+                const lonMax = (currentLng + 0.2).toFixed(6);
+                // Nominatim expects: left,top,right,bottom => lonMin,latMax,lonMax,latMin
+                viewbox = `${lonMin},${latMax},${lonMax},${latMin}`;
+            }
+
+            let results = [];
+            for (let i = 0; i < candidates.length; i++) {
+                try {
+                    const r = await nominatimSearch(candidates[i], { viewbox, bounded: !!viewbox, countryFirst: true });
+                    if (Array.isArray(r)) results = results.concat(r);
+                } catch (_) {}
+            }
+            // Fallback: broaden search if nothing found
+            if (!results.length) {
+                try {
+                    const r = await nominatimSearch(raw, { countryFirst: false });
+                    if (Array.isArray(r)) results = results.concat(r);
+                } catch (_) {}
+            }
+
+            if (!Array.isArray(results) || results.length === 0) { hideSuggestions(); return; }
+
+            // Deduplicate by place_id
+            const seen = new Set();
+            const unique = [];
+            for (const r of results) {
+                if (r.place_id && !seen.has(r.place_id)) { seen.add(r.place_id); unique.push(r); }
+                if (unique.length >= 5) break;
+            }
+
+            suggestionsEl.innerHTML = '';
+            unique.forEach(r => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'w-full text-right px-3 py-2 hover:bg-gray-100 border-b last:border-b-0';
+                const cityName = (r.address && (r.address.city || r.address.town || r.address.village || r.address.state)) || '';
+                btn.innerHTML = `<div class="font-bold text-gray-800">${r.display_name}</div><div class="text-xs text-gray-500">${cityName} • ${Number(r.lat).toFixed(6)}, ${Number(r.lon).toFixed(6)}</div>`;
+                btn.addEventListener('click', () => {
+                    setMarker([parseFloat(r.lat), parseFloat(r.lon)]);
+                    addressInput.value = r.display_name;
+                    currentCity = cityName || null;
+                    showSuggestions(); // keep visible for a moment to confirm selection
+                    setTimeout(hideSuggestions, 150);
+                    notify('تم تحديد الموقع على الخريطة', 'success');
+                });
+                suggestionsEl.appendChild(btn);
+            });
+            showSuggestions();
+        }
+
+        // تمت إزالة آلية الاقتراحات النصية
+
+        // النسخة الجديدة: تحديث اسم المكان تلقائيًا، وملء قائمة المدن، وتحريك الخريطة
+        function formatAddressFromNominatim(obj, lat, lng) {
+            const a = obj && obj.address ? obj.address : {};
+            const parts = [];
+            if (a.road) parts.push(a.house_number ? `${a.road} ${a.house_number}` : a.road);
+            if (a.neighbourhood || a.suburb) parts.push(a.neighbourhood || a.suburb);
+            const cityPart = a.city || a.town || a.village || a.state;
+            if (cityPart) parts.push(cityPart);
+            const compact = parts.filter(Boolean).join('، ');
+            if (compact && compact.length >= 3) return compact;
+            // Fallback: trim display_name to first 2-3 components
+            if (obj && obj.display_name) {
+                const toks = obj.display_name.split(',').map(s => s.trim()).filter(Boolean);
+                return toks.slice(0, 3).join('، ');
+            }
+            return `${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`;
+        }
+
+        function toggleNameLoading(loading) {
+            const sp = document.getElementById('location-name-loading');
+            if (!sp) return;
+            try {
+                if (loading) {
+                    sp.classList.remove('hidden');
+                    addressInput.classList.add('opacity-60');
+                } else {
+                    sp.classList.add('hidden');
+                    addressInput.classList.remove('opacity-60');
+                }
+            } catch (_) {}
+        }
+
+        async function reverseGeocode_v2(lat, lng) {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar&zoom=18&namedetails=1&extratags=1`;
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+                if (data && (data.address || data.display_name)) {
+                    const cityPart = (data.address && (data.address.city || data.address.town || data.address.village || data.address.state)) || null;
+                    const named = data.name || (data.namedetails && (data.namedetails.name || data.namedetails['name:ar'])) || (data.extratags && data.extratags.name);
+                    let displayText = '';
+                    if (named && typeof named === 'string' && named.trim().length >= 2) {
+                        displayText = cityPart ? `${named.trim()}، ${cityPart}` : named.trim();
+                        addressInput.dataset.placeLabel = '1';
+                    } else {
+                        displayText = formatAddressFromNominatim(data, lat, lng);
+                        delete addressInput.dataset.placeLabel;
+                    }
+                    addressInput.value = displayText;
+                    addressInput.placeholder = displayText;
+                    currentCity = cityPart || currentCity;
+                }
+            } catch (_) { /* ignore */ }
+            finally { toggleNameLoading(false); }
+        }
+
+        async function populateCitySelect_v2() {
+            if (!citySelect) return;
+            if (citySelect.dataset.loaded === '1') return; // prevent duplicate
+            try {
+                const resp = await fetch('/api/cities');
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = 'اختر مدينة…';
+                    placeholder.selected = true;
+                    placeholder.disabled = true;
+                    citySelect.appendChild(placeholder);
+
+                    data.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = String(name);
+                        opt.textContent = String(name);
+                        citySelect.appendChild(opt);
+                    });
+                    citySelect.dataset.loaded = '1';
+                }
+            } catch (_) { /* ignore */ }
+        }
+
+        async function panToCity_v2(e) {
+            const val = (e && e.target ? e.target.value : (citySelect ? citySelect.value : '')) || '';
+            if (!val) return;
+            const parts = val.split(',');
+            if (parts.length === 2) {
+                const lat = parseFloat(parts[0]);
+                const lng = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    setMarker([lat, lng]);
+                    notify('تم نقل الخريطة إلى المدينة المختارة، حرّك العلامة لتحديد المكان بدقة.', 'info');
+                    return;
+                }
+            }
+            try {
+                const results = await nominatimSearch(val, { countryFirst: true });
+                if (Array.isArray(results) && results.length) {
+                    const r = results[0];
+                    const lat = parseFloat(r.lat);
+                    const lng = parseFloat(r.lon);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        setMarker([lat, lng]);
+                        addressInput.value = formatAddressFromNominatim(r, lat, lng) || val;
+                        currentCity = (r.address && (r.address.city || r.address.town || r.address.village || r.address.state)) || val;
+                        notify('تم نقل الخريطة إلى المدينة المختارة، حرّك العلامة لتحديد المكان بدقة.', 'info');
+                    }
+                } else {
+                    notify('تعذر العثور على المدينة المختارة', 'error');
+                }
+            } catch (_) {
+                notify('تعذر العثور على المدينة المختارة', 'error');
+            }
+        }
+
+        if (openBtn) openBtn.addEventListener('click', () => { openModal(); populateCitySelect_v2(); if (currentCity && citySelect) { citySelect.value = currentCity; } });
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (useMyLocationBtn) useMyLocationBtn.addEventListener('click', useMyLocation);
+        if (saveBtn) saveBtn.addEventListener('click', saveLocation);
+        if (citySelect) citySelect.addEventListener('change', panToCity_v2);
+    })();
+    </script>
 
 <!-- Update Manager Script -->
 <script src="/update-manager.js"></script>

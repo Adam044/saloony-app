@@ -3,7 +3,9 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
-const cors = require('cors'); // Added CORS for development ease
+const cors = require('cors'); // CORS
+const helmet = require('helmet'); // Security headers
+const rateLimit = require('express-rate-limit'); // Rate limiting
 const crypto = require('crypto'); // Used for generating simple tokens/salts
 const bcrypt = require('bcrypt'); // Secure password hashing
 const compression = require('compression'); // Enable gzip compression for responses
@@ -15,6 +17,8 @@ const fs = require('fs'); // File system for saving uploads
 const sharp = require('sharp'); // Image optimization
 const { createClient } = require('@supabase/supabase-js'); // Supabase client
 const { aiAssistant } = require('./ai-chat-assistant'); // AI Chat Assistant Module
+const jwt = require('jsonwebtoken'); // JWT issuance and verification
+const { z } = require('zod'); // Schema validation
 require('dotenv').config(); // Load environment variables (.env)
 
 // Initialize Supabase client for storage
@@ -37,6 +41,22 @@ try {
 } catch (e) {
     console.warn('WebPush VAPID setup warning:', e.message);
 }
+
+// Auth configuration
+const NODE_ENV = process.env.NODE_ENV || 'development';
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    if (NODE_ENV === 'production') {
+        console.error('FATAL: Missing JWT_SECRET in environment. Refusing to start in production.');
+        process.exit(1);
+    } else {
+        // Generate a temporary secret for local development to avoid hardcoding
+        JWT_SECRET = crypto.randomBytes(32).toString('hex');
+        console.warn('WARNING: No JWT_SECRET set. Generated a temporary dev secret. Set JWT_SECRET in your .env for stability.');
+    }
+}
+const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
+const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
 
 // --- Core Data: Cities ---
 
@@ -307,6 +327,22 @@ async function initializeDb() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at)`);
 
+        // Create salon_locations table (one location per salon for now)
+        await db.run(`CREATE TABLE IF NOT EXISTS salon_locations (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL UNIQUE,
+            address TEXT,
+            city TEXT,
+            latitude DECIMAL(9,6),
+            longitude DECIMAL(9,6),
+            place_id TEXT,
+            formatted_address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+        )`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_locations_salon_id ON salon_locations(salon_id)`);
+
         // Create role system tables for salon staff management
         await db.run(`CREATE TABLE IF NOT EXISTS salon_roles (
             id SERIAL PRIMARY KEY,
@@ -526,6 +562,22 @@ async function alignSchema() {
                 console.log('AlignSchema: Adding public_url to salon_images (PostgreSQL)...');
                 await db.run(`ALTER TABLE salon_images ADD COLUMN public_url TEXT`);
             }
+
+            // Ensure refresh_tokens table exists (for JWT refresh flow)
+            try {
+                await db.run(`
+                    CREATE TABLE IF NOT EXISTS refresh_tokens (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        token_hash TEXT NOT NULL UNIQUE,
+                        expires_at TIMESTAMP NOT NULL,
+                        revoked BOOLEAN NOT NULL DEFAULT FALSE,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                    )
+                `);
+            } catch (e) {
+                console.warn('AlignSchema: refresh_tokens creation warning (PostgreSQL):', e.message);
+            }
         } else {
             // SQLite alignment (PRAGMA introspection)
             const pragmaRows = await db.query(`PRAGMA table_info(salons)`);
@@ -634,6 +686,22 @@ async function alignSchema() {
                 console.log('AlignSchema: Adding reason to breaks (SQLite)...');
                 await db.run(`ALTER TABLE breaks ADD COLUMN reason TEXT`);
             }
+
+            // SQLite: Ensure refresh_tokens table exists
+            try {
+                await db.run(`
+                    CREATE TABLE IF NOT EXISTS refresh_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        token_hash TEXT NOT NULL UNIQUE,
+                        expires_at TEXT NOT NULL,
+                        revoked INTEGER NOT NULL DEFAULT 0,
+                        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                    )
+                `);
+            } catch (e) {
+                console.warn('AlignSchema: refresh_tokens creation warning (SQLite):', e.message);
+            }
         }
 
         // Role system schema alignment for both PostgreSQL and SQLite
@@ -694,11 +762,140 @@ async function autoUpdateAppointmentStatuses() {
 // setInterval(autoUpdateAppointmentStatuses, 5 * 60 * 1000);
 // setTimeout(autoUpdateAppointmentStatuses, 5000);
 
+// Security hardening
+app.disable('x-powered-by');
+
+// Configure CORS to only allow trusted origins
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow same-origin or non-browser requests
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization']
+}));
+
+// Security headers (CSP configured to allow existing CDNs and inline scripts)
+app.use(helmet({
+    contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+            'default-src': ["'self'"],
+            // Allow required external CDNs and inline scripts to preserve current look
+            'script-src': [
+                "'self'",
+                'https://cdn.tailwindcss.com',
+                'https://www.googletagmanager.com',
+                'https://cdnjs.cloudflare.com',
+                'https://cdn.jsdelivr.net',
+                "'unsafe-inline'"
+            ],
+            // Match script-src for script elements explicitly
+            'script-src-elem': [
+                "'self'",
+                'https://cdn.tailwindcss.com',
+                'https://www.googletagmanager.com',
+                'https://cdnjs.cloudflare.com',
+                'https://cdn.jsdelivr.net',
+                'https://unpkg.com',
+                "'unsafe-inline'"
+            ],
+            // Permit external styles (Google Fonts) and inline style blocks
+            'style-src': [
+                "'self'",
+                'https://fonts.googleapis.com',
+                'https://cdnjs.cloudflare.com',
+                "'unsafe-inline'"
+            ],
+            // Match style-src for style elements explicitly
+            'style-src-elem': [
+                "'self'",
+                'https://fonts.googleapis.com',
+                'https://cdnjs.cloudflare.com',
+                'https://unpkg.com',
+                "'unsafe-inline'"
+            ],
+            // Permit font loading from Google Fonts
+            'font-src': [
+                "'self'",
+                'https://fonts.gstatic.com',
+                'https://cdnjs.cloudflare.com',
+                'data:'
+            ],
+            // Images may come from local files and data URLs
+            'img-src': [
+                "'self'",
+                'data:',
+                'blob:',
+                'https:',
+                'https://tile.openstreetmap.org'
+            ],
+            // Allow inline event handlers to preserve current behavior
+            'script-src-attr': ["'unsafe-inline'"],
+            // Network requests restricted to same origin by default
+            'connect-src': [
+                "'self'",
+                'https://www.google-analytics.com',
+                'https://region1.google-analytics.com',
+                'https://www.googletagmanager.com',
+                'https://stats.g.doubleclick.net',
+                // Allow service worker and pages to fetch external CDNs
+                'https://cdn.tailwindcss.com',
+                'https://cdnjs.cloudflare.com',
+                'https://cdn.jsdelivr.net',
+                'https://unpkg.com',
+                'https://fonts.googleapis.com',
+                'https://fonts.gstatic.com',
+                // Geocoding provider (Nominatim / OpenStreetMap)
+                'https://nominatim.openstreetmap.org',
+                // Supabase APIs (storage, rest, realtime)
+                'https://*.supabase.co',
+                // Permit WebSocket connections
+                'ws:',
+                'wss:'
+            ],
+        }
+    }
+}));
+
+// Additional security headers
+app.use(helmet.frameguard({ action: 'deny' })); // Disallow embedding
+app.use(helmet.referrerPolicy({ policy: 'no-referrer' })); // No referrer leakage
+// Restrict powerful browser features
+app.use((req, res, next) => {
+    // Allow geolocation for this origin while keeping camera/microphone disabled
+    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
+    next();
+});
+
+// Global rate limiting (per IP)
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+app.use('/api/', globalLimiter);
+
+// Stricter limiter for auth and AI endpoints
+const authLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+app.use(['/api/auth', '/api/ai-chat'], authLimiter);
+
 // Middleware setup
-app.use(cors()); // Allow all CORS requests
 app.use(compression()); // Compress all responses to improve load times
-app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for image_url
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+app.use(bodyParser.json({ limit: '10mb' })); // Reasonable JSON body limit
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configure multer for file uploads
 const upload = multer({
@@ -707,15 +904,78 @@ const upload = multer({
         fileSize: 10 * 1024 * 1024 // 10MB limit
     },
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Only image files are allowed'), false);
+            cb(new Error('Only image/jpeg, image/png, or image/webp are allowed'), false);
         }
     }
 });
 
 // ===============================
+// ===== JWT Helpers & Middleware =====
+function signAccessToken(userId, role) {
+    return jwt.sign({ sub: userId, role }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+}
+
+async function storeRefreshToken(userId, refreshTokenPlain) {
+    const hash = crypto.createHash('sha256').update(refreshTokenPlain).digest('hex');
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await dbRun('INSERT INTO refresh_tokens (user_id, token_hash, expires_at, revoked) VALUES ($1, $2, $3, FALSE)', [userId, hash, expiresAt]);
+}
+
+function authenticateJWT(req, res, next) {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!token) {
+        return res.status(401).json({ error: 'Authorization header missing' });
+    }
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        req.user = { id: payload.sub, role: payload.role };
+        return next();
+    } catch (e) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+}
+
+function requireAuth(req, res, next) {
+    return authenticateJWT(req, res, next);
+}
+
+// ===== Zod Schemas =====
+const loginSchema = z.object({
+    identifier: z.string().trim().min(3).optional(),
+    email: z.string().email().optional(),
+    phone: z.string().trim().regex(/^0\d{9}$/).optional(),
+    password: z.string().min(6)
+}).refine((d) => !!(d.identifier || d.email || d.phone), {
+    message: 'Email or phone is required',
+    path: ['identifier']
+});
+
+const toNumber = (v) => (typeof v === 'string' ? Number(v) : v);
+
+const bookingSchema = z.object({
+    salon_id: z.preprocess(toNumber, z.number().int().positive()),
+    user_id: z.any().optional(), // ignored; sourced from JWT
+    staff_id: z.preprocess(toNumber, z.number().int().nonnegative()).optional(),
+    service_id: z.preprocess(toNumber, z.number().int().positive()).optional(),
+    services: z.array(z.object({
+        id: z.preprocess(toNumber, z.number().int().positive()),
+        price: z.preprocess(toNumber, z.number().nonnegative())
+    })).optional(),
+    start_time: z.string(),
+    end_time: z.string(),
+    price: z.preprocess(toNumber, z.number())
+});
+
+const reviewSchema = z.object({
+    salon_id: z.preprocess(toNumber, z.number().int().positive()),
+    rating: z.preprocess(toNumber, z.number().int().min(1).max(5)),
+    comment: z.string().min(1)
+});
 // AI Beauty Assistant Endpoints
 // ===============================
 
@@ -1841,7 +2101,11 @@ app.post('/api/auth/register', async (req, res) => {
 // Login (Updated to return full user data object and check hash)
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { identifier, email, phone, password } = req.body;
+        const parsed = loginSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message || 'Invalid login data.' });
+        }
+        const { identifier, email, phone, password } = parsed.data;
 
         const input = (identifier || email || phone || '').trim();
         const isEmail = input.includes('@');
@@ -1937,19 +2201,30 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
         }
 
-        // Generate token
-        const token = crypto.randomUUID();
-        
-        // Store admin token separately (In a real app, this token would be linked to the user session)
+        // Issue JWT access token and refresh token
+        const accessToken = signAccessToken(userRow.id, userType);
+        const refreshToken = crypto.randomBytes(32).toString('hex');
+        await storeRefreshToken(userRow.id, refreshToken);
+
+        // Backward compatibility for admin: accept JWT token in legacy set
         if (userType === 'admin') {
-            validAdminTokens.add(token);
+            validAdminTokens.add(accessToken);
         }
+
+        // Also set secure cookies for browser sessions
+        const isProd = NODE_ENV === 'production';
+        try {
+            res.cookie('access_token', accessToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 15 * 60 * 1000 });
+            res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000 });
+        } catch (_) {}
 
         res.json({ 
             success: true, 
             message: 'تم تسجيل الدخول بنجاح.', 
             redirect: redirectUrl, 
-            token: token,
+            token: accessToken, // legacy field
+            access_token: accessToken,
+            refresh_token: refreshToken,
             user: userObject,
             userType: userType
         });
@@ -1961,6 +2236,64 @@ app.post('/api/auth/login', async (req, res) => {
             message: 'خطأ في الخادم.', 
             message_en: 'Server error.' 
         });
+    }
+});
+
+// Refresh access token using a valid refresh token (rotate on use)
+app.post('/api/auth/refresh', async (req, res) => {
+    try {
+        const { refresh_token } = req.body || {};
+        if (!refresh_token) {
+            return res.status(400).json({ success: false, message: 'Refresh token is required.' });
+        }
+        const hash = crypto.createHash('sha256').update(refresh_token).digest('hex');
+        const rtRow = await dbGet('SELECT id, user_id, expires_at, revoked FROM refresh_tokens WHERE token_hash = $1', [hash]);
+        if (!rtRow || rtRow.revoked) {
+            return res.status(401).json({ success: false, message: 'Invalid refresh token.' });
+        }
+        if (new Date(rtRow.expires_at).getTime() <= Date.now()) {
+            return res.status(401).json({ success: false, message: 'Refresh token expired.' });
+        }
+        // Rotate: revoke old and issue a new refresh token
+        await dbRun('UPDATE refresh_tokens SET revoked = TRUE WHERE id = $1', [rtRow.id]);
+        const newRefresh = crypto.randomBytes(32).toString('hex');
+        await storeRefreshToken(rtRow.user_id, newRefresh);
+
+        // Lookup user role to embed in JWT
+        const roleRow = await dbGet('SELECT user_type FROM users WHERE id = $1', [rtRow.user_id]);
+        const role = roleRow?.user_type || 'user';
+        const access = signAccessToken(rtRow.user_id, role);
+
+        // Backward-compat: add admin access token to legacy set
+        if (role === 'admin') {
+            validAdminTokens.add(access);
+        }
+
+        const isProd = NODE_ENV === 'production';
+        try {
+            res.cookie('access_token', access, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 15 * 60 * 1000 });
+            res.cookie('refresh_token', newRefresh, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000 });
+        } catch (_) {}
+
+        return res.json({ success: true, access_token: access, refresh_token: newRefresh });
+    } catch (e) {
+        console.error('Refresh endpoint error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Logout: revoke provided refresh token
+app.post('/api/auth/logout', async (req, res) => {
+    try {
+        const { refresh_token } = req.body || {};
+        if (refresh_token) {
+            const hash = crypto.createHash('sha256').update(refresh_token).digest('hex');
+            await dbRun('UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = $1', [hash]);
+        }
+        return res.json({ success: true, message: 'Logged out.' });
+    } catch (e) {
+        console.error('Logout endpoint error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
 
@@ -2251,6 +2584,58 @@ app.get('/api/salon/info/:salon_id', async (req, res) => {
     }
 });
 
+// Salon Location APIs
+app.get('/api/salon/location/:salon_id', async (req, res) => {
+    try {
+        const salonId = parseInt(req.params.salon_id);
+        if (isNaN(salonId)) return res.status(400).json({ success: false, message: 'salon_id غير صالح' });
+
+        const location = await dbGet(`SELECT salon_id, address, city, latitude, longitude, place_id, formatted_address, created_at, updated_at FROM salon_locations WHERE salon_id = $1`, [salonId]);
+        if (!location) return res.json({ success: true, location: null });
+        res.json({ success: true, location });
+    } catch (err) {
+        console.error('GET /api/salon/location error:', err.message);
+        res.status(500).json({ success: false, message: 'فشل في تحميل موقع الصالون' });
+    }
+});
+
+app.post('/api/salon/location/:salon_id', async (req, res) => {
+    try {
+        const salonId = parseInt(req.params.salon_id);
+        if (isNaN(salonId)) return res.status(400).json({ success: false, message: 'salon_id غير صالح' });
+
+        const salon = await dbGet(`SELECT id FROM salons WHERE id = $1`, [salonId]);
+        if (!salon) return res.status(404).json({ success: false, message: 'الصالون غير موجود' });
+
+        const { address, city, latitude, longitude, place_id, formatted_address } = req.body || {};
+        const lat = latitude !== undefined ? parseFloat(latitude) : null;
+        const lng = longitude !== undefined ? parseFloat(longitude) : null;
+
+        if ((lat !== null && isNaN(lat)) || (lng !== null && isNaN(lng))) {
+            return res.status(400).json({ success: false, message: 'إحداثيات غير صالحة' });
+        }
+
+        const sql = `
+            INSERT INTO salon_locations (salon_id, address, city, latitude, longitude, place_id, formatted_address, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+            ON CONFLICT (salon_id)
+            DO UPDATE SET address = EXCLUDED.address,
+                          city = EXCLUDED.city,
+                          latitude = EXCLUDED.latitude,
+                          longitude = EXCLUDED.longitude,
+                          place_id = EXCLUDED.place_id,
+                          formatted_address = EXCLUDED.formatted_address,
+                          updated_at = CURRENT_TIMESTAMP
+        `;
+        await dbRun(sql, [salonId, address || null, city || null, lat, lng, place_id || null, formatted_address || null]);
+
+        const saved = await dbGet(`SELECT salon_id, address, city, latitude, longitude, place_id, formatted_address, created_at, updated_at FROM salon_locations WHERE salon_id = $1`, [salonId]);
+        res.json({ success: true, location: saved });
+    } catch (err) {
+        console.error('POST /api/salon/location error:', err.message);
+        res.status(500).json({ success: false, message: 'فشل في حفظ موقع الصالون' });
+    }
+});
 // API to get salon details with rating for user view
 app.get('/api/salon/details/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
@@ -2847,12 +3232,16 @@ app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
 });
 
 // Used by User to fetch their own appointment history (FIXED SQL QUERY)
-app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
+app.get('/api/appointments/user/:user_id/:filter', requireAuth, async (req, res) => {
     const { user_id, filter } = req.params;
+    const authUserId = req.user && req.user.id;
+    if (!authUserId || String(authUserId) !== String(user_id)) {
+        return res.status(403).json({ success: false, message: 'غير مصرح لك بعرض هذه المواعيد.' });
+    }
     // Use local time without timezone for comparison with database timestamps
     const now = new Date().toISOString().slice(0, 19).replace('T', ' '); // Format: YYYY-MM-DD HH:mm:ss
     let whereClause = '';
-    let params = [user_id];
+    let params = [authUserId];
     let orderBy = 'DESC';
 
     // Debug logging
@@ -2938,14 +3327,12 @@ app.get('/api/appointments/user/:user_id/:filter', async (req, res) => {
 });
 
 // --- NEW: API to cancel an appointment (3-hour policy enforcement) ---
-app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
+app.post('/api/appointments/cancel/:appointment_id', requireAuth, async (req, res) => {
     const appointmentId = req.params.appointment_id;
     const minNoticeHours = 3; 
-    const { user_id } = req.body; // Expecting user_id in the body for authorization/strike check
-    
-    // FIX: Add validation for user_id
-    if (!user_id || isNaN(parseInt(user_id))) {
-         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    const authUserId = req.user && req.user.id;
+    if (!authUserId || isNaN(parseInt(authUserId))) {
+         return res.status(401).json({ success: false, message: 'يرجى تسجيل الدخول.' });
     }
 
     try {
@@ -2961,7 +3348,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
         }
         
         // Authorization check
-        if (row.user_id != user_id) {
+        if (String(row.user_id) !== String(authUserId)) {
              return res.status(403).json({ success: false, message: 'غير مصرح لك بإلغاء هذا الموعد.' });
         }
 
@@ -2976,13 +3363,13 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
              
              // Issue strike to user and retrieve new strike count
              const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1 RETURNING strikes';
-             const strikeResult = await dbGet(strikeQuery, [user_id]);
+             const strikeResult = await dbGet(strikeQuery, [authUserId]);
              const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
 
              // Emit SSE notification to salon dashboard (includes push notifications)
              await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
                 appointmentId,
-                user_id,
+                user_id: authUserId,
                 start_time: row.start_time,
                 late: true,
                 strikes: newStrikes
@@ -3029,7 +3416,7 @@ app.post('/api/appointments/cancel/:appointment_id', async (req, res) => {
         // Emit SSE notification to salon dashboard (includes push notifications)
         await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
             appointmentId,
-            user_id,
+            user_id: authUserId,
             start_time: row.start_time,
             late: false
         });
@@ -3766,8 +4153,13 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
     }
 }
 
-app.post('/api/appointment/book', async (req, res) => {
-    const { salon_id, user_id, staff_id, service_id, services, start_time, end_time, price } = req.body;
+app.post('/api/appointment/book', requireAuth, async (req, res) => {
+    const parsed = bookingSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message || 'بيانات الحجز غير صالحة.' });
+    }
+    const { salon_id, staff_id, service_id, services, start_time, end_time, price } = parsed.data;
+    const user_id = req.user?.id;
     
     if (!salon_id || !user_id || !start_time || !end_time || price === undefined) {
         return res.status(400).json({ success: false, message: 'بيانات الحجز غير كاملة.' });
@@ -4243,12 +4635,16 @@ async function ensurePerfIndexes() {
 }
 
 // Favorites Route (Real Data)
-app.get('/api/favorites/:user_id', async (req, res) => {
-    const user_id = req.params.user_id;
+app.get('/api/favorites/:user_id', requireAuth, async (req, res) => {
+    const paramUserId = req.params.user_id;
+    const authUserId = req.user?.id;
     
     // FIX: Add validation for user_id
-    if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
+    if (!paramUserId || paramUserId === 'undefined' || isNaN(parseInt(paramUserId))) {
          return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    }
+    if (String(paramUserId) !== String(authUserId)) {
+         return res.status(403).json({ success: false, message: 'Forbidden: cannot access another user\'s favorites.' });
     }
     
     const sql = `
@@ -4268,7 +4664,7 @@ app.get('/api/favorites/:user_id', async (req, res) => {
     `;
 
     try {
-        const rows = await dbAll(sql, [user_id]);
+        const rows = await dbAll(sql, [authUserId]);
         const favorites = rows.map(row => ({ ...row, is_favorite: true }));
         res.json(favorites);
     } catch (err) {
@@ -4277,19 +4673,21 @@ app.get('/api/favorites/:user_id', async (req, res) => {
     }
 });
 
-app.post('/api/favorites/toggle', (req, res) => {
-    const { user_id, salon_id } = req.body;
+app.post('/api/favorites/toggle', requireAuth, (req, res) => {
+    const authUserId = req.user?.id;
+    const salon_id_raw = req.body?.salon_id;
+    const salon_id = typeof salon_id_raw === 'string' ? Number(salon_id_raw) : salon_id_raw;
     
     // FIX: Add validation for user_id and salon_id (Prevents 500 when frontend sends 'undefined')
-    if (!user_id || isNaN(parseInt(user_id)) || !salon_id || isNaN(parseInt(salon_id))) {
+    if (!authUserId || isNaN(parseInt(authUserId)) || !salon_id || isNaN(parseInt(salon_id))) {
          return res.status(400).json({ success: false, message: 'User ID and Salon ID must be valid numbers.' });
     }
     
     // FIX: Use $1, $2 placeholders and dbGet
-    dbGet('SELECT * FROM favorites WHERE user_id = $1 AND salon_id = $2', [user_id, salon_id]).then(row => {
+    dbGet('SELECT * FROM favorites WHERE user_id = $1 AND salon_id = $2', [authUserId, salon_id]).then(row => {
         if (row) {
             // Delete (Unfavorite) - FIX: Use dbRun
-            dbRun('DELETE FROM favorites WHERE user_id = $1 AND salon_id = $2', [user_id, salon_id]).then(() => {
+            dbRun('DELETE FROM favorites WHERE user_id = $1 AND salon_id = $2', [authUserId, salon_id]).then(() => {
                 res.json({ success: true, is_favorite: false, message: 'Unfavorited successfully.' });
             }).catch(err => {
                 console.error("Delete error:", err.message);
@@ -4297,7 +4695,7 @@ app.post('/api/favorites/toggle', (req, res) => {
             });
         } else {
             // Insert (Favorite) - FIX: Use dbRun
-            dbRun('INSERT INTO favorites (user_id, salon_id) VALUES ($1, $2)', [user_id, salon_id]).then(() => {
+            dbRun('INSERT INTO favorites (user_id, salon_id) VALUES ($1, $2)', [authUserId, salon_id]).then(() => {
                 res.json({ success: true, is_favorite: true, message: 'Favorited successfully.' });
             }).catch(err => {
                 console.error("Insert error:", err.message);
@@ -4313,12 +4711,16 @@ app.post('/api/favorites/toggle', (req, res) => {
 // ===== REVIEW ROUTES =====
 
 // Get user's reviews
-app.get('/api/reviews/user/:user_id', (req, res) => {
-    const { user_id } = req.params;
+app.get('/api/reviews/user/:user_id', requireAuth, (req, res) => {
+    const { user_id: paramUserId } = req.params;
+    const authUserId = req.user?.id;
     
     // FIX: Add validation for user_id
-    if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
+    if (!paramUserId || paramUserId === 'undefined' || isNaN(parseInt(paramUserId))) {
          return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
+    }
+    if (String(paramUserId) !== String(authUserId)) {
+         return res.status(403).json({ success: false, message: 'Forbidden: cannot access another user\'s reviews.' });
     }
     
     // FIX: Use $1 placeholder
@@ -4331,7 +4733,7 @@ app.get('/api/reviews/user/:user_id', (req, res) => {
     `;
     
     // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
-    dbAll(query, [user_id]).then(rows => {
+    dbAll(query, [authUserId]).then(rows => {
         res.json({ success: true, reviews: rows });
     }).catch(err => {
         console.error("User reviews fetch error:", err.message);
@@ -4367,8 +4769,13 @@ app.get('/api/reviews/salon/:salon_id', (req, res) => {
 });
 
 // Submit a new review
-app.post('/api/reviews/submit', async (req, res) => {
-    const { user_id, salon_id, rating, comment } = req.body;
+app.post('/api/reviews/submit', requireAuth, async (req, res) => {
+    const parsed = reviewSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message || 'Invalid review payload.' });
+    }
+    const { salon_id, rating, comment } = parsed.data;
+    const user_id = req.user?.id;
     
     // Validate required fields
     if (!user_id || !salon_id || !rating || !comment || comment.trim() === '') {
@@ -4412,11 +4819,12 @@ app.post('/api/reviews/submit', async (req, res) => {
 });
 
 // DELETE review endpoint
-app.delete('/api/reviews/delete', async (req, res) => {
-    const { user_id, salon_id } = req.body;
+app.delete('/api/reviews/delete', requireAuth, async (req, res) => {
+    const authUserId = req.user?.id;
+    const { salon_id } = req.body || {};
     
     // Validate required fields
-    if (!user_id || !salon_id) {
+    if (!authUserId || !salon_id) {
         return res.status(400).json({ 
             success: false, 
             message: 'User ID and Salon ID are required.' 
@@ -4430,7 +4838,7 @@ app.delete('/api/reviews/delete', async (req, res) => {
             WHERE user_id = $1 AND salon_id = $2
         `;
         
-        const result = await dbRun(deleteQuery, [user_id, salon_id]);
+        const result = await dbRun(deleteQuery, [authUserId, salon_id]);
         
         // Check if any rows were affected
         if (result.rowCount === 0) { 
@@ -4458,22 +4866,41 @@ const validAdminTokens = new Set();
 
 // Admin middleware to check if user is admin
 function requireAdmin(req, res, next) {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
+    const auth = req.headers.authorization || '';
+    const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!bearer) {
+        res.setHeader('WWW-Authenticate', 'Bearer realm="admin", error="invalid_token"');
         return res.status(401).json({ error: 'No token provided' });
     }
-    
-    // Check if token is valid
-    if (!validAdminTokens.has(token)) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+    // Prefer JWT with role claim
+    try {
+        const payload = jwt.verify(bearer, JWT_SECRET);
+        if (payload.role === 'admin') {
+            req.user = { id: payload.sub, role: payload.role };
+            return next();
+        }
+    } catch (_) {
+        // fall through to legacy set check
     }
-    
+    // Legacy fallback: allow tokens present in in-memory set
+    if (validAdminTokens.has(bearer)) {
+        return next();
+    }
+    res.setHeader('WWW-Authenticate', 'Bearer realm="admin", error="invalid_token"');
+    return res.status(401).json({ error: 'Invalid or unauthorized token' });
+}
+
+// Debug endpoints guard
+function requireDebugEnabled(req, res, next) {
+    const enabled = process.env.DEBUG_ENDPOINTS_ENABLED === 'true';
+    if (!enabled) {
+        return res.status(404).json({ error: 'Not found' });
+    }
     next();
 }
 
-// Admin API endpoints (NOTE: requireAdmin is removed for ease of testing in this environment. RE-ENABLE IN PRODUCTION)
-app.get('/api/admin/stats', async (req, res) => {
+// Admin API endpoints (protected)
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
         // Total normal users (excluding admin users)
         const totalUsersResult = await db.query('SELECT COUNT(*) as count FROM users WHERE user_type = $1', ['user']);
@@ -4529,7 +4956,7 @@ app.get('/api/admin/stats', async (req, res) => {
     }
 });
 
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
     try {
         const users = await db.query('SELECT id, name, email, phone, city, user_type FROM users ORDER BY id DESC');
         res.json(users);
@@ -4539,7 +4966,7 @@ app.get('/api/admin/users', async (req, res) => {
     }
 });
 
-app.get('/api/admin/salons', async (req, res) => {
+app.get('/api/admin/salons', requireAdmin, async (req, res) => {
     try {
         const salons = await db.query(`
             SELECT s.id, s.salon_name, s.owner_name, u.email, s.salon_phone, s.owner_phone, s.city, s.gender_focus, s.image_url, s.status 
@@ -4554,7 +4981,7 @@ app.get('/api/admin/salons', async (req, res) => {
     }
 });
 
-app.get('/api/admin/appointments', async (req, res) => {
+app.get('/api/admin/appointments', requireAdmin, async (req, res) => {
     try {
         const appointments = await db.query(`
             SELECT a.*, u.name as user_name, s.salon_name 
@@ -4571,7 +4998,7 @@ app.get('/api/admin/appointments', async (req, res) => {
 });
 
 // Get all payments for admin dashboard
-app.get('/api/admin/payments', async (req, res) => {
+app.get('/api/admin/payments', requireAdmin, async (req, res) => {
     try {
         const payments = await db.query(`
             SELECT 
@@ -4593,7 +5020,7 @@ app.get('/api/admin/payments', async (req, res) => {
 });
 
 // Update salon status (approve/reject)
-app.post('/api/admin/salon/status/:salon_id', async (req, res) => {
+app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => {
     try {
         const { salon_id } = req.params;
         const { status, payment200ils } = req.body;
@@ -4682,7 +5109,7 @@ app.get('/api/salon/payments/:salon_id', async (req, res) => {
 
 // Start server
 // Debug endpoint to check database content
-app.get('/api/debug/salons', async (req, res) => {
+app.get('/api/debug/salons', requireAdmin, requireDebugEnabled, async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM salons');
         res.json({
@@ -4695,7 +5122,7 @@ app.get('/api/debug/salons', async (req, res) => {
 });
 
 // Debug endpoint to check salon schedules and status calculation
-app.get('/api/debug/salon-status/:salon_id', async (req, res) => {
+app.get('/api/debug/salon-status/:salon_id', requireAdmin, requireDebugEnabled, async (req, res) => {
     try {
         const { salon_id } = req.params;
         
@@ -4733,7 +5160,7 @@ app.get('/api/debug/salon-status/:salon_id', async (req, res) => {
 });
 
 // Debug endpoint to align schema immediately without restart (safe idempotent adjustments)
-app.post('/api/debug/align-schema', async (req, res) => {
+app.post('/api/debug/align-schema', requireAdmin, requireDebugEnabled, async (req, res) => {
     try {
         await alignSchema();
         res.json({ success: true, message: 'Schema alignment executed.' });
@@ -4744,7 +5171,7 @@ app.post('/api/debug/align-schema', async (req, res) => {
 });
 
 // GET alias for easier triggering in some environments
-app.get('/api/debug/align-schema', async (req, res) => {
+app.get('/api/debug/align-schema', requireAdmin, requireDebugEnabled, async (req, res) => {
     try {
         await alignSchema();
         res.json({ success: true, message: 'Schema alignment executed.' });
@@ -4777,7 +5204,9 @@ try {
     const { Server } = require('socket.io');
     io = new Server(server, {
         cors: {
-            origin: '*'
+            origin: allowedOrigins.length ? allowedOrigins : true,
+            methods: ['GET','POST'],
+            credentials: true
         }
     });
 

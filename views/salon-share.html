@@ -250,6 +250,10 @@
                             <i class="fas fa-phone ml-2"></i>
                             اتصل الآن
                         </button>
+                        <button id="get-directions-btn" class="w-full btn-outline py-3 px-4 rounded-lg font-semibold flex items-center justify-center hidden">
+                            <i class="fas fa-directions ml-2"></i>
+                            الاتجاهات
+                        </button>
                     </div>
                 </div>
             </div>
@@ -425,6 +429,9 @@
                 callSalonBtn.dataset.phone = phoneNumber;
                 callSalonBtn.classList.remove('hidden');
             }
+
+            // Setup Directions button
+            setupDirectionsButton(salon);
         }
 
         function displayServices(services) {
@@ -540,6 +547,50 @@
                 if (phone) {
                     window.location.href = `tel:${phone}`;
                 }
+            });
+        }
+
+        function buildDirectionsUrl(lat, lng, label) {
+            const ua = navigator.userAgent || '';
+            const name = label || 'الصالون';
+            // iOS/macOS Apple Maps — open Directions with destination
+            if (/iP(hone|ad|od)|Macintosh/.test(ua)) {
+                if (lat && lng) return `maps://?daddr=${lat},${lng}&q=${encodeURIComponent(name)}`;
+                return `maps://?q=${encodeURIComponent(name)}`;
+            }
+            // Android — prefer Google Maps navigation intent
+            if (/Android/i.test(ua)) {
+                if (lat && lng) return `google.navigation:q=${lat},${lng}(${encodeURIComponent(name)})`;
+                return `geo:0,0?q=${encodeURIComponent(name)}`;
+            }
+            // Desktop/web — Google Maps Directions
+            if (lat && lng) return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+            return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(name)}`;
+        }
+
+        async function setupDirectionsButton(salon) {
+            const btn = document.getElementById('get-directions-btn');
+            if (!btn || !salonId) return;
+            let lat = null, lng = null;
+            const label = salon?.salon_name || salon?.address || salon?.city || 'الصالون';
+            try {
+                const r = await fetch(`/api/salon/location/${salonId}`);
+                const j = await r.json();
+                if (j && j.success && j.location && j.location.latitude && j.location.longitude) {
+                    lat = Number(j.location.latitude);
+                    lng = Number(j.location.longitude);
+                } else {
+                    const q = [salon?.salon_name, salon?.address, salon?.city].filter(Boolean).join('، ');
+                    const u = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=ar`;
+                    const g = await fetch(u).then(x => x.json()).catch(() => []);
+                    if (Array.isArray(g) && g[0]) { lat = Number(g[0].lat); lng = Number(g[0].lon); }
+                }
+            } catch (_) { /* ignore */ }
+            const url = buildDirectionsUrl(lat, lng, label);
+            btn.classList.remove('hidden');
+            btn.addEventListener('click', () => {
+                try { btn.classList.add('animate-pulse'); setTimeout(() => btn.classList.remove('animate-pulse'), 800); } catch (_) {}
+                window.location.href = url;
             });
         }
 

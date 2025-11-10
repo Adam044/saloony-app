@@ -470,8 +470,8 @@ ${recommendations.map(rec => `• ${rec.message}`).join('\n')}
 • **قريباً**: بيع المنتجات عبر التطبيق وزيادة الأرباح
 
 👨‍💻 **المؤسسون الفلسطينيون المبدعون:**
-• **آدم حواش (Adam Hawash)** - المؤسس والمطور الرئيسي، عبقري فلسطيني صمم وطور التطبيق بالكامل من الصفر
-• **أسامة الصيفي (Osama Al Saify)** - الشريك والمؤسس المشارك، رجل أعمال فلسطيني رائد
+• **آدم حواش (Adam Hawash)** - المؤسس والمطور الرئيسي، مبرمج فلسطيني صمم وطور التطبيق بالكامل من الصفر
+• **أسامة الصيفي (Osama Al Saify)** - الشريك والمؤسس المشارك،
 • **فريق فلسطيني 100%** يعمل على تطوير أول تطبيق ذكي متكامل في المنطقة
 
 🚀 **التكنولوجيا المتقدمة:**
@@ -554,7 +554,7 @@ ${recommendationsContext}
 • [اسم الصالون]: [السعر]
 • [اسم الصالون]: [السعر]
 
-أنصحك بـ [الأرخص] لأنه أرخص سعر."
+أنصحك بـ [الأرخص] لأن سعره مقبول و غير مبالغ فيه."
 
 للنصائح القصيرة:
 "للعناية بالبشرة الدهنية: غسول مرتين يومياً، تونر خالي من الكحول، ومرطب خفيف. بدك تفاصيل أكتر؟"
@@ -616,7 +616,7 @@ ${recommendationsContext}
 • **[اسم الصالون الثاني]**: [السعر من قاعدة البيانات]  
 • **[اسم الصالون الثالث]**: [السعر من قاعدة البيانات]
 
-أنصحك بـ [اسم الصالون الأرخص] لأنه أرخص سعر.
+أنصحك بـ [اسم الصالون الأرخص] لأن سعره مقبول و غير مبالغ فيه.
 
 للحجز والأوقات المتاحة، اضغط على اسم الصالون أو بدك تشوف تفاصيل الصالون؟"
 
@@ -625,6 +625,308 @@ ${recommendationsContext}
 
 كن مستشار ذكي وطبيعي، مش مجرد بوت بيجاوب أسئلة!`;
     }
+
+//=============================================================================================
+// notes :
+    //1- refactor it: instead of a list of objectives; make it a function for each aim. examples:
+    //functions for:
+    // general info about the app
+    // info about the ownsers
+    // comparison tool: comparing prices/ services
+    // per location
+    // deep analaysis of each salon comparison
+    // Lastly: save evertyhing to db for ai self learning, and cach it. Make sure to delete every 1 week
+//=============================================================================================
+
+
+    // === Intent Dispatcher & Slot Extraction ===
+
+    /**
+     * Determine high-level aim for the user message
+     * Aims: APP_INFO, FOUNDERS, COMPARE, PER_LOCATION, DEEP_ANALYSIS, GENERAL
+     */
+    determineAim(message) {
+        const msg = (message || '').toLowerCase();
+
+        // Explicit intents
+        const foundersKeywords = ['founder', 'founders', 'adam', 'osama', 'مؤسس', 'المؤسسين', 'آدم', 'أسامة'];
+        const appInfoKeywords = ['about app', 'about saloony', 'what is saloony', 'شو صالوني', 'عن التطبيق', 'معلومات عن التطبيق'];
+        const compareKeywords = ['قارن', 'مقارنة', 'أرخص', 'سعر', 'أسعار', 'price', 'compare', 'cheapest'];
+        const locationKeywords = ['قريب', 'قرب', 'منطقة', 'مدينة', 'بالقرب', 'near', 'around', 'location', 'city'];
+        const analysisKeywords = ['حلل', 'تحليل', 'أحسن صالون', 'best salon', 'analyze', 'analysis'];
+
+        if (appInfoKeywords.some(k => msg.includes(k))) return { aim: 'APP_INFO', confidence: 0.9 };
+        if (foundersKeywords.some(k => msg.includes(k))) return { aim: 'FOUNDERS', confidence: 0.9 };
+        if (compareKeywords.some(k => msg.includes(k))) return { aim: 'COMPARE', confidence: 0.7 };
+        if (locationKeywords.some(k => msg.includes(k))) return { aim: 'PER_LOCATION', confidence: 0.7 };
+        if (analysisKeywords.some(k => msg.includes(k))) return { aim: 'DEEP_ANALYSIS', confidence: 0.6 };
+
+        // Fall back to classification-based routing
+        const cls = this.classifyQuery(message);
+        switch (cls.type) {
+            case 'service_inquiry': return { aim: 'COMPARE', confidence: 0.6 };
+            case 'location_based': return { aim: 'PER_LOCATION', confidence: 0.6 };
+            case 'recommendation': return { aim: 'PER_LOCATION', confidence: 0.5 };
+            case 'appointment': return { aim: 'GENERAL', confidence: 0.5 };
+            default: return { aim: 'GENERAL', confidence: 0.4 };
+        }
+    }
+
+    /**
+     * Extract slots from user message
+     */
+    extractSlots(message, userProfile = {}) {
+        const lower = (message || '').toLowerCase();
+        const service = this.getServiceSearchTerm(message);
+
+        // City: prefer user profile, otherwise try simple extraction for known cities
+        let city = userProfile.city || null;
+        if (!city) {
+            const knownCities = ['رام الله', 'القدس', 'غزة', 'نابلس', 'الخليل', 'بيت لحم', 'البيرة', 'جنين', 'طولكرم', 'قلقيلية'];
+            for (const c of knownCities) {
+                if (lower.includes(c)) { city = c; break; }
+            }
+        }
+        // Default city fallback
+        if (!city) city = 'رام الله';
+
+        // Gender slot from message or profile
+        let gender = userProfile.gender || null;
+        if (!gender) {
+            if (lower.includes('رجالي') || lower.includes('men')) gender = 'male';
+            else if (lower.includes('نسائي') || lower.includes('women')) gender = 'female';
+        }
+        // Default gender fallback
+        if (!gender) gender = 'female';
+
+        // Budget intent (not numeric parsing yet)
+        const budgetIntent = lower.includes('أرخص') || lower.includes('رخيص') || lower.includes('cheap') ? 'low' :
+                             (lower.includes('غالي') || lower.includes('غالية') || lower.includes('expensive') ? 'high' : null);
+
+        return { service, city, gender, budgetIntent };
+    }
+
+    /**
+     * Build aim-specific instruction block for the system prompt
+     */
+    buildAimInstruction(aim, slots) {
+        switch (aim) {
+            case 'APP_INFO':
+                return 'Aim=APP_INFO: Briefly explain Saloony app features and how to use discovery, booking, and comparisons. Keep friendly and concise.';
+            case 'FOUNDERS':
+                return 'Aim=FOUNDERS: Share concise info about the Palestinian founders and vision. Be respectful and factual.';
+            case 'COMPARE':
+                return `Aim=COMPARE: Compare real prices and offerings for service="${slots.service || 'عام'}" in the user\'s city. If city unknown, ask politely.`;
+            case 'PER_LOCATION':
+                return `Aim=PER_LOCATION: List and describe nearby salons in ${slots.city || 'المنطقة'}, focusing on specialties and diversity of services.`;
+            case 'DEEP_ANALYSIS':
+                return 'Aim=DEEP_ANALYSIS: Provide balanced insights using real aggregates (ratings, service counts, price trends). Avoid bias.';
+            default:
+                return 'Aim=GENERAL: Be a natural consultant. Offer helpful guidance and ask clarifying questions if needed.';
+        }
+    }
+
+    // === Aim Data Providers (Real data only) ===
+
+    // Detect urgent intent and simple time window (next hour)
+    detectUrgency(message) {
+        const lower = (message || '').toLowerCase();
+        const arabicUrgent = ['فوري', 'سريع', 'مستعجل', 'الآن', 'هسا', 'خلال ساعة', 'قريب', 'اليوم', 'اقرب موعد', 'أقرب موعد'];
+        const englishUrgent = ['urgent', 'now', 'asap', 'next hour', 'today', 'soon'];
+        const isUrgent = arabicUrgent.some(k => lower.includes(k)) || englishUrgent.some(k => lower.includes(k));
+        return { isUrgent };
+    }
+
+    // Helper: check salon open/soon availability within next hour (Palestine time)
+    async checkSalonAvailabilityNextHour(salonId) {
+        try {
+            const today = new Date();
+            const palestineTime = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+            const dayOfWeek = palestineTime.getDay();
+            const currentMinutes = palestineTime.getHours() * 60 + palestineTime.getMinutes();
+            const plus60 = currentMinutes + 60;
+
+            const schedule = await db.get('SELECT opening_time, closing_time, closed_days FROM schedules WHERE salon_id = $1', [salonId]);
+            if (!schedule) return { availableNextHour: false, status: 'closed' };
+
+            // Parse closed days
+            let closedDays = [];
+            try { closedDays = schedule.closed_days ? JSON.parse(schedule.closed_days) : []; } catch { closedDays = []; }
+            if (closedDays.includes(dayOfWeek)) return { availableNextHour: false, status: 'closed' };
+
+            const timeToMinutes = (t) => {
+                if (!t) return 0;
+                const [h, m] = t.split(':').map(Number);
+                return h * 60 + m;
+            };
+            const open = timeToMinutes(schedule.opening_time || '09:00');
+            const close = timeToMinutes(schedule.closing_time || '18:00');
+
+            // Check full-day closures from modifications
+            const todayStr = palestineTime.toISOString().split('T')[0];
+            const mods = await dbAll(`
+                SELECT * FROM schedule_modifications 
+                WHERE salon_id = $1 AND closure_type = 'full_day' AND (
+                    (mod_type = 'date' AND mod_date = $2) OR
+                    (mod_type = 'day' AND mod_day_index = $3)
+                )
+            `, [salonId, todayStr, dayOfWeek]);
+            if (mods && mods.length > 0) return { availableNextHour: false, status: 'closed' };
+
+            let status = 'closed';
+            let availableNextHour = false;
+
+            if (open > close) {
+                // Overnight schedule
+                const inOpenSpan = currentMinutes >= open || currentMinutes < close;
+                const inNextHourSpan = plus60 >= open || plus60 < close;
+                if (inOpenSpan) status = 'open';
+                else if (!inOpenSpan && inNextHourSpan) status = 'opening_soon';
+                availableNextHour = inOpenSpan || inNextHourSpan;
+            } else {
+                // Normal schedule
+                if (currentMinutes >= open && currentMinutes < close) {
+                    status = (close - currentMinutes <= 60) ? 'closing_soon' : 'open';
+                    availableNextHour = true;
+                } else if (currentMinutes < open && (open - currentMinutes) <= 60) {
+                    status = 'opening_soon';
+                    availableNextHour = true;
+                } else {
+                    availableNextHour = false;
+                }
+            }
+
+            return { availableNextHour, status };
+        } catch (e) {
+            return { availableNextHour: false, status: 'closed' };
+        }
+    }
+
+    // Provide urgent availability data for next hour in a city
+    async getUrgentAvailabilityData(city, gender, serviceTerm = null) {
+        if (!city) return '';
+        try {
+            const salons = await dbAll(`
+                SELECT s.id, s.salon_name, s.city, s.special, s.address
+                FROM salons s
+                WHERE s.city = $1 AND s.status = 'accepted'
+                ORDER BY s.special DESC
+                LIMIT 12
+            `, [city]);
+
+            const availability = await Promise.all(salons.map(async (s) => {
+                const info = await this.checkSalonAvailabilityNextHour(s.id);
+                return { ...s, ...info };
+            }));
+
+            const openOrSoon = availability.filter(a => a.availableNextHour);
+            if (openOrSoon.length === 0) return 'لا يوجد صالونات متاحة خلال الساعة القادمة في منطقتك.';
+
+            return openOrSoon.map(a => {
+                const statusIcon = a.status === 'open' ? '✅' : (a.status === 'opening_soon' ? '⏳' : '⚠️');
+                return `${statusIcon} ${a.salon_name}${a.special ? ' ⭐' : ''} — ${a.address || a.city} (${a.status === 'open' ? 'متاح الآن' : a.status === 'opening_soon' ? 'سيفتح قريباً' : 'يغلق قريباً'})`;
+            }).join('\n');
+        } catch (e) {
+            console.warn('getUrgentAvailabilityData error:', e.message);
+            return '';
+        }
+    }
+
+    async getPerLocationData(city, gender) {
+        if (!city) return '';
+        try {
+            const salons = await dbAll(`
+                SELECT s.id, s.salon_name, s.city, s.special, s.address,
+                       COUNT(ss.service_id) as service_count,
+                       AVG(ss.price) as avg_price,
+                       COALESCE(AVG(r.rating), NULL) as avg_rating,
+                       COUNT(r.id) as review_count
+                FROM salons s
+                LEFT JOIN salon_services ss ON s.id = ss.salon_id
+                LEFT JOIN services srv ON ss.service_id = srv.id
+                LEFT JOIN reviews r ON r.salon_id = s.id
+                WHERE s.city = $1 AND s.status = 'accepted'
+                  AND (srv.gender = $2 OR srv.gender = 'both' OR srv.gender IS NULL)
+                GROUP BY s.id, s.salon_name, s.city, s.special, s.address
+                ORDER BY s.special DESC, service_count DESC
+                LIMIT 10
+            `, [city, gender || 'female']);
+
+            return salons.map(s => {
+                const ratingText = s.avg_rating ? `${parseFloat(s.avg_rating).toFixed(1)}⭐ (${s.review_count})` : 'جديد';
+                return `• ${s.salon_name}${s.special ? ' ⭐' : ''} — خدمات: ${s.service_count || 0}، متوسط سعر: ${s.avg_price ? Number(s.avg_price).toFixed(0) + '₪' : '—'}، تقييم: ${ratingText}`;
+            }).join('\n');
+        } catch (e) {
+            console.warn('getPerLocationData error:', e.message);
+            return '';
+        }
+    }
+
+    async getComparisonData(city, gender, serviceTerm) {
+        if (!city || !serviceTerm) return '';
+        try {
+            const rows = await dbAll(`
+                SELECT s.salon_name, ss.price, ss.duration,
+                       COALESCE(AVG(r.rating), NULL) as avg_rating,
+                       COUNT(r.id) as review_count
+                FROM salons s
+                JOIN salon_services ss ON s.id = ss.salon_id
+                JOIN services srv ON ss.service_id = srv.id
+                LEFT JOIN reviews r ON r.salon_id = s.id
+                WHERE s.city = $1 AND s.status = 'accepted'
+                  AND (srv.gender = $2 OR srv.gender = 'both')
+                  AND (srv.name_ar ILIKE '%' || $3 || '%' OR srv.name ILIKE '%' || $3 || '%')
+                GROUP BY s.salon_name, ss.price, ss.duration
+                ORDER BY ss.price ASC
+                LIMIT 10
+            `, [city, gender || 'female', serviceTerm]);
+
+            if (!rows || rows.length === 0) return 'لا توجد بيانات مقارنة متاحة لهذه الخدمة حالياً في مدينتك.';
+
+            const header = '| الصالون | السعر (₪) | المدة (دقائق) | التقييم | التقييمات |\n|---|---|---|---|---|';
+            const body = rows.map(r => {
+                const rt = r.avg_rating ? parseFloat(r.avg_rating).toFixed(1) : '—';
+                return `| ${r.salon_name} | ${Number(r.price).toFixed(0)} | ${r.duration} | ${rt} | ${r.review_count} |`;
+            }).join('\n');
+            return `${header}\n${body}`;
+        } catch (e) {
+            console.warn('getComparisonData error:', e.message);
+            return '';
+        }
+    }
+
+    async getDeepAnalysisData(city, gender, serviceTerm = null) {
+        if (!city) return '';
+        try {
+            const rows = await dbAll(`
+                SELECT s.id, s.salon_name,
+                       COUNT(ss.service_id) as service_count,
+                       AVG(ss.price) as avg_price,
+                       COALESCE(AVG(r.rating), NULL) as avg_rating,
+                       COUNT(r.id) as review_count
+                FROM salons s
+                LEFT JOIN salon_services ss ON s.id = ss.salon_id
+                LEFT JOIN services srv ON ss.service_id = srv.id
+                LEFT JOIN reviews r ON r.salon_id = s.id
+                WHERE s.city = $1 AND s.status = 'accepted'
+                  AND (srv.gender = $2 OR srv.gender = 'both' OR srv.gender IS NULL)
+                GROUP BY s.id, s.salon_name
+                ORDER BY s.special DESC, avg_rating DESC NULLS LAST, review_count DESC
+                LIMIT 8
+            `, [city, gender || 'female']);
+
+            if (!rows || rows.length === 0) return '';
+            const lines = rows.map(r => {
+                const rt = r.avg_rating ? `${parseFloat(r.avg_rating).toFixed(1)}⭐` : 'جديد';
+                return `• ${r.salon_name} — خدمات: ${r.service_count || 0}, متوسط سعر: ${r.avg_price ? Number(r.avg_price).toFixed(0) + '₪' : '—'}, تقييم: ${rt} (${r.review_count})`;
+            }).join('\n');
+            return lines;
+        } catch (e) {
+            console.warn('getDeepAnalysisData error:', e.message);
+            return '';
+        }
+    }
+
 
     // === Conversation Memory Management ===
 
@@ -1431,206 +1733,6 @@ Be a smart and natural consultant, not just a bot answering questions!`;
     }
 
     /**
-     * Main chat processing function with comprehensive error handling and optimization
-     */
-    async processChat(message, userId, additionalContext = {}) {
-        const startTime = Date.now();
-        
-        try {
-            // Validate input first
-            const sanitizedMessage = this.validateInput(message);
-            
-            // Check for cached responses first (smart caching)
-            const responseCacheKey = this.generateResponseCacheKey(sanitizedMessage, userId);
-            const cachedResponse = this.getCached('responses', responseCacheKey);
-            if (cachedResponse) {
-                return {
-                    success: true,
-                    response: cachedResponse.response,
-                    language: cachedResponse.language,
-                    response_time: Date.now() - startTime,
-                    cached: true
-                };
-            }
-            
-            // Analyze message for user preferences (non-blocking)
-            this.analyzeMessageForPreferences(sanitizedMessage, userId);
-            
-            // Get user profile with fallback
-            let userProfile;
-            try {
-                userProfile = await this.getUserProfile(userId);
-            } catch (error) {
-                console.warn('Failed to get user profile, using defaults:', error);
-                userProfile = { 
-                    name: 'صديقي', 
-                    gender: 'male', 
-                    city: 'رام الله',
-                    language_preference: 'ar'
-                };
-            }
-
-            const detectedLanguage = this.detectLanguage(sanitizedMessage);
-            
-            // Get salon context with timeout (only for salon-related queries)
-            let salonContext = '';
-            const needsSalonContext = this.needsSalonContext(sanitizedMessage);
-            if (needsSalonContext) {
-                try {
-                    const contextPromise = this.getSalonContext(userId);
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Salon context timeout')), 3000) // Reduced timeout
-                    );
-                    salonContext = await Promise.race([contextPromise, timeoutPromise]);
-                } catch (error) {
-                    console.warn('Failed to get salon context:', error);
-                    // Continue without salon context
-                }
-            }
-            
-            // Get personalized recommendations (only for returning users)
-            let recommendations = [];
-            if (this.conversationMemory.has(userId)) {
-                recommendations = await this.getPersonalizedRecommendations(userId, { message: sanitizedMessage });
-            }
-            
-            // Generate appropriate system prompt based on language
-            const systemPrompt = detectedLanguage === 'en' ? 
-                this.generateBilingualPrompt(userProfile, detectedLanguage, salonContext, recommendations) :
-                this.generateSystemPrompt(userProfile, salonContext, recommendations);
-                
-            const conversationContext = this.buildConversationContext(userId);
-
-            // Add language instruction to ensure proper response language
-            const languageInstruction = detectedLanguage === 'en' ? 
-                'IMPORTANT: The user wrote in English, so respond in English only.' :
-                'مهم: المستخدم كتب بالعربية، لذا أجب بالعربية فقط.';
-
-            const messages = [
-                { role: 'system', content: systemPrompt + '\n\n' + languageInstruction },
-                ...conversationContext,
-                { role: 'user', content: sanitizedMessage }
-            ];
-
-            // AI API call with retry logic
-            let aiResponse;
-            let attempts = 0;
-            const maxAttempts = 3;
-
-            while (attempts < maxAttempts) {
-                try {
-                    const response = await fetch(this.apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${this.apiKey}`
-                        },
-                        body: JSON.stringify({
-                            model: 'deepseek-chat',
-                            messages: messages,
-                            max_tokens: 500,
-                            temperature: 0.7,
-                            timeout: 10000 // 10 second timeout
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`AI API error: ${response.status} ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                        throw new Error('Invalid AI response format');
-                    }
-
-                    aiResponse = data.choices[0].message.content.trim();
-                    
-                    // Track token usage if available in response
-                    if (data.usage) {
-                        this.trackTokenUsage(
-                            userId, 
-                            data.usage.prompt_tokens || this.estimateTokenCount(JSON.stringify(messages)),
-                            data.usage.completion_tokens || this.estimateTokenCount(aiResponse),
-                            'deepseek-chat'
-                        ).catch(error => console.warn('Token tracking failed:', error));
-                    } else {
-                        // Estimate tokens if not provided
-                        const inputTokens = this.estimateTokenCount(JSON.stringify(messages));
-                        const outputTokens = this.estimateTokenCount(aiResponse);
-                        this.trackTokenUsage(userId, inputTokens, outputTokens, 'deepseek-chat')
-                            .catch(error => console.warn('Token tracking failed:', error));
-                    }
-                    
-                    break; // Success, exit retry loop
-
-                } catch (error) {
-                    attempts++;
-                    console.warn(`AI API attempt ${attempts} failed:`, error);
-                    
-                    if (attempts >= maxAttempts) {
-                        // All attempts failed, use fallback
-                        aiResponse = this.getFallbackResponse(error, sanitizedMessage);
-                        break;
-                    }
-                    
-                    // Wait before retry (exponential backoff)
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
-                }
-            }
-
-            // Add to conversation history
-            this.addToHistory(userId, sanitizedMessage, aiResponse);
-
-            const responseTime = Date.now() - startTime;
-
-            // Cache successful responses for future use (smart caching)
-            if (aiResponse && !aiResponse.includes('عذراً') && !aiResponse.includes('خطأ')) {
-                const responseCacheKey = this.generateResponseCacheKey(sanitizedMessage, userId);
-                this.setCached('responses', responseCacheKey, {
-                    response: aiResponse,
-                    language: detectedLanguage
-                }, 10 * 60 * 1000); // Cache for 10 minutes
-            }
-
-            // Log to database (non-blocking)
-            this.logChatMessage(userId, sanitizedMessage, aiResponse, detectedLanguage)
-                .catch(error => console.warn('Failed to log chat:', error));
-
-            // Track analytics (non-blocking)
-            this.trackConversationAnalytics(userId, sanitizedMessage, aiResponse, {
-                language: detectedLanguage,
-                response_time: responseTime,
-                salon_context_available: !!salonContext,
-                recommendations_count: recommendations.length,
-                error_occurred: false
-            }).catch(error => console.warn('Failed to track analytics:', error));
-
-            return {
-                success: true,
-                response: aiResponse,
-                language: detectedLanguage,
-                response_time: responseTime,
-                salon_context_available: !!salonContext,
-                recommendations_shown: recommendations.length
-            };
-
-        } catch (error) {
-            console.error('Chat processing error:', error);
-            
-            const fallbackResponse = this.getFallbackResponse(error, message);
-            const responseTime = Date.now() - startTime;
-
-            return {
-                success: false,
-                response: fallbackResponse,
-                error: error.message,
-                response_time: responseTime,
-                fallback_used: true
-            };
-        }
-    }
-    /**
      * Classify user query to determine the type of information needed
      */
     classifyQuery(message) {
@@ -1957,10 +2059,48 @@ Be a smart and natural consultant, not just a bot answering questions!`;
             
             // Get salon context for AI awareness with smart classification
             const salonContext = await this.getSalonContext(userId, message);
-            
+
+            // Intent routing: determine aim and extract slots
+            const { aim } = this.determineAim(message);
+            const slots = this.extractSlots(message, userProfile);
+            const { isUrgent } = this.detectUrgency(message);
+
+            // Aim-specific data (real data only) with caching
+            let aimDataText = '';
+            const defaultCity = slots.city || userProfile.city || 'رام الله';
+            const defaultGender = slots.gender || userProfile.gender || 'female';
+            const searchParams = { aim, city: defaultCity, gender: defaultGender, service: slots.service };
+            const cachedAim = this.getCachedSalonSearchResults(searchParams);
+            if (cachedAim) {
+                aimDataText = cachedAim;
+            } else {
+                if (aim === 'PER_LOCATION' && defaultCity) {
+                    aimDataText = await this.getPerLocationData(defaultCity, defaultGender);
+                } else if (aim === 'COMPARE' && defaultCity && slots.service) {
+                    aimDataText = await this.getComparisonData(defaultCity, defaultGender, slots.service);
+                } else if (aim === 'DEEP_ANALYSIS' && defaultCity) {
+                    aimDataText = await this.getDeepAnalysisData(defaultCity, defaultGender, slots.service || null);
+                }
+                if (aimDataText) {
+                    this.cacheSalonSearchResults(searchParams, aimDataText);
+                }
+            }
+
+            // If urgent, append availability filter block for next hour
+            let urgentBlock = '';
+            if (isUrgent && (aim === 'PER_LOCATION' || aim === 'COMPARE')) {
+                const urgentData = await this.getUrgentAvailabilityData(defaultCity, defaultGender, slots.service || null);
+                if (urgentData) {
+                    urgentBlock = `\n\n[AVAILABILITY_NEXT_HOUR]\n${urgentData}\n`;
+                }
+            }
+
             // Build conversation context
             const conversationHistory = this.buildConversationContext(userId);
-            const systemPrompt = this.generateSystemPrompt(userProfile, salonContext);
+            let systemPrompt = this.generateSystemPrompt(userProfile, salonContext);
+            const aimInstruction = this.buildAimInstruction(aim, { ...slots, urgent: isUrgent });
+            const dataBlock = aimDataText ? `\n\n[REAL_DATA]\n${aimDataText}\n` : '';
+            systemPrompt = `${systemPrompt}\n\n${aimInstruction}${urgentBlock}${dataBlock}`;
 
             // Prepare messages for AI
             const messages = [

@@ -324,8 +324,9 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2000000;
             display: none;
             justify-content: center;
             align-items: flex-end; /* Start from bottom for mobile UX */
@@ -399,8 +400,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 10000;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2000000;
             display: none; /* Controlled by JS */
             justify-content: center;
             align-items: center;
@@ -556,10 +558,11 @@
             right: 0;
             bottom: 0;
             background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: 2000000;
             padding: 20px;
         }
 
@@ -1858,7 +1861,11 @@ async function loadUserAppointments(filter) {
             return 'مساءً';
         };
 
-        const response = await fetch(`/api/appointments/user/${currentUser.userId}/${filter}`);
+        const response = await fetch(`/api/appointments/user/${currentUser.userId}/${filter}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
+            }
+        });
         console.log(`[DEBUG] Frontend - Fetching appointments for user ${currentUser.userId} with filter ${filter}`);
         console.log(`[DEBUG] Frontend - Request URL: /api/appointments/user/${currentUser.userId}/${filter}`);
         
@@ -2150,7 +2157,15 @@ async function loadUserFavorites() {
             return;
         }
 
-        const response = await fetch(`/api/favorites/${currentUser.userId}`);
+        const token = localStorage.getItem('salonni_token');
+        if (!token) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-heart-crack"></i><p>الرجاء تسجيل الدخول لعرض المفضلة.</p></div>';
+            return;
+        }
+
+        const response = await fetch(`/api/favorites/${currentUser.userId}` , {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         
         if (!response.ok) throw new Error('Failed to load favorites');
         
@@ -2289,8 +2304,11 @@ async function confirmCancellation(isEarlyCancel = false) {
         // CRITICAL FIX: Send user_id in the body
         const response = await fetch(`/api/appointments/cancel/${appointmentId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: currentUser.userId })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
+            },
+            body: JSON.stringify({})
         });
         
         const result = await response.json();
@@ -2335,7 +2353,8 @@ async function deleteUserReview(salonId) {
         const response = await fetch('/api/reviews/delete', {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}`
             },
             body: JSON.stringify({
                 // CRITICAL FIX: Use currentUser.userId
@@ -2741,12 +2760,22 @@ async function loadDiscoveryData(serviceFilterId = null) {
         // Merge user's favorites to ensure hearts persist red on reload
         let favoriteIds = new Set();
         try {
-            const favResponse = await fetch(`/api/favorites/${currentUser.userId}`);
-            if (favResponse.ok) {
-                const favs = await favResponse.json();
-                favoriteIds = new Set(
-                    (Array.isArray(favs) ? favs : []).map(f => (f.salonId ?? f.salonid ?? f.id ?? f.salon_id))
-                );
+            const token = localStorage.getItem('salonni_token');
+            if (token) {
+                const favResponse = await fetch(`/api/favorites/${currentUser.userId}` , {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (favResponse.status === 401) {
+                    console.warn('Unauthorized favorites merge. Redirecting to auth.');
+                    window.location.href = 'auth.html';
+                    return;
+                }
+                if (favResponse.ok) {
+                    const favs = await favResponse.json();
+                    favoriteIds = new Set(
+                        (Array.isArray(favs) ? favs : []).map(f => (f.salonId ?? f.salonid ?? f.id ?? f.salon_id))
+                    );
+                }
             }
         } catch (_) { /* non-blocking */ }
         const markFavorite = (s) => {
@@ -2801,7 +2830,7 @@ async function toggleFavorite(salonId, button) {
     try {
         const response = await fetch('/api/favorites/toggle', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` },
             // CRITICAL FIX: Use currentUser.userId for all user-specific API calls
             body: JSON.stringify({ user_id: currentUser.userId, salon_id: salonId })
         });
@@ -2880,18 +2909,48 @@ async function loadUserData() {
             displayMessage('لقد وصلت إلى حد الإنذارات (3/3). لا يمكنك حجز مواعيد جديدة.', 'error');
         }
 
-        // CRITICAL FIX: Use currentUser.userId for favorites count
-        const favResponse = await fetch(`/api/favorites/${currentUser.userId}`);
-        if(favResponse.ok) {
-            const favs = await favResponse.json();
-            document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع ${favs.length} صالون`;
+        // CRITICAL FIX: Use currentUser.userId for favorites count (authorized)
+        try {
+            const token = localStorage.getItem('salonni_token');
+            if (token) {
+                const favResponse = await fetch(`/api/favorites/${currentUser.userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (favResponse.status === 401) {
+                    console.warn('Unauthorized favorites count. Redirecting to auth.');
+                    window.location.href = 'auth.html';
+                    return;
+                }
+                if (favResponse.ok) {
+                    const favs = await favResponse.json();
+                    document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع ${favs.length} صالون`;
+                } else {
+                    document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع 0 صالون`;
+                }
+            } else {
+                document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع 0 صالون`;
+            }
+        } catch (_) {
+            document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع 0 صالون`;
         }
         
-        // Load user's own reviews
+        // Load user's own reviews (authorized only)
         // CRITICAL FIX: Use currentUser.userId for reviews fetch
-        const reviewsResponse = await fetch(`/api/reviews/user/${currentUser.userId}`);
-        const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : { reviews: [] };
-        renderUserReviews(reviewsData.reviews);
+        const token = localStorage.getItem('salonni_token');
+        if (token) {
+            const reviewsResponse = await fetch(`/api/reviews/user/${currentUser.userId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (reviewsResponse.status === 401) {
+                console.warn('Unauthorized user reviews. Redirecting to auth.');
+                window.location.href = 'auth.html';
+                return;
+            }
+            const reviewsData = reviewsResponse.ok ? await reviewsResponse.json() : { reviews: [] };
+            renderUserReviews(reviewsData.reviews);
+        } else {
+            renderUserReviews([]);
+        }
 
 
     } catch (error) {
@@ -3301,6 +3360,42 @@ function openAIChat() {
     }, 800);
 }
 
+// Helper: Parse JWT payload safely
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (_) {
+        return null;
+    }
+}
+
+// Helper: Ensure token exists and not expired; redirect if invalid
+function ensureValidTokenOrRedirect() {
+    const token = localStorage.getItem('salonni_token');
+    if (!token) {
+        console.warn('No auth token found, redirecting to login');
+        window.location.href = 'auth.html';
+        return null;
+    }
+    const payload = parseJwt(token);
+    if (!payload) {
+        console.warn('Invalid token payload, redirecting to login');
+        window.location.href = 'auth.html';
+        return null;
+    }
+    if (payload.exp && (Date.now() / 1000) >= payload.exp) {
+        console.warn('Token expired, redirecting to login');
+        window.location.href = 'auth.html';
+        return null;
+    }
+    return token;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Home User page loaded');
     
@@ -3310,7 +3405,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = 'auth.html';
         return;
     }
-    
+
     currentUser = JSON.parse(storedUser);
     
     // CRITICAL FIX: Ensure only regular users ('user') proceed. Redirect salon/admin/missing ID.
@@ -3327,6 +3422,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return;
     }
+
+    // Require presence of a valid, non-expired token for protected calls
+    const token = ensureValidTokenOrRedirect();
+    if (!token) return;
 
     initializeEventListeners();
     loadUserData(); 
@@ -3382,14 +3481,52 @@ document.addEventListener('DOMContentLoaded', function() {
         })();
     }
 
-    // Check if we need to restore a specific section after returning from salon page
-    const restoreSection = sessionStorage.getItem('restoreSection');
-    if (restoreSection) {
-        sessionStorage.removeItem('restoreSection'); // Clean up
-        // Wait a bit for the page to fully load before switching sections
-        setTimeout(() => {
-            switchView(restoreSection);
-        }, 100);
+    // Initialize view from URL param or session on fresh load
+    const params = new URLSearchParams(window.location.search);
+    const urlView = params.get('view');
+    const viewMap = {
+        home: 'home-view',
+        appointments: 'appointments-view',
+        favorites: 'favorites-view',
+        profile: 'profile-view'
+    };
+    let initialViewId = null;
+    if (urlView) {
+        // Accept both short names and full ids
+        initialViewId = viewMap[urlView] || (urlView.endsWith('-view') ? urlView : null);
+    }
+    const restoreSection = sessionStorage.getItem('restoreSection') || sessionStorage.getItem('previousSection');
+    if (initialViewId) {
+        switchView(initialViewId);
+    } else if (restoreSection) {
+        sessionStorage.removeItem('restoreSection');
+        setTimeout(() => switchView(restoreSection), 100);
+    }
+});
+
+// Ensure proper visual state when navigating back using BFCache
+window.addEventListener('pageshow', () => {
+    // Fix potential white screen due to lingering fade-out
+    document.body.classList.remove('page-fade-out');
+    document.body.classList.add('page-fade-in');
+
+    // If no view is visible, restore from URL/session
+    const visibleViews = document.querySelectorAll('.view-content:not(.hidden)');
+    if (visibleViews.length === 0) {
+        const params = new URLSearchParams(window.location.search);
+        const urlView = params.get('view');
+        const viewMap = {
+            home: 'home-view',
+            appointments: 'appointments-view',
+            favorites: 'favorites-view',
+            profile: 'profile-view'
+        };
+        let targetView = null;
+        if (urlView) {
+            targetView = viewMap[urlView] || (urlView.endsWith('-view') ? urlView : null);
+        }
+        const restoreSection = sessionStorage.getItem('restoreSection') || sessionStorage.getItem('previousSection') || 'home-view';
+        switchView(targetView || restoreSection);
     }
 });
 </script>

@@ -165,8 +165,12 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ user_type: 'user', userId: userId })
             }),
-            fetch(`/api/appointments/user/${userId}/upcoming`),
-            fetch(`/api/favorites/${userId}`)
+            fetch(`/api/appointments/user/${userId}/upcoming`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` }
+            }),
+            fetch(`/api/favorites/${userId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` }
+            })
           ];
           
           // Wait for all critical APIs with timeout

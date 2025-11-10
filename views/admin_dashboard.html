@@ -105,7 +105,7 @@
 
 <div class="min-h-screen flex flex-col">
     <!-- Header -->
-    <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0">
+    <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
         <div class="flex items-center pl-8 pr-4">
             <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="w-12 h-12 object-contain object-center scale-[2.5]">
         </div>
@@ -115,7 +115,7 @@
         </button>
     </header>
 
-    <main class="flex-grow p-4 pt-[60px] md:p-8">
+    <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
         <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
         <div class="max-w-6xl mx-auto space-y-8">
 
@@ -125,11 +125,25 @@
                 
                 <!-- AI Analytics Button -->
                 <div class="mb-6">
-                    <button onclick="window.location.href='/ai-analytics'" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-3">
-                        <i class="fas fa-robot text-xl"></i>
-                        <span>تحليلات نوڤا - المساعد الذكي</span>
-                        <i class="fas fa-chart-line"></i>
-                    </button>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="window.location.href='/ai-analytics'" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-3">
+                            <i class="fas fa-robot text-xl"></i>
+                            <span>تحليلات نوڤا - المساعد الذكي</span>
+                            <i class="fas fa-chart-line"></i>
+                        </button>
+                        <button onclick="window.location.href='/users.html'" class="bg-primary-dark hover:bg-primary-darker text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2">
+                            <i class="fas fa-users text-xl"></i>
+                            <span>المستخدمون</span>
+                        </button>
+                        <button onclick="window.location.href='/payments.html'" class="bg-primary-dark hover:bg-primary-darker text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2">
+                            <i class="fas fa-money-check-alt text-xl"></i>
+                            <span>الدفعات</span>
+                        </button>
+                        <button onclick="window.location.href='/progress.html'" class="bg-primary-dark hover:bg-primary-darker text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-xl"></i>
+                            <span>التقدم</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -165,6 +179,46 @@
                 <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">إدارة المستخدمين</h2>
                 <div id="all-users-list" class="table-wrapper">
                     <p class="text-center text-gray-500 p-8">جاري تحميل المستخدمين...</p>
+                </div>
+            </div>
+            
+            <!-- 4.5 Bookings Management -->
+            <div id="bookings-view" class="view-content hidden">
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">إدارة الحجوزات</h2>
+
+                <!-- Search and Filter Controls -->
+                <div class="mb-6 space-y-4 bg-white p-4 rounded-xl shadow-sm">
+                    <div class="flex gap-3">
+                        <div class="relative flex-1">
+                            <input type="text" id="admin-booking-search" placeholder="ابحث في الحجوزات (اسم الصالون، المستخدم، الخدمة...)" 
+                                   class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-light focus:border-primary-dark transition-colors">
+                            <i class="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                        <button id="refresh-bookings" class="px-4 py-3 bg-primary-dark text-white rounded-xl hover:bg-primary-darker transition-colors">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <select id="admin-booking-status" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">جميع الحالات</option>
+                            <option value="upcoming">قادمة</option>
+                            <option value="completed">مكتملة</option>
+                            <option value="cancelled">ملغاة</option>
+                            <option value="past">ماضية</option>
+                        </select>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="admin-booking-date" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark" placeholder="تاريخ الحجز">
+                            <label class="flex items-center gap-2 text-gray-700">
+                                <input type="checkbox" id="admin-booking-all-dates" class="rounded" checked>
+                                <span>جميع التواريخ</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bookings-list" class="table-wrapper">
+                    <p class="text-center text-gray-500 p-8">جاري تحميل الحجوزات...</p>
                 </div>
             </div>
             
@@ -265,9 +319,9 @@
             <i class="fas fa-store-alt text-xl"></i>
             <span class="text-xs font-medium mt-1">الصالونات</span>
         </button>
-        <button id="nav-users" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="all-users-view">
-            <i class="fas fa-users text-xl"></i>
-            <span class="text-xs font-medium mt-1">المستخدمين</span>
+        <button id="nav-bookings" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="bookings-view">
+            <i class="fas fa-calendar-check text-xl"></i>
+            <span class="text-xs font-medium mt-1">الحجوزات</span>
         </button>
         <button id="nav-services" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="services-view">
             <i class="fas fa-concierge-bell text-xl"></i>
@@ -609,6 +663,7 @@
         'dashboard-view': document.getElementById('dashboard-view'),
         'pending-salons-view': document.getElementById('pending-salons-view'),
         'all-salons-view': document.getElementById('all-salons-view'),
+        'bookings-view': document.getElementById('bookings-view'),
         'all-users-view': document.getElementById('all-users-view'),
         'services-view': document.getElementById('services-view'),
         'payments-view': document.getElementById('payments-view'),
@@ -642,8 +697,8 @@
             await loadSalons('pending');
         } else if (viewId === 'all-salons-view') {
             await loadSalons('all');
-        } else if (viewId === 'all-users-view') {
-            await loadUsers();
+        } else if (viewId === 'bookings-view') {
+            await loadBookings();
         } else if (viewId === 'services-view') {
             await loadServices();
         } else if (viewId === 'payments-view') {
@@ -929,6 +984,13 @@
         const dateFilter = document.getElementById('admin-date-filter')?.value || '';
         const allDatesChecked = document.getElementById('admin-all-dates')?.checked || false;
 
+        // Normalize status values (Arabic/English) to canonical English
+        const statusCanonMap = {
+            'completed': 'completed', 'مكتملة': 'completed',
+            'pending': 'pending', 'معلق': 'pending', 'قيد الانتظار': 'pending',
+            'failed': 'failed', 'فاشلة': 'failed', 'مرفوضة': 'failed'
+        };
+
         let filteredPayments = window.allAdminPayments.filter(payment => {
             // Search filter
             const matchesSearch = !searchTerm || 
@@ -938,7 +1000,8 @@
                 payment.description?.toLowerCase().includes(searchTerm);
 
             // Status filter
-            const matchesStatus = !statusFilter || payment.payment_status === statusFilter;
+            const paymentCanonStatus = statusCanonMap[payment.payment_status] || payment.payment_status;
+            const matchesStatus = !statusFilter || paymentCanonStatus === statusFilter;
 
             // Type filter
             const matchesType = !typeFilter || payment.payment_type === typeFilter;
@@ -956,6 +1019,107 @@
         });
 
         renderAdminPayments(filteredPayments);
+    };
+
+    // --- Bookings (Appointments) Management ---
+    let allAdminBookings = [];
+
+    const loadBookings = async () => {
+        const container = document.getElementById('bookings-list');
+        container.innerHTML = '<p class="text-center text-gray-500 p-8">جاري تحميل الحجوزات...</p>';
+        try {
+            const response = await fetch('/api/admin/appointments', {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            const bookings = await response.json();
+
+            allAdminBookings = Array.isArray(bookings) ? bookings : (bookings.appointments || []);
+
+            if (!allAdminBookings.length) {
+                container.innerHTML = '<p class="text-center text-gray-500 p-8">لا توجد حجوزات حالياً.</p>';
+                return;
+            }
+
+            renderAdminBookings(allAdminBookings);
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+            container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات الحجوزات.</p>';
+        }
+    };
+
+    const renderAdminBookings = (bookings) => {
+        const container = document.getElementById('bookings-list');
+        if (!bookings.length) {
+            container.innerHTML = '<p class="text-center text-gray-500 p-8">لا توجد نتائج مطابقة.</p>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                ${bookings.map(b => {
+                    const start = new Date(b.start_time);
+                    const end = b.end_time ? new Date(b.end_time) : null;
+                    const dateStr = start.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const timeStr = start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + (end ? ` - ${end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : '');
+                    const status = b.status || 'Scheduled';
+                    const statusBadge = status === 'Completed' ? 'bg-green-100 text-green-800' : status === 'Cancelled' ? 'bg-red-100 text-red-800' : status === 'Absent' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800';
+
+                    return `
+                        <div class="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
+                            <div class="p-6 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-bold text-lg text-gray-800 truncate">${b.salon_name || 'صالون غير محدد'}</h3>
+                                    <span class="px-2 py-1 rounded-full text-xs font-bold ${statusBadge}">${status}</span>
+                                </div>
+                                <p class="text-sm text-gray-700">${b.user_name ? `العميل: ${b.user_name}` : ''}</p>
+                                <p class="text-sm text-gray-700">${b.service_name ? `الخدمة: ${b.service_name}` : (b.services_names ? `الخدمات: ${b.services_names}` : '')}</p>
+                                <div class="flex items-center gap-2 text-gray-700">
+                                    <i class="fas fa-calendar text-primary-dark text-sm"></i>
+                                    <span>${dateStr}</span>
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-clock text-primary-dark text-sm"></i>
+                                    <span>${timeStr}</span>
+                                </div>
+                                ${b.price ? `<p class="text-sm text-gray-800 font-medium">المبلغ: ${b.price} ₪</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    };
+
+    const filterAdminBookings = () => {
+        if (!allAdminBookings.length) return;
+        const term = document.getElementById('admin-booking-search')?.value.toLowerCase() || '';
+        const status = document.getElementById('admin-booking-status')?.value || '';
+        const dateVal = document.getElementById('admin-booking-date')?.value || '';
+        const allDates = document.getElementById('admin-booking-all-dates')?.checked || false;
+
+        const filtered = allAdminBookings.filter(b => {
+            const matchesTerm = !term ||
+                b.salon_name?.toLowerCase().includes(term) ||
+                b.user_name?.toLowerCase().includes(term) ||
+                b.service_name?.toLowerCase().includes(term) ||
+                b.services_names?.toLowerCase().includes(term);
+
+            const matchesStatus = !status ||
+                (status === 'upcoming' && b.status === 'Scheduled' && new Date(b.start_time) > new Date()) ||
+                (status === 'completed' && b.status === 'Completed') ||
+                (status === 'cancelled' && b.status === 'Cancelled') ||
+                (status === 'past' && new Date(b.start_time) <= new Date() && b.status !== 'Cancelled' && b.status !== 'Completed');
+
+            let matchesDate = true;
+            if (!allDates && dateVal) {
+                const start = new Date(b.start_time);
+                const filterDate = new Date(dateVal);
+                matchesDate = start.toDateString() === filterDate.toDateString();
+            }
+
+            return matchesTerm && matchesStatus && matchesDate;
+        });
+
+        renderAdminBookings(filtered);
     };
 
     // --- Services Management Functions ---
@@ -1135,7 +1299,8 @@
         document.getElementById('modal-owner-name').textContent = salon.owner_name;
         document.getElementById('modal-owner-phone').textContent = salon.owner_phone;
         document.getElementById('modal-email').textContent = salon.email;
-        document.getElementById('modal-address').textContent = `${salon.address}, ${salon.city}`;
+        const addr = (salon.address && salon.address !== 'undefined') ? salon.address : '';
+        document.getElementById('modal-address').textContent = addr ? `${addr}, ${salon.city}` : `${salon.city}`;
         document.getElementById('modal-gender-focus').textContent = salon.gender_focus === 'women' ? 'نساء' : 'رجال';
         
         const imgEl = document.getElementById('modal-image-preview');
@@ -1143,7 +1308,7 @@
         imgEl.onerror = function() { this.src = 'https://placehold.co/150x100/1E293B/ffffff?text=صورة'; };
         
         // Hide offer checkbox if salon is already accepted
-        const offerContainer = document.getElementById('offer-checkbox-container');
+        const offerContainer = document.getElementById('payment-checkbox-container');
         if (offerContainer) {
             offerContainer.classList.toggle('hidden', salon.status !== 'pending');
         }
@@ -1355,6 +1520,13 @@
             closeCleanPaymentModal();
         }
     });
+
+    // Bookings filters
+    document.getElementById('admin-booking-search')?.addEventListener('input', filterAdminBookings);
+    document.getElementById('admin-booking-status')?.addEventListener('change', filterAdminBookings);
+    document.getElementById('admin-booking-date')?.addEventListener('change', filterAdminBookings);
+    document.getElementById('admin-booking-all-dates')?.addEventListener('change', filterAdminBookings);
+    document.getElementById('refresh-bookings')?.addEventListener('click', loadBookings);
 });
 
     // QR Scanner Functions
@@ -1403,22 +1575,26 @@
         // Amount and type
         const amount = parseFloat(payment.amount).toFixed(2);
         document.getElementById('clean-amount').textContent = `${amount} ${payment.currency}`;
-        const type = payment.payment_type === 'offer_200ils' ? 'عرض شهرين - 200 شيكل' : payment.payment_type;
-        document.getElementById('clean-payment-type').textContent = type;
+        const paymentTypeMap = {
+            'offer_200ils': 'عرض 200 شيكل',
+            'monthly_subscription': 'اشتراك شهري',
+            'annual_subscription': 'اشتراك سنوي'
+        };
+        document.getElementById('clean-payment-type').textContent = paymentTypeMap[payment.payment_type] || payment.payment_type;
         
         // Status with styling
         const statusBadge = document.getElementById('clean-status-badge');
         const statusIcon = document.getElementById('clean-status-icon');
         const statusText = document.getElementById('clean-status-text');
         
-        if (payment.payment_status === 'completed') {
+        if (payment.payment_status === 'completed' || payment.payment_status === 'مكتملة') {
             statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-green-50 border border-green-200 text-green-800';
             statusIcon.className = 'fas fa-check-circle text-green-600';
             statusText.textContent = 'مكتمل';
-        } else if (payment.payment_status === 'pending') {
+        } else if (payment.payment_status === 'pending' || payment.payment_status === 'معلق' || payment.payment_status === 'قيد الانتظار') {
             statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-yellow-50 border border-yellow-200 text-yellow-800';
             statusIcon.className = 'fas fa-clock text-yellow-600';
-            statusText.textContent = 'معلق';
+            statusText.textContent = 'قيد الانتظار';
         } else {
             statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-red-50 border border-red-200 text-red-800';
             statusIcon.className = 'fas fa-times-circle text-red-600';
@@ -1426,7 +1602,13 @@
         }
         
         // Payment method
-        document.getElementById('clean-payment-method').textContent = payment.payment_method || 'غير محدد';
+        const paymentMethodMap = {
+            'cash': 'نقداً',
+            'credit_card': 'بطاقة ائتمان',
+            'bank_transfer': 'تحويل بنكي',
+            'paypal': 'باي بال'
+        };
+        document.getElementById('clean-payment-method').textContent = paymentMethodMap[payment.payment_method] || payment.payment_method || 'غير محدد';
         
         // Dates
         document.getElementById('clean-payment-date').textContent = formatDate(payment.created_at);

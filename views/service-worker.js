@@ -1,5 +1,5 @@
-const CACHE_NAME = 'saloony-cache-v5';
-const APP_VERSION = '1.0.5'; // Update this with each deployment
+const CACHE_NAME = 'saloony-cache-v6';
+const APP_VERSION = '1.0.6'; // Update this with each deployment
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,6 +7,7 @@ const URLS_TO_CACHE = [
   '/home_user.html',
   '/home_salon.html',
   '/splash.html',
+  '/offline.html',
   '/images/Saloony-app_icon.png',
   '/images/Saloony_logo.png',
   '/images/auth.jpg',
@@ -53,6 +54,11 @@ self.addEventListener('fetch', (event) => {
     return; // Let the browser handle Socket.IO requests directly
   }
 
+  // Do not intercept cross-origin requests; let browser handle CSP and fetch
+  if (url.origin !== location.origin) {
+    return;
+  }
+
   // Network-only for API requests to avoid caching dynamic data
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
@@ -61,17 +67,38 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Navigation requests: try network, then cache, then offline fallback
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          return await fetch(req);
+        } catch (e) {
+          const cached = await caches.match(req);
+          if (cached) return cached;
+          return caches.match('/offline.html');
+        }
+      })()
+    );
+    return;
+  }
+
   // Stale-while-revalidate for static assets and pages (GET only)
   if (req.method === 'GET') {
     event.respondWith(
-      caches.match(req).then((cached) => {
-        const fetchPromise = fetch(req).then((networkRes) => {
+      (async () => {
+        const cached = await caches.match(req);
+        try {
+          const networkRes = await fetch(req);
           const copy = networkRes.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
           return networkRes;
-        }).catch(() => cached);
-        return cached || fetchPromise;
-      })
+        } catch (e) {
+          if (cached) return cached;
+          // Return a minimal fallback response to avoid TypeError in SW
+          return new Response('', { status: 503, statusText: 'Service Unavailable' });
+        }
+      })()
     );
   }
 });

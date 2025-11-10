@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دفعات الصالونات - Saloony</title>
+  <link rel="icon" href="/Images/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root { --primary:#0f172a; --primary-darker:#0b1320; --border:#e5e7eb; --muted:#6b7280; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans"; background:#f7fafc; color:#0f172a; margin:0; }
+    header { position:fixed; top:0; left:0; right:0; background:#0f172a; color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 4px 12px rgba(0,0,0,0.1); z-index:20; }
+    main { padding: calc(12px + env(safe-area-inset-top)) 16px 24px; padding-top: 88px; max-width: 1200px; margin: 0 auto; }
+    .btn { display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer; border:none; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-primary:hover { background:var(--primary-darker); }
+    .panel { background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,0.06); padding:16px; }
+    .filters { display:grid; grid-template-columns: 1fr 200px 200px; gap:12px; }
+    input, select { width:100%; border:1px solid var(--border); border-radius:12px; padding:10px 14px; font-size:14px; }
+    .table-wrapper { background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,0.06); overflow:hidden; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:#f9fafb; color:#6b7280; font-size:12px; letter-spacing:.04em; text-transform:uppercase; text-align:right; padding:12px 16px; }
+    tbody td { padding:14px 16px; font-size:14px; border-top:1px solid #f1f5f9; }
+    tr:hover td { background:#f9fafb; }
+    .badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+    .badge-active { background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; }
+    .badge-inactive { background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; }
+    .sub-badge { background:#DBEAFE; color:#1E40AF; border:1px solid #BFDBFE; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    .actions { display:flex; gap:8px; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:40; }
+    .modal { width:96%; max-width:720px; background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 16px 30px rgba(2,6,23,0.2); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); }
+    .modal-body { padding:16px; }
+    .invoice-list { display:grid; gap:10px; }
+    .invoice-item { display:flex; align-items:center; justify-content:space-between; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:8px">
+      <i class="fas fa-money-check-alt"></i>
+      <strong>دفعات الصالونات</strong>
+    </div>
+    <button class="btn btn-primary" onclick="window.location.href='/admin_dashboard.html'">
+      <i class="fas fa-arrow-right"></i>
+      عودة للوحة الإدارة
+    </button>
+  </header>
+
+  <main>
+    <!-- Filters -->
+    <div class="panel" style="margin-bottom: 16px;">
+      <div class="filters">
+        <div class="relative">
+          <input type="text" id="payments-search" placeholder="بحث باسم الصالون">
+          <i class="fas fa-search" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#9ca3af"></i>
+        </div>
+        <select id="payments-status-filter">
+          <option value="">كل الحالات</option>
+          <option value="active">نشط</option>
+          <option value="inactive">غير نشط</option>
+        </select>
+        <select id="payments-plan-filter">
+          <option value="">كل الخطط</option>
+          <option value="offer">عرض شهرين</option>
+          <option value="renewal">تجديد</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- List -->
+    <div class="table-wrapper" id="salon-status-list">
+      <p class="text-center muted" style="padding: 24px;">جاري تحميل البيانات...</p>
+    </div>
+  </main>
+
+  <!-- Invoices Modal -->
+  <div class="modal-backdrop" id="invoices-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 style="font-size: 18px; font-weight: 800; color:#0f172a">فواتير سابقة</h3>
+        <button class="btn" onclick="closeInvoicesModal()" style="color:#6b7280"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="invoices-container" class="invoice-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) {
+      window.location.replace('/auth.html');
+    }
+
+    let allSalons = [];
+    let allPayments = [];
+    let computedStatuses = [];
+
+    function formatDate(dateStr) {
+      try {
+        return new Date(dateStr).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+      } catch { return dateStr; }
+    }
+
+    function localizePaymentType(type) {
+      const map = {
+        'offer_200ils': 'عرض 200 شيكل',
+        'monthly_subscription': 'اشتراك شهري',
+        'annual_subscription': 'اشتراك سنوي'
+      };
+      return map[type] || type;
+    }
+
+    async function loadSalonStatuses() {
+      const list = document.getElementById('salon-status-list');
+      list.innerHTML = '<p class="text-center muted" style="padding: 24px;">جاري تحميل البيانات...</p>';
+      try {
+        const [salonsRes, paymentsRes] = await Promise.all([
+          fetch('/api/admin/salons', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
+          fetch('/api/admin/payments', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
+        ]);
+        allSalons = await salonsRes.json();
+        allPayments = await paymentsRes.json();
+
+        // Compute per-salon status
+        const now = new Date();
+        computedStatuses = allSalons.map(salon => {
+          const payments = allPayments.filter(p => p.salon_id === salon.id);
+          const completed = payments.filter(p => (p.payment_status === 'completed' || p.payment_status === 'مكتملة'))
+                                     .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+          const last = completed[0];
+
+          let active = false;
+          let plan = '';
+          if (last) {
+            const vu = last.valid_until ? new Date(last.valid_until) : null;
+            if (vu && vu >= now) {
+              active = true;
+              plan = (last.payment_type === 'offer_200ils') ? 'offer' : 'renewal';
+            }
+          }
+
+          return {
+            salon_id: salon.id,
+            salon_name: salon.salon_name,
+            owner_name: salon.owner_name,
+            city: salon.city,
+            active,
+            plan, // offer | renewal | ''
+            last_payment: last || null,
+            invoices: completed
+          };
+        });
+
+        renderSalonStatuses(computedStatuses);
+      } catch (e) {
+        console.error('Failed to load statuses:', e);
+        list.innerHTML = '<p class="text-center" style="color:#EF4444; padding:24px">فشل تحميل بيانات الدفعات.</p>';
+      }
+    }
+
+    function renderSalonStatuses(records) {
+      const container = document.getElementById('salon-status-list');
+      if (!records || records.length === 0) {
+        container.innerHTML = '<p class="text-center muted" style="padding: 24px;">لا توجد نتائج.</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>الصالون</th>
+              <th>المدينة</th>
+              <th>الحالة</th>
+              <th>الخطة</th>
+              <th>آخر دفع</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${records.map(r => `
+              <tr>
+                <td>
+                  <div style="font-weight:700; color:#0f172a">${r.salon_name}</div>
+                  <div class="muted">${r.owner_name || ''}</div>
+                </td>
+                <td>${r.city || '---'}</td>
+                <td>
+                  ${r.active 
+                    ? `<span class="badge badge-active"><i class="fas fa-check-circle"></i> نشط</span>` 
+                    : `<span class="badge badge-inactive"><i class="fas fa-ban"></i> غير نشط</span>`}
+                </td>
+                <td>
+                  ${r.active ? (r.plan === 'offer' 
+                    ? `<span class="sub-badge">عرض شهرين</span>` 
+                    : `<span class="sub-badge">تجديد</span>`) : '<span class="muted">---</span>'}
+                </td>
+                <td>
+                  ${r.last_payment ? `${formatDate(r.last_payment.created_at)}` : '<span class="muted">---</span>'}
+                </td>
+                <td>
+                  <div class="actions">
+                    <button class="btn btn-primary" onclick="openInvoicesModal(${r.salon_id})">
+                      <i class="fas fa-file-invoice"></i>
+                      فواتير سابقة
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function filterSalonStatuses() {
+      const term = (document.getElementById('payments-search').value || '').toLowerCase();
+      const statusF = document.getElementById('payments-status-filter').value;
+      const planF = document.getElementById('payments-plan-filter').value;
+
+      const filtered = computedStatuses.filter(r => {
+        const matchesTerm = !term || (r.salon_name || '').toLowerCase().includes(term);
+        const matchesStatus = !statusF || (statusF === 'active' ? r.active : !r.active);
+        const matchesPlan = !planF || (r.active && r.plan === planF);
+        return matchesTerm && matchesStatus && matchesPlan;
+      });
+      renderSalonStatuses(filtered);
+    }
+
+    function openInvoicesModal(salonId) {
+      const modal = document.getElementById('invoices-modal');
+      const list = document.getElementById('invoices-container');
+      const invoices = computedStatuses.find(r => r.salon_id === salonId)?.invoices || [];
+
+      if (invoices.length === 0) {
+        list.innerHTML = '<p class="muted">لا توجد فواتير سابقة.</p>';
+      } else {
+        list.innerHTML = invoices.map(inv => `
+          <div class="invoice-item">
+            <div>
+              <div style="font-weight:700; color:#0f172a">${localizePaymentType(inv.payment_type)}</div>
+              <div class="muted">${formatDate(inv.created_at)}</div>
+            </div>
+            <div style="font-weight:700; color:#0f172a">${inv.invoice_number || '---'}</div>
+          </div>
+        `).join('');
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeInvoicesModal() {
+      document.getElementById('invoices-modal').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSalonStatuses();
+      document.getElementById('payments-search').addEventListener('input', filterSalonStatuses);
+      document.getElementById('payments-status-filter').addEventListener('change', filterSalonStatuses);
+      document.getElementById('payments-plan-filter').addEventListener('change', filterSalonStatuses);
+      document.getElementById('invoices-modal').addEventListener('click', (e) => { if (e.target.id === 'invoices-modal') closeInvoicesModal(); });
+    });
+  </script>
+</body>
+</html>
