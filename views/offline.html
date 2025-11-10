@@ -3,42 +3,86 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>سالووني — بدون اتصال</title>
+  <title>صالوني — بدون اتصال</title>
   <link rel="icon" href="/images/favicon.ico" />
   <style>
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: #f9fafb; color: #111827; }
-    .wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-    .card { max-width: 560px; width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.06); padding: 28px; text-align: center; }
-    .logo { width: 72px; height: 72px; border-radius: 16px; margin: 0 auto 12px; display: block; }
-    h1 { font-size: 22px; margin: 8px 0 4px; }
-    p { margin: 8px 0; color: #4b5563; }
-    .tips { text-align: right; margin-top: 16px; }
-    .tips li { margin: 6px 0; color: #374151; }
-    .btns { display: flex; gap: 10px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
-    .btn { padding: 10px 16px; border-radius: 12px; border: 1px solid #e5e7eb; background: #f3f4f6; color: #111827; text-decoration: none; cursor: pointer; }
-    .btn.primary { background: #111827; color: #fff; border-color: #111827; }
+    :root {
+      --bg1: #0f172a; /* slate-900 */
+      --bg2: #1e293b; /* slate-800 */
+      --accent: #06C167; /* Saloony teal */
+      --text: #e5e7eb; /* slate-200 */
+      --muted: #94a3b8; /* slate-400 */
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: linear-gradient(135deg, var(--bg1), var(--bg2)); color: var(--text); min-height: 100vh; }
+    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .card { width: 100%; max-width: 560px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.35); overflow: hidden; }
+    .header { padding: 28px 24px 8px; display: flex; align-items: center; gap: 12px; }
+    .logo { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.12); display: grid; place-items: center; }
+    .title { font-weight: 800; font-size: 20px; }
+    .content { padding: 8px 24px 24px; }
+    .desc { color: var(--muted); margin-top: 8px; }
+    .scene { position: relative; height: 180px; margin: 18px 0 8px; display: grid; place-items: center; }
+    .device { width: 160px; height: 110px; border-radius: 20px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); position: relative; }
+    .device::before { content:''; position:absolute; inset: -8px -12px; border-radius:24px; background: radial-gradient(120px 80px at 50% 50%, rgba(6,193,103,0.18), transparent 70%); filter: blur(10px); }
+    .wifi { position: absolute; inset:0; display: grid; place-items: center; }
+    .wave { width: 72px; height: 72px; border-radius: 50%; position: absolute; border: 3px solid var(--accent); opacity: 0.18; animation: wave 2.2s infinite ease-out; }
+    .wave:nth-child(2) { width: 98px; height: 98px; animation-delay: .35s; opacity: 0.14; }
+    .wave:nth-child(3) { width: 124px; height: 124px; animation-delay: .7s; opacity: 0.10; }
+    @keyframes wave { 0% { transform: scale(0.98); opacity: .12; } 50% { transform: scale(1.02); opacity: .22; } 100% { transform: scale(1.06); opacity: .12; } }
+    .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); font-weight: 700; }
+    .dot { width:10px; height:10px; border-radius:50%; background: #ef4444; box-shadow: 0 0 0 6px rgba(239,68,68,0.15); }
+    .actions { display:flex; gap:12px; margin-top:16px; }
+    .btn { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:16px; padding:14px 18px; font-weight:800; cursor:pointer; border:1px solid rgba(255,255,255,0.2); color: var(--bg1); background: var(--accent); box-shadow: 0 12px 28px rgba(6,193,103,0.35); transition: filter .2s ease; }
+    .btn:hover { filter: brightness(1.06); }
+    .foot { padding: 12px 24px 24px; color: var(--muted); font-size: 13px; }
+    .shake { animation: shake .4s ease; }
+    @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(6px); } 50% { transform: translateX(-6px); } 75% { transform: translateX(4px); } 100% { transform: translateX(0); } }
   </style>
- </head>
- <body>
+</head>
+<body>
   <div class="wrap">
     <div class="card" role="dialog" aria-labelledby="title" aria-describedby="desc">
-      <img src="/images/Saloony-app_icon.png" alt="Saloony" class="logo" />
-      <h1 id="title">أنت حالياً بدون اتصال بالإنترنت</h1>
-      <p id="desc">لا يمكن تحميل بعض البيانات. ستحاول الصفحة إعادة الاتصال تلقائياً.</p>
-      <ul class="tips">
-        <li>تحقق من اتصال الواي فاي أو البيانات.</li>
-        <li>جرّب إعادة تحميل الصفحة بعد الاتصال.</li>
-        <li>يمكنك تصفح الصفحات المحفوظة مسبقاً.</li>
-      </ul>
-      <div class="btns">
-        <button class="btn primary" onclick="location.reload()">إعادة المحاولة</button>
-        <a class="btn" href="/index.html">العودة للرئيسية</a>
+      <div class="header">
+        <div class="logo">
+          <img src="/images/Saloony-app_icon.png" alt="Saloony" style="width:24px;height:24px;border-radius:6px;" />
+        </div>
+        <div class="title" id="title">يبدو أنك غير متصل بالإنترنت</div>
       </div>
+      <div class="content">
+        <div class="scene">
+          <div class="device">
+            <div class="wifi">
+              <div class="wave"></div>
+              <div class="wave"></div>
+              <div class="wave"></div>
+            </div>
+          </div>
+        </div>
+        <p class="desc" id="desc">الرجاء التحقق من اتصال الواي فاي ثم إعادة المحاولة.</p>
+        <div class="status"><span class="dot"></span> بدون اتصال</div>
+        <div class="actions">
+          <button class="btn" id="retryBtn" type="button">إعادة المحاولة</button>
+        </div>
+      </div>
+      <div class="foot">ستُعاد المحاولة تلقائياً عند استعادة الاتصال.</div>
     </div>
   </div>
   <script>
-    // Auto reload when connection is restored
+    const btn = document.getElementById('retryBtn');
+    function attemptReconnect() {
+      if (navigator.onLine) {
+        location.reload();
+      } else {
+        const card = document.querySelector('.card');
+        card.classList.remove('shake');
+        void card.offsetWidth; // restart animation
+        card.classList.add('shake');
+        setTimeout(() => card.classList.remove('shake'), 450);
+      }
+    }
+    btn.addEventListener('click', attemptReconnect);
     window.addEventListener('online', () => location.reload());
   </script>
- </body>
- </html>
+</body>
+</html>

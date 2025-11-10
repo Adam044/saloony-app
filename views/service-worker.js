@@ -1,5 +1,5 @@
-const CACHE_NAME = 'saloony-cache-v6';
-const APP_VERSION = '1.0.6'; // Update this with each deployment
+const CACHE_NAME = 'saloony-cache-v7';
+const APP_VERSION = '1.0.7'; // Update this with each deployment
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -8,6 +8,7 @@ const URLS_TO_CACHE = [
   '/home_salon.html',
   '/splash.html',
   '/offline.html',
+  '/offline-detect.js',
   '/images/Saloony-app_icon.png',
   '/images/Saloony_logo.png',
   '/images/auth.jpg',

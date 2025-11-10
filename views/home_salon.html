@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <script src="/offline-detect.js"></script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXS767C8SQ"></script>
     <script>
@@ -137,7 +138,7 @@
         }
         
         .pin-dot.filled {
-            transform: scale(1.1);
+            transform: none; /* Disable zoom on PIN dot */
             box-shadow: 0 0 0 2px rgba(6, 193, 103, 0.3);
         }
         
@@ -147,12 +148,12 @@
         }
         
         .pin-btn:active {
-            transform: scale(0.95);
+            transform: none; /* Disable zoom on active state */
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         #pin-backspace:active {
-            transform: scale(0.95);
+            transform: none; /* Disable zoom on active state */
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
@@ -1003,7 +1004,7 @@
                     
                     <!-- Add Service Manually Button -->
                     <div class="mb-6 text-center">
-                        <button id="add-manual-service-btn" class="bg-gradient-to-r from-secondary to-orange-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-300 transform hover:scale-105 relative z-10" style="background: linear-gradient(to right, #06C167, #f97316) !important; color: white !important; display: inline-block !important; visibility: visible !important;">
+                    <button id="add-manual-service-btn" class="bg-gradient-to-r from-secondary to-orange-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-300 relative z-10" style="background: linear-gradient(to right, #06C167, #f97316) !important; color: white !important; display: inline-block !important; visibility: visible !important;">
                             <i class="fas fa-plus-circle ml-2"></i>
                             لم تجد خدمتك؟ أضفها يدوياً
                         </button>
@@ -5716,10 +5717,7 @@ const logoutRole = async () => {
                   { transform: 'translateY(16px)', opacity: 0 },
                   { transform: 'translateY(0)', opacity: 1 }
                 ], { duration: 220, easing: 'ease-out' });
-                icon.animate([
-                  { transform: 'scale(0.85)' },
-                  { transform: 'scale(1)' }
-                ], { duration: 260, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+                // Zoom animation disabled for mobile context
                 setTimeout(() => {
                   const anim = card.animate([
                     { opacity: 1 },
@@ -5779,10 +5777,7 @@ const logoutRole = async () => {
                 iconWrap.className = 'w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white';
                 iconWrap.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg>';
                 if (msgEl) msgEl.textContent = text;
-                iconWrap.animate([
-                  { transform: 'scale(0.9)' },
-                  { transform: 'scale(1)' }
-                ], { duration: 220, easing: 'ease-out' });
+                // Zoom animation disabled for mobile context
                 animateOutAndRemove(950);
               },
               error(text = 'حدث خطأ') {
@@ -5845,6 +5840,11 @@ const logoutRole = async () => {
         }
 
         function openModal() {
+            try {
+                if (modal && modal.parentNode !== document.body) {
+                    document.body.appendChild(modal);
+                }
+            } catch(_) {}
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.classList.add('overflow-hidden');
@@ -6306,3 +6306,18 @@ const logoutRole = async () => {
 
 </body>
 </html>
+        // Wire up open/close actions safely
+        try {
+            if (openBtn) {
+                openBtn.replaceWith(openBtn.cloneNode(true));
+                document.getElementById('add-location-btn').addEventListener('click', openModal);
+            }
+            if (closeBtn) {
+                closeBtn.replaceWith(closeBtn.cloneNode(true));
+                document.getElementById('close-location-modal').addEventListener('click', closeModal);
+            }
+            // Close when tapping backdrop
+            modal.addEventListener('click', (e) => {
+                if (e.target && e.target.id === 'location-modal') closeModal();
+            });
+        } catch(_) {}

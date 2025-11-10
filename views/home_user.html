@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <script src="/offline-detect.js"></script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXS767C8SQ"></script>
     <script>
@@ -189,7 +190,7 @@
             transition: transform 0.3s ease;
         }
         .section-card:hover .section-icon {
-            transform: scale(1.1);
+            transform: none; /* Disable hover zoom on icons */
         }
 
         /* Page Transition Animations - DISABLED FOR NAVBAR FIX */
@@ -312,9 +313,9 @@
         
         /* Salon Card Click Animation */
         .salon-card-clicked {
-            transform: scale(0.95);
+            transform: none; /* Disable click zoom */
             opacity: 0.8;
-            transition: all 0.2s ease-out;
+            transition: opacity 0.2s ease-out;
         }
 
         /* Booking Modal Styles */
@@ -578,12 +579,12 @@
             width: 100%;
             text-align: center;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
+            transform: none; /* Disable modal zoom */
+            transition: opacity 0.3s ease;
         }
 
         .update-modal.show .update-modal-content {
-            transform: scale(1);
+            transform: none;
         }
 
         .update-icon {
@@ -3351,8 +3352,10 @@ function openAIChat() {
     
     // Add button click animation
     const button = document.getElementById('nav-ai-chat');
-    button.style.transform = 'scale(0.95)';
-    button.style.transition = 'transform 0.1s ease';
+    if (button) {
+        // Remove zoom animation on click
+        button.style.transform = 'none';
+    }
     
     // Navigate after animation
     setTimeout(() => {

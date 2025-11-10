@@ -1599,6 +1599,11 @@ app.get('/ai-chat.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'ai-chat.html'));
 });
 
+// Pretty route for Admin Dashboard
+app.get('/admin_dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'admin_dashboard.html'));
+});
+
 // ===============================
 // Push Notification Endpoints
 // ===============================
