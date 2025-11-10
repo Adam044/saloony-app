@@ -5649,7 +5649,7 @@ const logoutRole = async () => {
 
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">الخريطة</label>
-                    <div id="location-map" class="w-full h-72 rounded-xl border border-gray-200"></div>
+                    <div id="location-map" class="w-full h-72 rounded-xl border border-gray-200" style="contain: layout paint size; backface-visibility: hidden;"></div>
                 </div>
 
                 <div class="flex gap-3 pt-2">
@@ -5849,6 +5849,11 @@ const logoutRole = async () => {
             modal.classList.add('flex');
             document.body.classList.add('overflow-hidden');
             setTimeout(initMap, 50);
+            // Ensure Leaflet recalculates dimensions once visible on mobile
+            requestAnimationFrame(() => {
+                setTimeout(() => { try { mapInstance && mapInstance.invalidateSize(true); } catch(_) {} }, 200);
+                setTimeout(() => { try { mapInstance && mapInstance.invalidateSize(true); } catch(_) {} }, 500);
+            });
             // Ensure cities are loaded for selection
             try { populateCitySelect_v2(); } catch (_) {}
             const salonId = window.salonId;
@@ -5911,6 +5916,10 @@ const logoutRole = async () => {
             mapInstance.on('click', function(e) {
                 setMarker([e.latlng.lat, e.latlng.lng]);
             });
+            // Handle resize/orientation changes on mobile to prevent tile seams
+            const handleResize = () => { try { mapInstance && mapInstance.invalidateSize(true); } catch(_) {} };
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', handleResize);
         }
 
         async function populateCitySelect() {
@@ -5961,6 +5970,7 @@ const logoutRole = async () => {
                 marker.setLatLng(latlng);
             }
             mapInstance.setView(latlng, 15);
+            try { mapInstance.invalidateSize(true); } catch(_) {}
             currentLat = Number(latlng[0]);
             currentLng = Number(latlng[1]);
             latInput.value = currentLat.toFixed(6);
