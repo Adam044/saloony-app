@@ -1787,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // Unified local notification helper
-    const notifyLocal = async ({ title = 'Saloony', body = 'لديك إشعار جديد', url = '/home_salon.html', isSuccess = true, tag = 'saloony' } = {}) => {
+    const notifyLocal = async ({ title = 'صالوني', body = 'لديك إشعار جديد', url = '/home_salon.html', isSuccess = true, tag = 'saloony' } = {}) => {
         // In-app toast
         showMessage(messageBox, body, !!isSuccess);
         // Sound + vibration
@@ -5888,7 +5888,22 @@ const logoutRole = async () => {
 
         function initMap() {
             if (mapInstance) return;
-            mapInstance = L.map(mapContainer).setView([31.95, 35.22], 12);
+            mapInstance = L.map(mapContainer);
+            const hasCoords = typeof currentLat === 'number' && typeof currentLng === 'number';
+            const setDefaultView = () => mapInstance.setView([31.95, 35.22], 12); // regional fallback
+            if (hasCoords) {
+                mapInstance.setView([currentLat, currentLng], 15);
+            } else if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        mapInstance.setView([pos.coords.latitude, pos.coords.longitude], 15);
+                    },
+                    () => setDefaultView(),
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                setDefaultView();
+            }
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors'
@@ -6306,18 +6321,3 @@ const logoutRole = async () => {
 
 </body>
 </html>
-        // Wire up open/close actions safely
-        try {
-            if (openBtn) {
-                openBtn.replaceWith(openBtn.cloneNode(true));
-                document.getElementById('add-location-btn').addEventListener('click', openModal);
-            }
-            if (closeBtn) {
-                closeBtn.replaceWith(closeBtn.cloneNode(true));
-                document.getElementById('close-location-modal').addEventListener('click', closeModal);
-            }
-            // Close when tapping backdrop
-            modal.addEventListener('click', (e) => {
-                if (e.target && e.target.id === 'location-modal') closeModal();
-            });
-        } catch(_) {}

@@ -1543,6 +1543,10 @@ app.post('/api/salon/roles/:salon_id/logout', async (req, res) => {
 
 // --- End Role Management System ---
 
+// Serve root-level static assets (e.g., offline-detect.js, manifest) first
+// This ensures requests like /offline-detect.js are served with correct MIME type
+app.use(express.static(__dirname, { etag: true }));
+
 // Serve static files (views, Images)
 // Serve static assets with mild caching for images; keep HTML no-cache via discovery route headers
 app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));

@@ -22,7 +22,7 @@
     .btn { display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:10px 14px; font-weight:700; cursor:pointer; border:none; }
     .btn-primary { background:#0f172a; color:#fff; }
     .btn-primary:hover { background:#0b1320; }
-    main { padding: calc(12px + env(safe-area-inset-top)) 16px 120px; padding-top: 88px; max-width: 1250px; margin: 0 auto; }
+    main { padding: calc(88px + env(safe-area-inset-top)) 16px 120px; max-width: 1250px; margin: 0 auto; }
     .grid { display:grid; gap:16px; }
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .card { background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:0 10px 24px rgba(0,0,0,0.06); padding:18px; }
@@ -62,7 +62,7 @@
     /* Mobile fixes */
     @media (max-width: 640px) {
       header { padding: 10px 12px; }
-      main { padding-top: 80px; }
+      main { padding-top: calc(80px + env(safe-area-inset-top)); }
       .grid-4 { grid-template-columns: 1fr; }
       .kpi .value { font-size: 26px; }
       .filters { grid-template-columns: 1fr; }

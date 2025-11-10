@@ -1,5 +1,5 @@
 const CACHE_NAME = 'saloony-cache-v7';
-const APP_VERSION = '1.0.7'; // Update this with each deployment
+const APP_VERSION = '1.0.8'; // Update this with each deployment
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -12,7 +12,7 @@ const URLS_TO_CACHE = [
   '/images/Saloony-app_icon.png',
   '/images/Saloony_logo.png',
   '/images/auth.jpg',
-  '/sounds/salon_notifications.wav'
+  '/Sounds/salon_notifications.wav'
 ];
 
 self.addEventListener('install', (event) => {
@@ -77,7 +77,12 @@ self.addEventListener('fetch', (event) => {
         } catch (e) {
           const cached = await caches.match(req);
           if (cached) return cached;
-          return caches.match('/offline.html');
+          const offline = await caches.match('/offline.html');
+          if (offline) return offline;
+          return new Response(
+            '<!doctype html><html lang="ar"><head><meta charset="utf-8"><title>غير متصل</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f8fafc;color:#111827}.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.05)}h1{font-size:20px;margin:0 0 8px}p{margin:0;color:#6b7280}</style></head><body dir="rtl"><div class="card"><h1>أنت غير متصل</h1><p>يرجى الاتصال بالإنترنت ثم المحاولة.</p></div></body></html>',
+            { headers: { 'Content-Type': 'text/html' } }
+          );
         }
       })()
     );
