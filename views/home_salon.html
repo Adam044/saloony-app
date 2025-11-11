@@ -1104,7 +1104,7 @@
 </div>
 
 <!-- Invoice Modal -->
-<div id="invoice-modal-overlay" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-start justify-center p-4 hidden overflow-y-auto">
+  <div id="invoice-modal-overlay" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-start justify-center p-4 hidden overflow-y-auto" style="backdrop-filter: blur(4px);">
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full margin-auto max-h-calc(100vh - 4rem) overflow-y-auto">
         <!-- Modal Header -->
         <div class="flex justify-between items-center mb-6 p-6">
@@ -2252,6 +2252,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         `).join('');
     };
 
+    // Ensure any Arabic/Eastern Arabic numerals render as English digits (global)
+    window.toEnglishDigits = function(input) {
+        const map = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9' };
+        return String(input).replace(/[٠-٩۰-۹]/g, d => map[d] || d);
+    };
+
     const renderSalonInvoices = (payments) => {
         const list = document.getElementById('invoices-list');
         const empty = document.getElementById('invoices-empty');
@@ -2264,7 +2270,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         empty.classList.add('hidden');
         
-        list.innerHTML = payments.map((payment, index) => {
+        // Helper: format amount and currency with English digits
+        const formatAmount = (amount, currency) => {
+            const num = Number(amount || 0);
+            const formatted = num.toLocaleString('en-US');
+            return `${formatted} ${currency || ''}`.trim();
+        };
+
+        // Helper: map DB payment_type to a friendly Arabic label
+        const friendlyType = (p) => {
+            const t = (p?.payment_type || '').toLowerCase();
+            switch (t) {
+                case 'offer_200ils':
+                    return 'عرض شهرين (200 شيكل)';
+                case 'monthly_subscription':
+                case 'monthly_200':
+                    return 'اشتراك شهري (200 شيكل)';
+                case 'per_chair':
+                case 'monthly_60': {
+                    const chairs = Math.max(1, Math.round((Number(p.amount) || 0) / 60));
+                    return `اشتراك شهري لكل كرسي (عدد الكراسي: ${chairs})`;
+                }
+                case 'per_booking':
+                    return 'الدفع لكل حجز';
+                default:
+                    // Fall back to description or generic label
+                    return p?.description ? p.description : 'دفعة اشتراك';
+            }
+        };
+
+        // Group invoices by month-year for a cleaner presentation
+        const groups = payments.reduce((acc, p) => {
+            const d = new Date(p.created_at);
+            const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(p);
+            return acc;
+        }, {});
+
+        const groupOrder = Object.keys(groups).sort((a,b) => a.localeCompare(b));
+
+        list.innerHTML = groupOrder.map(key => {
+            const [year, month] = key.split('-');
+            // Keep Arabic month names but force English digits
+            const headerDate = new Date(Number(year), Number(month)-1, 1).toLocaleDateString('ar-EG-u-nu-latn', { month: 'long', year: 'numeric' });
+            const items = groups[key]
+            // newest first within group
+            .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+            .map((payment) => {
             const statusColor = (payment.payment_status === 'completed' || payment.payment_status === 'مكتملة') ? 'text-green-600' : 
                                (payment.payment_status === 'pending' || payment.payment_status === 'معلق') ? 'text-yellow-600' : 
                                'text-red-600';
@@ -2280,7 +2333,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 year: '2-digit'
             });
             
-            const paymentType = payment.payment_type === 'offer_200ils' ? 'عرض شهرين - 200 شيكل' : payment.payment_type;
+            const paymentType = friendlyType(payment);
+            const amountStr = formatAmount(payment.amount, payment.currency);
+            const validUntilStr = payment.valid_until ? new Date(payment.valid_until).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '';
 
             return `
                 <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow">
@@ -2291,13 +2346,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <i class="fas fa-receipt text-primary-dark text-lg"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-gray-800">فاتورة ${payment.invoice_number || '#' + payment.id}</h3>
+                                <h3 class="font-bold text-gray-800">فاتورة ${window.toEnglishDigits(payment.invoice_number || '#' + payment.id)}</h3>
                                 <p class="text-sm text-gray-600">${paymentDate}</p>
                                 <p class="text-sm font-medium text-primary-dark">${paymentType}</p>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <span class="font-bold text-lg text-gray-800">${payment.amount} ${payment.currency}</span>
+                                    <span class="font-bold text-lg text-gray-800">${amountStr}</span>
                                     <i class="${statusIcon} ${statusColor} text-sm"></i>
                                 </div>
+                                ${validUntilStr ? `<p class="text-xs text-gray-500 mt-1">صالح حتى: ${validUntilStr}</p>` : ''}
                             </div>
                         </div>
                         
@@ -2308,6 +2364,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             معاينة
                         </button>
                     </div>
+                </div>
+            `;
+            }).join('');
+
+            return `
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-calendar-alt text-secondary"></i>
+                        <h4 class="text-sm font-bold text-gray-700">${headerDate}</h4>
+                    </div>
+                    ${items}
                 </div>
             `;
         }).join('');
@@ -4786,7 +4853,7 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     
     // Set invoice number
     if (invoiceNumber) {
-      invoiceNumber.textContent = `رقم الفاتورة: ${payment.invoice_number}`;
+      invoiceNumber.textContent = `رقم الفاتورة: ${window.toEnglishDigits(payment.invoice_number)}`;
     }
     
     // Set status
@@ -4821,13 +4888,33 @@ function openSalonServicesExplorer(prefCategory = 'all') {
     
     // Set type
     if (invoiceType) {
-      const paymentType = payment.payment_type === 'offer_200ils' ? 'عرض شهرين - 200 شيكل' : payment.payment_type;
-      invoiceType.textContent = paymentType;
+      const typeLabel = (() => {
+        const t = (payment?.payment_type || '').toLowerCase();
+        switch (t) {
+          case 'offer_200ils':
+            return 'عرض شهرين (200 شيكل)';
+          case 'monthly_subscription':
+          case 'monthly_200':
+            return 'اشتراك شهري (200 شيكل)';
+          case 'per_chair':
+          case 'monthly_60': {
+            const chairs = Math.max(1, Math.round((Number(payment.amount) || 0) / 60));
+            return `اشتراك شهري لكل كرسي (عدد الكراسي: ${chairs})`;
+          }
+          case 'per_booking':
+            return 'الدفع لكل حجز';
+          default:
+            return payment?.description ? payment.description : 'دفعة اشتراك';
+        }
+      })();
+      invoiceType.textContent = typeLabel;
     }
     
     // Set amount
     if (invoiceAmount) {
-      invoiceAmount.textContent = `${payment.amount} ${payment.currency}`;
+      const num = Number(payment.amount || 0);
+      const formatted = num.toLocaleString('en-US');
+      invoiceAmount.textContent = `${formatted} ${payment.currency || ''}`.trim();
     }
     
     // Set payment method (conditional)
@@ -5649,7 +5736,7 @@ const logoutRole = async () => {
 
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">الخريطة</label>
-                    <div id="location-map" class="w-full h-72 rounded-xl border border-gray-200" style="contain: layout paint size; backface-visibility: hidden;"></div>
+                    <div id="location-map" class="w-full h-72 rounded-xl border border-gray-200" style="transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;"></div>
                 </div>
 
                 <div class="flex gap-3 pt-2">
@@ -5663,6 +5750,31 @@ const logoutRole = async () => {
     </div>
 
     <script>
+    // iOS-specific rendering fix: disable backdrop blur to prevent map splitting
+    (function() {
+        try {
+            var ua = navigator.userAgent || '';
+            var isiOS = /iP(hone|ad|od)/.test(ua);
+            var modalEl = document.getElementById('location-modal');
+            if (isiOS && modalEl) {
+                modalEl.classList.remove('backdrop-blur-sm');
+                modalEl.style.backdropFilter = 'none';
+                modalEl.style.webkitBackdropFilter = 'none';
+            }
+        } catch (_) {}
+    })();
+
+    // Leaflet/Safari compositing hints to avoid tile seams/splitting
+    (function() {
+        var css = `#location-map, #location-map .leaflet-container, #location-map .leaflet-pane, #location-map .leaflet-tile {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  /* Ensure GPU layer and predictable stacking for Safari */\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}`;
+        try {
+            var styleEl = document.createElement('style');
+            styleEl.type = 'text/css';
+            styleEl.appendChild(document.createTextNode(css));
+            document.head.appendChild(styleEl);
+        } catch (_) {}
+    })();
+
     (function() {
         const modal = document.getElementById('location-modal');
         const openBtn = document.getElementById('add-location-btn');

@@ -8,6 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/dashboard.css">
+    <link rel="stylesheet" href="./assets/admin.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="./assets/dashboard.js"></script>
     <style>
         * {
             margin: 0;
@@ -17,10 +21,12 @@
 
         body {
             font-family: 'Cairo', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #F8FAFC;
             min-height: 100vh;
-            color: #333;
+            color: #0f172a;
         }
+        /* Ensure header background matches other admin pages */
+        .bg-primary-dark { background-color: #1E293B; }
 
         .dashboard-container {
             max-width: 1400px;
@@ -29,12 +35,12 @@
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06);
             text-align: center;
         }
 
@@ -56,23 +62,20 @@
         }
 
         .refresh-btn {
-            background: linear-gradient(135deg, #06C167, #059652);
+            background: #1E293B;
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.6rem 1.2rem;
             border-radius: 12px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(6, 193, 103, 0.3);
-        }
+        .refresh-btn:hover { opacity: 0.9; }
 
         .metrics-grid {
             display: grid;
@@ -82,19 +85,15 @@
         }
 
         .metric-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+            transition: all 0.2s ease;
         }
 
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        }
+        .metric-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
 
         .metric-header {
             display: flex;
@@ -103,29 +102,22 @@
             margin-bottom: 1.5rem;
         }
 
-        .metric-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #2d3748;
-        }
+        .metric-title { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
 
         .metric-icon {
-            width: 50px;
-            height: 50px;
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            color: white;
+            font-size: 1.4rem;
+            color: #111827;
+            background: #DBEAFE;
+            border: 1px solid #BFDBFE;
         }
 
-        .metric-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 0.5rem;
-        }
+        .metric-value { font-size: 2rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem; }
 
         .metric-change {
             font-size: 0.9rem;
@@ -143,12 +135,12 @@
         }
 
         .chart-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06);
         }
 
         .chart-header {
@@ -202,13 +194,7 @@
             gap: 2rem;
         }
 
-        .insight-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
+        .insight-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.25rem 1.5rem; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
 
         .insight-title {
             font-size: 1.3rem;
@@ -279,32 +265,12 @@
             100% { transform: rotate(360deg); }
         }
 
-        .back-btn {
-            position: fixed;
-            top: 2rem;
-            left: 2rem;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            padding: 1rem;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-        }
+        /* back button styles removed */
 
-        .back-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        }
+        
 
         /* Color schemes for different metrics */
-        .tokens { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .messages { background: linear-gradient(135deg, #06C167, #059652); }
-        .users { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
-        .performance { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
-        .errors { background: linear-gradient(135deg, #ffa726, #ff7043); }
-        .languages { background: linear-gradient(135deg, #ab47bc, #8e24aa); }
+        .tokens, .messages, .users, .performance, .errors, .languages { background: #DBEAFE; border: 1px solid #BFDBFE; color: #111827; }
 
         @media (max-width: 768px) {
             .dashboard-container {
@@ -325,10 +291,24 @@
         }
     </style>
 </head>
-<body>
-    <button class="back-btn" onclick="window.location.href='/admin_dashboard'">
-        <i class="fas fa-arrow-right"></i>
-    </button>
+  <body>
+<header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
+      <div class="flex items-center pl-8 pr-4">
+            <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="h-10 w-auto object-contain object-center">
+      </div>
+      <h1 class="text-xl font-bold text-white">لوحة تحكم الإدارة</h1>
+      <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
+        <i class="fas fa-sign-out-alt text-lg"></i>
+      </button>
+    </header>
+  <nav class="top-nav">
+    <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
+    <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
+    <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
+    <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
+    <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
+  </nav>
+    <!-- back button removed: header/navigation already provides controls -->
 
     <div class="dashboard-container">
         <div class="header">

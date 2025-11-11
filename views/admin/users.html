@@ -6,6 +6,10 @@
   <title>إدارة المستخدمين - Saloony</title>
   <link rel="icon" href="/Images/favicon.ico">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="./assets/dashboard.css">
+  <link rel="stylesheet" href="./assets/admin.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="./assets/dashboard.js"></script>
   <script>
     // Simple auth guard for admin
     const adminToken = localStorage.getItem('adminToken');
@@ -15,8 +19,9 @@
   </script>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; background: #f7fafc; color: #0f172a; margin: 0; }
-    header { position: fixed; top: 0; left: 0; right: 0; background: #0f172a; color: #fff; padding: 12px 16px; padding-top: env(safe-area-inset-top); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 20; }
-    main { padding: calc(90px + env(safe-area-inset-top)) 16px 24px; max-width: 1100px; margin: 0 auto; }
+    .bg-primary-dark { background-color: #1E293B; }
+    header { position: fixed; top: 0; left: 0; right: 0; background: #1E293B; color: #fff; padding: 12px 16px; padding-top: env(safe-area-inset-top); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 20; }
+    main { padding: calc(60px + env(safe-area-inset-top)) 16px 24px; max-width: 1100px; margin: 0 auto; }
     .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer; border: none; }
     .btn-primary { background: #0f172a; color: #fff; }
     .btn-primary:hover { background: #0b1320; }
@@ -32,17 +37,25 @@
   </style>
 </head>
 <body>
-  <header>
-    <div style="display:flex; align-items:center; gap:8px">
-      <i class="fas fa-users"></i>
-      <strong>إدارة المستخدمين</strong>
+  <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
+    <div class="flex items-center pl-8 pr-4">
+      <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="h-10 w-auto object-contain object-center">
     </div>
-    <button class="btn btn-primary" onclick="window.location.href='/admin_dashboard.html'">
-      <i class="fas fa-arrow-right"></i>
-      عودة للوحة الإدارة
+    <h1 class="text-xl font-bold text-white">لوحة تحكم الإدارة</h1>
+    <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
+      <i class="fas fa-sign-out-alt text-lg"></i>
     </button>
   </header>
-  <main>
+
+  <!-- Shared Top Navigation -->
+  <nav class="top-nav">
+    <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
+    <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
+    <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
+    <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
+    <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
+  </nav>
+  <main class="page-container">
     <div class="table-wrapper" id="users-container">
       <p style="text-align:center; color:#6b7280; padding: 24px;">جاري تحميل المستخدمين...</p>
     </div>

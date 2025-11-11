@@ -60,7 +60,7 @@
           '/auth.html': ['/images/auth.jpg'],
           '/home_user.html': [],
           '/home_salon.html': [],
-          '/admin_dashboard.html': []
+        '/admin/admin_dashboard.html': []
         };
 
         const resourcesToPreload = [
@@ -110,7 +110,7 @@
           return this.waitForSalonDataReady();
         } else if (targetUrl === '/home_user.html') {
           return this.waitForUserDataReady();
-        } else if (targetUrl === '/admin_dashboard.html') {
+    } else if (targetUrl === '/admin/admin_dashboard.html') {
           return this.waitForAdminDataReady();
         }
         
@@ -265,7 +265,7 @@
           const adminToken = localStorage.getItem('adminToken');
 
           if (adminToken) {
-            return '/admin_dashboard.html';
+    return '/admin/admin_dashboard.html';
           }
 
           if (user && token) {

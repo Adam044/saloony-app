@@ -9,6 +9,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <link rel="stylesheet" href="./assets/dashboard.css">
+  <link rel="stylesheet" href="./assets/admin.css">
+  <script defer src="./assets/dashboard.js"></script>
+  <script defer src="./assets/admin-header.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
         body {
@@ -90,6 +94,26 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
+
+        /* Payments-style badges reused for الحالة والخطة */
+        .badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+        .badge-active { background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; }
+        .badge-inactive { background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; }
+        .sub-badge { background:#DBEAFE; color:#1E40AF; border:1px solid #BFDBFE; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+
+        /* Payments page styles to match buttons and invoices modal */
+        :root { --primary:#0f172a; --primary-darker:#0b1320; --border:#e5e7eb; --muted:#6b7280; }
+        .btn { display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer; border:none; }
+        .btn-primary { background:var(--primary); color:#fff; }
+        .btn-primary:hover { background:var(--primary-darker); }
+        .actions { display:flex; gap:8px; }
+        .muted { color: var(--muted); }
+        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:60; }
+        .modal { width:96%; max-width:720px; background:#fff; border-radius:16px; border:1px solid var(--border); box-shadow:0 16px 30px rgba(2,6,23,0.2); }
+        .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); }
+        .modal-body { padding:16px; }
+        .invoice-list { display:grid; gap:10px; }
+        .invoice-item { display:flex; align-items:center; justify-content:space-between; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; }
     </style>
 </head>
 <body dir="rtl">
@@ -108,13 +132,27 @@
     <!-- Header -->
     <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
         <div class="flex items-center pl-8 pr-4">
-            <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="w-12 h-12 object-contain object-center scale-[2.5]">
+      <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="h-10 w-auto object-contain object-center">
         </div>
         <h1 class="text-xl font-bold text-white">لوحة تحكم الإدارة</h1>
         <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
             <i class="fas fa-sign-out-alt text-lg"></i>
         </button>
     </header>
+
+    <!-- Loading overlay -->
+    <div id="dashboard-loading" class="fixed inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-[60] hidden">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-300" style="border-top-color:#1E293B"></div>
+    </div>
+
+    <!-- Shared Top Navigation -->
+        <nav class="top-nav">
+        <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
+        <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
+        <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
+        <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
+        <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
+    </nav>
 
     <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
         <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
@@ -124,28 +162,7 @@
             <div id="dashboard-view" class="view-content">
                 <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">نظرة عامة</h2>
                 
-                <!-- AI Analytics Button -->
-                <div class="mb-6">
-                    <div class="flex flex-wrap gap-3">
-                        <button onclick="window.location.href='/ai-analytics'" class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3">
-                            <i class="fas fa-robot text-xl"></i>
-                            <span>تحليلات نوڤا - المساعد الذكي</span>
-                            <i class="fas fa-chart-line"></i>
-                        </button>
-                        <button onclick="window.location.href='/users.html'" class="bg-primary-dark hover:bg-primary-darker text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2">
-                            <i class="fas fa-users text-xl"></i>
-                            <span>المستخدمون</span>
-                        </button>
-                        <button onclick="window.location.href='/payments.html'" class="bg-primary-dark hover:bg-primary-darker text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2">
-                            <i class="fas fa-money-check-alt text-xl"></i>
-                            <span>الدفعات</span>
-                        </button>
-                        <button onclick="window.location.href='/progress.html'" class="bg-primary-dark hover:bg-primary-darker text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2">
-                            <i class="fas fa-chart-line text-xl"></i>
-                            <span>التقدم</span>
-                        </button>
-                    </div>
-                </div>
+                <!-- Quick links removed: already available in header navigation -->
                 
                 <div id="stats-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <p class="col-span-full text-center text-gray-500">جاري تحميل الإحصائيات...</p>
@@ -162,6 +179,43 @@
                         <i class="fas fa-sync-alt ml-1"></i> تحديث
                     </button>
                 </h2>
+                <!-- Filters: name, plan, status, city, date sort (Pending) -->
+                <div class="mb-4 bg-white p-4 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div class="relative">
+                        <input id="salon-name-search-pending" type="text" placeholder="البحث باسم الصالون..." 
+                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                        <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <div>
+                        <select id="salon-plan-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الخطط</option>
+                            <option value="2months_offer">عرض شهرين</option>
+                            <option value="monthly_200">200ils</option>
+                            <option value="monthly_60">60ils</option>
+                            <option value="per_booking">لكل حجز</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-status-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الحالات</option>
+                            <option value="accepted">نشط</option>
+                            <option value="rejected">غير نشط</option>
+                            <option value="pending">قيد الانتظار</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-city-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل المدن</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-date-sort-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">ترتيب افتراضي</option>
+                            <option value="newest">الأحدث أولاً</option>
+                            <option value="oldest">الأقدم أولاً</option>
+                        </select>
+                    </div>
+                </div>
                 <div id="pending-salons-list" class="table-wrapper">
                     <p class="text-center text-gray-500 p-8">جاري تحميل الصالونات...</p>
                 </div>
@@ -170,6 +224,43 @@
             <!-- 3. All Salons -->
             <div id="all-salons-view" class="view-content hidden">
                 <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">إدارة الصالونات</h2>
+                <!-- Filters: name, plan, status, city, date sort (All) -->
+                <div class="mb-4 bg-white p-4 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div class="relative">
+                        <input id="salon-name-search-all" type="text" placeholder="البحث باسم الصالون..." 
+                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                        <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <div>
+                        <select id="salon-plan-filter-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الخطط</option>
+                            <option value="2months_offer">عرض شهرين</option>
+                            <option value="monthly_200">200ils</option>
+                            <option value="monthly_60">60ils</option>
+                            <option value="per_booking">لكل حجز</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-status-filter-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الحالات</option>
+                            <option value="accepted">نشط</option>
+                            <option value="rejected">غير نشط</option>
+                            <option value="pending">قيد الانتظار</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-city-filter-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل المدن</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-date-sort-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">ترتيب افتراضي</option>
+                            <option value="newest">الأحدث أولاً</option>
+                            <option value="oldest">الأقدم أولاً</option>
+                        </select>
+                    </div>
+                </div>
                 <div id="all-salons-list" class="table-wrapper">
                     <p class="text-center text-gray-500 p-8">جاري تحميل جميع الصالونات...</p>
                 </div>
@@ -335,42 +426,124 @@
     </nav>
 </div>
 
-<!-- Salon Approval/Rejection Modal -->
+<!-- Salon Activation/Deactivation Modal -->
 <div id="approval-modal" class="modal-overlay">
     <div class="modal-content">
-        <h3 class="text-xl font-bold text-primary-dark mb-4 text-center">مراجعة الصالون</h3>
-        <div id="salon-details-view" class="space-y-3 p-4 bg-gray-50 rounded-lg">
-            <p><span class="font-bold text-primary-dark">اسم الصالون:</span> <span id="modal-salon-name">...</span></p>
-            <p><span class="font-bold text-primary-dark">اسم المالك:</span> <span id="modal-owner-name">...</span></p>
-            <p><span class="font-bold text-primary-dark">هاتف المالك:</span> <span id="modal-owner-phone">...</span></p>
-            <p><span class="font-bold text-primary-dark">البريد الإلكتروني:</span> <span id="modal-email">...</span></p>
-            <p><span class="font-bold text-primary-dark">العنوان:</span> <span id="modal-address">...</span></p>
-            <p><span class="font-bold text-primary-dark">الفئة المستهدفة:</span> <span id="modal-gender-focus">...</span></p>
-            <div class="flex flex-col items-center pt-2">
-                <span class="font-bold text-primary-dark mb-2">صورة الصالون:</span>
-                <img id="modal-image-preview" src="https://placehold.co/150x100/1E293B/ffffff?text=صورة" class="w-full max-w-[200px] h-auto object-cover rounded-lg shadow-md" alt="Salon Image Preview">
+        <div class="flex items-center justify-between mb-4">
+            <button id="approval-close-icon" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            <h3 class="text-xl font-bold text-primary-dark">أداة إدارة الصالون</h3>
+            <span class="w-6"></span>
+        </div>
+
+        <!-- Current status, plan, and last payment -->
+        <div id="salon-status-plan" class="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-primary-dark">الحالة الحالية:</span>
+                <span id="modal-salon-status-badge"></span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-primary-dark">الخطة الحالية:</span>
+                <span id="modal-current-plan" class="text-gray-700">غير محدد</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="font-bold text-primary-dark">آخر دفعة:</span>
+                <span id="modal-last-payment-date" class="text-gray-700">—</span>
             </div>
         </div>
 
-        <div id="payment-checkbox-container" class="mt-4 p-4 border border-green-300 rounded-lg bg-green-50">
-            <label class="flex items-center cursor-pointer">
-                <input type="checkbox" id="payment-200ils-checkbox" class="h-5 w-5 text-green-600 focus:ring-green-500 ml-3 rounded">
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-green-800">💰 عرض الدفع المسبق - 200 شيكل / شهرين</span>
-                    <span class="text-xs text-green-700 mt-1">✅ سيتم إنشاء فاتورة دفع تلقائياً عند الموافقة</span>
-                </div>
-            </label>
+        <!-- Plan selection (compact) -->
+        <div id="plan-options" class="mt-3 p-4 border border-gray-200 rounded-lg bg-white">
+            <p class="font-bold text-primary-dark mb-3">تغيير الباقة</p>
+            <div class="space-y-2">
+                <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <input type="radio" name="plan-type" id="plan-2months-offer" value="2months_offer" class="h-4 w-4 text-secondary">
+                    <span class="font-semibold">عرض شهرين</span>
+                </label>
+                <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <input type="radio" name="plan-type" id="plan-monthly-200" value="monthly_200" class="h-4 w-4 text-secondary" checked>
+                    <span class="font-semibold">شهري 200</span>
+                </label>
+                <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <input type="radio" name="plan-type" id="plan-monthly-60" value="monthly_60" class="h-4 w-4 text-secondary">
+                    <span class="font-semibold">لكل كرسي (60)</span>
+                </label>
+                <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <input type="radio" name="plan-type" id="plan-per-booking" value="per_booking" class="h-4 w-4 text-secondary">
+                    <span class="font-semibold">لكل حجز (1)</span>
+                </label>
+            </div>
         </div>
-        
-        <div class="flex justify-center space-x-4 space-x-reverse mt-6">
-            <button id="approve-btn" class="flex-1 btn-approve py-3 rounded-xl font-bold hover:bg-[#05AE5D] transition">
-                <i class="fas fa-check ml-2"></i> موافقة
-            </button>
-            <button id="reject-btn" class="flex-1 btn-reject py-3 rounded-xl font-bold hover:bg-red-600 transition">
-                <i class="fas fa-times ml-2"></i> رفض
+        <div id="chairs-input-container" class="mt-3 p-4 border border-gray-200 rounded-lg bg-white hidden">
+            <label class="block text-sm font-semibold text-primary-dark mb-1">عدد الكراسي</label>
+            <input type="number" id="plan-chairs-input" min="1" value="1" class="w-32 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary">
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3 mt-6">
+            <div class="flex items-center justify-between w-full md:w-auto bg-white border border-gray-200 rounded-xl px-4 py-3">
+                <span class="font-bold text-primary-dark">تفعيل الصالون</span>
+                <label class="inline-flex items-center cursor-pointer ml-3">
+                    <input type="checkbox" id="status-toggle" class="sr-only peer">
+                    <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-500 rounded-full relative transition">
+                        <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition transform peer-checked:translate-x-6 peer-checked:scale-110 flex items-center justify-center">
+                            <i class="fas fa-check text-green-500 opacity-0 transition-all duration-300 peer-checked:opacity-100 peer-checked:rotate-12"></i>
+                        </span>
+                    </div>
+                </label>
+            </div>
+            <button id="save-plan-btn" class="hidden flex-1 px-4 py-3 rounded-xl font-bold bg-primary-dark text-white hover:bg-primary-dark transition">
+                <i class="fas fa-save ml-2"></i> حفظ التغييرات
             </button>
         </div>
-        <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700 mt-4 text-sm w-full">إغلاق</button></div>
+    </div>
+</div>
+
+<!-- Invoice Confirmation Modal -->
+<div id="invoice-confirm-modal" class="modal-overlay">
+    <div class="modal-content max-w-md">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">إنشاء فاتورة؟</h3>
+            <button id="invoice-confirm-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <p class="text-gray-700 mb-4">هل ترغب في إنشاء فاتورة لهذه الباقة الآن؟</p>
+        <div class="flex items-center gap-3">
+            <button id="invoice-confirm-yes" class="flex-1 py-2 rounded-lg bg-secondary text-white hover:bg-secondary/90 font-bold">نعم</button>
+            <button id="invoice-confirm-no" class="flex-1 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 font-bold">لا</button>
+        </div>
+    </div>
+</div>
+
+<!-- Previous Invoices Modal (match payments.html) -->
+<div class="modal-backdrop" id="invoices-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="font-size: 18px; font-weight: 800; color:#0f172a">فواتير سابقة</h3>
+      <button class="btn" onclick="closeInvoicesModal()" style="color:#6b7280"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="invoices-container" class="invoice-list"></div>
+    </div>
+  </div>
+  </div>
+
+<!-- Salon Details Modal (no photo) -->
+<div id="salon-details-modal" class="modal-overlay">
+    <div class="modal-content max-w-xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-primary-dark">تفاصيل الصالون</h3>
+            <button id="close-salon-details-btn" class="text-gray-500 hover:text-gray-700 transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="space-y-2 p-2">
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-store text-primary-dark"></i><span class="font-bold text-primary-dark">اسم الصالون:</span><span id="details-salon-name" class="ml-1">---</span></div>
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-user text-primary-dark"></i><span class="font-bold text-primary-dark">اسم المالك:</span><span id="details-owner-name" class="ml-1">---</span></div>
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-phone-alt text-primary-dark"></i><span class="font-bold text-primary-dark">هاتف المالك:</span><span id="details-owner-phone" class="ml-1">---</span></div>
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-envelope text-primary-dark"></i><span class="font-bold text-primary-dark">البريد الإلكتروني:</span><span id="details-email" class="ml-1">---</span></div>
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-map-marker-alt text-primary-dark"></i><span class="font-bold text-primary-dark">العنوان:</span><span id="details-address" class="ml-1">---</span></div>
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-venus-mars text-primary-dark"></i><span class="font-bold text-primary-dark">الفئة المستهدفة:</span><span id="details-gender-focus" class="ml-1">---</span></div>
+            <div class="flex items-center gap-2 text-gray-800"><i class="fas fa-calendar-plus text-primary-dark"></i><span class="font-bold text-primary-dark">تاريخ الانضمام:</span><span id="details-date-joined" class="ml-1">—</span></div>
+        </div>
     </div>
 </div>
 
@@ -642,22 +815,104 @@
         }
     };
     
-    // Utility function to format status
+    // Utility: format status using payments-style badges
     const formatStatus = (status) => {
-        let color = 'bg-gray-200 text-gray-700';
-        let text = 'غير معروف';
-        if (status === 'pending') {
-            color = 'bg-yellow-100 text-yellow-800';
-            text = 'قيد الانتظار';
-        } else if (status === 'accepted') {
-            color = 'bg-[#06C167]/20 text-secondary';
-            text = 'مقبول / نشط';
-        } else if (status === 'rejected') {
-            color = 'bg-red-100 text-red-700';
-            text = 'مرفوض';
+        if (status === 'accepted') {
+            return `<span class="badge badge-active"><i class="fas fa-check-circle"></i> نشط</span>`;
         }
-        return `<span class="px-3 py-1 rounded-full text-xs font-bold ${color}">${text}</span>`;
+        if (status === 'rejected') {
+            return `<span class="badge badge-inactive"><i class="fas fa-ban"></i> غير نشط</span>`;
+        }
+        // Pending or unknown fallbacks
+        return `<span class="badge" style="background:#FEF3C7; color:#92400E; border:1px solid #FDE68A;"><i class="fas fa-clock"></i> قيد الانتظار</span>`;
     };
+
+    // --- Plan formatting helpers ---
+    function getLatestPaymentForSalon(salonId) {
+        try {
+            const payments = window.allAdminPayments || [];
+            const related = payments.filter(p => p.salon_id === salonId);
+            if (!related.length) return null;
+            related.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            return related[0];
+        } catch (e) { return null; }
+    }
+
+    function mapPaymentTypeToPlan(paymentType) {
+        switch (paymentType) {
+            case 'offer_200ils': return '2months_offer';
+            case 'monthly_subscription': return 'monthly_200';
+            case 'per_chair': return 'monthly_60';
+            case 'per_booking': return 'per_booking';
+            default: return undefined;
+        }
+    }
+
+    // --- Revenue helpers (align with progress.html) ---
+    function monthKey(d) {
+        try {
+            const dt = new Date(d);
+            return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+        } catch { return ''; }
+    }
+    function formatCurrencyILS(amount) {
+        const num = Number(amount || 0);
+        return `₪${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+    }
+
+    // Cache for salon signup dates
+    window.salonLocationCache = window.salonLocationCache || {};
+    async function getSalonSignupDate(salonId) {
+        const cache = window.salonLocationCache;
+        if (cache[salonId] !== undefined) return cache[salonId];
+        try {
+            const res = await fetch(`/api/salon/location/${salonId}`);
+            if (!res.ok) { cache[salonId] = null; return null; }
+            const data = await res.json();
+            const created = data?.created_at || data?.location?.created_at || null;
+            cache[salonId] = created;
+            return created;
+        } catch { cache[salonId] = null; return null; }
+    }
+    async function ensureSignupDates(salons) {
+        const cache = window.salonLocationCache;
+        const missing = salons.filter(s => cache[s.id] === undefined);
+        if (missing.length === 0) return;
+        await Promise.all(missing.map(async (s) => { await getSalonSignupDate(s.id); }));
+    }
+
+    function formatSalonPlanForRow(salon) {
+        // Show plan badge only for accepted (active) salons, otherwise use muted placeholder
+        const isActive = salon.status === 'accepted';
+        if (!isActive) {
+            return '<span class="text-gray-500">---</span>';
+        }
+
+        const override = (window.salonPlanOverrides || {})[salon.id];
+        let planType = salon.plan || override?.planType;
+        let chairs = (salon.plan_chairs != null ? parseInt(salon.plan_chairs, 10) : undefined);
+        if (chairs == null) chairs = override?.planChairs ? parseInt(override.planChairs, 10) : 1;
+
+        if (!planType) {
+            const last = getLatestPaymentForSalon(salon.id);
+            planType = mapPaymentTypeToPlan(last?.payment_type);
+        }
+
+        // Map to payments page labels and use the same sub-badge style
+        if (planType === '2months_offer') {
+            return '<span class="sub-badge">عرض شهرين</span>';
+        }
+        if (planType === 'monthly_200') {
+            return '<span class="sub-badge">200ils</span>';
+        }
+        if (planType === 'monthly_60') {
+            return '<span class="sub-badge">60ils</span>';
+        }
+        if (planType === 'per_booking') {
+            return '<span class="sub-badge">لكل حجز</span>';
+        }
+        return '<span class="text-gray-500">---</span>';
+    }
 
     // --- View Switching ---
     const views = {
@@ -717,6 +972,36 @@
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             const stats = await response.json();
+            // Revenue KPIs: align with progress.html using payments
+            let revenueCards = [];
+            try {
+                const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                const payments = pRes.ok ? await pRes.json() : [];
+                const completed = payments.filter(p => p.payment_status === 'completed' || p.payment_status === 'مكتملة');
+                const today = new Date();
+                const todayKey = today.toISOString().slice(0,10);
+                const monthKeyStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+                const lastMonthKey = `${today.getFullYear()}-${String(today.getMonth()).padStart(2,'0')}`;
+                const sumAll = completed.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+                const sumToday = completed.filter(p => (p.created_at || '').slice(0,10) === todayKey)
+                                          .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+                const sumMonth = completed.filter(p => monthKey(p.created_at) === monthKeyStr)
+                                          .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+                const sumLastMonth = completed.filter(p => monthKey(p.created_at) === lastMonthKey)
+                                              .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+                const revGrowth = sumLastMonth === 0 ? (sumMonth > 0 ? 100 : 0) : Math.round(((sumMonth - sumLastMonth) / sumLastMonth) * 100);
+                revenueCards = [
+                    { title: 'إيراد اليوم', count: formatCurrencyILS(sumToday), icon: 'fa-bolt', color: 'text-amber-500' },
+                    { title: 'إيراد هذا الشهر', count: formatCurrencyILS(sumMonth), icon: 'fa-wallet', color: 'text-indigo-600' },
+                    { title: 'إجمالي الإيرادات', count: formatCurrencyILS(sumAll), icon: 'fa-money-bill-wave', color: 'text-green-600' },
+                    { title: 'نمو الإيراد مقابل الشهر الماضي', count: `${revGrowth}%`, icon: 'fa-chart-line', color: 'text-blue-600' },
+                ];
+            } catch (_) {
+                // Fallback to server-provided revenue if payments fetch fails
+                revenueCards = [
+                    { title: 'إجمالي الإيرادات', count: `${stats.totalRevenue || 0} ₪`, icon: 'fa-money-bill-wave', color: 'text-green-600' },
+                ];
+            }
             
             // Define stat cards
             const statCards = [
@@ -727,8 +1012,9 @@
                 { title: 'الصالونات النشطة', count: stats.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
                 { title: 'صالونات الرجال', count: stats.menSalons || 0, icon: 'fa-mars', color: 'text-indigo-500' },
                 { title: 'صالونات النساء', count: stats.womenSalons || 0, icon: 'fa-venus', color: 'text-pink-500' },
-                { title: 'إجمالي الإيرادات', count: `${stats.totalRevenue || 0} ₪`, icon: 'fa-money-bill-wave', color: 'text-green-600' },
             ];
+            // Append revenue cards (computed client-side)
+            statCards.push(...revenueCards);
             
             grid.innerHTML = statCards.map(card => `
                 <div class="stat-card">
@@ -761,11 +1047,15 @@
         }
     };
 
+    function showDashboardLoading(){ document.getElementById('dashboard-loading')?.classList.remove('hidden'); }
+    function hideDashboardLoading(){ document.getElementById('dashboard-loading')?.classList.add('hidden'); }
+
     const loadSalons = async (filter) => {
         const container = filter === 'pending' ? document.getElementById('pending-salons-list') : document.getElementById('all-salons-list');
         const listName = filter === 'pending' ? 'Pending Salons' : 'All Salons';
         
         container.innerHTML = `<p class="text-center text-gray-500 p-8">جاري تحميل ${listName}...</p>`;
+        showDashboardLoading();
 
         try {
             const response = await fetch('/api/admin/salons', {
@@ -774,7 +1064,106 @@
             const allSalons = await response.json();
             
             pendingSalonsData = allSalons.filter(s => s.status === 'pending');
-            const filteredSalons = filter === 'all' ? allSalons : pendingSalonsData;
+            let baseSalons = filter === 'all' ? allSalons : pendingSalonsData;
+
+            // Read filters for the current view
+            const nameInputId = filter === 'all' ? 'salon-name-search-all' : 'salon-name-search-pending';
+            const planSelectId = filter === 'all' ? 'salon-plan-filter-all' : 'salon-plan-filter-pending';
+            const statusSelectId = filter === 'all' ? 'salon-status-filter-all' : 'salon-status-filter-pending';
+            const citySelectId = filter === 'all' ? 'salon-city-filter-all' : 'salon-city-filter-pending';
+            const sortSelectId = filter === 'all' ? 'salon-date-sort-all' : 'salon-date-sort-pending';
+
+            const nameTerm = document.getElementById(nameInputId)?.value?.toLowerCase()?.trim() || '';
+            const planTerm = document.getElementById(planSelectId)?.value || '';
+            const statusTerm = document.getElementById(statusSelectId)?.value || '';
+            const cityTerm = document.getElementById(citySelectId)?.value || '';
+            const sortTerm = document.getElementById(sortSelectId)?.value || '';
+
+            // Ensure payments available when plan filter requires inference
+            if (planTerm && !window.allAdminPayments) {
+                try {
+                    const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                    if (pRes.ok) window.allAdminPayments = await pRes.json();
+                } catch (e) { /* ignore */ }
+            }
+
+            // Helper: derive a plan key for filtering
+            const computePlanKey = (salon) => {
+                const override = (window.salonPlanOverrides || {})[salon.id];
+                let planType = salon.plan || override?.planType;
+                if (!planType) {
+                    const last = getLatestPaymentForSalon(salon.id);
+                    planType = mapPaymentTypeToPlan(last?.payment_type);
+                }
+                return planType;
+            };
+
+            // Build counts for options (for display)
+            const statusCounts = {
+                accepted: baseSalons.filter(s => s.status === 'accepted').length,
+                rejected: baseSalons.filter(s => s.status === 'rejected').length,
+                pending: baseSalons.filter(s => s.status === 'pending').length
+            };
+            const planKeys = ['2months_offer','monthly_200','monthly_60','per_booking'];
+            const planCounts = planKeys.reduce((acc, k) => { acc[k] = baseSalons.filter(s => s.status === 'accepted' && computePlanKey(s) === k).length; return acc; }, {});
+            const cityCounts = {};
+            baseSalons.forEach(s => { const c = (s.city || 'غير محدد'); cityCounts[c] = (cityCounts[c] || 0) + 1; });
+            const sortedCities = Object.keys(cityCounts).sort((a,b) => a.localeCompare(b));
+
+            // Update plan/status/city select options with counts (preserve selection)
+            const planSel = document.getElementById(planSelectId);
+            const stSel = document.getElementById(statusSelectId);
+            const ctSel = document.getElementById(citySelectId);
+            const prevPlan = planTerm; const prevStatus = statusTerm; const prevCity = cityTerm;
+            if (planSel) {
+                const totalPlans = Object.values(planCounts).reduce((a,b)=>a+b,0);
+                planSel.innerHTML = `
+                    <option value="">كل الخطط (${totalPlans})</option>
+                <option value="2months_offer">عرض شهرين (${planCounts['2months_offer'] || 0})</option>
+                <option value="monthly_200">200ils (${planCounts['monthly_200'] || 0})</option>
+                <option value="monthly_60">60ils (${planCounts['monthly_60'] || 0})</option>
+                <option value="per_booking">لكل حجز (${planCounts['per_booking'] || 0})</option>
+                `;
+                planSel.value = prevPlan;
+            }
+            if (stSel) {
+                stSel.innerHTML = `
+                    <option value="">كل الحالات (${baseSalons.length})</option>
+                    <option value="accepted">نشط (${statusCounts.accepted})</option>
+                    <option value="rejected">غير نشط (${statusCounts.rejected})</option>
+                    <option value="pending">قيد الانتظار (${statusCounts.pending})</option>
+                `;
+                stSel.value = prevStatus;
+            }
+            if (ctSel) {
+                ctSel.innerHTML = `
+                    <option value="">كل المدن (${baseSalons.length})</option>
+                    ${sortedCities.map(c => `<option value="${c}">${c} (${cityCounts[c]})</option>`).join('')}
+                `;
+                ctSel.value = prevCity;
+            }
+
+            // Apply filters
+            let filteredSalons = baseSalons.filter(s => {
+                const matchesName = !nameTerm || (s.salon_name || '').toLowerCase().includes(nameTerm);
+                const matchesStatus = !statusTerm || s.status === statusTerm;
+                const matchesCity = !cityTerm || (s.city || 'غير محدد') === cityTerm;
+                const matchesPlan = !planTerm || (s.status === 'accepted' && computePlanKey(s) === planTerm);
+                return matchesName && matchesStatus && matchesCity && matchesPlan;
+            });
+
+            if (sortTerm === 'newest' || sortTerm === 'oldest') {
+                await ensureSignupDates(filteredSalons);
+                const cache = window.salonLocationCache || {};
+                const cmp = (a, b) => {
+                    const da = cache[a.id] ? new Date(cache[a.id]).getTime() : 0;
+                    const db = cache[b.id] ? new Date(cache[b.id]).getTime() : 0;
+                    if (da && db) return sortTerm === 'newest' ? (db - da) : (da - db);
+                    // Fallback to id if date missing
+                    return sortTerm === 'newest' ? ((b.id ?? 0) - (a.id ?? 0)) : ((a.id ?? 0) - (b.id ?? 0));
+                };
+                filteredSalons.sort(cmp);
+            }
 
             if (filter === 'pending') {
                  const badge = document.getElementById('nav-pending-badge');
@@ -798,58 +1187,65 @@
                 <table class="min-w-full divide-y divide-gray-200 bg-white rounded-xl shadow-lg">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">اسم الصالون</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المالك / الهاتف</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المدينة</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الفئة</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الخطة</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">فواتير سابقة</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التفاصيل</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         ${filteredSalons.map((salon, index) => `
                             <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-dark font-bold">${salon.salon_name}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    ${salon.owner_name} <br> <span class="text-xs text-gray-500">${salon.owner_phone}</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${salon.city}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${salon.gender_focus === 'women' ? 'نساء' : 'رجال'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">${formatSalonPlanForRow(salon)}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">${formatStatus(salon.status)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <div class="actions">
+                                        <button class="btn btn-primary" onclick="openInvoicesModal(${salon.id})">
+                                          <i class="fas fa-file-invoice"></i>
+                                          فواتير سابقة
+                                        </button>
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button class="view-salon-btn text-blue-600 hover:text-blue-800 transition duration-150 p-1 rounded" data-id="${salon.id}">
-                                        <i class="fas fa-eye ml-1"></i> عرض
+                                    <button class="details-salon-btn text-blue-600 hover:text-blue-800 transition duration-150 p-1 rounded" data-id="${salon.id}">
+                                        <i class="fas fa-eye ml-1"></i> عرض التفاصيل
                                     </button>
                                 </td>
+                                
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
             
-            document.querySelectorAll('.view-salon-btn').forEach(btn => {
+            document.querySelectorAll('.details-salon-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const salonId = parseInt(e.currentTarget.dataset.id);
                     const salon = pendingSalonsData.find(s => s.id === salonId) || allSalons.find(s => s.id === salonId);
                     if (salon) {
-                        showApprovalModal(salon);
+                        showSalonDetails(salon);
                     } else {
                         showMessage(messageBox, 'فشل العثور على بيانات الصالون.', false);
                     }
                 });
             });
 
+            // الإجراءات column removed; no need to attach manage-salon handlers.
+
+            // No listeners needed for invoices buttons (onclick used to match payments logic)
+
         } catch (error) {
             console.error('Error fetching salons:', error);
             container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات الصالونات.</p>';
-        }
+        } finally { hideDashboardLoading(); }
     };
     
     const loadUsers = async () => {
         const container = document.getElementById('all-users-list');
         container.innerHTML = '<p class="text-center text-gray-500 p-8">جاري تحميل المستخدمين...</p>';
+        showDashboardLoading();
         try {
             const response = await fetch('/api/admin/users', {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
@@ -894,12 +1290,13 @@
         } catch (error) {
             console.error('Error fetching users:', error);
             container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات المستخدمين.</p>';
-        }
+        } finally { hideDashboardLoading(); }
     };
     
     const loadPayments = async () => {
         const container = document.getElementById('payments-list');
         container.innerHTML = '<p class="text-center text-gray-500 p-8">جاري تحميل المدفوعات...</p>';
+        showDashboardLoading();
         try {
             const response = await fetch('/api/admin/payments', {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
@@ -918,7 +1315,7 @@
         } catch (error) {
             console.error('Error fetching payments:', error);
             container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات المدفوعات.</p>';
-        }
+        } finally { hideDashboardLoading(); }
     };
 
     const renderAdminPayments = (payments) => {
@@ -1293,26 +1690,160 @@
 
     // --- Modal and Action Functions ---
     let currentSalonId = null;
+    window.salonPlanOverrides = window.salonPlanOverrides || {};
 
     const showApprovalModal = (salon) => {
         currentSalonId = salon.id;
-        document.getElementById('modal-salon-name').textContent = salon.salon_name;
-        document.getElementById('modal-owner-name').textContent = salon.owner_name;
-        document.getElementById('modal-owner-phone').textContent = salon.owner_phone;
-        document.getElementById('modal-email').textContent = salon.email;
-        const addr = (salon.address && salon.address !== 'undefined') ? salon.address : '';
-        document.getElementById('modal-address').textContent = addr ? `${addr}, ${salon.city}` : `${salon.city}`;
-        document.getElementById('modal-gender-focus').textContent = salon.gender_focus === 'women' ? 'نساء' : 'رجال';
-        
-        const imgEl = document.getElementById('modal-image-preview');
-        imgEl.src = salon.image_url || 'https://placehold.co/150x100/1E293B/ffffff?text=صورة';
-        imgEl.onerror = function() { this.src = 'https://placehold.co/150x100/1E293B/ffffff?text=صورة'; };
-        
-        // Hide offer checkbox if salon is already accepted
-        const offerContainer = document.getElementById('payment-checkbox-container');
-        if (offerContainer) {
-            offerContainer.classList.toggle('hidden', salon.status !== 'pending');
+
+        // Render current status badge
+        const statusBadgeEl = document.getElementById('modal-salon-status-badge');
+        if (statusBadgeEl) statusBadgeEl.innerHTML = formatStatus(salon.status);
+
+        // Reflect current status in toggle UI (on if accepted, off otherwise)
+        const statusToggle = document.getElementById('status-toggle');
+        if (statusToggle) {
+            statusToggle.checked = (salon.status === 'accepted');
         }
+
+        // Current plan: prefer backend stored plan, else infer from latest payment
+        const planEl = document.getElementById('modal-current-plan');
+        const planMap = {
+            '2months_offer': 'عرض شهرين',
+            'monthly_200': '200ils',
+            'monthly_60': '60ils',
+            'per_booking': 'لكل حجز (1)'
+        };
+        let currentPlan = 'غير محدد';
+        if (salon.plan) {
+            if (salon.plan === 'monthly_60' && salon.plan_chairs) {
+                currentPlan = `لكل كرسي (${salon.plan_chairs})`;
+            } else {
+                currentPlan = planMap[salon.plan] || salon.plan;
+            }
+        } else {
+            try {
+                const payments = window.allAdminPayments || [];
+                const related = payments.filter(p => p.salon_id === salon.id);
+                if (related.length) {
+                    related.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    const last = related[0];
+                    const typeToPlan = mapPaymentTypeToPlan(last.payment_type);
+                    const paymentTypeMap = {
+                        '2months_offer': 'عرض شهرين',
+                        'monthly_200': '200ils',
+                        'monthly_60': '60ils',
+                        'per_booking': 'لكل حجز'
+                    };
+                    currentPlan = paymentTypeMap[typeToPlan] || paymentTypeMap[last.payment_type] || last.payment_type || 'غير محدد';
+                }
+            } catch (_) {}
+        }
+        if (planEl) planEl.textContent = currentPlan;
+
+        // Last payment date
+        const lastPaymentEl = document.getElementById('modal-last-payment-date');
+        let lastPaymentDate = '—';
+        try {
+            const payments = window.allAdminPayments || [];
+            const related = payments.filter(p => p.salon_id === salon.id);
+            if (related.length) {
+                related.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const last = related[0];
+                const d = new Date(last.created_at);
+                lastPaymentDate = d.toLocaleDateString('ar-IL');
+            }
+        } catch (_) {}
+        if (lastPaymentEl) lastPaymentEl.textContent = lastPaymentDate;
+
+        // Preselect plan: prefer backend salon.plan, else infer from last payment
+        const planRadioMap = {
+            '2months_offer': 'plan-2months-offer',
+            'monthly_200': 'plan-monthly-200',
+            'monthly_60': 'plan-monthly-60',
+            'per_booking': 'plan-per-booking'
+        };
+        if (salon.plan && planRadioMap[salon.plan] && document.getElementById(planRadioMap[salon.plan])) {
+            document.getElementById(planRadioMap[salon.plan]).checked = true;
+        } else {
+            try {
+                const payments = window.allAdminPayments || [];
+                const related = payments.filter(p => p.salon_id === salon.id);
+                if (related.length) {
+                    related.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    const last = related[0];
+                    const pt = last.payment_type;
+                    const map = {
+                        'offer_200ils': 'plan-2months-offer',
+                        'monthly_subscription': 'plan-monthly-200',
+                        'per_chair': 'plan-monthly-60',
+                        'per_booking': 'plan-per-booking'
+                    };
+                    const id = map[pt];
+                    if (id && document.getElementById(id)) {
+                        document.getElementById(id).checked = true;
+                    }
+                }
+            } catch(_) {}
+        }
+
+        // Sync chairs input and invoice option with selected plan
+        const syncPlanUI = () => {
+            const selected = document.querySelector('input[name="plan-type"]:checked')?.value;
+            const chairsContainer = document.getElementById('chairs-input-container');
+            if (selected === 'monthly_60') {
+                chairsContainer?.classList.remove('hidden');
+                const ov = window.salonPlanOverrides[salon.id];
+                const el = document.getElementById('plan-chairs-input');
+                if (el) el.value = ov?.planChairs ? parseInt(ov.planChairs, 10) : 1;
+            } else {
+                chairsContainer?.classList.add('hidden');
+            }
+        };
+        syncPlanUI();
+
+        document.querySelectorAll('input[name="plan-type"]').forEach(r => {
+            r.addEventListener('change', syncPlanUI);
+        });
+
+        // Baseline state for change detection
+        const statusToggleEl = document.getElementById('status-toggle');
+        const initiallySelectedPlan = document.querySelector('input[name="plan-type"]:checked')?.value || null;
+        const initialChairs = initiallySelectedPlan === 'monthly_60' ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
+        window.approvalBaseline = window.approvalBaseline || {};
+        window.approvalBaseline[currentSalonId] = {
+            statusChecked: !!(statusToggleEl && statusToggleEl.checked),
+            planSelected: initiallySelectedPlan,
+            planChairs: initialChairs
+        };
+
+        // Helper to read current selection
+        const getCurrentSelection = () => {
+            const selPlan = document.querySelector('input[name="plan-type"]:checked')?.value || null;
+            const selChairs = selPlan === 'monthly_60' ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
+            const statusChecked = !!document.getElementById('status-toggle')?.checked;
+            return { selPlan, selChairs, statusChecked };
+        };
+
+        // Update Save button visibility based on changes
+        const updateSaveVisibility = () => {
+            const baseline = window.approvalBaseline[currentSalonId] || {};
+            const cur = getCurrentSelection();
+            const statusChanged = baseline.statusChecked !== cur.statusChecked;
+            const planChanged = baseline.planSelected !== cur.selPlan;
+            const chairsChanged = baseline.planSelected === 'monthly_60' || cur.selPlan === 'monthly_60' ? (baseline.planChairs || 1) !== (cur.selChairs || 1) : false;
+            const anyChanged = statusChanged || planChanged || chairsChanged;
+            const saveBtn = document.getElementById('save-plan-btn');
+            if (saveBtn) {
+                if (anyChanged) saveBtn.classList.remove('hidden'); else saveBtn.classList.add('hidden');
+            }
+        };
+
+        // Attach listeners to detect changes
+        statusToggleEl?.addEventListener('change', updateSaveVisibility);
+        document.querySelectorAll('input[name="plan-type"]').forEach(r => r.addEventListener('change', updateSaveVisibility));
+        document.getElementById('plan-chairs-input')?.addEventListener('input', updateSaveVisibility);
+        // Initial visibility set
+        updateSaveVisibility();
 
         const modal = document.getElementById('approval-modal');
         modal.classList.add('modal-open');
@@ -1324,28 +1855,16 @@
         modal.classList.remove('modal-open');
         document.body.style.overflow = 'auto';
         currentSalonId = null;
-        // Reset checkbox state
-        document.getElementById('payment-200ils-checkbox').checked = false;
     };
     
     const updateSalonStatus = async (status) => {
         if (!currentSalonId) return;
-
-        const approveBtn = document.getElementById('approve-btn');
-        const rejectBtn = document.getElementById('reject-btn');
-        const payment200ils = document.getElementById('payment-200ils-checkbox').checked;
-
-        approveBtn.disabled = true;
-        rejectBtn.disabled = true;
-        
-        const originalApproveText = approveBtn.innerHTML;
-        const originalRejectText = rejectBtn.innerHTML;
-
-        if (status === 'accepted') {
-            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الموافقة...';
-        } else {
-            rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الرفض...';
-        }
+        const toggleEl = document.getElementById('status-toggle');
+        const planSelected = document.querySelector('input[name="plan-type"]:checked')?.value || 'monthly_200';
+        const invoiceSelected = (planSelected === '2months_offer') ? 'offer_200ils' : 'none';
+        const planChairs = (planSelected === 'monthly_60') ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
+        const payment200ils = invoiceSelected === 'offer_200ils'; // legacy compatibility
+        toggleEl && (toggleEl.disabled = true);
 
         try {
             const response = await fetch(`/api/admin/salon/status/${currentSalonId}`, {
@@ -1354,13 +1873,15 @@
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${adminToken}`
                 },
-                body: JSON.stringify({ status, payment200ils })
+                body: JSON.stringify({ status, payment200ils, invoiceOption: invoiceSelected, planType: planSelected, planChairs })
             });
 
             const result = await response.json();
 
             if (response.ok) {
                 showMessage(messageBox, `تم تحديث حالة الصالون إلى: ${status === 'accepted' ? 'مقبول' : 'مرفوض'}.`, true);
+                // Store override locally to reflect plan in UI immediately
+                window.salonPlanOverrides[currentSalonId] = { planType: planSelected, planChairs };
                 hideApprovalModal();
                 await loadSalons('pending'); // Reload pending list
                 if (currentView === 'dashboard-view') {
@@ -1375,12 +1896,194 @@
             console.error('Error updating status:', error);
             showMessage(messageBox, 'خطأ في الشبكة.', false);
         } finally {
-            approveBtn.disabled = false;
-            rejectBtn.disabled = false;
-            approveBtn.innerHTML = originalApproveText;
-            rejectBtn.innerHTML = originalRejectText;
+            toggleEl && (toggleEl.disabled = false);
         }
     };
+
+    const performPlanSave = async (invoiceOption) => {
+        if (!currentSalonId) return;
+        const saveBtn = document.getElementById('save-plan-btn');
+        const originalSaveText = saveBtn.innerHTML;
+        const planSelected = document.querySelector('input[name="plan-type"]:checked')?.value || 'monthly_200';
+        const planChairs = (planSelected === 'monthly_60') ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
+        const statusToggle = document.getElementById('status-toggle');
+        const status = statusToggle && statusToggle.checked ? 'accepted' : 'rejected';
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-2"></i> جاري الحفظ...';
+        try {
+            const response = await fetch(`/api/admin/salon/status/${currentSalonId}`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`
+                },
+                body: JSON.stringify({ status, invoiceOption, planType: planSelected, planChairs })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showMessage(messageBox, 'تم حفظ تغييرات الباقة بنجاح.', true);
+                window.salonPlanOverrides[currentSalonId] = { planType: planSelected, planChairs };
+                hideApprovalModal();
+                if (currentView === 'dashboard-view') {
+                    await loadAdminStats();
+                } else {
+                    await loadSalons(currentView === 'all-salons-view' ? 'all' : 'pending');
+                }
+            } else {
+                showMessage(messageBox, result.error || 'فشل في حفظ التغييرات.', false);
+            }
+        } catch (error) {
+            console.error('Error saving plan:', error);
+            showMessage(messageBox, 'خطأ في الشبكة.', false);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalSaveText;
+        }
+    };
+
+    const savePlanOnly = () => {
+        if (!currentSalonId) return;
+        // Determine if plan actually changed compared to baseline
+        const planSelected = document.querySelector('input[name="plan-type"]:checked')?.value || null;
+        const planChairs = planSelected === 'monthly_60' ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
+        const baseline = window.approvalBaseline && window.approvalBaseline[currentSalonId] ? window.approvalBaseline[currentSalonId] : { planSelected: null, planChairs: null };
+        const planChanged = baseline.planSelected !== planSelected;
+        const chairsChanged = (planSelected === 'monthly_60' || baseline.planSelected === 'monthly_60') ? (baseline.planChairs || 1) !== (planChairs || 1) : false;
+        const suggested = (planSelected === '2months_offer') ? 'offer_200ils' : (planSelected === 'per_booking' ? 'none' : 'renewal');
+
+        if (planChanged || chairsChanged) {
+            // Show invoice confirmation only when plan changed
+            const modal = document.getElementById('invoice-confirm-modal');
+            modal.classList.add('modal-open');
+            document.body.classList.add('modal-open');
+            const closeModal = () => {
+                modal.classList.remove('modal-open');
+                document.body.classList.remove('modal-open');
+            };
+            const yesBtn = document.getElementById('invoice-confirm-yes');
+            const noBtn = document.getElementById('invoice-confirm-no');
+            const closeBtn = document.getElementById('invoice-confirm-close');
+            const onYes = async () => { yesBtn.removeEventListener('click', onYes); noBtn.removeEventListener('click', onNo); closeBtn.removeEventListener('click', onClose); closeModal(); await performPlanSave(suggested); };
+            const onNo = async () => { yesBtn.removeEventListener('click', onYes); noBtn.removeEventListener('click', onNo); closeBtn.removeEventListener('click', onClose); closeModal(); await performPlanSave('none'); };
+            const onClose = () => { yesBtn.removeEventListener('click', onYes); noBtn.removeEventListener('click', onNo); closeBtn.removeEventListener('click', onClose); closeModal(); };
+            yesBtn.addEventListener('click', onYes);
+            noBtn.addEventListener('click', onNo);
+            closeBtn.addEventListener('click', onClose);
+        } else {
+            // No plan change — save directly (status and any non-invoice changes)
+            performPlanSave('none');
+        }
+    };
+
+    // Previous Invoices Modal Logic (exactly mirror payments.html behavior)
+    function openInvoicesModal(salonId) {
+      const modal = document.getElementById('invoices-modal');
+      const list = document.getElementById('invoices-container');
+
+      const formatDate = (dateStr) => {
+        try { return new Date(dateStr).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' }); }
+        catch { return dateStr; }
+      };
+
+      const localizePaymentType = (type) => {
+        const map = {
+          'offer_200ils': 'عرض 200 شيكل',
+          'monthly_subscription': 'اشتراك شهري',
+          'annual_subscription': 'اشتراك سنوي'
+        };
+        return map[type] || type;
+      };
+
+      const renderInvoices = (payments) => {
+        const all = Array.isArray(payments) ? payments : [];
+        const salonPayments = all.filter(p => p.salon_id === salonId);
+        const completed = salonPayments.filter(p => (p.payment_status === 'completed' || p.payment_status === 'مكتملة'))
+                                       .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+        if (!completed.length) {
+          list.innerHTML = '<p class="muted">لا توجد فواتير سابقة.</p>';
+        } else {
+          list.innerHTML = completed.map(inv => `
+            <div class="invoice-item">
+              <div>
+                <div style="font-weight:700; color:#0f172a">${localizePaymentType(inv.payment_type)}</div>
+                <div class="muted">${formatDate(inv.created_at)}</div>
+              </div>
+              <div style="font-weight:700; color:#0f172a">${inv.invoice_number || '---'}</div>
+            </div>
+          `).join('');
+        }
+
+        modal.style.display = 'flex';
+      };
+
+      if (window.allAdminPayments && Array.isArray(window.allAdminPayments)) {
+        renderInvoices(window.allAdminPayments);
+      } else {
+        const adminToken = localStorage.getItem('adminToken') || localStorage.getItem('token');
+        fetch('/api/admin/payments', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
+          .then(res => res.json())
+          .then(data => { window.allAdminPayments = data; renderInvoices(window.allAdminPayments); })
+          .catch(() => { list.innerHTML = '<p class="muted" style="color:#EF4444">تعذر تحميل الفواتير. حاول لاحقاً.</p>'; modal.style.display = 'flex'; });
+      }
+    }
+
+    function closeInvoicesModal() { document.getElementById('invoices-modal').style.display = 'none'; }
+    document.getElementById('invoices-modal')?.addEventListener('click', (e) => { if (e.target.id === 'invoices-modal') closeInvoicesModal(); });
+    
+    // Salon details modal logic
+    const showSalonDetails = (salon) => {
+        document.getElementById('details-salon-name').textContent = salon.salon_name || '---';
+        document.getElementById('details-owner-name').textContent = salon.owner_name || '---';
+        document.getElementById('details-owner-phone').textContent = salon.owner_phone || '---';
+        document.getElementById('details-email').textContent = salon.email || '---';
+        const addr = (salon.address && salon.address !== 'undefined') ? salon.address : '';
+        document.getElementById('details-address').textContent = addr ? `${addr}, ${salon.city || ''}` : (salon.city || '---');
+        document.getElementById('details-gender-focus').textContent = salon.gender_focus === 'women' ? 'نساء' : salon.gender_focus === 'men' ? 'رجال' : '---';
+
+        const modal = document.getElementById('salon-details-modal');
+        modal.classList.add('modal-open');
+        document.body.style.overflow = 'hidden';
+
+        // Fetch and show date joined from salon location (created_at)
+        const dateJoinedEl = document.getElementById('details-date-joined');
+        const formatDateDDMMYYYY = (dateInput) => {
+            try {
+                const d = new Date(dateInput);
+                if (isNaN(d.getTime())) return '—';
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}/${month}/${year}`;
+            } catch { return '—'; }
+        };
+        if (salon.id) {
+            fetch(`/api/salon/location/${salon.id}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data && (data.created_at || (data.location && data.location.created_at))) {
+                        const created = data.created_at || data.location.created_at;
+                        dateJoinedEl.textContent = formatDateDDMMYYYY(created);
+                    } else {
+                        dateJoinedEl.textContent = '—';
+                    }
+                })
+                .catch(() => { dateJoinedEl.textContent = '—'; });
+        } else {
+            dateJoinedEl.textContent = '—';
+        }
+    };
+
+    function hideSalonDetailsModal() {
+        const modal = document.getElementById('salon-details-modal');
+        modal.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('close-salon-details-btn')?.addEventListener('click', hideSalonDetailsModal);
+    document.getElementById('salon-details-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) hideSalonDetailsModal();
+    });
     
     // --- Event Listeners ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -1388,18 +2091,29 @@
             btn.addEventListener('click', (e) => switchView(e.currentTarget.dataset.view));
         });
 
-        document.getElementById('logout-btn').addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('adminToken');
-            window.location.replace('/auth.html');
-        });
+        const legacyLogout = document.getElementById('logout-btn');
+        if (legacyLogout) {
+            legacyLogout.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('adminToken');
+                window.location.replace('/auth.html');
+            });
+        }
         
         document.getElementById('refresh-pending-btn').addEventListener('click', () => loadSalons('pending'));
 
         // Modal actions
-        document.getElementById('close-modal-btn').addEventListener('click', hideApprovalModal);
-        document.getElementById('approve-btn').addEventListener('click', () => updateSalonStatus('accepted'));
-        document.getElementById('reject-btn').addEventListener('click', () => updateSalonStatus('rejected'));
+        document.getElementById('approval-close-icon')?.addEventListener('click', hideApprovalModal);
+        document.getElementById('save-plan-btn')?.addEventListener('click', savePlanOnly);
+        // Toggle should never auto-save; only update the preview badge
+        const statusToggle = document.getElementById('status-toggle');
+        if (statusToggle) {
+            statusToggle.addEventListener('change', (e) => {
+                const checked = e.currentTarget.checked;
+                const statusBadgeEl = document.getElementById('modal-salon-status-badge');
+                if (statusBadgeEl) statusBadgeEl.innerHTML = formatStatus(checked ? 'accepted' : 'rejected');
+            });
+        }
 
         // Initial load
         switchView('dashboard-view');
@@ -1496,7 +2210,7 @@
     });
 
     // Add event listeners for admin payment filters
-    document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
         // Set current date as placeholder for date filter
         const dateFilter = document.getElementById('admin-date-filter');
         if (dateFilter) {
@@ -1505,12 +2219,27 @@
             dateFilter.setAttribute('placeholder', todayString);
         }
         
-        // Search and filter event listeners
-        document.getElementById('admin-payment-search')?.addEventListener('input', filterAdminPayments);
-        document.getElementById('admin-status-filter')?.addEventListener('change', filterAdminPayments);
-        document.getElementById('admin-type-filter')?.addEventListener('change', filterAdminPayments);
-        document.getElementById('admin-date-filter')?.addEventListener('change', filterAdminPayments);
-        document.getElementById('admin-all-dates')?.addEventListener('change', filterAdminPayments);
+        // Search and filter event listeners (Payments)
+        document.getElementById('admin-payment-search')?.addEventListener('input', (e) => {
+            sessionStorage.setItem('dashboard:payment:search', e.target.value || '');
+            filterAdminPayments();
+        });
+        document.getElementById('admin-status-filter')?.addEventListener('change', (e) => {
+            sessionStorage.setItem('dashboard:payment:status', e.target.value || '');
+            filterAdminPayments();
+        });
+        document.getElementById('admin-type-filter')?.addEventListener('change', (e) => {
+            sessionStorage.setItem('dashboard:payment:type', e.target.value || '');
+            filterAdminPayments();
+        });
+        document.getElementById('admin-date-filter')?.addEventListener('change', (e) => {
+            sessionStorage.setItem('dashboard:payment:date', e.target.value || '');
+            filterAdminPayments();
+        });
+        document.getElementById('admin-all-dates')?.addEventListener('change', (e) => {
+            sessionStorage.setItem('dashboard:payment:allDates', e.target.checked ? '1' : '0');
+            filterAdminPayments();
+        });
         
         // QR Scanner event listener
     document.getElementById('qr-scanner-btn')?.addEventListener('click', openQRScanner);
@@ -1523,11 +2252,151 @@
     });
 
     // Bookings filters
-    document.getElementById('admin-booking-search')?.addEventListener('input', filterAdminBookings);
-    document.getElementById('admin-booking-status')?.addEventListener('change', filterAdminBookings);
-    document.getElementById('admin-booking-date')?.addEventListener('change', filterAdminBookings);
-    document.getElementById('admin-booking-all-dates')?.addEventListener('change', filterAdminBookings);
+    document.getElementById('admin-booking-search')?.addEventListener('input', (e) => {
+        sessionStorage.setItem('dashboard:booking:search', e.target.value || '');
+        filterAdminBookings();
+    });
+    document.getElementById('admin-booking-status')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:booking:status', e.target.value || '');
+        filterAdminBookings();
+    });
+    document.getElementById('admin-booking-date')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:booking:date', e.target.value || '');
+        filterAdminBookings();
+    });
+    document.getElementById('admin-booking-all-dates')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:booking:allDates', e.target.checked ? '1' : '0');
+        filterAdminBookings();
+    });
     document.getElementById('refresh-bookings')?.addEventListener('click', loadBookings);
+
+    // Services filters
+    document.getElementById('services-gender-filter')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:services:gender', e.target.value || '');
+        filterServices();
+    });
+    document.getElementById('services-search')?.addEventListener('input', (e) => {
+        sessionStorage.setItem('dashboard:services:search', e.target.value || '');
+        filterServices();
+    });
+
+    // Salons filters - Pending
+    document.getElementById('salon-name-search-pending')?.addEventListener('input', (e) => {
+        sessionStorage.setItem('dashboard:salon:pending:name', e.target.value || '');
+        loadSalons('pending');
+    });
+    document.getElementById('salon-plan-filter-pending')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:pending:plan', e.target.value || '');
+        loadSalons('pending');
+    });
+    document.getElementById('salon-status-filter-pending')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:pending:status', e.target.value || '');
+        loadSalons('pending');
+    });
+    document.getElementById('salon-city-filter-pending')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:pending:city', e.target.value || '');
+        loadSalons('pending');
+    });
+    document.getElementById('salon-date-sort-pending')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:pending:sort', e.target.value || '');
+        loadSalons('pending');
+    });
+
+    // Salons filters - All
+    document.getElementById('salon-name-search-all')?.addEventListener('input', (e) => {
+        sessionStorage.setItem('dashboard:salon:all:name', e.target.value || '');
+        loadSalons('all');
+    });
+    document.getElementById('salon-plan-filter-all')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:all:plan', e.target.value || '');
+        loadSalons('all');
+    });
+    document.getElementById('salon-status-filter-all')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:all:status', e.target.value || '');
+        loadSalons('all');
+    });
+    document.getElementById('salon-city-filter-all')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:all:city', e.target.value || '');
+        loadSalons('all');
+    });
+    document.getElementById('salon-date-sort-all')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:all:sort', e.target.value || '');
+        loadSalons('all');
+    });
+
+    // Persist active view in bottom navigation
+    document.querySelectorAll('.nav-item[data-view]')?.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const view = btn.getAttribute('data-view');
+            if (view) sessionStorage.setItem('dashboard:view', view);
+        });
+    });
+
+    // Restore persisted filters and active view
+    (function restoreDashboardState(){
+        // View
+        const savedView = sessionStorage.getItem('dashboard:view');
+        if (savedView) {
+            const btn = document.querySelector(`.nav-item[data-view="${savedView}"]`);
+            if (btn) btn.click();
+        }
+        // Payments
+        const pSearch = sessionStorage.getItem('dashboard:payment:search') || '';
+        const pStatus = sessionStorage.getItem('dashboard:payment:status') || '';
+        const pType = sessionStorage.getItem('dashboard:payment:type') || '';
+        const pDate = sessionStorage.getItem('dashboard:payment:date') || '';
+        const pAllDates = sessionStorage.getItem('dashboard:payment:allDates') === '1';
+        document.getElementById('admin-payment-search')?.setAttribute('value', pSearch);
+        const sEl = document.getElementById('admin-status-filter'); if (sEl) sEl.value = pStatus;
+        const tEl = document.getElementById('admin-type-filter'); if (tEl) tEl.value = pType;
+        const dEl = document.getElementById('admin-date-filter'); if (dEl) dEl.value = pDate;
+        const aEl = document.getElementById('admin-all-dates'); if (aEl) aEl.checked = pAllDates;
+        try { filterAdminPayments(); } catch(_) {}
+
+        // Bookings
+        const bSearch = sessionStorage.getItem('dashboard:booking:search') || '';
+        const bStatus = sessionStorage.getItem('dashboard:booking:status') || '';
+        const bDate = sessionStorage.getItem('dashboard:booking:date') || '';
+        const bAllDates = sessionStorage.getItem('dashboard:booking:allDates') === '1';
+        document.getElementById('admin-booking-search')?.setAttribute('value', bSearch);
+        const bsEl = document.getElementById('admin-booking-status'); if (bsEl) bsEl.value = bStatus;
+        const bdEl = document.getElementById('admin-booking-date'); if (bdEl) bdEl.value = bDate;
+        const baEl = document.getElementById('admin-booking-all-dates'); if (baEl) baEl.checked = bAllDates;
+        try { filterAdminBookings(); } catch(_) {}
+
+        // Services
+        const sGender = sessionStorage.getItem('dashboard:services:gender') || '';
+        const sSearch = sessionStorage.getItem('dashboard:services:search') || '';
+        const sgEl = document.getElementById('services-gender-filter'); if (sgEl) sgEl.value = sGender;
+        document.getElementById('services-search')?.setAttribute('value', sSearch);
+        try { filterServices(); } catch(_) {}
+
+        // Salons - Pending
+        const spName = sessionStorage.getItem('dashboard:salon:pending:name') || '';
+        const spPlan = sessionStorage.getItem('dashboard:salon:pending:plan') || '';
+        const spStatus = sessionStorage.getItem('dashboard:salon:pending:status') || '';
+        const spCity = sessionStorage.getItem('dashboard:salon:pending:city') || '';
+        const spSort = sessionStorage.getItem('dashboard:salon:pending:sort') || '';
+        const spnEl = document.getElementById('salon-name-search-pending'); if (spnEl) spnEl.setAttribute('value', spName);
+        const sppEl = document.getElementById('salon-plan-filter-pending'); if (sppEl) sppEl.value = spPlan;
+        const spsEl = document.getElementById('salon-status-filter-pending'); if (spsEl) spsEl.value = spStatus;
+        const spcEl = document.getElementById('salon-city-filter-pending'); if (spcEl) spcEl.value = spCity;
+        const spsrEl = document.getElementById('salon-date-sort-pending'); if (spsrEl) spsrEl.value = spSort;
+        try { loadSalons('pending'); } catch(_) {}
+
+        // Salons - All
+        const saName = sessionStorage.getItem('dashboard:salon:all:name') || '';
+        const saPlan = sessionStorage.getItem('dashboard:salon:all:plan') || '';
+        const saStatus = sessionStorage.getItem('dashboard:salon:all:status') || '';
+        const saCity = sessionStorage.getItem('dashboard:salon:all:city') || '';
+        const saSort = sessionStorage.getItem('dashboard:salon:all:sort') || '';
+        const sanEl = document.getElementById('salon-name-search-all'); if (sanEl) sanEl.setAttribute('value', saName);
+        const sapEl = document.getElementById('salon-plan-filter-all'); if (sapEl) sapEl.value = saPlan;
+        const sasEl = document.getElementById('salon-status-filter-all'); if (sasEl) sasEl.value = saStatus;
+        const sacEl = document.getElementById('salon-city-filter-all'); if (sacEl) sacEl.value = saCity;
+        const sasrEl = document.getElementById('salon-date-sort-all'); if (sasrEl) sasrEl.value = saSort;
+        try { loadSalons('all'); } catch(_) {}
+    })();
 });
 
     // QR Scanner Functions

@@ -148,7 +148,10 @@ async function initializeDb() {
             city TEXT NOT NULL,
             gender_focus TEXT NOT NULL,
             image_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'pending',
+            plan VARCHAR(30),
+            plan_chairs INTEGER DEFAULT 1,
             special BOOLEAN DEFAULT FALSE,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
@@ -504,6 +507,41 @@ async function alignSchema() {
                 await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
             }
 
+            // 3.1) Ensure plan columns exist
+            if (!columnSet.has('plan')) {
+                console.log('AlignSchema: Adding plan column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN plan VARCHAR(30)`);
+            }
+            if (!columnSet.has('plan_chairs')) {
+                console.log('AlignSchema: Adding plan_chairs column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN plan_chairs INTEGER DEFAULT 1`);
+            }
+
+            // 5) Ensure created_at column exists with default, and backfill if possible
+            if (!columnSet.has('created_at')) {
+                console.log('AlignSchema: Adding created_at column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN created_at TIMESTAMP DEFAULT NOW()`);
+                try {
+                    const locTable = await db.query(`SELECT 1 FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2`, ['public', 'salon_locations']);
+                    if (locTable && locTable.length > 0) {
+                        console.log('AlignSchema: Backfilling salons.created_at from salon_locations (PostgreSQL)...');
+                        await db.run(`
+                            UPDATE salons s
+                            SET created_at = sl.created_at
+                            FROM salon_locations sl
+                            WHERE sl.salon_id = s.id
+                              AND s.created_at IS NULL
+                              AND sl.created_at IS NOT NULL
+                        `);
+                    }
+                    // Fill any remaining NULLs with NOW()
+                    await db.run(`UPDATE salons SET created_at = NOW() WHERE created_at IS NULL`);
+                } catch (e) {
+                    console.warn('AlignSchema: Backfill for salons.created_at warning:', e.message);
+                    await db.run(`UPDATE salons SET created_at = NOW() WHERE created_at IS NULL`);
+                }
+            }
+
             // 4) Relax NOT NULL on users.gender to allow NULL for salon-linked users
             const userColumns = await db.query(
                 `SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
@@ -608,7 +646,10 @@ async function alignSchema() {
                         city TEXT NOT NULL,
                         gender_focus TEXT NOT NULL,
                         image_url TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         status TEXT DEFAULT 'pending',
+                        plan TEXT,
+                        plan_chairs INTEGER DEFAULT 1,
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     )`);
                     console.log('AlignSchema: SQLite salons schema recreated successfully.');
@@ -617,6 +658,38 @@ async function alignSchema() {
                     // Non-destructive tweaks: add status if missing
                     if (!hasStatus) {
                         await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
+                    }
+                    // Add plan columns if missing
+                    if (!columnSet.has('plan')) {
+                        console.log('AlignSchema: Adding plan to salons (SQLite)...');
+                        await db.run(`ALTER TABLE salons ADD COLUMN plan TEXT`);
+                    }
+                    if (!columnSet.has('plan_chairs')) {
+                        console.log('AlignSchema: Adding plan_chairs to salons (SQLite)...');
+                        await db.run(`ALTER TABLE salons ADD COLUMN plan_chairs INTEGER DEFAULT 1`);
+                    }
+                    // Add created_at column if missing
+                    if (!columnSet.has('created_at')) {
+                        console.log('AlignSchema: Adding created_at to salons (SQLite)...');
+                        await db.run(`ALTER TABLE salons ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`);
+                        try {
+                            const locPragma = await db.query(`PRAGMA table_info(salon_locations)`);
+                            const locCols = new Set((locPragma || []).map(r => r.name));
+                            if (locCols.has('created_at')) {
+                                console.log('AlignSchema: Backfilling salons.created_at from salon_locations (SQLite)...');
+                                await db.run(`
+                                    UPDATE salons
+                                    SET created_at = (
+                                        SELECT created_at FROM salon_locations WHERE salon_locations.salon_id = salons.id
+                                    )
+                                    WHERE created_at IS NULL
+                                `);
+                            }
+                            await db.run(`UPDATE salons SET created_at = (datetime('now')) WHERE created_at IS NULL`);
+                        } catch (e) {
+                            console.warn('AlignSchema: SQLite created_at backfill warning:', e.message);
+                            await db.run(`UPDATE salons SET created_at = (datetime('now')) WHERE created_at IS NULL`);
+                        }
                     }
                     // user_id cannot be safely added as NOT NULL with data present; require manual migration
                 }
@@ -983,7 +1056,7 @@ const reviewSchema = z.object({
 
 // AI Analytics Dashboard Route
 app.get('/ai-analytics', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'ai_analytics.html'));
+    res.sendFile(path.join(__dirname, 'views', 'admin', 'ai_analytics.html'));
 });
 
 // AI Analytics API Route
@@ -1605,7 +1678,18 @@ app.get('/ai-chat.html', (req, res) => {
 
 // Pretty route for Admin Dashboard
 app.get('/admin_dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'admin_dashboard.html'));
+    res.sendFile(path.join(__dirname, 'views', 'admin', 'admin_dashboard.html'));
+});
+
+// Base /admin route redirects to the admin dashboard HTML under /views/admin
+app.get('/admin', (req, res) => {
+    res.redirect('/admin/admin_dashboard.html');
+});
+
+// Legacy payments page now lives inside the Admin Dashboard
+// Keep a redirect to avoid 404s from old links
+app.get('/admin/payments.html', (req, res) => {
+    res.redirect('/admin/admin_dashboard.html');
 });
 
 // ===============================
@@ -2176,7 +2260,7 @@ app.post('/api/auth/login', async (req, res) => {
         let userType = userRow.user_type;
 
         if (userType === 'admin') {
-            redirectUrl = '/admin_dashboard.html';
+        redirectUrl = '/admin/admin_dashboard.html';
         } else if (userType === 'user') {
             userObject.gender = userRow.gender;
             redirectUrl = '/home_user.html';
@@ -4978,7 +5062,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 app.get('/api/admin/salons', requireAdmin, async (req, res) => {
     try {
         const salons = await db.query(`
-            SELECT s.id, s.salon_name, s.owner_name, u.email, s.salon_phone, s.owner_phone, s.city, s.gender_focus, s.image_url, s.status 
+            SELECT s.id, s.salon_name, s.owner_name, u.email, s.salon_phone, s.owner_phone, s.city, s.gender_focus, s.image_url, s.status, s.plan, s.plan_chairs, s.created_at 
             FROM salons s
             JOIN users u ON s.user_id = u.id
             ORDER BY s.id DESC
@@ -5032,46 +5116,95 @@ app.get('/api/admin/payments', requireAdmin, async (req, res) => {
 app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => {
     try {
         const { salon_id } = req.params;
-        const { status, payment200ils } = req.body;
-        
+        const {
+            status,
+            invoiceOption, // 'none' | 'offer' | 'renewal'
+            planType,      // '2months_offer' | 'monthly_200' | 'monthly_60' | 'per_booking'
+            planChairs     // integer when monthly_60
+        } = req.body || {};
+
         // Validate status
         if (!['pending', 'accepted', 'rejected'].includes(status)) {
             return res.status(400).json({ error: 'Invalid status. Must be pending, accepted, or rejected.' });
         }
-        
-        // Update salon status
-        await db.query('UPDATE salons SET status = $1 WHERE id = $2', [status, salon_id]);
-        
-        // If salon is accepted and 200 ILS payment is checked, create payment record
-        if (status === 'accepted' && payment200ils) {
-            // Generate unique invoice number
+
+        // Normalize plan fields
+        const allowedPlans = new Set(['2months_offer', 'monthly_200', 'monthly_60', 'per_booking']);
+        const normalizedPlan = allowedPlans.has(planType) ? planType : null;
+        const normalizedChairs = normalizedPlan === 'monthly_60' ? Math.max(1, parseInt(planChairs || '1', 10)) : null;
+
+        // Update salon status + plan data
+        if (normalizedPlan) {
+            await db.query('UPDATE salons SET status = $1, plan = $2, plan_chairs = $3 WHERE id = $4', [
+                status,
+                normalizedPlan,
+                normalizedChairs || 1,
+                salon_id
+            ]);
+        } else {
+            await db.query('UPDATE salons SET status = $1 WHERE id = $2', [status, salon_id]);
+        }
+
+        // Create payment/invoice if requested and salon accepted
+        if (status === 'accepted' && invoiceOption && invoiceOption !== 'none') {
             const invoiceNumber = `INV-${Date.now()}-${salon_id}`;
-            
-            // Calculate valid dates (2 months from now)
             const validFrom = new Date();
             const validUntil = new Date();
-            validUntil.setMonth(validUntil.getMonth() + 2);
-            
-            // Insert payment record
-            await db.query(`
-                INSERT INTO payments (
-                    salon_id, payment_type, amount, currency, payment_status, 
-                    payment_method, description, valid_from, valid_until, 
-                    invoice_number, admin_notes
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            `, [
-                salon_id,
-                'offer_200ils',
-                200,
-                'ILS',
-                'مكتملة',
-                'cash',
-                'عرض خاص للصالونات الجديدة - 200 شيكل لمدة شهرين',
-                validFrom.toISOString(),
-                validUntil.toISOString(),
-                invoiceNumber,
-                'Admin approved salon with 200 ILS offer'
-            ]);
+            let paymentType = null;
+            let amount = 0;
+            let description = '';
+
+            if (invoiceOption === 'offer' && normalizedPlan === '2months_offer') {
+                paymentType = 'offer_200ils';
+                amount = 200; // rounded price
+                validUntil.setMonth(validUntil.getMonth() + 2);
+                description = 'عرض خاص للصالونات الجديدة - 200 شيكل لمدة شهرين';
+            } else if (invoiceOption === 'renewal') {
+                if (normalizedPlan === 'monthly_200') {
+                    paymentType = 'monthly_200';
+                    amount = 200;
+                    validUntil.setMonth(validUntil.getMonth() + 1);
+                    description = 'اشتراك شهري للصالحون: 200 شيكل';
+                } else if (normalizedPlan === 'monthly_60') {
+                    const chairs = normalizedChairs || 1;
+                    paymentType = 'monthly_60';
+                    amount = 60 * chairs; // rounded price per chair
+                    validUntil.setMonth(validUntil.getMonth() + 1);
+                    description = `اشتراك شهري لكل كرسي: 60 شيكل × ${chairs} = ${amount} شيكل`;
+                } else if (normalizedPlan === '2months_offer') {
+                    // If plan is offer but invoiceOption is renewal, treat as monthly_200 renewal
+                    paymentType = 'monthly_200';
+                    amount = 200;
+                    validUntil.setMonth(validUntil.getMonth() + 1);
+                    description = 'تجديد شهري: 200 شيكل';
+                } else {
+                    // per_booking doesn't produce upfront invoice on renewal
+                    paymentType = null;
+                }
+            }
+
+            if (paymentType) {
+                await db.query(
+                    `INSERT INTO payments (
+                        salon_id, payment_type, amount, currency, payment_status,
+                        payment_method, description, valid_from, valid_until,
+                        invoice_number, admin_notes
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                    [
+                        salon_id,
+                        paymentType,
+                        amount,
+                        'ILS',
+                        'مكتملة',
+                        'cash',
+                        description,
+                        validFrom.toISOString(),
+                        validUntil.toISOString(),
+                        invoiceNumber,
+                        'Admin updated salon status with invoice'
+                    ]
+                );
+            }
         }
 
         // If salon is accepted, send congratulatory notification
@@ -5086,7 +5219,7 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                 }
             });
         }
-        
+
         res.json({ success: true, message: `Salon status updated to ${status}` });
     } catch (err) {
         console.error('Error updating salon status:', err.message);

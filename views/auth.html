@@ -513,7 +513,7 @@ class AuthManager {
                 if (result.userType === 'admin') {
                     localStorage.setItem('adminToken', result.token);
                     setTimeout(() => {
-                        window.location.href = '/admin_dashboard.html';
+      window.location.href = '/admin/admin_dashboard.html';
                     }, 1500);
                 } else {
                     // Store the unified user object which now contains userId and/or salonId

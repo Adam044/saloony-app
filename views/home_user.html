@@ -3419,7 +3419,7 @@ document.addEventListener('DOMContentLoaded', function() {
              window.location.href = 'home_salon.html';
         } else if (currentUser.user_type === 'admin') {
              // Admin auth token check should handle this, but for safety:
-             window.location.href = 'admin_dashboard.html';
+        window.location.href = '/admin/admin_dashboard.html';
         } else {
              window.location.href = 'auth.html';
         }

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>التجديدات - لوحة الإدارة</title>
+  <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="./assets/dashboard.css" />
+  <link rel="stylesheet" href="./assets/admin.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="./assets/dashboard.js"></script>
+  <script defer src="./assets/admin-header.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+    body { font-family: 'Tajawal', sans-serif; background-color: #F8FAFC; }
+    .bg-primary-dark { background-color: #1E293B; }
+    .renewal-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 16px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+    .status-ok { color: #065f46; background: #d1fae5; }
+    .status-expiring { color: #92400e; background: #fef3c7; }
+    .status-expired { color: #991b1b; background: #fee2e2; }
+    .status-inactive { color: #374151; background: #e5e7eb; }
+    .subtle { color: #6b7280; font-size: 12px; }
+    .table-wrapper { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background:#f1f5f9; color:#0f172a; }
+    .action-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-weight: 600; border: 2px solid #0f172a; color: #0f172a; background: transparent; }
+    .action-btn:hover { background:#0f172a; color:#fff; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: #fff; width: 95%; max-width: 520px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-header { padding: 16px; border-bottom: 1px solid #e5e7eb; font-weight: 800; color:#0f172a; }
+    .modal-body { padding: 16px; }
+    .modal-footer { padding: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
+    .input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 10px; }
+    .radio-group { display: grid; gap: 8px; }
+    .radio-item { display: flex; align-items: center; gap: 10px; padding: 10px; border:1px solid #e5e7eb; border-radius: 10px; }
+    /* Activate/Deactivate button accents */
+    .action-btn.btn-activate { border-color: #065f46; color: #065f46; }
+    .action-btn.btn-activate:hover { background:#065f46; color:#fff; }
+    .action-btn.btn-deactivate { border-color: #991b1b; color: #991b1b; }
+    .action-btn.btn-deactivate:hover { background:#991b1b; color:#fff; }
+    /* Renew and invoices button accents */
+    .action-btn.btn-renew { border-color:#0f172a; background:#0f172a; color:#fff; }
+    .action-btn.btn-renew:hover { filter: brightness(1.05); }
+    .action-btn.btn-invoices { border-color:#334155; color:#334155; }
+    .action-btn.btn-invoices:hover { background:#334155; color:#fff; }
+    /* Invoices modal layout */
+    .modal-body { max-height: 65vh; overflow-y: auto; }
+    .invoice-block { display:grid; gap:6px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:10px; }
+    .invoice-row { display:flex; align-items:center; gap:8px; }
+
+    /* Dashboard-style modal for renew action */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 100; display: none; justify-content: center; align-items: flex-start; opacity: 0; transition: opacity 0.3s ease; overflow-y: auto; padding: 2rem 1rem; }
+    .modal-content { background-color: white; border-radius: 1rem; padding: 1.5rem; max-width: 95%; width: 520px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transform: translateY(-20px); transition: transform 0.3s ease, opacity 0.3s ease; margin: auto; max-height: calc(100vh - 4rem); overflow-y: auto; }
+    .modal-open { display: flex !important; opacity: 1 !important; }
+    .modal-open .modal-content { transform: translateY(0) !important; opacity: 1 !important; }
+  </style>
+</head>
+<body>
+  <!-- Security Check -->
+  <script>
+    (function(){
+      const token = localStorage.getItem('adminToken');
+      if (!token) window.location.replace('/auth.html');
+    })();
+  </script>
+
+  <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
+    <div class="flex items-center pl-8 pr-4">
+      <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="h-10 w-auto object-contain object-center">
+    </div>
+    <h1 class="text-xl font-bold text-white">لوحة تحكم الإدارة</h1>
+    <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
+      <i class="fas fa-sign-out-alt text-lg"></i>
+    </button>
+  </header>
+
+  <!-- Shared Top Navigation -->
+  <nav class="top-nav">
+    <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
+    <a id="nav-renewals" class="nav-link active" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
+    <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
+    <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
+    <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
+  </nav>
+
+  <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
+    <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
+    <div class="max-w-6xl mx-auto space-y-6">
+      <h2 class="text-3xl font-extrabold text-primary-dark mb-2 border-b-4 border-secondary/50 pb-2 mt-8">إدارة التجديدات</h2>
+
+      <!-- Filters -->
+      <div class="renewal-card">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="relative md:col-span-2">
+            <input id="renewal-search" type="text" placeholder="البحث باسم الصالون..." class="input pr-10">
+            <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <div>
+            <select id="renewal-filter" class="input">
+              <option value="all">الكل</option>
+              <option value="expiring">تنتهي قريبًا (7 أيام)</option>
+              <option value="expired">منتهية</option>
+              <option value="no_payments">بدون فواتير</option>
+              <option value="active">نشطة</option>
+              <option value="inactive">غير نشطة</option>
+            </select>
+          </div>
+          <div>
+            <select id="plan-filter" class="input">
+              <option value="">كل الخطط</option>
+              <option value="2months_offer">عرض شهرين</option>
+              <option value="monthly_200">200ils</option>
+              <option value="monthly_60">60ils</option>
+              <option value="per_booking">لكل حجز</option>
+            </select>
+          </div>
+          <div>
+            <select id="sort-filter" class="input">
+              <option value="">ترتيب افتراضي</option>
+              <option value="days_asc">حسب الأيام المتبقية (تصاعدي)</option>
+              <option value="days_desc">حسب الأيام المتبقية (تنازلي)</option>
+              <option value="valid_asc">حسب تاريخ الانتهاء (الأقرب أولًا)</option>
+              <option value="valid_desc">حسب تاريخ الانتهاء (الأبعد أولًا)</option>
+              <option value="name_asc">حسب الاسم (أ-ي)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div id="renewals-list" class="table-wrapper">
+        <p class="text-center text-gray-500 p-8">جاري تحميل البيانات...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Renew Modal (dashboard-style) -->
+  <div id="renew-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="flex items-center justify-between mb-3">
+        <button id="renew-close-icon" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+        <h3 class="text-xl font-bold text-primary-dark">تجديد اشتراك الصالون</h3>
+        <span class="w-6"></span>
+      </div>
+      <div class="space-y-3">
+        <div class="grid gap-3">
+          <div class="subtle">الصالون:</div>
+          <div id="renew-salon-name" class="font-bold"></div>
+          <div class="subtle mt-2">الخطة الحالية:</div>
+          <div id="renew-current-plan" class="pill"></div>
+          <div id="renew-inactive-note" class="subtle hidden" style="color:#991b1b">هذا الصالون غير نشط. سيؤدي التجديد إلى تفعيل الصالون تلقائيًا.</div>
+          <div class="subtle mt-2">اختر خطة التجديد:</div>
+          <div class="radio-group">
+            <label class="radio-item"><input type="radio" name="renew-plan" value="monthly_200"> <span>200ils</span></label>
+            <label class="radio-item"><input type="radio" name="renew-plan" value="monthly_60"> <span>60ils لكل كرسي</span></label>
+            <label class="radio-item"><input type="radio" name="renew-plan" value="per_booking"> <span>لكل حجز</span></label>
+            <label class="radio-item"><input type="radio" name="renew-plan" value="2months_offer"> <span>عرض شهرين</span></label>
+          </div>
+          <div id="chairs-container" class="hidden">
+            <label class="subtle">عدد الكراسي عند اختيار 60ils:</label>
+            <input id="chairs-input" type="number" min="1" value="1" class="input">
+          </div>
+          <div id="renew-amount-row" class="hidden">
+            <div class="subtle mt-2">السعر الشهري:</div>
+            <div id="renew-amount" class="pill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="renew-cancel" class="action-btn"><i class="fas fa-times"></i><span>إلغاء</span></button>
+        <button id="renew-confirm" class="action-btn btn-renew"><i class="fas fa-check"></i><span>تم الدفع وتجديد</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    let salons = [];
+    let payments = [];
+    let currentSalonForRenew = null;
+
+    function formatDate(d) {
+      try {
+        return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+      } catch { return d || '—'; }
+    }
+    function formatNumber(n) {
+      try { return new Intl.NumberFormat('en-US').format(Number(n)); } catch { return String(n ?? ''); }
+    }
+    function formatCurrency(amount){
+      try { return `${new Intl.NumberFormat('en-US').format(Number(amount))}ils`; } catch { return `${amount}ils`; }
+    }
+    function daysUntil(dateStr) {
+      if (!dateStr) return null;
+      try {
+        const now = new Date();
+        const d = new Date(dateStr);
+        const diff = Math.ceil((d - now) / (1000*60*60*24));
+        return diff;
+      } catch { return null; }
+    }
+    function mapPaymentTypeToPlan(pt) {
+      switch(pt) {
+        case 'offer_200ils': return '2months_offer';
+        case 'monthly_subscription': return 'monthly_200';
+        case 'monthly_200': return 'monthly_200';
+        case 'per_chair': return 'monthly_60';
+        case 'monthly_60': return 'monthly_60';
+        case 'per_booking': return 'per_booking';
+        default: return undefined;
+      }
+    }
+    function planLabel(plan, chairs) {
+      if (plan === 'monthly_60') {
+        const c = chairs ? Number(chairs) : 1;
+        const total = c * 60;
+        return c ? `60ils (${formatNumber(c)}) = ${formatCurrency(total)}` : '60ils';
+      }
+      if (plan === 'monthly_200') return '200ils';
+      if (plan === '2months_offer') return 'عرض شهرين';
+      if (plan === 'per_booking') return 'لكل حجز';
+      return '—';
+    }
+    function getLatestPaymentForSalon(salonId) {
+      try {
+        const related = (payments || []).filter(p => p.salon_id === salonId);
+        if (!related.length) return null;
+        related.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        return related[0];
+      } catch { return null; }
+    }
+
+    async function loadData() {
+      try {
+        const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (sRes.ok) salons = await sRes.json();
+      } catch {}
+      try {
+        const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (pRes.ok) payments = await pRes.json();
+      } catch {}
+      renderList();
+    }
+
+    function computeStatus(salon) {
+      const isActive = salon.status === 'accepted';
+      const overridePlan = salon.plan || undefined;
+      const chairs = (salon.plan_chairs != null ? parseInt(salon.plan_chairs, 10) : undefined) || 1;
+      const latest = getLatestPaymentForSalon(salon.id);
+      const inferredPlan = overridePlan || mapPaymentTypeToPlan(latest?.payment_type);
+      const validUntil = latest?.valid_until || null;
+      const dLeft = daysUntil(validUntil);
+
+      let status = 'no_payments';
+      if (latest) {
+        if (dLeft == null) status = 'active';
+        else if (dLeft < 0) status = 'expired';
+        else if (dLeft <= 7) status = 'expiring';
+        else status = 'active';
+      }
+
+      return { isActive, plan: inferredPlan, chairs, validUntil, daysLeft: dLeft, latest };
+    }
+
+    function renderList() {
+      const container = document.getElementById('renewals-list');
+      const search = (document.getElementById('renewal-search')?.value || '').toLowerCase();
+      const filter = document.getElementById('renewal-filter')?.value || 'all';
+      const planFilter = document.getElementById('plan-filter')?.value || '';
+
+      const base = (salons || []);
+      const rows = base.map(salon => {
+        const st = computeStatus(salon);
+        return { salon, st };
+      }).filter(row => {
+        const nameMatch = !search || (row.salon.salon_name || '').toLowerCase().includes(search);
+        let filterMatch = true;
+        switch(filter) {
+          case 'expiring': filterMatch = row.st.daysLeft != null && row.st.daysLeft >= 0 && row.st.daysLeft <= 7; break;
+          case 'expired': filterMatch = row.st.daysLeft != null && row.st.daysLeft < 0; break;
+          case 'no_payments': filterMatch = !row.st.latest; break;
+          case 'active': filterMatch = row.st.isActive && (row.st.daysLeft == null || row.st.daysLeft > 7); break;
+          case 'inactive': filterMatch = row.salon.status === 'rejected'; break;
+          default: filterMatch = true;
+        }
+        const planMatch = !planFilter || row.st.plan === planFilter;
+        return nameMatch && filterMatch && planMatch;
+      });
+
+      if (!rows.length) {
+        container.innerHTML = '<p class="text-center text-gray-500 p-8">لا توجد نتائج مطابقة.</p>';
+        return;
+      }
+
+      // Sorting
+      const sortVal = document.getElementById('sort-filter')?.value || '';
+      const sorted = rows.slice();
+      if (sortVal === 'days_asc') {
+        sorted.sort((a,b) => (a.st.daysLeft ?? Infinity) - (b.st.daysLeft ?? Infinity));
+      } else if (sortVal === 'days_desc') {
+        sorted.sort((a,b) => (b.st.daysLeft ?? -Infinity) - (a.st.daysLeft ?? -Infinity));
+      } else if (sortVal === 'valid_asc') {
+        sorted.sort((a,b) => new Date(a.st.validUntil || 0) - new Date(b.st.validUntil || 0));
+      } else if (sortVal === 'valid_desc') {
+        sorted.sort((a,b) => new Date(b.st.validUntil || 0) - new Date(a.st.validUntil || 0));
+      } else if (sortVal === 'name_asc') {
+        sorted.sort((a,b) => String(a.salon.salon_name||'').localeCompare(String(b.salon.salon_name||''),'ar'));
+      }
+
+      container.innerHTML = sorted.map(({ salon, st }) => {
+        const planLbl = planLabel(st.plan, st.chairs);
+        const vu = formatDate(st.validUntil);
+        const days = st.daysLeft;
+        let badgeClass = 'status-ok'; let badgeText = 'نشطة';
+        if (salon.status === 'rejected') { badgeClass = 'status-inactive'; badgeText = 'غير نشطة'; }
+        else if (!st.latest) { badgeClass = 'status-expired'; badgeText = 'بدون فواتير'; }
+        else if (days != null && days < 0) { badgeClass = 'status-expired'; badgeText = 'منتهية'; }
+        else if (days != null && days <= 7) { badgeClass = 'status-expiring'; badgeText = 'تنتهي قريبًا'; }
+
+        const actions = `
+          <button class="action-btn btn-renew" onclick="openRenewModal(${salon.id})"><i class='fas fa-money-check-alt'></i><span>تم الدفع وتجديد</span></button>
+          <button class="action-btn btn-invoices" onclick="openInvoicesModal(${salon.id})"><i class='fas fa-file-invoice'></i><span>الفواتير السابقة</span></button>
+          ${st.isActive
+            ? `<button class="action-btn btn-deactivate" onclick="openConfirmStatusModal(${salon.id}, 'rejected')"><i class='fas fa-toggle-off'></i><span>تعطيل</span></button>`
+            : `<button class="action-btn btn-activate" onclick="openConfirmStatusModal(${salon.id}, 'accepted')"><i class='fas fa-toggle-on'></i><span>تفعيل</span></button>`
+          }
+        `;
+
+        return `
+          <div class="renewal-card">
+            <div class="flex items-center justify-between gap-4">
+              <div class="space-y-1">
+                <div class="font-bold text-primary-dark text-lg">${salon.salon_name || '—'}</div>
+                <div class="subtle">الخطة: <span class="pill">${planLbl}</span></div>
+                <div class="subtle">صالح حتى: <span class="pill">${vu}</span></div>
+                ${days != null ? `<div class="subtle">الأيام المتبقية: <span class="pill">${formatNumber(days)}</span></div>` : ''}
+              </div>
+              <div class="flex flex-col items-end gap-3">
+                <span class="status-badge ${badgeClass}"><i class="fas fa-circle"></i>${badgeText}</span>
+                <div class="flex gap-2">${actions}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openRenewModal(salonId) {
+      currentSalonForRenew = salons.find(s => s.id === salonId) || null;
+      const modal = document.getElementById('renew-modal');
+      if (!currentSalonForRenew) return;
+      const st = computeStatus(currentSalonForRenew);
+      document.getElementById('renew-salon-name').textContent = currentSalonForRenew.salon_name || '—';
+      document.getElementById('renew-current-plan').textContent = planLabel(st.plan, st.chairs);
+      document.getElementById('renew-inactive-note').classList.toggle('hidden', currentSalonForRenew.status !== 'rejected');
+      const radios = document.querySelectorAll('input[name="renew-plan"]');
+      radios.forEach(r => r.checked = false);
+      const pre = st.latest ? (st.plan || 'monthly_200') : '2months_offer';
+      const preEl = document.querySelector(`input[name='renew-plan'][value='${pre}']`);
+      if (preEl) preEl.checked = true;
+      document.getElementById('chairs-container').classList.toggle('hidden', pre !== 'monthly_60');
+      document.getElementById('chairs-input').value = st.chairs || 1;
+      updateRenewAmount();
+      modal.classList.add('modal-open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeRenewModal(){
+      const modal = document.getElementById('renew-modal');
+      modal.classList.remove('modal-open');
+      document.body.style.overflow = 'auto';
+    }
+
+    async function performRenewal(){
+      if (!currentSalonForRenew) return;
+      const selected = document.querySelector('input[name="renew-plan"]:checked')?.value || 'monthly_200';
+      const invoiceOption = selected === '2months_offer' ? 'offer' : 'renewal';
+      const chairs = parseInt(document.getElementById('chairs-input').value || '1', 10);
+      const payload = {
+        status: 'accepted',
+        invoiceOption,
+        planType: selected,
+        planChairs: selected === 'monthly_60' ? chairs : null
+      };
+      try {
+        const res = await fetch(`/api/admin/salon/status/${currentSalonForRenew.id}` , {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('فشل حفظ التجديد');
+        // Refresh payments to reflect new invoice
+        const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (pRes.ok) payments = await pRes.json();
+        // Refresh salons to reflect new status and plan immediately
+        try {
+          const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+          if (sRes.ok) {
+            salons = await sRes.json();
+          } else {
+            // Fallback: update current salon locally
+            salons = (salons||[]).map(s => s.id === currentSalonForRenew.id
+              ? { ...s, status: 'accepted', plan: payload.planType, plan_chairs: payload.planChairs || s.plan_chairs || 1 }
+              : s);
+          }
+        } catch {
+          salons = (salons||[]).map(s => s.id === currentSalonForRenew.id
+            ? { ...s, status: 'accepted', plan: payload.planType, plan_chairs: payload.planChairs || s.plan_chairs || 1 }
+            : s);
+        }
+        closeRenewModal();
+        const msg = invoiceOption === 'offer' ? 'تم تفعيل الصالون على عرض شهرين (200 شيكل)' : 'تم إنشاء الفاتورة وتجديد الاشتراك بنجاح';
+        showMessage(msg, 'success');
+        renderList();
+      } catch (e) {
+        showMessage('حدث خطأ أثناء التجديد: ' + (e?.message || e), 'error');
+      }
+    }
+
+    function showMessage(text, type){
+      const box = document.getElementById('message-box');
+      box.textContent = text;
+      box.classList.remove('hidden');
+      box.classList.remove('bg-red-100','text-red-700','bg-green-100','text-green-700');
+      if (type === 'success') { box.classList.add('bg-green-100','text-green-700'); }
+      else { box.classList.add('bg-red-100','text-red-700'); }
+      setTimeout(() => { box.classList.add('hidden'); }, 3000);
+    }
+
+    // Friendly label for payment type
+    function paymentTypeLabel(pt){
+      switch(pt){
+        case 'offer_200ils': return 'عرض خاص 200 شيكل';
+        case 'monthly_subscription':
+        case 'monthly_200': return 'اشتراك شهري 200 شيكل';
+        case 'per_chair':
+        case 'monthly_60': return 'اشتراك شهري لكل كرسي';
+        case 'per_booking': return 'الدفع لكل حجز';
+        default: return 'نوع غير معروف';
+      }
+    }
+    // Invoices Modal
+    function openInvoicesModal(salonId){
+      const modal = document.getElementById('invoices-modal');
+      const body = document.getElementById('invoices-body');
+      try {
+        const list = (payments||[])
+          .filter(p => p.salon_id === salonId)
+          .sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+        if (!list.length) {
+          body.innerHTML = '<p class="text-center text-gray-600">لا توجد فواتير.</p>';
+        } else {
+          body.innerHTML = list.map(p => {
+            const num = p.invoice_number || '—';
+            let type = paymentTypeLabel(p.payment_type || '—');
+            if ((p.payment_type || '') === 'monthly_60') {
+              const chairs = Math.round((p.amount || 0) / 60);
+              type = `${type} (${formatNumber(chairs)})`;
+            }
+            const amount = formatCurrency(p.amount || 0);
+            const created = formatDate(p.created_at);
+            const validTo = p.valid_until ? formatDate(p.valid_until) : '—';
+            return `
+              <div class="invoice-block">
+                <div class="invoice-row"><span class="subtle">رقم الفاتورة:</span> <span class="font-semibold">${num}</span></div>
+                <div class="invoice-row"><span class="subtle">النوع:</span> <span class="pill">${type}</span></div>
+                <div class="invoice-row"><span class="subtle">المبلغ:</span> <span class="pill">${amount}</span></div>
+                <div class="invoice-row"><span class="subtle">بتاريخ:</span> <span class="pill">${created}</span></div>
+                <div class="invoice-row"><span class="subtle">صالح حتى:</span> <span class="pill">${validTo}</span></div>
+              </div>
+            `;
+          }).join('');
+        }
+        modal.style.display = 'flex';
+      } catch {
+        body.innerHTML = '<p class="text-center text-gray-600">لا توجد فواتير.</p>';
+        modal.style.display = 'flex';
+      }
+    }
+    function closeInvoicesModal(){ document.getElementById('invoices-modal').style.display = 'none'; }
+
+    async function updateSalonStatus(salonId, status){
+      try {
+        const res = await fetch(`/api/admin/salon/status/${salonId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ status, invoiceOption: 'none' })
+        });
+        if (!res.ok) throw new Error('فشل تحديث الحالة');
+        const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (sRes.ok) salons = await sRes.json();
+        showMessage(status === 'accepted' ? 'تم تفعيل الصالون' : 'تم تعطيل الصالون', 'success');
+        renderList();
+      } catch (e) {
+        showMessage('حدث خطأ أثناء تحديث الحالة: ' + (e?.message || e), 'error');
+      }
+    }
+
+    // Activate/Deactivate Confirmation Modal
+    let statusConfirmTarget = null;
+    function openConfirmStatusModal(salonId, status){
+      const modal = document.getElementById('status-confirm-modal');
+      const msg = document.getElementById('status-confirm-message');
+      const btn = document.getElementById('status-confirm-btn');
+      const salon = (salons||[]).find(s => s.id === salonId);
+      statusConfirmTarget = { salonId, status };
+      const isActivate = status === 'accepted';
+      msg.textContent = isActivate
+        ? `هل أنت متأكد من تفعيل الصالون: ${salon?.salon_name || '—'}؟`
+        : `هل أنت متأكد من تعطيل الصالون: ${salon?.salon_name || '—'}؟`;
+      btn.classList.remove('btn-activate','btn-deactivate');
+      btn.classList.add(isActivate ? 'btn-activate' : 'btn-deactivate');
+      modal.style.display = 'flex';
+    }
+    function closeConfirmStatusModal(){
+      document.getElementById('status-confirm-modal').style.display = 'none';
+      statusConfirmTarget = null;
+    }
+    async function confirmStatusAction(){
+      if (!statusConfirmTarget) return;
+      const { salonId, status } = statusConfirmTarget;
+      await updateSalonStatus(salonId, status);
+      closeConfirmStatusModal();
+    }
+
+    // Persist and Events
+    const restoreFilters = () => {
+      const s = sessionStorage.getItem('renewals:search') || '';
+      const f = sessionStorage.getItem('renewals:filter') || 'all';
+      const p = sessionStorage.getItem('renewals:plan') || '';
+      const o = sessionStorage.getItem('renewals:sort') || '';
+      const si = document.getElementById('renewal-search'); if (si) si.value = s;
+      const sf = document.getElementById('renewal-filter'); if (sf) sf.value = f;
+      const sp = document.getElementById('plan-filter'); if (sp) sp.value = p;
+      const so = document.getElementById('sort-filter'); if (so) so.value = o;
+    };
+    let searchDebounceId = null;
+    document.getElementById('renewal-search')?.addEventListener('input', (e) => {
+      sessionStorage.setItem('renewals:search', e.target.value || '');
+      if (searchDebounceId) clearTimeout(searchDebounceId);
+      searchDebounceId = setTimeout(() => { renderList(); }, 200);
+    });
+    document.getElementById('renewal-filter')?.addEventListener('change', (e) => {
+      sessionStorage.setItem('renewals:filter', e.target.value || '');
+      renderList();
+    });
+    document.getElementById('plan-filter')?.addEventListener('change', (e) => {
+      sessionStorage.setItem('renewals:plan', e.target.value || '');
+      renderList();
+    });
+    document.getElementById('sort-filter')?.addEventListener('change', (e) => {
+      sessionStorage.setItem('renewals:sort', e.target.value || '');
+      renderList();
+    });
+    document.getElementById('renew-cancel')?.addEventListener('click', closeRenewModal);
+    document.getElementById('renew-close-icon')?.addEventListener('click', closeRenewModal);
+    document.getElementById('renew-modal')?.addEventListener('click', (e) => { if (e.target.id === 'renew-modal') closeRenewModal(); });
+    document.getElementById('renew-confirm')?.addEventListener('click', performRenewal);
+    document.querySelectorAll("input[name='renew-plan']").forEach(r => {
+      r.addEventListener('change', (e) => {
+        const v = e.target.value;
+        document.getElementById('chairs-container').classList.toggle('hidden', v !== 'monthly_60');
+        updateRenewAmount();
+      });
+    });
+    document.getElementById('chairs-input')?.addEventListener('input', () => updateRenewAmount());
+
+    function updateRenewAmount(){
+      const selected = document.querySelector("input[name='renew-plan']:checked")?.value || 'monthly_200';
+      let chairs = parseInt(document.getElementById('chairs-input')?.value || '1', 10);
+      if (isNaN(chairs) || chairs < 1) { chairs = 1; const ci = document.getElementById('chairs-input'); if (ci) ci.value = '1'; }
+      const row = document.getElementById('renew-amount-row');
+      const el = document.getElementById('renew-amount');
+      if (selected === 'monthly_60') {
+        const total = chairs * 60;
+        el.textContent = `${formatNumber(chairs)} كرسي = ${formatCurrency(total)}`;
+        row.classList.remove('hidden');
+      } else if (selected === 'monthly_200') {
+        el.textContent = formatCurrency(200);
+        row.classList.remove('hidden');
+      } else if (selected === '2months_offer') {
+        el.textContent = `${formatCurrency(200)} (عرض شهرين)`;
+        row.classList.remove('hidden');
+      } else {
+        row.classList.add('hidden');
+      }
+    }
+
+    // Logout
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+      localStorage.removeItem('adminToken');
+      window.location.replace('/auth.html');
+    });
+
+    // Init
+    restoreFilters();
+    loadData();
+  </script>
+  <!-- Invoices Modal -->
+  <div id="invoices-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header flex justify-between items-center">
+        <span>الفواتير السابقة</span>
+        <button class="action-btn btn-invoices" onclick="closeInvoicesModal()"><i class="fas fa-times"></i><span>إغلاق</span></button>
+      </div>
+      <div id="invoices-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="action-btn btn-invoices" onclick="closeInvoicesModal()"><i class="fas fa-check"></i><span>تم</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Confirm Modal -->
+  <div id="status-confirm-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">تأكيد الإجراء</div>
+      <div class="modal-body">
+        <p id="status-confirm-message" class="text-primary-dark font-semibold"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="action-btn" onclick="closeConfirmStatusModal()"><i class="fas fa-times"></i><span>إلغاء</span></button>
+        <button id="status-confirm-btn" class="action-btn" onclick="confirmStatusAction()"><i class="fas fa-check"></i><span>تأكيد</span></button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

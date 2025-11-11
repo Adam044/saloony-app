@@ -1,0 +1,63 @@
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --primary: #1e40af; /* indigo-700 (more visible) */
+  --primary-700: #1e3a8a; /* indigo-800 */
+  --accent: #06C167; /* green accent as in mock */
+  --border: #e5e7eb;
+  --shadow: 0 10px 24px rgba(2, 6, 23, 0.06);
+}
+
+/* Base layout */
+html, body { background: var(--bg); color: var(--text); }
+body.admin-theme {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  line-height: 1.45;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+/* Mobile header */
+.admin-header { position: sticky; top: 0; z-index: 40; width: 100%; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 8px 16px rgba(2,6,23,0.04); }
+.admin-header__inner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; }
+.admin-brand { display: flex; align-items: center; gap: 10px; }
+.admin-brand__logo { width: 28px; height: 28px; border-radius: 8px; background: #111827; }
+.admin-brand__name { font-weight: 800; letter-spacing: .02em; }
+.admin-title { font-weight: 700; color: #111827; }
+.admin-actions { display: flex; align-items: center; gap: 8px; }
+.admin-avatar { width: 32px; height: 32px; border-radius: 50%; background: url('/Images/Saloony-app_icon.png') center/cover no-repeat; border: 1px solid var(--border); }
+.admin-btn { appearance: none; border: 1px solid var(--border); background: #f9fafb; color: #111827; border-radius: 12px; padding: 8px 12px; font-size: 14px; transition: all .18s ease; }
+.admin-btn:hover { border-color: #cbd5e1; background: #f3f4f6; }
+
+/* Top navigation (preserve existing) */
+.top-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 12px 8px 12px; display: flex; align-items: center; gap: 10px; box-shadow: 0 6px 14px rgba(2,6,23,0.04); position: sticky; top: calc(env(safe-area-inset-top) + 56px); z-index: 19; margin: 0; }
+.top-nav a { color: var(--text-muted); text-decoration: none; padding: 8px 12px; border-radius: 12px; font-weight: 600; transition: all .18s ease; }
+.top-nav a:hover { color: #111827; background: rgba(17,24,39,0.08); }
+.top-nav a.nav-active { color: #111827; background: rgba(17,24,39,0.16); }
+
+/* Cards and grid */
+.admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+.admin-grid { display: grid; gap: 16px; }
+/* Unify common card-like blocks across pages */
+.card, .panel, .stat-card, .table-wrapper, .kpi-block { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; }
+.card-header, .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-weight: 700; color: #111827; }
+.card-footer { margin-top: 10px; color: var(--text-muted); }
+.kpi-block .value { font-size: 18px; font-weight: 800; color: #111827; }
+.kpi-block .label { font-size: 12px; color: var(--text-muted); }
+@media (min-width: 768px) { .admin-grid.cols-2 { grid-template-columns: repeat(2, 1fr); } .admin-grid.cols-3 { grid-template-columns: repeat(3, 1fr); } }
+
+/* Chips */
+.chip { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; font-size: 12px; color: #374151; }
+.chip.active { background: #111827; color: #fff; border-color: transparent; }
+
+/* Utility */
+.muted { color: var(--text-muted); }
+.divider { height: 1px; background: var(--border); border: 0; }
+
+/* Tables */
+.table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table th { text-align: left; font-weight: 700; color: #111827; background: #f9fafb; }
+.table th, .table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.table tr:last-child th, .table tr:last-child td { border-bottom: 0; }
