@@ -345,14 +345,6 @@
                                 ابدأ الحجز
                             </button>
                             <div class="flex gap-2 flex-wrap justify-end">
-                                <button id="share-salon-btn" class="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-blue-600">
-                                    <i class="fas fa-share-alt"></i>
-                                    <span>مشاركة</span>
-                                </button>
-                                <button id="directions-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-indigo-700" style="display: none;">
-                                    <i class="fas fa-directions"></i>
-                                    <span>الاتجاهات</span>
-                                </button>
                                 <button id="call-salon-btn" class="bg-secondary text-primary-dark px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-secondary/90" style="display: none;">
                                     <i class="fas fa-phone"></i>
                                     <span id="call-button-text">اتصل</span>
@@ -446,6 +438,31 @@
                             <div id="addon-services-strip" class="overflow-x-auto">
                                 <div id="addon-services-list" class="flex gap-4 pr-1 pb-2"></div>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions Section -->
+                    <div class="bg-white p-8 rounded-2xl shadow-lg card-glow border border-gray-100 mt-8">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-bolt text-secondary text-xl"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-2xl font-bold text-primary-dark">إجراءات سريعة</h5>
+                                <p class="text-gray-500 text-sm">مشاركة، اتجاهات، وروابط التواصل الاجتماعي</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button id="share-salon-btn" class="bg-blue-500 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-blue-600">
+                                <i class="fas fa-share-alt"></i>
+                                <span>مشاركة</span>
+                            </button>
+                            <button id="directions-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-indigo-700" style="display: none;">
+                                <i class="fas fa-directions"></i>
+                                <span>الاتجاهات</span>
+                            </button>
+                            <!-- Social links: shown only if salon has any -->
+                            <div id="social-links" class="flex flex-wrap items-center gap-2"></div>
                         </div>
                     </div>
                     
@@ -1397,6 +1414,51 @@
     }
 
     // Functionality for setting up the main detail view
+    // Social links rendering helpers (safe, conditional)
+    function normalizeSocialUrl(platform, value) {
+        if (!value) return null;
+        let v = String(value).trim();
+        if (!v) return null;
+        // If already a URL
+        if (/^https?:\/\//i.test(v)) return v;
+        // If it's just a handle, build URL
+        switch (platform) {
+            case 'facebook':
+                return `https://www.facebook.com/${v.replace(/^@/, '')}`;
+            case 'instagram':
+                return `https://www.instagram.com/${v.replace(/^@/, '')}`;
+            case 'tiktok':
+                return `https://www.tiktok.com/@${v.replace(/^@/, '')}`;
+            default:
+                return null;
+        }
+    }
+
+    function renderSocialLinksForSalon(salon) {
+        const container = document.getElementById('social-links');
+        if (!container || !salon) return;
+
+        const fb = normalizeSocialUrl('facebook', salon.facebook || (salon.social && (salon.social.facebook || salon.social.fb)) || salon.facebook_url);
+        const ig = normalizeSocialUrl('instagram', salon.instagram || (salon.social && (salon.social.instagram || salon.social.ig)) || salon.instagram_url);
+        const tk = normalizeSocialUrl('tiktok', salon.tiktok || (salon.social && (salon.social.tiktok || salon.social.tt)) || salon.tiktok_url);
+
+        const links = [
+            fb ? { href: fb, icon: 'fab fa-facebook', label: 'فيسبوك', colorClass: 'bg-blue-100 text-blue-700 hover:bg-blue-200' } : null,
+            ig ? { href: ig, icon: 'fab fa-instagram', label: 'إنستغرام', colorClass: 'bg-pink-100 text-pink-700 hover:bg-pink-200' } : null,
+            tk ? { href: tk, icon: 'fab fa-tiktok', label: 'تيك توك', colorClass: 'bg-gray-900 text-white hover:bg-gray-800' } : null,
+        ].filter(Boolean);
+
+        if (links.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = links.map(l => `
+            <a href="${l.href}" target="_blank" rel="noopener" class="social-link inline-flex items-center justify-center w-8 h-8 rounded-full ${l.colorClass} transition-transform duration-150" title="${l.label}">
+                <i class="${l.icon}"></i>
+            </a>
+        `).join('');
+    }
     async function loadSalonDetailView(salon) {
         const salonIdSafe = (salon && (salon.salonId ?? salon.salonid ?? salon.id ?? salon.salon_id));
         if (!salon || !salonIdSafe || isNaN(parseInt(salonIdSafe))) {
@@ -1521,6 +1583,33 @@
         // Set Main Details
         document.getElementById('detail-name').textContent = salon.salon_name;
         document.getElementById('detail-rating').innerHTML = formatRating(salon.avg_rating || 0, salon.review_count || 0);
+        // Render social links (if any)
+        try {
+            // Hydrate possible social fields from API if present
+            if (typeof salonDetailsData !== 'undefined' && salonDetailsData && salonDetailsData.salon) {
+                const src = salonDetailsData.salon;
+                salon.facebook = src.facebook || src.facebook_url || salon.facebook;
+                salon.instagram = src.instagram || src.instagram_url || salon.instagram;
+                salon.tiktok = src.tiktok || src.tiktok_url || salon.tiktok;
+                salon.social = src.social || salon.social;
+            }
+        } catch (_) {}
+        try {
+            const hasSocialDirect = Boolean(
+                (salon.facebook && String(salon.facebook).trim()) ||
+                (salon.instagram && String(salon.instagram).trim()) ||
+                (salon.tiktok && String(salon.tiktok).trim()) ||
+                (salon.social && (
+                    (salon.social.facebook && String(salon.social.facebook).trim()) ||
+                    (salon.social.instagram && String(salon.social.instagram).trim()) ||
+                    (salon.social.tiktok && String(salon.social.tiktok).trim())
+                ))
+            );
+            if (hasSocialDirect) {
+                renderSocialLinksForSalon(salon);
+            }
+            // Else: leave container untouched; social-follow section will populate via API.
+        } catch (_) {}
         document.querySelector('#detail-city .city-text').textContent = salon.city;
         document.querySelector('#detail-address .address-text').textContent = salon.address;
         
@@ -3212,4 +3301,44 @@
             }
         });
     });
+
+    // --- Social Follow Section ---
+    (function () {
+        function getSalonId() {
+            // Prefer path format /salon/{id}
+            const m = window.location.pathname.match(/\/salon\/(\d+)/);
+            if (m && m[1]) return m[1];
+            // Fallback to cached id set by early script
+            if (window.currentSalonId) return window.currentSalonId;
+            // Finally, look in query params
+            try {
+                const url = new URL(window.location.href);
+                return url.searchParams.get('salon_id') || url.searchParams.get('id');
+            } catch (_) { return null; }
+        }
+
+        async function initSalonFollowSection() {
+            const id = getSalonId();
+            const container = document.getElementById('social-links');
+            if (!id || !container) return;
+            try {
+                const res = await fetch(`/api/salon/social-links/${id}`);
+                if (!res.ok) throw new Error('فشل تحميل الروابط');
+                const data = await res.json();
+                const social = data?.social || {};
+                const hasLinks = Object.values(social).some(v => !!(v && String(v).trim()));
+                if (hasLinks) {
+                    container.classList.remove('hidden');
+                    // Reuse existing renderer
+                    renderSocialLinksForSalon({ social });
+                } else {
+                    container.classList.add('hidden');
+                }
+            } catch (_) {
+                // Fail silently; do not disrupt the page
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initSalonFollowSection);
+    })();
 </script>

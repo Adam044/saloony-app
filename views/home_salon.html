@@ -840,6 +840,9 @@
                                     <button id="btn-cancel-edit" type="button" class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 hidden">
                                         إلغاء
                                     </button>
+                                    <button id="btn-social-links" type="button" class="px-3 py-2 rounded-lg bg-secondary text-white hover:bg-secondary/80 inline-flex items-center">
+                                        <i class="fas fa-share-alt ml-1"></i> روابط التواصل
+                                    </button>
                                 </div>
                             </div>
 
@@ -873,6 +876,46 @@
                                             </button>
                                             <button type="submit" id="modal-save-btn" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white hover:bg-primary-dark font-bold">
                                                 <i class="fas fa-save ml-1"></i> حفظ الصورة
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Social Links Modal -->
+                            <div id="social-links-modal" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden">
+                                <div class="max-w-md mx-auto bg-white rounded-2xl shadow-2xl mt-24 p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-lg font-bold text-primary-dark">روابط التواصل الاجتماعي</h4>
+                                        <button id="social-modal-close-btn" class="text-gray-500 hover:text-gray-700">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div id="social-links-message" class="hidden mt-2 text-center"></div>
+                                    <form id="social-links-form" class="space-y-4">
+                                        <div class="relative">
+                                            <input type="url" id="social-facebook" placeholder="رابط فيسبوك" class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                                            <i class="fab fa-facebook text-lg text-blue-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="url" id="social-instagram" placeholder="رابط إنستغرام" class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                                            <i class="fab fa-instagram text-lg text-pink-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="url" id="social-tiktok" placeholder="رابط تيك توك" class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                                            <i class="fab fa-tiktok text-lg text-gray-900 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                        </div>
+                                        <div class="relative">
+                                            <input type="url" id="social-other" placeholder="رابط آخر (اختياري)" class="w-full p-3 border border-gray-300 rounded-xl text-right">
+                                            <i class="fas fa-link text-lg text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                        </div>
+                                        <div id="social-links-list" class="space-y-2"></div>
+                                        <div class="flex gap-3 pt-2">
+                                            <button type="button" id="social-modal-cancel-btn" class="flex-1 px-4 py-3 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold">
+                                                <i class="fas fa-times ml-1"></i> إلغاء
+                                            </button>
+                                            <button type="button" id="save-social-links" class="flex-1 px-4 py-3 rounded-xl bg-secondary text-white hover:bg-secondary/80 font-bold">
+                                                <i class="fas fa-save ml-1"></i> حفظ الروابط
                                             </button>
                                         </div>
                                     </form>
@@ -5243,11 +5286,232 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="fas fa-copy ml-1"></i>
                         نسخ
                     </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
+            
+            <script>
+                // Social Links Management
+                (function () {
+                    const btnSocialLinks = document.getElementById('btn-social-links');
+                    const modal = document.getElementById('social-links-modal');
+                    const messageEl = document.getElementById('social-links-message');
+                    const btnClose = document.getElementById('social-modal-close-btn');
+                    const btnCancel = document.getElementById('social-modal-cancel-btn');
+                    const btnSave = document.getElementById('save-social-links');
+                    const inputFacebook = document.getElementById('social-facebook');
+                    const inputInstagram = document.getElementById('social-instagram');
+                    const inputTiktok = document.getElementById('social-tiktok');
+                    const inputOther = document.getElementById('social-other');
+                    const listContainer = document.getElementById('social-links-list');
+
+                    if (!btnSocialLinks) return;
+
+                    function showModal() {
+                        modal.classList.remove('hidden');
+                    }
+
+                    function hideModal() {
+                        modal.classList.add('hidden');
+                        clearMessage();
+                    }
+
+                    function showMessage(text, type = 'info') {
+                        messageEl.textContent = text;
+                        messageEl.classList.remove('hidden');
+                        messageEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-700');
+                        const cls = type === 'success' ? 'text-green-600' : type === 'error' ? 'text-red-600' : 'text-gray-700';
+                        messageEl.classList.add(cls);
+                    }
+
+                    function clearMessage() {
+                        messageEl.textContent = '';
+                        messageEl.classList.add('hidden');
+                        messageEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-700');
+                    }
+
+                    function normalizeUrl(url) {
+                        if (!url) return '';
+                        const trimmed = url.trim();
+                        if (!trimmed) return '';
+                        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+                        return 'https://' + trimmed;
+                    }
+
+                    function renderList(links) {
+                        listContainer.innerHTML = '';
+                        const entries = [
+                            { key: 'facebook', icon: 'fab fa-facebook', color: 'text-blue-600', name: 'Facebook' },
+                            { key: 'instagram', icon: 'fab fa-instagram', color: 'text-pink-600', name: 'Instagram' },
+                            { key: 'tiktok', icon: 'fab fa-tiktok', color: 'text-gray-900', name: 'TikTok' },
+                            { key: 'other', icon: 'fas fa-link', color: 'text-primary-dark', name: 'Other' },
+                        ];
+
+                        entries.forEach(e => {
+                            const url = links?.[e.key];
+                            if (!url) return;
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.target = '_blank';
+                            a.rel = 'noopener noreferrer';
+                            a.className = 'block px-3 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-right';
+                            a.innerHTML = `<i class="${e.icon} ${e.color} ml-2"></i> ${url}`;
+                            listContainer.appendChild(a);
+                        });
+                    }
+
+                    function getSalonId() {
+                        try {
+                            // Prefer global if available
+                            if (typeof salonId !== 'undefined' && salonId) return salonId;
+                            if (window.currentSalon && window.currentSalon.id) return window.currentSalon.id;
+                            // Fallback to URL params
+                            const url = new URL(window.location.href);
+                            const fromUrl = url.searchParams.get('salon_id') || url.searchParams.get('id');
+                            if (fromUrl) return fromUrl;
+                            // Last resort: common localStorage keys
+                            return localStorage.getItem('salonId') || localStorage.getItem('selectedSalonId') || null;
+                        } catch (e) {
+                            return null;
+                        }
+                    }
+
+                    function getRoleSessionToken() {
+                        // Use in-memory session token if exposed globally by PIN system
+                        if (typeof window.sessionToken === 'string' && window.sessionToken) {
+                            return window.sessionToken;
+                        }
+                        try {
+                            const id = getSalonId();
+                            if (!id) return null;
+                            // Try canonical key
+                            const raw = localStorage.getItem(`saloony_role_session_${id}`);
+                            if (raw) {
+                                try {
+                                    const sess = JSON.parse(raw);
+                                    if (typeof sess === 'string') return sess;
+                                    // Check multiple common shapes
+                                    return (
+                                        sess?.token ||
+                                        sess?.session_token ||
+                                        sess?.role?.token ||
+                                        sess?.session?.token ||
+                                        null
+                                    );
+                                } catch (e) {
+                                    // Value may be a plain token string
+                                    if (raw && raw.length > 10) return raw;
+                                }
+                            }
+                            // Try alternative key spellings
+                            const altRaw = localStorage.getItem(`salon_role_session_${id}`) || localStorage.getItem(`salonni_role_session_${id}`);
+                            if (altRaw) {
+                                try {
+                                    const sess = JSON.parse(altRaw);
+                                    return sess?.token || sess?.session_token || null;
+                                } catch (e) {
+                                    if (altRaw && altRaw.length > 10) return altRaw;
+                                }
+                            }
+                            return null;
+                        } catch (e) {
+                            return null;
+                        }
+                    }
+
+                    async function loadSocialLinks() {
+                        clearMessage();
+                        const id = getSalonId();
+                        if (!id) return;
+                        try {
+                            const token = getRoleSessionToken();
+                            const res = await fetch(`/api/salon/social-links/${id}`, {
+                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                            });
+                            if (!res.ok) throw new Error('فشل تحميل الروابط');
+                            const data = await res.json();
+                            const social = data?.social || {};
+                            inputFacebook.value = social.facebook || '';
+                            inputInstagram.value = social.instagram || '';
+                            inputTiktok.value = social.tiktok || '';
+                            inputOther.value = social.other || '';
+                            renderList(social);
+                        } catch (err) {
+                            showMessage(err.message || 'حدث خطأ غير متوقع', 'error');
+                        }
+                    }
+
+                    async function saveSocialLinks() {
+                        clearMessage();
+                        const id = getSalonId();
+                        if (!id) return showMessage('المعرف غير موجود', 'error');
+                        const token = getRoleSessionToken();
+                        if (!token) {
+                            showMessage('يتطلب الحفظ جلسة دور المدير (PIN/بصمة).', 'error');
+                            // If PIN system is available, prompt it
+                            if (typeof window.showPinScreen === 'function') {
+                                try { window.showPinScreen(); } catch (_) {}
+                            }
+                            return;
+                        }
+
+                        const payloads = [
+                            { platform: 'facebook', url: normalizeUrl(inputFacebook.value) },
+                            { platform: 'instagram', url: normalizeUrl(inputInstagram.value) },
+                            { platform: 'tiktok', url: normalizeUrl(inputTiktok.value) },
+                            { platform: 'other', url: normalizeUrl(inputOther.value) },
+                        ];
+
+                        try {
+                            for (const p of payloads) {
+                                // If URL is empty/null -> delete; else -> upsert
+                                if (!p.url) {
+                                    const delRes = await fetch(`/api/salon/social-links/${id}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${token}`
+                                        },
+                                        body: JSON.stringify({ platform: p.platform, session_token: token })
+                                    });
+                                    if (!delRes.ok) {
+                                        const errText = await delRes.text();
+                                        throw new Error(errText || 'فشل حذف الرابط');
+                                    }
+                                } else {
+                                    const postRes = await fetch(`/api/salon/social-links/${id}`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${token}`
+                                        },
+                                        body: JSON.stringify({ platform: p.platform, url: p.url, session_token: token })
+                                    });
+                                    if (!postRes.ok) {
+                                        const errText = await postRes.text();
+                                        throw new Error(errText || 'فشل حفظ الرابط');
+                                    }
+                                }
+                            }
+                            // Reload to reflect saved state
+                            await loadSocialLinks();
+                            showMessage('تم حفظ الروابط بنجاح', 'success');
+                        } catch (err) {
+                            showMessage(err.message || 'حدث خطأ غير متوقع', 'error');
+                        }
+                    }
+
+                    btnSocialLinks.addEventListener('click', () => {
+                        showModal();
+                        loadSocialLinks();
+                    });
+                    btnClose.addEventListener('click', hideModal);
+                    btnCancel.addEventListener('click', hideModal);
+                    btnSave.addEventListener('click', saveSocialLinks);
+                })();
+            </script>
 
 
 

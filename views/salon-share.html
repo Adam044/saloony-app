@@ -236,25 +236,44 @@
                 </div>
             </div>
             
-            <!-- Contact Information -->
+            <!-- Contact and Actions Column -->
             <div class="space-y-6">
-                <!-- Contact Information -->
+                <!-- Call Us Card -->
                 <div class="bg-white rounded-2xl shadow-lg p-6 card-glow">
                     <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
                         <i class="fas fa-phone text-secondary ml-3"></i>
                         اتصل بالصالون
                     </h3>
-                    
-                    <div class="space-y-4">
+                    <div>
                         <button id="call-salon-btn" class="w-full bg-secondary text-white py-3 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-colors flex items-center justify-center hidden">
                             <i class="fas fa-phone ml-2"></i>
                             اتصل الآن
                         </button>
+                    </div>
+                </div>
+
+                <!-- Directions Card -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 card-glow">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-directions text-secondary ml-3"></i>
+                        الاتجاهات
+                    </h3>
+                    <div>
                         <button id="get-directions-btn" class="w-full btn-outline py-3 px-4 rounded-lg font-semibold flex items-center justify-center hidden">
                             <i class="fas fa-directions ml-2"></i>
-                            الاتجاهات
+                            افتح الاتجاهات
                         </button>
                     </div>
+                </div>
+
+                <!-- Follow Us Card -->
+                <div id="social-follow-section" class="bg-white rounded-2xl shadow-lg p-6 card-glow hidden">
+                    <h3 class="text-xl font-bold text-gray-900 mb-2 flex items-center">
+                        <i class="fas fa-share-alt text-secondary ml-3"></i>
+                        تابعونا
+                    </h3>
+                    <p class="text-gray-600 text-sm mb-2">تواصل معنا عبر منصات التواصل الاجتماعي</p>
+                    <div id="social-links-share" class="mt-2 flex items-center gap-3"></div>
                 </div>
             </div>
         </section>
@@ -379,6 +398,50 @@
             }
         }
 
+        // Social links rendering helpers (safe, conditional)
+        function normalizeSocialUrl(platform, value) {
+            if (!value) return null;
+            let v = String(value).trim();
+            if (!v) return null;
+            if (/^https?:\/\//i.test(v)) return v;
+            switch (platform) {
+                case 'facebook':
+                    return `https://www.facebook.com/${v.replace(/^@/, '')}`;
+                case 'instagram':
+                    return `https://www.instagram.com/${v.replace(/^@/, '')}`;
+                case 'tiktok':
+                    return `https://www.tiktok.com/@${v.replace(/^@/, '')}`;
+                default:
+                    return null;
+            }
+        }
+
+        function renderSocialLinksForShare(salon) {
+            const container = document.getElementById('social-links-share');
+            if (!container || !salon) return;
+
+            const fb = normalizeSocialUrl('facebook', salon.facebook || (salon.social && (salon.social.facebook || salon.social.fb)) || salon.facebook_url);
+            const ig = normalizeSocialUrl('instagram', salon.instagram || (salon.social && (salon.social.instagram || salon.social.ig)) || salon.instagram_url);
+            const tk = normalizeSocialUrl('tiktok', salon.tiktok || (salon.social && (salon.social.tiktok || salon.social.tt)) || salon.tiktok_url);
+
+            const links = [
+                fb ? { href: fb, icon: 'fab fa-facebook', label: 'فيسبوك', colorClass: 'bg-blue-100 text-blue-700 hover:bg-blue-200' } : null,
+                ig ? { href: ig, icon: 'fab fa-instagram', label: 'إنستغرام', colorClass: 'bg-pink-100 text-pink-700 hover:bg-pink-200' } : null,
+                tk ? { href: tk, icon: 'fab fa-tiktok', label: 'تيك توك', colorClass: 'bg-gray-900 text-white hover:bg-gray-800' } : null,
+            ].filter(Boolean);
+
+            if (links.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = links.map(l => `
+                <a href="${l.href}" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-9 h-9 rounded-full ${l.colorClass} transition-transform duration-150" title="${l.label}">
+                    <i class="${l.icon}"></i>
+                </a>
+            `).join('');
+        }
+
         async function loadSalonServices() {
             try {
                 const response = await fetch(`/api/salon/services/${salonId}`);
@@ -432,6 +495,9 @@
 
             // Setup Directions button
             setupDirectionsButton(salon);
+
+            // Render social links (if any)
+            renderSocialLinksForShare(salon);
         }
 
         function displayServices(services) {
@@ -495,7 +561,7 @@
                     </div>
                     <p class="text-gray-600 leading-relaxed">${review.comment || 'تجربة رائعة!'}</p>
                     <div class="text-xs text-gray-400 mt-3">
-                        ${formatReviewDate(review.created_at)}
+                        ${formatReviewDate(review.date_posted)}
                     </div>
                 `;
                 
@@ -595,6 +661,41 @@
         }
 
 
+
+        // --- Social Follow Section (Share Page) ---
+        (function () {
+            function getSalonIdFromUrl() {
+                try {
+                    const url = new URL(window.location.href);
+                    return url.searchParams.get('salon_id') || url.searchParams.get('id');
+                } catch (_) { return null; }
+            }
+
+            async function initShareFollowSection() {
+                const id = getSalonIdFromUrl();
+                const container = document.getElementById('social-links-share');
+                const card = document.getElementById('social-follow-section');
+                if (!id || !container || !card) return;
+                try {
+                    const res = await fetch(`/api/salon/social-links/${id}`);
+                    if (!res.ok) return; // silent
+                    const data = await res.json();
+                    const social = data?.social || {};
+                    const hasLinks = Object.values(social).some(v => !!(v && String(v).trim()));
+                    if (hasLinks) {
+                        card.classList.remove('hidden');
+                        container.classList.remove('hidden');
+                        renderSocialLinksForShare({ social });
+                    } else {
+                        card.classList.add('hidden');
+                        container.classList.add('hidden');
+                        try { container.innerHTML = ''; } catch (_) {}
+                    }
+                } catch (_) { /* ignore */ }
+            }
+
+            document.addEventListener('DOMContentLoaded', initShareFollowSection);
+        })();
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {

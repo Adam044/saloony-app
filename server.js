@@ -450,6 +450,19 @@ async function initializeDb() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_conversation_analytics_user ON conversation_analytics(user_id)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_user_preferences_user_cat ON user_preferences(user_id, category)`);
 
+        // Create social_links table (one entry per platform per salon)
+        await db.run(`CREATE TABLE IF NOT EXISTS social_links (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL,
+            platform VARCHAR(20) NOT NULL CHECK (platform IN ('facebook','instagram','tiktok','other')),
+            url TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(salon_id, platform),
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+        )`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_social_links_salon ON social_links(salon_id)`);
+
         console.log("✅ Database schema created successfully (including optimized AI Analytics tables).");
         
     } catch (error) {
@@ -2758,9 +2771,111 @@ app.get('/api/salon/details/:salon_id', async (req, res) => {
         if (!row) {
              return res.status(404).json({ success: false, message: 'Salon not found.' });
         }
+        // Attach social links if present
+        try {
+            const socials = await db.query('SELECT platform, url FROM social_links WHERE salon_id = $1', [Number(salonId)]);
+            const socialMap = {};
+            for (const s of socials) {
+                socialMap[s.platform] = s.url;
+            }
+            // Provide flexible fields used by frontend
+            row.facebook_url = socialMap.facebook || null;
+            row.instagram_url = socialMap.instagram || null;
+            row.tiktok_url = socialMap.tiktok || null;
+            row.social = socialMap; // also provide grouped object
+        } catch (e) {
+            console.warn('Warning: failed to attach social links:', e.message);
+        }
         res.json({ success: true, salon: row });
     } catch (err) {
         console.error("Salon details fetch error:", err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// --- Social Links ---
+// Public: fetch social links for a salon
+app.get('/api/salon/social-links/:salon_id', async (req, res) => {
+    try {
+        const salonId = req.params.salon_id;
+        if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+            return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+        }
+        const rows = await db.query('SELECT platform, url FROM social_links WHERE salon_id = $1', [Number(salonId)]);
+        const social = {};
+        for (const r of rows) social[r.platform] = r.url;
+        return res.json({ success: true, social });
+    } catch (err) {
+        console.error('Social links fetch error:', err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Helper: verify salon role session token with admin role_type
+async function requireSalonAdminRole(req, res, next) {
+    try {
+        const salonId = req.params.salon_id;
+        const tokenFromHeader = (req.headers.authorization || '').startsWith('Bearer ')
+            ? (req.headers.authorization || '').slice(7)
+            : null;
+        const session_token = req.body?.session_token || tokenFromHeader;
+        if (!salonId || !session_token) {
+            return res.status(401).json({ success: false, message: 'Salon ID and session token required.' });
+        }
+        const session = await db.get(`
+            SELECT rs.*, sr.role_type
+            FROM role_sessions rs
+            JOIN staff_roles sr ON rs.staff_role_id = sr.id
+            WHERE rs.salon_id = $1 AND rs.session_token = $2 AND rs.expires_at > CURRENT_TIMESTAMP
+        `, [Number(salonId), session_token]);
+        if (!session || session.role_type !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Admin role required.' });
+        }
+        return next();
+    } catch (e) {
+        console.error('Role check error:', e.message);
+        return res.status(500).json({ success: false, message: 'Role verification error.' });
+    }
+}
+
+// Protected: upsert a social link (admin role required)
+app.post('/api/salon/social-links/:salon_id', requireSalonAdminRole, async (req, res) => {
+    try {
+        const salonId = Number(req.params.salon_id);
+        const { platform, url } = req.body;
+        if (!platform || !url) {
+            return res.status(400).json({ success: false, message: 'Platform and URL are required.' });
+        }
+        const normalizedPlatform = String(platform).toLowerCase();
+        if (!['facebook','instagram','tiktok','other'].includes(normalizedPlatform)) {
+            return res.status(400).json({ success: false, message: 'Invalid platform.' });
+        }
+        const existing = await db.get('SELECT id FROM social_links WHERE salon_id = $1 AND platform = $2', [salonId, normalizedPlatform]);
+        if (existing) {
+            await db.run('UPDATE social_links SET url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [url, existing.id]);
+        } else {
+            await db.run('INSERT INTO social_links (salon_id, platform, url) VALUES ($1, $2, $3)', [salonId, normalizedPlatform, url]);
+        }
+        return res.json({ success: true, message: 'Social link saved.' });
+    } catch (err) {
+        console.error('Social link upsert error:', err.message);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
+// Protected: delete a social link (admin role required)
+app.delete('/api/salon/social-links/:salon_id', requireSalonAdminRole, async (req, res) => {
+    try {
+        const salonId = Number(req.params.salon_id);
+        const { platform } = req.body || {};
+        if (!platform) {
+            return res.status(400).json({ success: false, message: 'Platform is required.' });
+        }
+        const normalizedPlatform = String(platform).toLowerCase();
+        await db.run('DELETE FROM social_links WHERE salon_id = $1 AND platform = $2', [salonId, normalizedPlatform]);
+        return res.json({ success: true, message: 'Social link deleted.' });
+    } catch (err) {
+        console.error('Social link delete error:', err.message);
         return res.status(500).json({ success: false, message: 'Database error.' });
     }
 });
