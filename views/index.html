@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <script src="/offline-detect.js"></script>
+  <script src="/app-mode.js"></script>
 <!-- Google tag (gtag.js) - load only in production to avoid CSP issues locally -->
 <script>
   (function() {
@@ -100,16 +101,23 @@
             وأدوات إدارة متقدمة لأصحاب الصالونات.
         </p>
         <div class="flex flex-col sm:flex-row gap-6 justify-center mb-12">
-            <button id="startNowBtn" class="bg-[#06C167] text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-[#05AE5D] transition transform hover:scale-105">
-                ابدأ الآن
+            <button id="continueBrowserBtn" class="bg-white text-[#1E293B] px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-105">
+                المتابعة عبر المتصفح
             </button>
-            <button id="learnMoreBtn" class="bg-white text-[#1E293B] px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-gray-100 transition transform hover:scale-105">
-                تعرف أكثر
+            <button id="installNowBtn" class="bg-[#06C167] text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg hover:bg-[#05AE5D] transition transform hover:scale-105">
+                تثبيت التطبيق
             </button>
         </div>
     </div>
 </section>
 
+<!-- Install feedback toast -->
+<div id="installToast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div class="bg-[#1E293B] text-white text-sm px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+        <i class="fa-solid fa-info-circle text-[#06C167]"></i>
+        <span id="installToastMsg">التثبيت غير متاح حاليًا — استخدم قائمة المتصفح "تثبيت التطبيق"</span>
+    </div>
+</div>
 <!-- Installation Instructions Section -->
 <section id="installation" class="bg-gradient-to-br from-gray-50 to-gray-100 py-16">
     <div class="max-w-4xl mx-auto px-6">
@@ -143,9 +151,10 @@
                     </div>
                 </div>
                 <p class="text-gray-700 mb-4">اضغط <strong>"تثبيت"</strong> أو اختر <strong>"تثبيت التطبيق"</strong> من القائمة</p>
-                <button id="installBtn" style="display:none" class="w-full bg-[#06C167] text-white py-3 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center">
+                <button id="installBtn" class="w-full bg-[#06C167] text-white py-3 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center">
                     تثبيت
                 </button>
+                <p id="androidInstallHint" class="text-xs text-gray-500 mt-2">إذا لم يظهر التثبيت، افتح قائمة المتصفح واختر "تثبيت التطبيق"</p>
             </div>
         </div>
     </div>
@@ -356,28 +365,43 @@
         });
     }
 
-    // Install prompt handling
-    let deferredPrompt;
+    // Elements
     const installBtn = document.getElementById('installBtn');
+    const androidInstallHint = document.getElementById('androidInstallHint');
+    const installToast = document.getElementById('installToast');
+    const installToastMsg = document.getElementById('installToastMsg');
+    let canInstall = false;
+    function showInstallToast(message) {
+        if (!installToast || !installToastMsg) return;
+        installToastMsg.textContent = message;
+        installToast.classList.remove('hidden');
+        setTimeout(() => installToast.classList.add('hidden'), 3000);
+    }
     const iosInstructionsModal = document.getElementById('iosInstructionsModal');
     const closeIosInstructionsModal = document.getElementById('closeIosInstructionsModal');
     const iosBrowserModal = document.getElementById('iosBrowserModal');
     const openInSafariBtn = document.getElementById('openInSafariBtn');
-    window.addEventListener('beforeinstallprompt', (e) => {
-        // Do not call preventDefault here to allow browser banner when eligible
-        deferredPrompt = e;
-        if (installBtn) installBtn.style.display = 'inline-flex';
+    const continueBrowserBtn = document.getElementById('continueBrowserBtn');
+    const installNowBtn = document.getElementById('installNowBtn');
+
+    // Enable Android install button when eligible
+    window.addEventListener('can-install-app', () => {
+        if (installBtn) {
+            installBtn.style.display = 'inline-flex';
+            canInstall = true;
+            installBtn.removeAttribute('aria-disabled');
+            installBtn.removeAttribute('data-disabled');
+            installBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+            if (androidInstallHint) androidInstallHint.textContent = 'جاهز للتثبيت — اضغط زر تثبيت';
+        }
     });
-    // Show install button for all users
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (!isStandalone && installBtn) {
-        installBtn.style.display = 'inline-flex';
-        installBtn.textContent = 'تثبيت';
-    }
 
     // iOS browser detection for Safari guidance
     const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isStandalone = (window.AppMode && window.AppMode.isStandalone && window.AppMode.isStandalone()) || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    if (isAndroid && installBtn) { installBtn.style.display = 'inline-flex'; }
 
     // Modal functionality for instructions (if needed)
     if (closeIosInstructionsModal && iosInstructionsModal) {
@@ -426,36 +450,40 @@
             }
         });
     }
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) {
-            // Show universal installation message
-            alert('يرجى استخدام زر "تثبيت" من المتصفح أو اتباع تعليمات التثبيت المعروضة أدناه.');
-            return;
-        }
-        await deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        if (choice.outcome === 'accepted') console.log('User accepted the install prompt');
-        else console.log('User dismissed the install prompt');
-    });
-
-    // Start Now button scroll to installation section
-    const startNowBtn = document.getElementById('startNowBtn');
-    if (startNowBtn) {
-        startNowBtn.addEventListener('click', () => {
-            const el = document.getElementById('installation');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (installBtn) {
+        installBtn.addEventListener('click', async (e) => {
+            if (!canInstall) {
+                e.preventDefault();
+                if (androidInstallHint) androidInstallHint.textContent = 'إذا لم يظهر التثبيت، افتح قائمة المتصفح واختر "تثبيت التطبيق"';
+                showInstallToast('لا يمكن التثبيت الآن — افتح قائمة المتصفح واختر "تثبيت التطبيق"');
+                return;
+            }
+            try { window.AppMode?.setUserModeChoice('app'); } catch (e) {}
+            // Visual feedback while prompt opens
+            const originalText = installBtn.textContent;
+            installBtn.textContent = 'جاري التثبيت...';
+            window.AppMode?.promptInstall();
+            setTimeout(() => { installBtn.textContent = originalText; }, 2000);
         });
     }
 
-    // Learn More button scroll to features section
-    const learnMoreBtn = document.getElementById('learnMoreBtn');
-    if (learnMoreBtn) {
-        learnMoreBtn.addEventListener('click', () => {
-            const el = document.getElementById('features');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Hero CTAs
+    if (continueBrowserBtn) {
+        continueBrowserBtn.addEventListener('click', () => {
+            try { window.AppMode?.setUserModeChoice('browser'); } catch (e) {}
+            window.location.href = '/splash.html';
         });
     }
+    if (installNowBtn) {
+        installNowBtn.addEventListener('click', () => {
+            const installSection = document.getElementById('installation');
+            if (installSection && installSection.scrollIntoView) {
+                installSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+
+    // Keep smooth scroll for features via header contact etc. Removed hero scroll buttons.
 
     // iOS Instructions Modal functionality
     const iosInstructionsBtn = document.getElementById('iosInstructionsBtn');

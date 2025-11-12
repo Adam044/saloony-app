@@ -30,9 +30,11 @@
                 return;
             }
 
-            // Extract salon ID from URL path pattern /salon/{id}
+            // Extract salon ID from URL path pattern /salon/{id} or query params
             const match = window.location.pathname.match(/\/salon\/(\d+)/);
-            const salonId = match ? match[1] : null;
+            const params = new URLSearchParams(window.location.search);
+            const queryId = params.get('s') || params.get('id') || params.get('salonId');
+            const salonId = match ? match[1] : queryId;
             if (!salonId) {
                 console.error("Salon ID is missing from URL path. Redirecting to home.");
                 window.location.replace('/home_user.html');
@@ -205,8 +207,8 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100dvh; /* Use dynamic viewport height for mobile */
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
             z-index: 2000000;
@@ -214,15 +216,16 @@
             padding: 20px;
             transition: opacity 0.3s ease;
             opacity: 0;
-            overflow-y: auto; /* Allow scrolling if content taller than viewport */
+            overflow: hidden; /* Prevent overlay scrolling; content will scroll */
         }
         .confirmation-modal-content {
             background: #fff;
             border-radius: 20px;
             max-width: 500px;
             width: 100%;
-            max-height: 90vh; /* Prevent overflow off-screen */
+            max-height: calc(100dvh - 40px); /* Account for overlay padding */
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
             transform: translateY(-20px);
             opacity: 0;
@@ -250,12 +253,13 @@
             position: fixed !important;
             inset: 0 !important;
             width: 100vw !important;
-            min-height: 100vh !important;
+            min-height: 100dvh !important; /* Use dynamic viewport height */
         }
         .confirmation-modal.modal-open {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            opacity: 1 !important; /* Ensure visible even if other rules conflict */
         }
         .confirmation-modal .confirmation-modal-content {
             margin: auto;
@@ -333,28 +337,24 @@
 
                 <!-- Detail Card Overlay -->
                 <div class="bg-white p-6 md:p-8 rounded-t-3xl shadow-2xl relative z-10 -mt-8 mx-0 md:mx-4 card-glow">
-                    <div class="flex justify-between items-start mb-4">
-                        <!-- Salon Info -->
-                        <div class="flex-1">
-                            <h2 id="detail-name" class="text-3xl font-extrabold text-primary-dark mb-1">...</h2>
-                            <div id="detail-rating" class="text-sm text-gray-600">...</div>
-                        </div>
-                        <!-- Call/Share Button -->
-                        <div class="flex flex-col md:items-end items-stretch gap-2 w-full md:w-auto">
-                            <button id="book-now-btn" class="btn-secondary px-4 py-2 rounded-xl font-bold transition duration-200 shadow-md hover:shadow-lg w-full md:w-auto">
+                    <div class="flex flex-col items-center text-center gap-3 mb-4">
+                        <!-- Salon Info (Centered) -->
+                        <h2 id="detail-name" class="text-3xl md:text-4xl font-extrabold text-primary-dark leading-tight">...</h2>
+                        <div id="detail-rating" class="text-sm md:text-base text-gray-600">...</div>
+                        <!-- CTA Buttons Row (Equal styles) -->
+                        <div class="flex items-center justify-center gap-3 flex-wrap w-full">
+                            <button id="book-now-btn" class="btn-secondary px-5 py-2.5 rounded-xl font-bold transition duration-200 shadow-md hover:shadow-lg min-w-[160px] h-11">
                                 ابدأ الحجز
                             </button>
-                            <div class="flex gap-2 flex-wrap justify-end">
-                                <button id="call-salon-btn" class="bg-secondary text-primary-dark px-4 py-2 rounded-xl font-bold transition duration-200 flex items-center gap-2 shadow-md hover:shadow-lg hover:bg-secondary/90" style="display: none;">
-                                    <i class="fas fa-phone"></i>
-                                    <span id="call-button-text">اتصل</span>
-                                </button>
-                            </div>
+                            <button id="call-salon-btn" class="btn-secondary px-5 py-2.5 rounded-xl font-bold transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg min-w-[140px] h-11 text-center" style="display: none;">
+                                <i class="fas fa-phone"></i>
+                                <span id="call-button-text">اتصل</span>
+                            </button>
                         </div>
                     </div>
 
                     <!-- Location & Status Pills -->
-                    <div class="flex flex-wrap gap-3 text-sm font-medium">
+                    <div class="flex flex-wrap gap-3 text-sm font-medium justify-center">
                         <span id="detail-city" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-1">
                             <i class="fas fa-city text-blue-600"></i> <span class="city-text">المدينة</span>
                         </span>
@@ -623,6 +623,24 @@
     </div>
 </div>
 
+<!-- Auth Modal (Login/Register) -->
+<div id="auth-modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center" style="z-index: 3000000;">
+    <div id="auth-modal-content" class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 relative">
+        <button id="auth-modal-close" class="absolute top-3 left-3 text-gray-400 hover:text-gray-600" aria-label="إغلاق">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+        <div class="text-center space-y-3">
+            <h3 class="text-2xl font-extrabold text-primary-dark">مرحباً بك 👋</h3>
+            <p class="text-gray-600">سجّل الدخول أو أنشئ حسابًا للمتابعة</p>
+            <div class="flex flex-col gap-3 mt-4">
+                <button id="auth-login-btn" class="w-full btn-secondary text-primary-dark font-bold py-3 px-4 rounded-xl">تسجيل الدخول</button>
+                <button id="auth-signup-btn" class="w-full bg-primary-dark text-white font-bold py-3 px-4 rounded-xl hover:bg-primary">إنشاء حساب</button>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
 <!-- All Modals (Confirmation, Review, etc.) are included here (Copied from home_user.html for shared logic) -->
 <!-- Confirmation modal removed per UX — using single stateful loading modal instead -->
 
@@ -884,6 +902,12 @@
     let pendingDeleteReview = null;
     let selectedTimePeriod = 'morning'; 
     let isBookingModalOpen = false;
+
+    // Lightweight auth check
+    function isAuthenticated() {
+        const token = localStorage.getItem('salonni_token');
+        return !!token && token !== 'undefined' && token !== '';
+    }
 
     // --- Core Utility Functions (Copied from home_user.html) ---
     function displayMessage(message, type = 'info') {
@@ -1223,14 +1247,22 @@
         document.getElementById('review-rating-input').value = '0';
         updateStarDisplay(0);
 
-        // Rely on CSS class for display and centering (grid-based)
+        // Force centering on mobile by setting inline flex styles
         modal.classList.add('modal-open');
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.opacity = '1';
         document.body.classList.add('overflow-hidden');
     }
     function hideReviewModal() {
         const modal = document.getElementById('review-modal');
         if (modal) {
             modal.classList.remove('modal-open');
+            modal.style.display = '';
+            modal.style.alignItems = '';
+            modal.style.justifyContent = '';
+            modal.style.opacity = '';
             document.body.classList.remove('overflow-hidden');
         }
     }
@@ -1239,12 +1271,20 @@
         const modal = document.getElementById('already-reviewed-modal');
         try { if (modal && modal.parentNode !== document.body) document.body.appendChild(modal); } catch(_) {}
         modal.classList.add('modal-open');
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.opacity = '1';
         document.body.classList.add('overflow-hidden');
     }
     function hideAlreadyReviewedModal() {
         const modal = document.getElementById('already-reviewed-modal');
         if (modal) {
             modal.classList.remove('modal-open');
+            modal.style.display = '';
+            modal.style.alignItems = '';
+            modal.style.justifyContent = '';
+            modal.style.opacity = '';
             document.body.classList.remove('overflow-hidden');
         }
     }
@@ -1254,12 +1294,20 @@
         const modal = document.getElementById('delete-review-modal');
         try { if (modal && modal.parentNode !== document.body) document.body.appendChild(modal); } catch(_) {}
         modal.classList.add('modal-open');
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.opacity = '1';
         document.body.classList.add('overflow-hidden');
     }
     function hideDeleteReviewModal() {
         const modal = document.getElementById('delete-review-modal');
         if (modal) {
             modal.classList.remove('modal-open');
+            modal.style.display = '';
+            modal.style.alignItems = '';
+            modal.style.justifyContent = '';
+            modal.style.opacity = '';
             document.body.classList.remove('overflow-hidden');
         }
         pendingDeleteReview = null;
@@ -2576,18 +2624,21 @@
     }
     
     async function checkExistingReviewAndShow(salon) {
-        if (!currentUser || !currentUser.userId || !salon || !salon.salonId) { displayMessage('يرجى تسجيل الدخول أولاً', 'error'); return; }
+        if (!salon || !salon.salonId) { displayMessage('خطأ: الصالون غير محدد', 'error'); return; }
+        if (!isAuthenticated() || !currentUser || !currentUser.userId) { showAuthModal('reviews'); return; }
         try {
             const response = await fetch(`/api/reviews/user/${currentUser.userId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('salonni_token') || ''}` }
             });
+            if (response.status === 401) { showAuthModal('reviews'); return; }
+            if (response.status === 403) { showAuthModal('reviews'); return; }
             const result = await response.json();
             if (response.ok && result.success) {
                 const existingReview = result.reviews.find(review => review.salon_id == salon.salonId);
                 if (existingReview) showAlreadyReviewedModal(salon);
                 else showReviewModal(salon);
             } else {
-                displayMessage('خطأ في التحقق من المراجعات السابقة', 'error');
+                displayMessage(result.message || 'خطأ في التحقق من المراجعات السابقة', 'error');
             }
         } catch (error) {
             displayMessage('خطأ في الاتصال بالخادم', 'error');
@@ -2875,8 +2926,8 @@
     
     // --- Initialization and Event Listeners ---
     
-    function initializePage() {
-        // Get salon ID from URL path pattern /salon/{id}
+        function initializePage() {
+        // Get salon ID from URL path pattern /salon/{id} or previously set currentSalonId
         const match = window.location.pathname.match(/\/salon\/(\d+)/);
         const salonId = match ? match[1] : window.currentSalonId;
         
@@ -2994,7 +3045,30 @@
         });
         
         // --- Modal/Action Listeners ---
-        document.getElementById('add-review-btn').addEventListener('click', () => checkExistingReviewAndShow(selectedSalon));
+        document.getElementById('add-review-btn').addEventListener('click', () => {
+            if (!selectedSalon || !selectedSalon.salonId) {
+                displayMessage('يرجى اختيار الصالون أولاً.', 'error');
+                return;
+            }
+            if (!isAuthenticated() || !currentUser || !currentUser.userId) {
+                showAuthModal('reviews');
+                return;
+            }
+            checkExistingReviewAndShow(selectedSalon);
+        });
+
+        // Book Now CTA auth gating
+        document.getElementById('book-now-btn')?.addEventListener('click', () => {
+            if (!selectedSalon || !selectedSalon.salonId) {
+                displayMessage('يرجى اختيار الصالون أولاً.', 'error');
+                return;
+            }
+            if (!isAuthenticated() || !currentUser || !currentUser.userId) {
+                showAuthModal('book');
+                return;
+            }
+            try { showBookingStep(1); } catch (e) { console.warn('Booking step init failed:', e.message); }
+        });
         
         document.getElementById('cancel-booking-btn').addEventListener('click', hidePreBookingModal);
         document.getElementById('final-confirm-booking-btn').addEventListener('click', confirmBooking);
@@ -3341,4 +3415,37 @@
 
         document.addEventListener('DOMContentLoaded', initSalonFollowSection);
     })();
+
+    // --- Auth Modal Controls ---
+    function showAuthModal(context = 'book') {
+        const overlay = document.getElementById('auth-modal-overlay');
+        const loginBtn = document.getElementById('auth-login-btn');
+        const signupBtn = document.getElementById('auth-signup-btn');
+        const salonId = (window.selectedSalon && window.selectedSalon.salonId) || getSalonId();
+        const hash = context === 'reviews' ? '#reviews' : '';
+        const nextUrl = salonId ? `/salon.html?s=${encodeURIComponent(salonId)}${hash}` : (window.location.pathname + window.location.search + hash);
+
+        loginBtn.onclick = () => { window.location.href = `/auth.html?mode=login&next=${encodeURIComponent(nextUrl)}`; };
+        signupBtn.onclick = () => { window.location.href = `/auth.html?mode=signup&next=${encodeURIComponent(nextUrl)}`; };
+
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    function hideAuthModal() {
+        const overlay = document.getElementById('auth-modal-overlay');
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+    document.getElementById('auth-modal-close')?.addEventListener('click', hideAuthModal);
+    document.getElementById('auth-modal-overlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'auth-modal-overlay') hideAuthModal();
+    });
+
+    // Ensure overlay is attached to <body> for proper fixed centering on mobile
+    document.addEventListener('DOMContentLoaded', () => {
+        const overlay = document.getElementById('auth-modal-overlay');
+        if (overlay && overlay.parentElement !== document.body) {
+            try { document.body.appendChild(overlay); } catch (_) { /* noop */ }
+        }
+    });
 </script>

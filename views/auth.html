@@ -135,6 +135,19 @@
         <!-- Clean Saloony Logo with transparent background -->
         <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/144x144/1a434e/ffffff?text=Logo';" alt="شعار صالوني" class="w-36 h-36 mb-6 object-contain object-center transition-transform duration-300 hover:scale-[1.02]">
         <p id="app-subtitle" class="text-gray-600 text-lg font-medium">بوابة الجمال والأناقة في فلسطين.</p>
+        <!-- Inline, non-sticky install banner inside auth header -->
+        <div id="header-install-banner" class="w-full px-3 mt-3" style="display:none;">
+            <div class="max-w-lg mx-auto bg-white border border-[#06C167]/30 text-[#1E293B] rounded-xl shadow-md p-2 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-download text-[#06C167]"></i>
+                    <span class="text-xs font-semibold">لتجربة أسرع وأغنى، ثبّت التطبيق الآن</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="header-install-now-btn" class="bg-[#06C167] hover:bg-[#05ac5d] text-white text-xs font-bold px-3 py-1.5 rounded-lg">تثبيت الآن</button>
+                    <button id="dismiss-header-banner-btn" class="bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg">لاحقاً</button>
+                </div>
+            </div>
+        </div>
     </header>
 
     <!-- Message Box (Toast) -->
@@ -838,6 +851,34 @@ function switchRole(role) {
 document.addEventListener('DOMContentLoaded', () => {
     window.authManager = new AuthManager();
 });
+</script>
+
+<script src="/app-mode.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var isStandalone = window.AppMode && window.AppMode.isStandalone && window.AppMode.isStandalone();
+    var userChoice = window.AppMode && window.AppMode.getUserModeChoice && window.AppMode.getUserModeChoice();
+    // If installed, do not show install banner in auth page
+    var isBrowserMode = !isStandalone;
+
+    var headerBanner = document.getElementById('header-install-banner');
+    var headerInstallBtn = document.getElementById('header-install-now-btn');
+    var dismissHeaderBannerBtn = document.getElementById('dismiss-header-banner-btn');
+
+    if (isBrowserMode && headerBanner) headerBanner.style.display = 'block';
+
+    if (dismissHeaderBannerBtn && headerBanner) {
+      dismissHeaderBannerBtn.addEventListener('click', function(){
+        headerBanner.style.display = 'none';
+      });
+    }
+    if (headerInstallBtn) {
+      headerInstallBtn.addEventListener('click', async function(){
+        try { if (window.AppMode && window.AppMode.promptInstall) { await window.AppMode.promptInstall(); } }
+        catch(e) {}
+      });
+    }
+  });
 </script>
 
 </body>

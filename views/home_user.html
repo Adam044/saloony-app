@@ -20,12 +20,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script>
         (function() {
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-            if (!isStandalone) {
-                window.location.replace('/index.html');
-                return;
-            }
-
             const token = localStorage.getItem('salonni_token');
             const userRaw = localStorage.getItem('salonni_user');
             const user = userRaw ? JSON.parse(userRaw) : null;
@@ -313,9 +307,10 @@
         
         /* Salon Card Click Animation */
         .salon-card-clicked {
-            transform: none; /* Disable click zoom */
-            opacity: 0.8;
-            transition: opacity 0.2s ease-out;
+            transform: scale(0.98);
+            opacity: 0.85;
+            filter: saturate(0.95);
+            transition: transform 0.15s ease-out, opacity 0.2s ease-out;
         }
 
         /* Booking Modal Styles */
@@ -627,18 +622,34 @@
 <div class="min-h-screen flex flex-col">
     
     <!-- Header (Fixed at top) -->
-    <header id="app-header" class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20" style="padding-top: env(safe-area-inset-top);">
-        <div class="flex items-center pl-8 pr-4">
-            <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+    <header id="app-header" class="bg-primary-dark shadow-lg p-2 w-full z-20" style="padding-top: env(safe-area-inset-top);">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center pl-8 pr-4">
+                <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
+                    <i class="fas fa-sign-out-alt text-lg"></i>
+                </button>
+            </div>
         </div>
-        <div class="flex items-center">
-            <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
-                <i class="fas fa-sign-out-alt text-lg"></i>
-            </button>
+        <!-- Inline, non-sticky install banner inside header -->
+        <div id="header-install-banner" class="w-full px-3 mt-2" style="display:none;">
+            <div class="max-w-4xl mx-auto bg-white border border-[#06C167]/30 text-[#1E293B] rounded-xl shadow-md p-2 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-download text-[#06C167]"></i>
+                    <span class="text-xs font-semibold">لتجربة أسرع وأغنى، ثبّت التطبيق الآن</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="header-install-now-btn" class="bg-[#06C167] hover:bg-[#05ac5d] text-white text-xs font-bold px-3 py-1.5 rounded-lg">تثبيت الآن</button>
+                    <button id="dismiss-header-banner-btn" class="bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg">لاحقاً</button>
+                </div>
+            </div>
         </div>
     </header>
 
     <main class="flex-grow pt-[60px] w-full pull-to-refresh">
+        <!-- Browser-only install banner removed; replaced by header-inline banner -->
         <div class="refresh-indicator">
             <i class="fas fa-arrow-down"></i>
         </div>
@@ -811,7 +822,7 @@
     </main>
 
 <!-- Bottom Navigation Bar (Fixed for PWA feel) -->
-<nav class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 p-2 flex items-center justify-around shadow-2xl" 
+<nav id="bottom-nav" class="bg-white/95 backdrop-blur-sm border-t-2 border-secondary/20 p-2 flex items-center justify-around shadow-2xl" 
      style="position: fixed !important; 
             bottom: 0 !important; 
             left: 0 !important; 
@@ -848,6 +859,74 @@
     </button>
 </nav>
 </div>
+
+<!-- Hamburger menu removed per UX decision -->
+
+<!-- Browser-mode Install Reminder Modal -->
+<div id="install-reminder" class="fixed inset-0 bg-black/40 z-[100001] hidden">
+  <div class="bg-white max-w-sm mx-auto mt-24 rounded-2xl shadow-2xl p-6 text-center">
+    <div class="flex justify-center mb-3">
+      <i class="fas fa-download text-secondary text-2xl"></i>
+    </div>
+    <h4 class="text-lg font-bold text-primary-dark mb-2">حمّل التطبيق للحصول على تجربة أفضل</h4>
+    <p class="text-sm text-gray-600 mb-4">تثبيت التطبيق يمنحك سرعة وأداء أفضل، وإشعارات فورية.</p>
+    <div class="flex gap-3">
+      <button id="install-now-btn" class="flex-1 bg-secondary text-white font-bold rounded-xl py-2">تثبيت الآن</button>
+      <button id="dismiss-reminder-btn" class="flex-1 bg-gray-200 text-gray-700 font-bold rounded-xl py-2">لاحقاً</button>
+    </div>
+  </div>
+</div>
+
+<!-- App-mode helper and browser-mode init -->
+<script src="/app-mode.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var isStandalone = window.AppMode && window.AppMode.isStandalone && window.AppMode.isStandalone();
+    var userChoice = window.AppMode && window.AppMode.getUserModeChoice && window.AppMode.getUserModeChoice();
+    // If running standalone (installed), always treat as app mode regardless of past choice
+    var isBrowserMode = !isStandalone;
+
+    var bottomNav = document.getElementById('bottom-nav');
+    var headerBanner = document.getElementById('header-install-banner');
+    var headerInstallBtn = document.getElementById('header-install-now-btn');
+    var dismissHeaderBannerBtn = document.getElementById('dismiss-header-banner-btn');
+    // Keep bottom navigation visible for all modes; show header banner for browser mode
+    if (bottomNav) bottomNav.style.display = 'flex';
+    if (isBrowserMode && headerBanner) headerBanner.style.display = 'block';
+    // Header banner actions (no persistence; hides for current page only)
+    if (dismissHeaderBannerBtn && headerBanner) {
+      dismissHeaderBannerBtn.addEventListener('click', function(){
+        headerBanner.style.display = 'none';
+      });
+    }
+    if (headerInstallBtn) {
+      headerInstallBtn.addEventListener('click', async function(){
+        try { if (window.AppMode && window.AppMode.promptInstall) { await window.AppMode.promptInstall(); } }
+        catch(e) {}
+      });
+    }
+
+    // Install reminder
+    var installModal = document.getElementById('install-reminder');
+    var installBtn = document.getElementById('install-now-btn');
+    var dismissBtn = document.getElementById('dismiss-reminder-btn');
+    if (isBrowserMode && window.AppMode && window.AppMode.shouldShowInstallReminder && window.AppMode.shouldShowInstallReminder('home_user')) {
+      if (installModal) installModal.classList.remove('hidden');
+      if (installBtn) installBtn.addEventListener('click', async function(){
+        try { if (window.AppMode && window.AppMode.promptInstall) { await window.AppMode.promptInstall(); } }
+        catch(e) {}
+        finally {
+          if (installModal) installModal.classList.add('hidden');
+          if (window.AppMode && window.AppMode.markReminderShown) { window.AppMode.markReminderShown('home_user'); }
+        }
+      });
+      if (dismissBtn) dismissBtn.addEventListener('click', function(){
+        if (installModal) installModal.classList.add('hidden');
+        if (window.AppMode && window.AppMode.markReminderShown) { window.AppMode.markReminderShown('home_user'); }
+      });
+    }
+  });
+</script>
 
 <!-- Booking Modal Structure (Full Screen) -->
 
