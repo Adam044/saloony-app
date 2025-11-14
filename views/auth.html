@@ -541,6 +541,10 @@ class AuthManager {
                     } else if (result.user.user_type === 'user') {
                          setTimeout(() => {
                             window.location.href = '/home_user.html';
+                         }, 1500);
+                    } else if (result.user.user_type === 'employee') {
+                        setTimeout(() => {
+                            window.location.href = '/employee_dashboard.html';
                         }, 1500);
                     }
                 }

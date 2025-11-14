@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <script src="/offline-detect.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Saloony - لوحة الموظف</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+  <!-- NOTE: Assuming dashboard.css and admin.css are not essential for styling the *new* components -->
+  <link rel="stylesheet" href="/admin/assets/dashboard.css">
+  <link rel="stylesheet" href="/admin/assets/admin.css">
+  <style>
+    /* Global Variables & Colors */
+    :root {
+      --color-primary: #1E293B; /* Dark Blue */
+      --color-secondary: #06C167; /* Green Accent */
+      --tier-bronze: #CC8757; /* Richer Bronze */
+      --tier-silver: #A9B3BD; /* Polished Silver */
+      --tier-gold: #FFC72C; /* Bright Gold */
+      --tier-diamond: #4FD1C5; /* Aqua/Teal for Elite */
+    }
+    /* Base Styles */
+    body { background-color: #f8fafc; } /* Light background for integrated feel */
+    .bg-primary-dark { background-color: var(--color-primary); }
+    .text-primary-dark { color: var(--color-primary); }
+    .text-secondary { color: var(--color-secondary); }
+    .bg-secondary { background-color: var(--color-secondary); }
+    .bg-secondary-soft { background-color: rgba(6, 193, 103, 0.08); }
+    .border-secondary { border-color: var(--color-secondary); }
+    
+    /* Bottom nav active styling */
+    #bottom-nav { border-top: 1px solid #e2e8f0; }
+    #bottom-nav .nav-item.nav-active { color: var(--color-secondary); background-color: rgba(6, 193, 103, 0.10); }
+    
+    /* Card Polish - Sleeker and more unified */
+    .card { background: #ffffff; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+    .card.modern { box-shadow: 0 4px 10px rgba(30,41,59,0.05); transition: transform .15s ease, box-shadow .15s ease; }
+    .kpi-card .label { font-weight: 600; color: #4b5563; }
+    .kpi-card .value { font-weight: 800; color: var(--color-primary); font-size: 1.5rem; }
+    .section-title { font-weight: 800; color: var(--color-primary); margin-bottom: 8px; font-size: 1.5rem; }
+    
+    /* Grid Layouts */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    
+    /* Buttons */
+    .btn-primary-soft { background:var(--color-secondary); color:#fff; border-radius:12px; padding:10px 14px; font-weight:700; box-shadow:0 6px 14px rgba(6,193,103,0.18); transition: transform .15s ease, box-shadow .15s ease; }
+    .btn-primary-soft:hover { transform: translateY(-1px); box-shadow:0 8px 18px rgba(6,193,103,0.24); }
+
+    /* NEW: Gamified Card Styling */
+    .milestone-card {
+        background: #ffffff;
+        border-radius: 16px;
+        position: relative;
+        overflow: hidden;
+        border: 2px solid #f0f4f8; 
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        padding: 1rem;
+    }
+    .milestone-card.claimable { 
+        border: 2px solid var(--tier-gold); 
+        box-shadow: 0 0 20px rgba(255, 199, 44, 0.5); 
+        animation: neon-glow 1.5s infinite alternate; 
+    }
+    @keyframes neon-glow {
+        from { box-shadow: 0 0 10px rgba(255, 199, 44, 0.3), 0 0 0 rgba(255, 199, 44, 0); }
+        to { box-shadow: 0 0 20px rgba(255, 199, 44, 0.6), 0 0 5px rgba(255, 199, 44, 0.1); }
+    }
+    
+    .tier-badge-icon {
+        min-width: 44px; height: 44px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; color: #fff;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .tier-bronze .tier-badge-icon { background: var(--tier-bronze); }
+    .tier-silver .tier-badge-icon { background: var(--tier-silver); }
+    .tier-gold .tier-badge-icon { background: var(--tier-gold); }
+    .tier-diamond .tier-badge-icon { background: var(--tier-diamond); }
+
+    /* NEW: The Ascent Progress Bar (Hero Component) */
+    .ascent-container {
+        position: relative;
+        min-height: 140px;
+        background: var(--color-primary);
+        border-radius: 18px;
+        padding: 16px 20px;
+        overflow: visible;
+        box-shadow: inset 0 0 15px rgba(0,0,0,0.4), 0 4px 15px rgba(0,0,0,0.2);
+        background-image: linear-gradient(135deg, #1E293B, #111827);
+        margin-bottom: 20px;
+    }
+    .ascent-track {
+        height: 40px;
+        background: #2D3A4B; 
+        border-radius: 20px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.4) inset;
+    }
+    .ascent-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #14b8a6, var(--color-secondary)); 
+        width: 0%;
+        transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+        position: relative;
+    }
+    .ascent-marker {
+        position: absolute;
+        top: 0;
+        transform: translate(-50%, -15px);
+        font-size: 10px;
+        color: #fff;
+        font-weight: 700;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+    .ascent-icon {
+        position: absolute;
+        height: 50px;
+        width: 50px;
+        top: -5px;
+        left: var(--icon-pos, 0%);
+        transform: translateX(-50%);
+        transition: left 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 0 15px rgba(6, 193, 103, 0.8), 0 0 3px rgba(0,0,0,0.3);
+        z-index: 10;
+        color: var(--color-primary);
+        font-size: 24px;
+        animation: progress-pulse 0.5s ease-in-out;
+    }
+    @keyframes progress-pulse { 0%{ transform: translateX(-50%) scale(1)} 50%{ transform: translateX(-50%) scale(1.1)} 100%{ transform: translateX(-50%) scale(1)} }
+
+    .next-reward-callout {
+        color: #fff;
+        text-align: center;
+        margin-top: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    }
+    .next-reward-amount {
+        font-size: 1.25rem;
+        color: var(--tier-gold);
+        margin-right: 4px;
+    }
+    .pulse { animation: pulse .8s ease; }
+    @keyframes pulse { 0%{ transform:scale(1)} 50%{ transform:scale(1.03)} 100%{ transform:scale(1)} }
+    
+  </style>
+</head>
+<body class="modal-closed page-transition page-fade-in">
+
+<div class="min-h-screen flex flex-col" style="padding-bottom: 80px;">
+  <!-- App Header (same as home_user/home_salon) -->
+  <header id="app-header" class="bg-primary-dark shadow-lg p-2 w-full z-20" style="padding-top: env(safe-area-inset-top);">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center pl-8 pr-4">
+        <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=EMP';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="logout-btn" class="text-white/80 hover:text-red-400 transition duration-150 p-2 rounded-lg hover:bg-white/10">
+          <i class="fas fa-sign-out-alt text-lg"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow pt-[60px] w-full p-4"> <!-- Added p-4 to main for mobile padding -->
+    <canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:9999"></canvas>
+    <!-- Motivational Today View -->
+    <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium" role="alert"></div>
+
+    <!-- Tab: Today -->
+    <section class="card kpi-card view-content" id="today-view" style="padding: 16px;">
+      <div class="flex justify-between items-center">
+        <div>
+          <div class="label text-xl font-extrabold" style="color:var(--color-primary)">مرحباً، <span id="emp-name" style="color:#0b1320"></span></div>
+          <div class="muted text-sm flex items-center gap-1">لنبني يومنا بإيجابية <i class="fas fa-fist-raised text-yellow-500"></i></div>
+    </section>
+
+    <!-- Today summary KPIs -->
+    <section class="grid grid-2 view-content" id="today-summary">
+      <div class="card kpi-card modern">
+        <div class="label">زيارات اليوم</div>
+        <div class="flex items-center justify-between">
+          <div class="value"><span id="kpi-visits">0</span><span class="muted text-lg" style="margin-right:6px">/ <span id="target-visits">15</span></span></div>
+          <div class="ring mini" id="ring-visits" style="--pct:0%"><span class="ring-val">0%</span></div>
+        </div>
+      </div>
+      <div class="card kpi-card modern">
+        <div class="label">آخر زيارة</div>
+        <div class="value text-2xl" id="kpi-last">—</div>
+      </div>
+    </section>
+
+    <!-- Today Registrations and Commissions -->
+    <section class="grid grid-2 view-content" id="today-kpis" style="margin-top:0;">
+      <div class="card kpi-card modern">
+        <div class="label">التسجيلات اليوم</div>
+        <div class="flex items-center justify-between">
+          <div class="value text-2xl"><span id="kpi-signups">0</span><span class="muted text-lg" style="margin-right:6px">/ <span id="target-signups">2</span></span></div>
+          <div class="ring mini" id="ring-signups" style="--pct:0%"><span class="ring-val">0%</span></div>
+        </div>
+        <div class="progress" style="height:8px; background:#e5e7eb; border-radius:8px; margin-top:8px">
+          <div id="bar-signups" style="height:8px; background:#06C167; border-radius:8px; width:0%"></div>
+        </div>
+      </div>
+      <div class="card kpi-card modern">
+        <div class="label">عمولة اليوم</div>
+        <div class="value text-2xl" id="kpi-commission-today">₪0</div>
+      </div>
+    </section>
+
+    <!-- Visits list -->
+    <section class="card view-content" id="today-visits">
+      <div class="card-header flex justify-between items-center mb-3">
+        <span class="text-lg font-bold">سجل زيارات اليوم</span>
+        <button id="new-visit-btn" class="btn btn-outline bg-secondary text-white rounded-lg px-3 py-1 text-sm font-medium hover:bg-green-600 transition duration-150"><i class="fas fa-plus mr-1"></i><span>إضافة زيارة</span></button>
+      </div>
+      <div id="visits-list">
+        <p class="muted text-center">لا توجد زيارات بعد</p>
+      </div>
+    </section>
+
+    <!-- Tab: Milestones -->
+    <section id="milestones-view" class="view-content hidden">
+      <!-- Motivational Title: Operation Peak Performance -->
+      <div class="analytics-header mb-4">
+        <div class="section-title text-2xl" style="color:var(--color-primary)"><i class="fas fa-fighter-jet text-blue-500 ml-2"></i> المهام والترقيات (Sales Quest)</div>
+        <div class="muted text-sm">كل تفعيل يقرّبك من الهدف الأسمى والمكافأة الفورية!</div>
+      </div>
+      
+      <div id="milestones-cta" class="milestone-cta modern" style="display:none">
+        <div>
+          <div class="label" style="font-size:1.1rem">ابدأ مهمة الصعود الآن!</div>
+          <div class="muted text-sm">ستمتد دورة الإنجازات 60 يوماً من لحظة البداية.</div>
+        </div>
+        <button id="milestones-start" class="btn-primary-soft"><i class="fas fa-rocket ml-2"></i> انطلق</button>
+      </div>
+
+      <div id="milestones-content" style="display:none">
+        
+        <!-- Ascent Progress Bar (Hero Component) -->
+        <div class="ascent-container">
+          <div class="flex justify-between text-white font-bold mb-2">
+            <span id="milestones-acts-hero">0 / 100 تفعيل</span>
+            <span id="milestones-days-left-hero"></span>
+          </div>
+          <div class="ascent-track">
+            <!-- Markers -->
+            <div class="ascent-marker" style="left: 10%;"><i class="fas fa-circle-notch"></i> 10</div>
+            <div class="ascent-marker" style="left: 25%;"><i class="fas fa-circle-notch"></i> 25</div>
+            <div class="ascent-marker" style="left: 50%;"><i class="fas fa-circle-notch"></i> 50</div>
+            <div class="ascent-marker" style="left: 98%;">100 <i class="fas fa-trophy text-yellow-300"></i></div>
+            <!-- Progress Fill -->
+            <div id="milestones-ascent-fill" class="ascent-fill">
+              <!-- Icon tracks the progress -->
+              <div id="ascent-icon" class="ascent-icon" style="--icon-pos: 0%;"><i class="fas fa-star"></i></div>
+            </div>
+          </div>
+          <!-- Next Reward Callout -->
+          <div id="milestones-next-goal-hero" class="next-reward-callout"></div>
+        </div>
+        
+        <!-- Quest Log / Milestone Cards -->
+        <div id="milestone-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Cards will be populated by JS -->
+        </div>
+        
+      </div>
+    </section>
+
+    <!-- Tab: Analytics & Revenue -->
+    <section id="analytics-view" class="view-content hidden">
+      <div class="analytics-header">
+        <div class="section-title text-2xl"><i class="fas fa-chart-line text-blue-500 ml-2"></i> التحليلات العامة</div>
+        <div class="analytics-subtitle">نظرة إجمالية على الأداء</div>
+      </div>
+      <div class="analytics-grid">
+        <div class="card kpi-card modern">
+          <div class="label">إجمالي التفعيلات المدفوعة</div>
+          <div class="flex items-center justify-between">
+            <div class="value text-2xl" id="kpi-act-all">0</div>
+            <div class="ring mini" id="ring-act-all" style="--pct:0%"><span class="ring-val">0%</span></div>
+          </div>
+        </div>
+        <div class="card kpi-card modern"><div class="label">إجمالي المهتمين</div><div class="value text-2xl" id="kpi-int-all">0</div></div>
+        <div class="card kpi-card modern"><div class="label">إجمالي غير المهتمين</div><div class="value text-2xl" id="kpi-no-all">0</div></div>
+      </div>
+      <div class="grid grid-1" style="margin-top:12px">
+        <div class="card kpi-card modern revenue-card">
+          <div class="label">الإيراد الإجمالي</div>
+          <div class="value text-3xl" id="kpi-rev-all">0 ILS</div>
+        </div>
+      </div>
+      <!-- Removed: رواتب وتحفيز and أفضل الموظفين sections -->
+    </section>
+  </main>
+
+  <!-- New Visit Modal -->
+  <div id="visit-modal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <strong>إضافة زيارة</strong>
+        <button id="visit-cancel" class="btn btn-outline"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="grid grid-2">
+          <div>
+            <label class="muted">اسم الصالون</label>
+            <input id="visit-salon" class="w-full border rounded-lg p-2" placeholder="اكتب اسم الصالون" />
+          </div>
+          <div>
+            <label class="muted">3️⃣ الحالة</label>
+            <select id="visit-status" class="w-full border rounded-lg p-2">
+              <option value="activated" data-detail="paid">🟢 مفعّل (مدفوع)</option>
+              <option value="interested" data-detail="registered">🟡 مسجّل</option>
+              <option value="interested" data-detail="needs_time">🕓 مهتم – لم يقرر بعد</option>
+              <option value="not_interested" data-detail="not_now">🔴 غير مهتم حالياً</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="muted">4️⃣ مستوى الاهتمام (0–10)</label>
+          <input type="range" id="visit-interest" min="0" max="10" value="5" class="w-full">
+          <div class="muted">🎯 مدى اهتمام صاحب الصالون: <span id="interest-value">5</span>/10</div>
+        </div>
+        <label class="muted" style="margin-top:8px; display:block">ملاحظات</label>
+        <textarea id="visit-comments" class="w-full border rounded-lg p-2" rows="3" placeholder="أي تفاصيل إضافية"></textarea>
+        <div class="actions" style="margin-top:12px">
+          <button id="visit-save" class="btn btn-accent"><i class="fas fa-check"></i><span>حفظ</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar (Fixed, same style as home pages) -->
+  <nav id="bottom-nav" class="bg-white/95 backdrop-blur-sm p-2 flex items-center justify-around shadow-2xl" 
+       style="position: fixed !important; 
+              bottom: 0 !important; 
+              left: 0 !important; 
+              right: 0 !important; 
+              width: 100vw !important; 
+              z-index: 99999 !important;
+              min-height: 60px !important;
+              box-sizing: border-box !important;
+              margin: 0 !important;
+              padding-bottom: env(safe-area-inset-bottom) !important;
+              transform: none !important;">
+    <button id="nav-today" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="today-view">
+      <i class="fas fa-home text-xl"></i>
+      <span class="text-xs font-bold mt-1">اليوم</span>
+    </button>
+    <button id="nav-milestones" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="milestones-view">
+      <i class="fas fa-flag-checkered text-xl"></i> <!-- Changed icon -->
+      <span class="text-xs font-medium mt-1">الإنجازات</span>
+    </button>
+    <button id="nav-analytics" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="analytics-view">
+      <i class="fas fa-chart-line text-xl"></i>
+      <span class="text-xs font-medium mt-1">التحليلات</span>
+    </button>
+  </nav>
+
+  <script>
+    function showMessage(text, type='info') {
+      const box = document.getElementById('message-box');
+      box.textContent = text;
+      box.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-3xl mx-auto';
+      if (type === 'success') box.classList.add('bg-green-100','text-green-800');
+      else if (type === 'error') box.classList.add('bg-red-100','text-red-800');
+      else box.classList.add('bg-blue-100','text-blue-800');
+      box.classList.remove('hidden');
+      setTimeout(() => box.classList.add('hidden'), 3000);
+    }
+
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (_) { return null; }
+    }
+
+    async function attemptRefresh() {
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data && data.access_token) {
+          localStorage.setItem('salonni_token', data.access_token);
+          return data.access_token;
+        }
+        return null;
+      } catch (_) { return null; }
+    }
+
+    function tokenSecondsLeft(token) {
+      const payload = parseJwt(token);
+      if (!payload || !payload.exp) return 0;
+      return Math.floor(payload.exp - (Date.now() / 1000));
+    }
+
+    function scheduleTokenRefresh() {
+      const intervalMs = 60000;
+      setInterval(async () => {
+        try {
+          const t = localStorage.getItem('salonni_token');
+          if (!t) return;
+          const left = tokenSecondsLeft(t);
+          if (left <= 120) {
+            await attemptRefresh();
+          }
+        } catch (_) {}
+      }, intervalMs);
+    }
+
+    function ensureEmployeeOrRedirect() {
+      const userStr = localStorage.getItem('salonni_user');
+      const token = localStorage.getItem('salonni_token');
+      if (!userStr || !token) { location.href = '/auth.html'; return null; }
+      const user = JSON.parse(userStr);
+      const payload = parseJwt(token);
+      if (!user || user.user_type !== 'employee' || !payload || payload.role !== 'employee') {
+        // Redirect based on type if known
+        if (user && user.user_type === 'salon') location.href = '/home_salon.html';
+        else if (user && user.user_type === 'user') location.href = '/home_user.html';
+        else location.href = '/auth.html';
+        return null;
+      }
+      return token;
+    }
+
+    const defaultGoals = { signups: 2, visits: 15 };
+
+    function openVisitModal() {
+      const backdrop = document.getElementById('visit-modal');
+      backdrop.style.display = 'flex';
+    }
+    function closeVisitModal() {
+      const backdrop = document.getElementById('visit-modal');
+      backdrop.style.display = 'none';
+      // reset fields
+      const salonInput = document.getElementById('visit-salon');
+      const statusSelect = document.getElementById('visit-status');
+      const commentsArea = document.getElementById('visit-comments');
+      const interestSlider = document.getElementById('visit-interest');
+      const interestDisplay = document.getElementById('interest-value');
+      if (salonInput) salonInput.value = '';
+      if (statusSelect) statusSelect.selectedIndex = 0;
+      if (commentsArea) commentsArea.value = '';
+      if (interestSlider) interestSlider.value = 5;
+      if (interestDisplay) interestDisplay.textContent = '5';
+    }
+
+    async function saveVisit() {
+      const token = ensureEmployeeOrRedirect();
+      if (!token) return;
+      const salon = document.getElementById('visit-salon').value.trim();
+      const statusEl = document.getElementById('visit-status');
+      const status = statusEl.value;
+      const interestLevel = Number(document.getElementById('visit-interest').value || 0);
+      const commentsInput = document.getElementById('visit-comments').value.trim();
+      const comments = `${commentsInput}${commentsInput ? ' | ' : ''}اهتمام: ${interestLevel}/10`;
+      try {
+        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments, interest_level: interestLevel }) });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showMessage('تم حفظ الزيارة', 'success');
+          closeVisitModal();
+          loadToday();
+        } else {
+          showMessage(data.message || 'فشل حفظ الزيارة', 'error');
+        }
+      } catch (_) { showMessage('خطأ في الاتصال بالخادم', 'error'); }
+    }
+
+    async function loadToday() {
+      const token = ensureEmployeeOrRedirect();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/employee/analytics/today', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok || !data.success) { document.getElementById('visits-list').innerHTML = '<p class="text-center text-red-600 p-6">فشل تحميل بيانات اليوم</p>'; return; }
+        const visits = data.visits || [];
+        // Update KPIs
+        document.getElementById('kpi-visits').textContent = String(visits.length);
+        const last = visits[0] || visits[visits.length - 1];
+        document.getElementById('kpi-last').textContent = last ? new Date(last.visited_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
+        // Session removed: focus on today's analytics only
+        if (visits.length === 0) {
+          document.getElementById('visits-list').innerHTML = '<p class="muted text-center">لا توجد زيارات بعد</p>';
+        } else {
+          // Render visit cards: show ONLY time (no date)
+          document.getElementById('visits-list').innerHTML = visits.map(v => {
+            const timeOnly = new Date(v.visited_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            const statusDetail = (v.status_detail || '').toLowerCase();
+            const interestVal = (() => {
+              if (typeof v.interest_level !== 'undefined' && v.interest_level !== null) return Number(v.interest_level);
+              try { const m = (v.comments || '').match(/اهتمام:\s*(\d+)\/10/); return m ? Number(m[1]) : NaN; } catch (_) { return NaN; }
+            })();
+            const interestBadge = isNaN(interestVal) ? '' : `<span class='badge badge-blue flex items-center gap-1 text-xs px-2 py-1 rounded-full' style='background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);'><i class="fas fa-star text-xs"></i> ${interestVal.toLocaleString('en-US')}/10</span>`;
+            const statusBadge = (v.status === 'activated')
+              ? `<span class='badge badge-green text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-700'>مفعّل</span>`
+              : (v.status === 'interested')
+                ? (statusDetail === 'registered' ? `<span class='badge badge-blue text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-700'>مسجّل</span>` : `<span class='badge badge-blue text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-700'>مهتم</span>`)
+                : `<span class='badge badge-red text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-700'>غير مهتم</span>`;
+            
+            // Format card for better mobile integration
+            return `
+            <div class="card modern p-3 mb-3 border border-gray-100">
+              <div class="flex justify-between items-start border-b pb-2 mb-2 border-gray-100">
+                <div class="text-sm font-semibold text-gray-700">${(v.salon_name || '—').replace(/</g,'&lt;')}</div>
+                <div class="text-xs text-gray-400">${timeOnly}</div>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <div class="flex items-center gap-2">
+                    ${statusBadge}
+                    ${interestBadge}
+                </div>
+                <div class="text-xs text-gray-500 truncate max-w-[50%]">${(v.comments || '').replace(/</g,'&lt;').replace(/\|\s*paid/gi,'').split(' | ')[0]}</div>
+              </div>
+            </div>`;
+          }).join('');
+          // Compute and update today's KPIs locally (signups, interest, commissions)
+          const activatedCount = visits.filter(v => v.status === 'activated').length;
+          // Signups today (activated counts as paid signup) + progress
+          const signupsTarget = Number((localStorage.getItem('emp_goal_signups')) || defaultGoals.signups);
+          document.getElementById('kpi-signups').textContent = activatedCount.toLocaleString('en-US');
+          document.getElementById('target-signups').textContent = String(signupsTarget);
+          const pctSignups = Math.min(100, Math.round((activatedCount / Math.max(1, signupsTarget)) * 100));
+          document.getElementById('bar-signups').style.width = pctSignups + '%';
+          const ringSignups = document.getElementById('ring-signups');
+          if (ringSignups) {
+            ringSignups.style.setProperty('--pct', pctSignups + '%');
+            const valEl = ringSignups.querySelector('.ring-val'); if (valEl) valEl.textContent = pctSignups + '%';
+          }
+          // Commissions today: 20 ILS per paid signup
+          const commissionToday = activatedCount * 20;
+          document.getElementById('kpi-commission-today').textContent = `₪${commissionToday.toLocaleString('en-US')}`;
+          const visitsTarget = Number((localStorage.getItem('emp_goal_visits')) || defaultGoals.visits);
+          const pctVisits = Math.min(100, Math.round((visits.length / Math.max(1, visitsTarget)) * 100));
+          const ringVisits = document.getElementById('ring-visits');
+          if (ringVisits) { ringVisits.style.setProperty('--pct', pctVisits + '%'); const rv = ringVisits.querySelector('.ring-val'); if (rv) rv.textContent = pctVisits + '%'; }
+        }
+      } catch (_) { document.getElementById('visits-list').innerHTML = '<p class="text-center text-red-600 p-6">حدث خطأ</p>'; }
+    }
+
+    async function loadAnalytics() {
+      const token = ensureEmployeeOrRedirect();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/employee/analytics/summary', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok || !data.success) return;
+        const a = data.all || {}; const rev = data.revenue || {};
+        // Overall KPIs
+        const actAll = Number(a.activated || 0);
+        const intAll = Number(a.interested || 0);
+        const noAll = Number(a.not_interested || 0);
+        document.getElementById('kpi-act-all').textContent = actAll.toLocaleString('en-US');
+        const elIntAll = document.getElementById('kpi-int-all'); if (elIntAll) elIntAll.textContent = intAll.toLocaleString('en-US');
+        const elNoAll = document.getElementById('kpi-no-all'); if (elNoAll) elNoAll.textContent = noAll.toLocaleString('en-US');
+        // Revenue: show only total with ILS suffix
+        const revAll = Number(rev.all || actAll * 20 || 0);
+        const elRevAll = document.getElementById('kpi-rev-all'); if (elRevAll) elRevAll.textContent = `${revAll.toLocaleString('en-US')} ILS`;
+        const ringAct = document.getElementById('ring-act-all');
+        if (ringAct) { const pctA = Math.min(100, Math.round((actAll / 100) * 100)); ringAct.style.setProperty('--pct', pctA + '%'); const rv = ringAct.querySelector('.ring-val'); if (rv) rv.textContent = pctA + '%'; }
+        
+      } catch (_) {}
+    }
+
+    function getUidKey() {
+      try {
+        const u = JSON.parse(localStorage.getItem('salonni_user') || '{}');
+        return u.id || u.user_id || u.email || u.phone || 'emp_default';
+      } catch (_) { return 'emp_default'; }
+    }
+    function getCycleBounds() {
+      const uid = getUidKey();
+      const raw = localStorage.getItem(`emp_cycle_start_${uid}`);
+      if (!raw) return null;
+      const start = new Date(Number(raw));
+      if (isNaN(start.getTime())) return null;
+      const end = new Date(start.getTime() + 60 * 24 * 60 * 60 * 1000);
+      end.setHours(23,59,59,999);
+      return { start, end };
+    }
+    function formatDateRange(start, end) {
+      const f = (d) => `${d.getDate()}/${d.getMonth()+1}/${String(d.getFullYear()).slice(-2)}`;
+      return `${f(start)} - ${f(end)}`;
+    }
+    function startMilestonesCycle() {
+      const uid = getUidKey();
+      const now = Date.now();
+      localStorage.setItem(`emp_cycle_start_${uid}`, String(now));
+      localStorage.removeItem(`emp_claims_${uid}`);
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
+      loadMilestones();
+    }
+    
+    async function loadMilestones() {
+      const token = ensureEmployeeOrRedirect();
+      if (!token) return;
+      let totalActivated = 0;
+      try {
+        const res = await fetch('/api/employee/analytics/summary', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        const a = data.all || {};
+        // totalActivated is the LIFETIME count.
+        totalActivated = Number(a.activated || 0);
+      } catch (_) {}
+      
+      const bounds = getCycleBounds();
+      const cta = document.getElementById('milestones-cta');
+      const content = document.getElementById('milestones-content');
+
+      if (!bounds || Date.now() > bounds.end.getTime()) {
+        if (bounds && Date.now() > bounds.end.getTime()) {
+          const uid = getUidKey();
+          localStorage.removeItem(`emp_cycle_start_${uid}`);
+          localStorage.removeItem(`emp_claims_${uid}`);
+        }
+        if (cta) cta.style.display = 'flex';
+        if (content) content.style.display = 'none';
+        const btn = document.getElementById('milestones-start');
+        if (btn && !btn._wired) { btn._wired = true; btn.addEventListener('click', startMilestonesCycle); }
+        return;
+      } else {
+        if (cta) cta.style.display = 'none';
+        if (content) content.style.display = 'block';
+      }
+      
+      const start = bounds.start;
+      const end = bounds.end;
+      const daysLeft = Math.max(0, Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)));
+      const totalGoal = 100;
+      const percent = Math.min(100, Math.round((totalActivated / totalGoal) * 100));
+      
+      // 1. Update Hero/Ascent Bar
+      const elActsHero = document.getElementById('milestones-acts-hero'); 
+      if (elActsHero) elActsHero.textContent = `${totalActivated} / ${totalGoal} تفعيل (دورة: ${formatDateRange(start, end)})`;
+      const elDaysHero = document.getElementById('milestones-days-left-hero'); 
+      if (elDaysHero) elDaysHero.textContent = `متبقي: ${daysLeft} يوم`;
+      const elAscentFill = document.getElementById('milestones-ascent-fill'); 
+      if (elAscentFill) elAscentFill.style.width = `${percent}%`;
+      const elAscentIcon = document.getElementById('ascent-icon'); 
+      if (elAscentIcon) {
+        // Position icon slightly before 100% to keep it on the bar
+        const iconPos = Math.min(96, percent); 
+        elAscentIcon.style.setProperty('--icon-pos', `${iconPos}%`);
+      }
+
+      const milestones = [
+        { req:10, reward:75, title:'برونز', gamifiedTitle:'Bronze Tier' },
+        { req:25, reward:200, title:'فضي', gamifiedTitle:'Silver Tier' },
+        { req:50, reward:400, title:'ذهبي', gamifiedTitle:'Gold Tier' },
+        { req:100, reward:1000, title:'ألماس', gamifiedTitle:'Diamond Tier' }
+      ];
+
+      const next = milestones.find(m => totalActivated < m.req);
+      const leftToNext = next ? Math.max(0, next.req - totalActivated) : 0;
+      const elNextHero = document.getElementById('milestones-next-goal-hero'); 
+      if (elNextHero) {
+        if (next) {
+          elNextHero.innerHTML = `مكافأة البداية عند <span class="next-reward-amount">${next.req} تفعيل</span> - تبقى لك ${leftToNext} تفعيلات!`;
+          elAscentIcon.innerHTML = `<i class="fas fa-star"></i>`;
+        } else {
+          elNextHero.innerHTML = `<span class="next-reward-amount text-white text-xl">🏆 كل الأهداف مكتملة! أنت بطل! 🏆</span>`;
+          elAscentIcon.innerHTML = `<i class="fas fa-trophy"></i>`;
+        }
+      }
+      
+      // 2. Update Milestone Cards
+      const key = `emp_claims_${getUidKey()}`;
+      const claimed = JSON.parse(localStorage.getItem(key) || '{}');
+      const container = document.getElementById('milestone-cards');
+      if (container) {
+        container.innerHTML = milestones.map(m => {
+          const pct = Math.min(100, Math.round((Math.min(totalActivated, m.req)/m.req)*100));
+          const completed = totalActivated >= m.req;
+          const claimedStatus = claimed[m.req];
+          const status = completed ? (claimedStatus ? 'تم الاستلام' : 'استلام المكافأة') : 'مقفل';
+          const near = m.req - totalActivated;
+          const motivate = completed ? 'مكتملة! عمل رائع!' : (near > 0 && near <= 5 ? `تبقّى ${near} فقط! أنت قريب جداً 🔥` : `إلى ${m.req} تفعيل`);
+          const tierClass = m.req === 10 ? 'tier-bronze' : m.req === 25 ? 'tier-silver' : m.req === 50 ? 'tier-gold' : 'tier-diamond';
+          const claimable = completed && !claimedStatus;
+          const lockIcon = `<i class="fas fa-lock text-lg text-gray-400"></i>`;
+          const claimIcon = `<i class="fas fa-hand-holding-usd text-lg"></i>`;
+          const completedIcon = `<i class="fas fa-check-circle text-lg text-secondary"></i>`;
+          
+          let statusIcon = lockIcon;
+          if (completed) {
+            statusIcon = claimedStatus ? completedIcon : claimIcon;
+          }
+          
+          const badgeIcon = m.req === 10 ? 'fa-medal' : m.req === 25 ? 'fa-star-half-alt' : m.req === 50 ? 'fa-star' : 'fa-gem';
+
+          return `
+            <div class="milestone-card ${tierClass} ${claimable ? 'claimable pulse' : ''} p-4">
+              <div class="flex items-start gap-4">
+                <div class="tier-badge-icon">
+                  <i class="fas ${badgeIcon}"></i>
+                </div>
+                <div class="flex-grow">
+                  <div class="text-lg font-extrabold" style="color:var(--color-primary)">${m.gamifiedTitle}</div>
+                  <div class="text-sm font-medium text-gray-600">${m.title}</div>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="text-2xl font-black" style="color:var(--color-secondary)">${m.reward}</span>
+                    <span class="text-base text-gray-500">₪ مكافأة</span>
+                  </div>
+                </div>
+                <div class="w-1/4 text-left">
+                    <div class="text-sm font-bold text-gray-700 mb-1">${Math.min(totalActivated, m.req)} / ${m.req}</div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="h-2.5 rounded-full" style="width: ${pct}%; background-color: var(--color-secondary);"></div>
+                    </div>
+                </div>
+              </div>
+              <div class="actions flex justify-between items-center pt-3 border-t mt-4 border-gray-100">
+                <span class="text-xs font-semibold text-gray-500">${motivate}</span>
+                <button class="flex items-center gap-2 btn ${claimable ? 'btn-primary-soft' : 'bg-gray-200 text-gray-500 cursor-default'} px-4 py-2 text-sm" data-mreq="${m.req}" ${!claimable ? 'disabled' : ''}>
+                  ${statusIcon}
+                  <span>${status}</span>
+                </button>
+              </div>
+            </div>`;
+        }).join('');
+        container.querySelectorAll('button[data-mreq]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const req = e.currentTarget.getAttribute('data-mreq');
+            if (totalActivated >= Number(req) && !claimed[req]) {
+              claimed[req] = true;
+              localStorage.setItem(key, JSON.stringify(claimed));
+              try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
+              confettiBurst();
+              showMessage(`مبروك! ${milestones.find(m => m.req === Number(req))?.gamifiedTitle} تم إنجازه! تم استلام مكافأة ${milestones.find(m => m.req === Number(req))?.reward} شيكل.`, 'success');
+              loadMilestones();
+            }
+          });
+        });
+      }
+    }
+
+    function switchView(viewId) {
+      // List of all sections that belong to the "Today" tab
+      const todaySections = ['today-view', 'today-summary', 'today-kpis', 'today-visits'];
+
+      // Hide ALL view-content sections first
+      document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+      
+      // Determine which sections to show
+      if (viewId === 'today-view') {
+        // Show all four "Today" sections
+        todaySections.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.remove('hidden');
+        });
+      } else {
+        // Show only the single section corresponding to the Milestones/Analytics tab
+        const el = document.getElementById(viewId);
+        if (el) el.classList.remove('hidden');
+      }
+
+      // Update nav styles
+      document.querySelectorAll('#bottom-nav .nav-item').forEach(nav => {
+        nav.classList.remove('nav-active', 'text-secondary', 'bg-secondary/10');
+        nav.classList.add('text-gray-500');
+      });
+      const activeNav = document.querySelector(`#bottom-nav .nav-item[data-view="${viewId}"]`);
+      if (activeNav) {
+        activeNav.classList.add('nav-active', 'text-secondary', 'bg-secondary/10');
+        activeNav.classList.remove('text-gray-500');
+      }
+      
+      // Load data per view
+      if (viewId === 'today-view') { loadToday(); }
+      if (viewId === 'milestones-view') { loadMilestones(); }
+      if (viewId === 'analytics-view') { loadAnalytics(); }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      let token = ensureEmployeeOrRedirect();
+      if (!token) return;
+      const left = tokenSecondsLeft(token);
+      if (left <= 60) {
+        const nt = await attemptRefresh();
+        if (!nt) { location.href = '/auth.html'; return; }
+        token = nt;
+      }
+      scheduleTokenRefresh();
+      try {
+        const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
+        document.getElementById('emp-name').textContent = user.name || '';
+      } catch (_) {}
+      document.getElementById('logout-btn').addEventListener('click', () => { try { localStorage.removeItem('salonni_token'); localStorage.removeItem('salonni_user'); } catch (_) {} location.href = '/auth.html'; });
+      // Update interest display live
+      const interestSlider = document.getElementById('visit-interest');
+      const interestDisplay = document.getElementById('interest-value');
+      if (interestSlider && interestDisplay) {
+        interestSlider.addEventListener('input', () => { interestDisplay.textContent = String(interestSlider.value); });
+      }
+      document.getElementById('new-visit-btn').addEventListener('click', openVisitModal);
+      document.getElementById('visit-cancel').addEventListener('click', closeVisitModal);
+      document.getElementById('visit-save').addEventListener('click', saveVisit);
+      // Bottom nav view switching
+      document.querySelectorAll('#bottom-nav .nav-item').forEach(btn => btn.addEventListener('click', (e) => {
+        e.preventDefault(); const v = btn.getAttribute('data-view'); switchView(v);
+      }));
+      switchView('today-view');
+    });
+
+    function confettiBurst() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const colors = ['#06C167','#f59e0b','#14b8a6','#3b82f6','#ec4899'];
+      const pieces = [];
+      // Use the center of the ascent bar for a more targeted burst effect
+      const milestoneView = document.getElementById('milestones-view');
+      const burstX = canvas.width * 0.5;
+      const burstY = milestoneView ? milestoneView.offsetTop + milestoneView.clientHeight / 3 : canvas.height * 0.35;
+
+      for (let i = 0; i < 150; i++) {
+        pieces.push({
+          x: burstX,
+          y: burstY,
+          r: Math.random() * 4 + 2,
+          c: colors[Math.floor(Math.random() * colors.length)],
+          a: Math.random() * Math.PI * 2,
+          s: Math.random() * 6 + 4, // Higher initial speed for more pop
+          d: 0.02
+        });
+      }
+      function step() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        pieces.forEach((p,i) => {
+          p.x += Math.cos(p.a) * p.s;
+          p.y += Math.sin(p.a) * p.s + 0.4;
+          p.s *= (1 - p.d);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.fillStyle = p.c;
+          ctx.fill();
+          if (p.s < 0.2) pieces.splice(i,1);
+        });
+        if (pieces.length) requestAnimationFrame(step);
+        else { canvas.width = 0; canvas.height = 0; }
+      }
+      step();
+    }
+  </script>
+
+</div>
+</body>
+</html>

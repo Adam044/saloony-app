@@ -3456,6 +3456,46 @@ function parseJwt(token) {
     }
 }
 
+async function attemptRefresh() {
+    try {
+        const res = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({})
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data && data.access_token) {
+            localStorage.setItem('salonni_token', data.access_token);
+            return data.access_token;
+        }
+        return null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function tokenSecondsLeft(token) {
+    const payload = parseJwt(token);
+    if (!payload || !payload.exp) return 0;
+    return Math.floor(payload.exp - (Date.now() / 1000));
+}
+
+function scheduleTokenRefresh() {
+    const intervalMs = 60000;
+    setInterval(async () => {
+        try {
+            const t = localStorage.getItem('salonni_token');
+            if (!t) return;
+            const left = tokenSecondsLeft(t);
+            if (left <= 120) {
+                await attemptRefresh();
+            }
+        } catch (_) {}
+    }, intervalMs);
+}
+
 // Helper: Ensure token exists and not expired; redirect if invalid
 function ensureValidTokenOrRedirect() {
     const token = localStorage.getItem('salonni_token');
@@ -3478,7 +3518,7 @@ function ensureValidTokenOrRedirect() {
     return token;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('Home User page loaded');
     
     const storedUser = localStorage.getItem('salonni_user');
@@ -3505,11 +3545,18 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Require presence of a valid, non-expired token for protected calls
-    const token = ensureValidTokenOrRedirect();
-    if (!token) return;
+    let token = localStorage.getItem('salonni_token');
+    const payload = token && parseJwt(token);
+    if (!token || !payload || tokenSecondsLeft(token) <= 60) {
+        const newTok = await attemptRefresh();
+        if (!newTok) {
+            window.location.href = 'auth.html';
+            return;
+        }
+    }
+    scheduleTokenRefresh();
 
-    initializeEventListeners();
+    initializeEventListeners(); 
     loadUserData(); 
     loadDiscoveryData();
 

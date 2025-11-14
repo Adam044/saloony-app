@@ -8,6 +8,7 @@
     '/admin/users.html': 'nav-users',
     '/admin/renewals.html': 'nav-renewals',
     '/admin/ai_analytics.html': 'nav-analytics',
+    '/admin/saloony_employees.html': 'nav-employees',
     '/ai-analytics': 'nav-analytics' // in case of server route without extension
   };
 

@@ -177,6 +177,27 @@ async function initializeDb() {
             FOREIGN KEY (user_id) REFERENCES users(id)
         )`);
 
+        // Employee daily sessions (start-of-day marker)
+        await db.run(`CREATE TABLE IF NOT EXISTS employee_sessions (
+            id SERIAL PRIMARY KEY,
+            employee_id INTEGER NOT NULL,
+            date DATE NOT NULL DEFAULT CURRENT_DATE,
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(employee_id, date),
+            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
+
+        // Employee visits logged during field work
+        await db.run(`CREATE TABLE IF NOT EXISTS employee_visits (
+            id SERIAL PRIMARY KEY,
+            employee_id INTEGER NOT NULL,
+            salon_name TEXT NOT NULL,
+            status TEXT NOT NULL,
+            comments TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
+        )`);
+
         await db.run(`CREATE TABLE IF NOT EXISTS salon_services (
             id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
@@ -614,6 +635,25 @@ async function alignSchema() {
                 await db.run(`ALTER TABLE salon_images ADD COLUMN public_url TEXT`);
             }
 
+            // Ensure employee_sessions has ended_at and notes columns
+            try {
+                const esCols = await db.query(
+                    `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                    ['employee_sessions', 'public']
+                );
+                const esSet = new Set((esCols || []).map(c => c.column_name));
+                if (!esSet.has('ended_at')) {
+                    console.log('AlignSchema: Adding ended_at to employee_sessions (PostgreSQL)...');
+                    await db.run(`ALTER TABLE employee_sessions ADD COLUMN ended_at TIMESTAMP`);
+                }
+                if (!esSet.has('notes')) {
+                    console.log('AlignSchema: Adding notes to employee_sessions (PostgreSQL)...');
+                    await db.run(`ALTER TABLE employee_sessions ADD COLUMN notes TEXT`);
+                }
+            } catch (e) {
+                console.warn('AlignSchema: employee_sessions alignment warning (PostgreSQL):', e.message);
+            }
+
             // Ensure refresh_tokens table exists (for JWT refresh flow)
             try {
                 await db.run(`
@@ -1028,6 +1068,29 @@ function authenticateJWT(req, res, next) {
 
 function requireAuth(req, res, next) {
     return authenticateJWT(req, res, next);
+}
+
+function getCookie(req, name) {
+    const header = req.headers.cookie || '';
+    const parts = header.split(';');
+    for (const part of parts) {
+        const idx = part.indexOf('=');
+        if (idx === -1) continue;
+        const k = part.slice(0, idx).trim();
+        const v = part.slice(idx + 1).trim();
+        if (k === name) return decodeURIComponent(v);
+    }
+    return null;
+}
+
+// Generic role guard using JWT role claim
+function requireRole(role) {
+    return (req, res, next) => authenticateJWT(req, res, () => {
+        if (req.user.role !== role) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        next();
+    });
 }
 
 // ===== Zod Schemas =====
@@ -2303,6 +2366,8 @@ app.post('/api/auth/login', async (req, res) => {
             };
             
             redirectUrl = '/home_salon.html';
+        } else if (userType === 'employee') {
+            redirectUrl = '/employee_dashboard.html';
         } else {
             return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
         }
@@ -2348,7 +2413,10 @@ app.post('/api/auth/login', async (req, res) => {
 // Refresh access token using a valid refresh token (rotate on use)
 app.post('/api/auth/refresh', async (req, res) => {
     try {
-        const { refresh_token } = req.body || {};
+        let refresh_token = (req.body || {}).refresh_token;
+        if (!refresh_token) {
+            refresh_token = getCookie(req, 'refresh_token');
+        }
         if (!refresh_token) {
             return res.status(400).json({ success: false, message: 'Refresh token is required.' });
         }
@@ -5171,6 +5239,229 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error fetching users:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Admin: List employees
+app.get('/api/admin/employees', requireAdmin, async (req, res) => {
+    try {
+        const rows = await db.query(
+            'SELECT id, name, email, phone, city, strikes FROM users WHERE user_type = $1 ORDER BY id DESC',
+            ['employee']
+        );
+        return res.json({ success: true, employees: rows || [] });
+    } catch (e) {
+        console.error('Admin employees list error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Admin: Create a new employee user
+app.post('/api/admin/employees', requireAdmin, async (req, res) => {
+    try {
+        const { name, email, phone, city, password } = req.body || {};
+        if (!name || !password) {
+            return res.status(400).json({ success: false, message: 'الاسم وكلمة المرور مطلوبان.', message_en: 'Name and password are required.' });
+        }
+        if (phone && !validatePhoneFormat(phone)) {
+            return res.status(400).json({ success: false, message: 'رقم الهاتف غير صالح.', message_en: 'Invalid phone format.' });
+        }
+
+        // Basic duplicate checks
+        if (phone) {
+            const existingPhone = await db.get('SELECT id FROM users WHERE phone = $1', [phone]);
+            if (existingPhone) {
+                return res.status(400).json({ success: false, message: 'رقم الهاتف مسجل بالفعل.', message_en: 'Phone already registered.' });
+            }
+        }
+        if (email) {
+            const existingEmail = await db.get('SELECT id FROM users WHERE email = $1', [email]);
+            if (existingEmail) {
+                return res.status(400).json({ success: false, message: 'البريد الإلكتروني مستخدم بالفعل.', message_en: 'Email already in use.' });
+            }
+        }
+
+        const hashedPassword = await hashPassword(password);
+        const insertSql = 'INSERT INTO users (name, email, phone, gender, city, password, user_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
+        const params = [name, email || null, phone || null, null, city || null, hashedPassword, 'employee'];
+        const inserted = await db.query(insertSql, params);
+        const newId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
+        return res.json({ success: true, employee: { id: newId, name, email, phone, city, user_type: 'employee' } });
+    } catch (e) {
+        console.error('Admin employee create error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Admin: Reset an employee's password (returns a temporary password to admin for sharing)
+app.post('/api/admin/employees/:id/reset_password', requireAdmin, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        if (!id || Number.isNaN(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
+        }
+
+        // Ensure target is an employee
+        const existing = await db.get('SELECT id, user_type FROM users WHERE id = $1', [id]);
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Employee not found.' });
+        }
+        if (existing.user_type !== 'employee') {
+            return res.status(400).json({ success: false, message: 'Target user is not an employee.' });
+        }
+
+        // Allow optional custom password, else generate one
+        const requested = (req.body && req.body.password) ? String(req.body.password).trim() : '';
+        function generateTempPassword() {
+            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+            let out = 'Emp';
+            for (let i = 0; i < 7; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+            return out;
+        }
+        const tempPassword = requested || generateTempPassword();
+        const hashed = await hashPassword(tempPassword);
+
+        await db.run('UPDATE users SET password = $1 WHERE id = $2', [hashed, id]);
+        return res.json({ success: true, temp_password: tempPassword });
+    } catch (e) {
+        console.error('Admin employee reset password error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: Start daily session
+app.post('/api/employee/session/start', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const today = new Date().toISOString().slice(0, 10);
+        const existing = await db.get('SELECT id FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
+        if (existing) {
+            return res.json({ success: true, session_id: existing.id, message: 'جلسة اليوم موجودة بالفعل.' });
+        }
+        const inserted = await db.query('INSERT INTO employee_sessions (employee_id, date, started_at) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id', [employeeId, today]);
+        const sessionId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
+        return res.json({ success: true, session_id: sessionId });
+    } catch (e) {
+        console.error('Employee session start error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: Log a field visit
+app.post('/api/employee/visit', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const { salon_name, status, comments } = req.body || {};
+        if (!salon_name || !status) {
+            return res.status(400).json({ success: false, message: 'salon_name and status are required.' });
+        }
+        const inserted = await db.query(
+            'INSERT INTO employee_visits (employee_id, salon_name, status, comments, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id',
+            [employeeId, String(salon_name).trim(), String(status).trim(), comments ? String(comments).trim() : null]
+        );
+        const visitId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
+        return res.json({ success: true, visit_id: visitId });
+    } catch (e) {
+        console.error('Employee visit log error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: End daily session (sets ended_at)
+app.post('/api/employee/session/end', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const today = new Date().toISOString().slice(0, 10);
+        const session = await db.get('SELECT id FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
+        if (!session) {
+            return res.status(400).json({ success: false, message: 'لا توجد جلسة لليوم لانهائها.' });
+        }
+        await db.run('UPDATE employee_sessions SET ended_at = CURRENT_TIMESTAMP WHERE id = $1', [session.id]);
+        return res.json({ success: true });
+    } catch (e) {
+        console.error('Employee session end error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: Analytics summary (counts by status and revenue)
+app.get('/api/employee/analytics/summary', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const today = new Date().toISOString().slice(0, 10);
+        const rowsToday = await db.query(
+            `SELECT status, COUNT(*) AS cnt
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) = $2
+             GROUP BY status`,
+            [employeeId, today]
+        );
+        const rowsAll = await db.query(
+            `SELECT status, COUNT(*) AS cnt
+             FROM employee_visits
+             WHERE employee_id = $1
+             GROUP BY status`,
+            [employeeId]
+        );
+        const reduceToMap = (rows) => {
+            const m = { activated: 0, interested: 0, not_interested: 0, unknown: 0 };
+            (rows || []).forEach(r => {
+                const key = (r.status || '').toLowerCase();
+                const n = Number(r.cnt || 0);
+                if (key.includes('activated') || key.includes('paid')) m.activated += n;
+                else if (key.includes('interested')) m.interested += n;
+                else if (key.includes('not')) m.not_interested += n;
+                else m.unknown += n;
+            });
+            return m;
+        };
+        const todayMap = reduceToMap(rowsToday);
+        const allMap = reduceToMap(rowsAll);
+        const revenueToday = todayMap.activated * 20;
+        const revenueAll = allMap.activated * 20;
+        return res.json({ success: true, today: todayMap, all: allMap, revenue: { today: revenueToday, all: revenueAll } });
+    } catch (e) {
+        console.error('Employee analytics summary error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: Leaderboard (top employees by activated/paid visits)
+app.get('/api/employee/leaderboard', requireRole('employee'), async (req, res) => {
+    try {
+        const rows = await db.query(
+            `SELECT u.id AS employee_id, u.name AS employee_name, COUNT(ev.id) AS activated_count
+             FROM users u
+             LEFT JOIN employee_visits ev ON ev.employee_id = u.id AND (LOWER(ev.status) LIKE '%activated%' OR LOWER(ev.status) LIKE '%paid%')
+             WHERE u.user_type = 'employee'
+             GROUP BY u.id, u.name
+             ORDER BY activated_count DESC, u.name ASC
+             LIMIT 20`
+        );
+        return res.json({ success: true, leaderboard: rows || [] });
+    } catch (e) {
+        console.error('Employee leaderboard error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: Today analytics (session + visits)
+app.get('/api/employee/analytics/today', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const today = new Date().toISOString().slice(0, 10);
+        // Session: ended_at and notes may not exist on older schemas; select only available fields
+        const session = await db.get('SELECT id, date, started_at FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
+        // Visits: align to employee_visits schema (created_at, salon_name, status, comments)
+        const visits = await db.query(
+            'SELECT id, created_at AS visited_at, salon_name, status, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC',
+            [employeeId, today]
+        );
+        const count = (visits || []).length;
+        return res.json({ success: true, session, visits: visits || [], visits_count: count });
+    } catch (e) {
+        console.error('Employee today analytics error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 

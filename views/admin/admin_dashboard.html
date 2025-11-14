@@ -152,6 +152,7 @@
         <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
         <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
         <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
+        <a id="nav-employees" class="nav-link" href="/admin/saloony_employees.html"><i class="fas fa-id-badge"></i><span>الموظفون</span></a>
     </nav>
 
     <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
@@ -773,11 +774,68 @@
 </div>
 
 <script>
-    const adminToken = localStorage.getItem('adminToken');
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (_) { return null; }
+    }
+
+    async function attemptRefreshAdmin() {
+        try {
+            const res = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({})
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            if (data && data.access_token) {
+                localStorage.setItem('adminToken', data.access_token);
+                return data.access_token;
+            }
+            return null;
+        } catch (_) { return null; }
+    }
+
+    function tokenSecondsLeft(token) {
+        const payload = parseJwt(token);
+        if (!payload || !payload.exp) return 0;
+        return Math.floor(payload.exp - (Date.now() / 1000));
+    }
+
+    function scheduleAdminRefresh() {
+        setInterval(async () => {
+            try {
+                const t = localStorage.getItem('adminToken');
+                if (!t) return;
+                const left = tokenSecondsLeft(t);
+                if (left <= 120) { await attemptRefreshAdmin(); }
+            } catch (_) {}
+        }, 60000);
+    }
+
+    let adminToken = localStorage.getItem('adminToken');
     if (!adminToken) {
         // Redirection already handled above, but here for local script safety
         window.location.replace('/auth.html'); 
     }
+
+    (async () => {
+        if (!adminToken) return;
+        const left = tokenSecondsLeft(adminToken);
+        if (left <= 60) {
+            const nt = await attemptRefreshAdmin();
+            if (!nt) { window.location.replace('/auth.html'); return; }
+            adminToken = nt;
+        }
+        scheduleAdminRefresh();
+    })();
 
     let currentView = 'dashboard-view';
     let pendingSalonsData = [];
@@ -1529,7 +1587,7 @@
         
         try {
             const response = await fetch('/api/admin/services', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             
             if (!response.ok) throw new Error('Failed to fetch services');
@@ -1646,7 +1704,7 @@
             
             const response = await fetch(url, {
                 method,
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                headers: { 'Authorization': `Bearer ${adminToken}` },
                 body: formData
             });
             
@@ -1674,7 +1732,7 @@
         try {
             const response = await fetch(`/api/admin/services/${serviceId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             
             if (!response.ok) throw new Error('Failed to delete service');

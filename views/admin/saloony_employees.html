@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <script src="/offline-detect.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Saloony - الموظفون</title>
+  <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="./assets/dashboard.css">
+  <link rel="stylesheet" href="./assets/admin.css">
+  <script defer src="./assets/dashboard.js"></script>
+  <script defer src="./assets/admin-header.js"></script>
+</head>
+<body>
+  <header class="admin-header">
+    <div class="brand">
+      <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/36x36/1E293B/ffffff?text=ADM';" alt="Saloony Admin">
+      <strong>إدارة الموظفين</strong>
+    </div>
+    <div class="actions">
+      <button id="logout-btn" class="btn btn-outline"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></button>
+    </div>
+  </header>
+
+  <nav class="top-nav">
+    <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
+    <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
+    <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
+    <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
+    <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
+    <a id="nav-employees" class="nav-link" href="/admin/saloony_employees.html"><i class="fas fa-id-badge"></i><span>الموظفون</span></a>
+  </nav>
+
+  <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
+    <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
+    <div id="latest-password-banner" class="hidden max-w-6xl mx-auto mb-4 p-3 rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-800 text-sm"></div>
+    <div class="max-w-6xl mx-auto space-y-8">
+      <section class="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
+        <h2 class="section-title">الموظفون</h2>
+        <button id="add-employee-btn" class="btn btn-accent"><i class="fas fa-user-plus"></i><span>إضافة موظف</span></button>
+      </section>
+
+      <section class="bg-white rounded-xl shadow-sm p-4">
+        <h2 class="text-2xl font-extrabold text-primary-dark mb-4">قائمة الموظفين</h2>
+        <div id="employees-list" class="table-wrapper">
+          <p class="text-center text-gray-500 p-8">جاري تحميل الموظفين...</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Add Employee Modal -->
+  <div id="add-employee-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl w-11/12 max-w-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xl font-bold">إضافة موظف</h3>
+        <button id="add-employee-close" class="text-gray-600 hover:text-red-600"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input id="modal-name" type="text" placeholder="الاسم" class="border rounded-lg p-2">
+        <input id="modal-email" type="email" placeholder="البريد الإلكتروني (اختياري)" class="border rounded-lg p-2">
+        <input id="modal-phone" type="tel" placeholder="رقم الهاتف" class="border rounded-lg p-2">
+        <select id="modal-city" class="border rounded-lg p-2">
+          <option value="">اختر المدينة</option>
+        </select>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="add-employee-cancel" class="px-3 py-2 rounded-lg border">إلغاء</button>
+        <button id="add-employee-save" class="px-3 py-2 rounded-lg bg-green-600 text-white"><i class="fas fa-check"></i> حفظ</button>
+      </div>
+      <p id="generated-password-hint" class="text-xs text-gray-500 mt-2 hidden"></p>
+    </div>
+  </div>
+
+  <script>
+    function showMessage(text, type='info') {
+      const box = document.getElementById('message-box');
+      box.textContent = text;
+      box.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto';
+      if (type === 'success') box.classList.add('bg-green-100','text-green-800');
+      else if (type === 'error') box.classList.add('bg-red-100','text-red-800');
+      else box.classList.add('bg-blue-100','text-blue-800');
+      box.classList.remove('hidden');
+      setTimeout(() => box.classList.add('hidden'), 3000);
+    }
+
+    async function fetchEmployees() {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        const res = await fetch('/api/admin/employees', { headers: { 'Authorization': `Bearer ${adminToken}` }});
+        const data = await res.json();
+        const container = document.getElementById('employees-list');
+        if (!res.ok || !data.success) {
+          container.innerHTML = '<p class="text-center text-red-600 p-8">فشل تحميل الموظفين</p>';
+          return;
+        }
+        const rows = data.employees || [];
+        if (rows.length === 0) {
+          container.innerHTML = '<p class="text-center text-gray-500 p-8">لا يوجد موظفون بعد</p>';
+          return;
+        }
+        const html = `
+          <table class="w-full text-sm border">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="p-2 border">الاسم</th>
+                <th class="p-2 border">البريد</th>
+                <th class="p-2 border">الهاتف</th>
+                <th class="p-2 border">المدينة</th>
+                <th class="p-2 border">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td class="p-2 border">${r.name || ''}</td>
+                  <td class="p-2 border">${r.email || ''}</td>
+                  <td class="p-2 border">${r.phone || ''}</td>
+                  <td class="p-2 border">${r.city || ''}</td>
+                  <td class="p-2 border">
+                    <button class="btn btn-outline text-xs" onclick="resetEmployeePassword(${r.id})"><i class="fas fa-key"></i> توليد كلمة مرور</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      } catch (e) {
+        document.getElementById('employees-list').innerHTML = '<p class="text-center text-red-600 p-8">حدث خطأ</p>';
+      }
+    }
+
+    function generatePassword() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      let pwd = 'Emp';
+      for (let i = 0; i < 7; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+      return pwd;
+    }
+
+    function openAddEmployeeModal() {
+      const modal = document.getElementById('add-employee-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('generated-password-hint').classList.add('hidden');
+    }
+    function closeAddEmployeeModal() {
+      const modal = document.getElementById('add-employee-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      ['modal-name','modal-email','modal-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const citySel = document.getElementById('modal-city'); if (citySel) citySel.value = '';
+    }
+    async function loadCitiesDropdown() {
+      try {
+        const res = await fetch('/api/cities');
+        const data = await res.json();
+        const cities = Array.isArray(data) ? data : (data.cities || []);
+        const sel = document.getElementById('modal-city');
+        sel.innerHTML = '<option value="">اختر المدينة</option>' + (cities.map(c => `<option value="${c}">${c}</option>`).join(''));
+      } catch (_) {
+        // Fallback list if API fails
+        const fallback = ['الرباط','الدار البيضاء','طنجة','فاس','مراكش','سلا','الصخيرات','تمارة'];
+        const sel = document.getElementById('modal-city');
+        sel.innerHTML = '<option value="">اختر المدينة</option>' + (fallback.map(c => `<option value="${c}">${c}</option>`).join(''));
+      }
+    }
+    async function saveAddEmployee() {
+      const name = document.getElementById('modal-name').value.trim();
+      const email = document.getElementById('modal-email').value.trim();
+      const phone = document.getElementById('modal-phone').value.trim();
+      const city = document.getElementById('modal-city').value.trim();
+      if (!name) { showMessage('يرجى إدخال الاسم', 'error'); return; }
+      const password = generatePassword();
+      const adminToken = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch('/api/admin/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ name, email, phone, city, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showMessage('تم إنشاء الموظف بنجاح', 'success');
+          const banner = document.getElementById('latest-password-banner');
+          banner.textContent = `كلمة المرور المؤقتة للموظف الجديد: ${password}`;
+          banner.classList.remove('hidden');
+          closeAddEmployeeModal();
+          fetchEmployees();
+        } else {
+          showMessage(data.message || 'فشل إنشاء الموظف', 'error');
+        }
+      } catch (_) {
+        showMessage('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    async function resetEmployeePassword(id) {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        const res = await fetch(`/api/admin/employees/${id}/reset_password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showMessage('تم تعيين كلمة مرور جديدة', 'success');
+          const banner = document.getElementById('latest-password-banner');
+          banner.textContent = `كلمة المرور المؤقتة الجديدة: ${data.temp_password}`;
+          banner.classList.remove('hidden');
+        } else {
+          showMessage(data.message || 'فشل إعادة تعيين كلمة المرور', 'error');
+        }
+      } catch (_) {
+        showMessage('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('add-employee-btn').addEventListener('click', openAddEmployeeModal);
+      document.getElementById('add-employee-close').addEventListener('click', closeAddEmployeeModal);
+      document.getElementById('add-employee-cancel').addEventListener('click', closeAddEmployeeModal);
+      document.getElementById('add-employee-save').addEventListener('click', saveAddEmployee);
+      loadCitiesDropdown();
+      fetchEmployees();
+    });
+  </script>
+</body>
+</html>
