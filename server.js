@@ -193,6 +193,7 @@ async function initializeDb() {
             employee_id INTEGER NOT NULL,
             salon_name TEXT NOT NULL,
             status TEXT NOT NULL,
+            interest_level INTEGER,
             comments TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
@@ -587,6 +588,21 @@ async function alignSchema() {
                 await db.run(`ALTER TABLE users ALTER COLUMN gender DROP NOT NULL`);
             }
 
+            // Ensure employee_visits has interest_level
+            try {
+                const evCols = await db.query(
+                    `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
+                    ['employee_visits', 'public']
+                );
+                const evSet = new Set((evCols || []).map(c => c.column_name));
+                if (!evSet.has('interest_level')) {
+                    console.log('AlignSchema: Adding interest_level to employee_visits (PostgreSQL)...');
+                    await db.run(`ALTER TABLE employee_visits ADD COLUMN interest_level INTEGER`);
+                }
+            } catch (e) {
+                console.warn('AlignSchema: employee_visits interest_level align warning (PostgreSQL):', e.message);
+            }
+
             // Ensure schedule_modifications has closure_type and backfill
             const modColumns = await db.query(
                 `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`,
@@ -827,6 +843,17 @@ async function alignSchema() {
                 `);
             } catch (e) {
                 console.warn('AlignSchema: refresh_tokens creation warning (SQLite):', e.message);
+            }
+            // SQLite: ensure employee_visits.interest_level exists
+            try {
+                const evPragma = await db.query(`PRAGMA table_info(employee_visits)`);
+                const evCols = new Set((evPragma || []).map(r => r.name));
+                if (!evCols.has('interest_level')) {
+                    console.log('AlignSchema: Adding interest_level to employee_visits (SQLite)...');
+                    await db.run(`ALTER TABLE employee_visits ADD COLUMN interest_level INTEGER`);
+                }
+            } catch (e) {
+                console.warn('AlignSchema: SQLite employee_visits align warning:', e.message);
             }
         }
 
@@ -5329,6 +5356,114 @@ app.post('/api/admin/employees/:id/reset_password', requireAdmin, async (req, re
     }
 });
 
+// Admin: Employee analytics summary (by employee id)
+app.get('/api/admin/employees/:id/analytics/summary', requireAdmin, async (req, res) => {
+    try {
+        const employeeId = parseInt(req.params.id, 10);
+        if (!employeeId || Number.isNaN(employeeId)) {
+            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const rowsToday = await db.query(
+            `SELECT status, COUNT(*) AS cnt
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) = $2
+             GROUP BY status`,
+            [employeeId, today]
+        );
+        const rowsAll = await db.query(
+            `SELECT status, COUNT(*) AS cnt
+             FROM employee_visits
+             WHERE employee_id = $1
+             GROUP BY status`,
+            [employeeId]
+        );
+        const reduceToMap = (rows) => {
+            const m = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
+            (rows || []).forEach(r => {
+                const key = String(r.status || '').toLowerCase();
+                const n = Number(r.cnt || 0);
+                if (key === 'activated') m.activated += n;
+                else if (key === 'signed_up') m.signed_up += n;
+                else if (key === 'interested') m.interested += n;
+                else if (key === 'not_interested') m.not_interested += n;
+                else m.unknown += n;
+            });
+            return m;
+        };
+        const todayMap = reduceToMap(rowsToday);
+        const allMap = reduceToMap(rowsAll);
+        const revenueToday = todayMap.activated * 20;
+        const revenueAll = allMap.activated * 20;
+        return res.json({ success: true, today: todayMap, all: allMap, revenue: { today: revenueToday, all: revenueAll } });
+    } catch (e) {
+        console.error('Admin employee analytics summary error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Admin: Employee today analytics (visits list for today)
+app.get('/api/admin/employees/:id/analytics/today', requireAdmin, async (req, res) => {
+    try {
+        const employeeId = parseInt(req.params.id, 10);
+        if (!employeeId || Number.isNaN(employeeId)) {
+            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const session = await db.get('SELECT id, date, started_at FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
+        const visits = await db.query(
+            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC',
+            [employeeId, today]
+        );
+        const count = (visits || []).length;
+        return res.json({ success: true, session, visits: visits || [], visits_count: count });
+    } catch (e) {
+        console.error('Admin employee today analytics error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Admin: Employee analytics for date range
+app.get('/api/admin/employees/:id/analytics/range', requireAdmin, async (req, res) => {
+    try {
+        const employeeId = parseInt(req.params.id, 10);
+        if (!employeeId || Number.isNaN(employeeId)) {
+            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
+        }
+        const from = String(req.query.from || '').slice(0, 10);
+        const to = String(req.query.to || '').slice(0, 10);
+        if (!from || !to) {
+            return res.status(400).json({ success: false, message: 'from/to required (YYYY-MM-DD).' });
+        }
+        const rows = await db.query(
+            `SELECT status, COUNT(*) AS cnt
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
+             GROUP BY status`,
+            [employeeId, from, to]
+        );
+        const visits = await db.query(
+            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3 ORDER BY created_at DESC',
+            [employeeId, from, to]
+        );
+        const map = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
+        (rows || []).forEach(r => {
+            const key = String(r.status || '').toLowerCase();
+            const n = Number(r.cnt || 0);
+            if (key === 'activated') map.activated += n;
+            else if (key === 'signed_up') map.signed_up += n;
+            else if (key === 'interested') map.interested += n;
+            else if (key === 'not_interested') map.not_interested += n;
+            else map.unknown += n;
+        });
+        const revenue = map.activated * 20;
+        return res.json({ success: true, map, visits: visits || [], revenue });
+    } catch (e) {
+        console.error('Admin employee range analytics error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // Employee: Start daily session
 app.post('/api/employee/session/start', requireRole('employee'), async (req, res) => {
     try {
@@ -5351,13 +5486,22 @@ app.post('/api/employee/session/start', requireRole('employee'), async (req, res
 app.post('/api/employee/visit', requireRole('employee'), async (req, res) => {
     try {
         const employeeId = req.user.id;
-        const { salon_name, status, comments } = req.body || {};
+        let { salon_name, status, comments, interest_level } = req.body || {};
         if (!salon_name || !status) {
             return res.status(400).json({ success: false, message: 'salon_name and status are required.' });
         }
+        // Normalize and validate status
+        status = String(status).trim().toLowerCase();
+        const allowed = new Set(['activated','signed_up','interested','not_interested']);
+        if (!allowed.has(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status. Allowed: activated, signed_up, interested, not_interested.' });
+        }
+        // Normalize interest_level (0..10)
+        let il = Number(interest_level);
+        if (Number.isNaN(il)) il = null; else il = Math.max(0, Math.min(10, il));
         const inserted = await db.query(
-            'INSERT INTO employee_visits (employee_id, salon_name, status, comments, created_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id',
-            [employeeId, String(salon_name).trim(), String(status).trim(), comments ? String(comments).trim() : null]
+            'INSERT INTO employee_visits (employee_id, salon_name, status, interest_level, comments, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
+            [employeeId, String(salon_name).trim(), status, il, comments ? String(comments).trim() : null]
         );
         const visitId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
         return res.json({ success: true, visit_id: visitId });
@@ -5406,11 +5550,11 @@ app.get('/api/employee/analytics/summary', requireRole('employee'), async (req, 
         const reduceToMap = (rows) => {
             const m = { activated: 0, interested: 0, not_interested: 0, unknown: 0 };
             (rows || []).forEach(r => {
-                const key = (r.status || '').toLowerCase();
+                const key = String(r.status || '').toLowerCase();
                 const n = Number(r.cnt || 0);
-                if (key.includes('activated') || key.includes('paid')) m.activated += n;
-                else if (key.includes('interested')) m.interested += n;
-                else if (key.includes('not')) m.not_interested += n;
+                if (key === 'activated') m.activated += n;
+                else if (key === 'interested') m.interested += n;
+                else if (key === 'not_interested') m.not_interested += n;
                 else m.unknown += n;
             });
             return m;
@@ -5454,13 +5598,51 @@ app.get('/api/employee/analytics/today', requireRole('employee'), async (req, re
         const session = await db.get('SELECT id, date, started_at FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
         // Visits: align to employee_visits schema (created_at, salon_name, status, comments)
         const visits = await db.query(
-            'SELECT id, created_at AS visited_at, salon_name, status, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC',
+            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC',
             [employeeId, today]
         );
         const count = (visits || []).length;
         return res.json({ success: true, session, visits: visits || [], visits_count: count });
     } catch (e) {
         console.error('Employee today analytics error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Employee: Analytics for date range (visits list + status map)
+app.get('/api/employee/analytics/range', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const from = String(req.query.from || '').slice(0, 10);
+        const to = String(req.query.to || '').slice(0, 10);
+        if (!from || !to) {
+            return res.status(400).json({ success: false, message: 'from/to required (YYYY-MM-DD).' });
+        }
+        const rows = await db.query(
+            `SELECT status, COUNT(*) AS cnt
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
+             GROUP BY status`,
+            [employeeId, from, to]
+        );
+        const visits = await db.query(
+            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3 ORDER BY created_at DESC',
+            [employeeId, from, to]
+        );
+        const map = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
+        (rows || []).forEach(r => {
+            const key = String(r.status || '').toLowerCase();
+            const n = Number(r.cnt || 0);
+            if (key === 'activated') map.activated += n;
+            else if (key === 'signed_up') map.signed_up += n;
+            else if (key === 'interested') map.interested += n;
+            else if (key === 'not_interested') map.not_interested += n;
+            else map.unknown += n;
+        });
+        const revenue = map.activated * 20;
+        return res.json({ success: true, map, visits: visits || [], revenue });
+    } catch (e) {
+        console.error('Employee range analytics error:', e.message);
         return res.status(500).json({ success: false, message: 'Server error' });
     }
 });

@@ -10,6 +10,12 @@
   --shadow: 0 10px 24px rgba(2, 6, 23, 0.06);
 }
 
+/* Shared dark header color */
+.bg-primary-dark { background-color: #1E293B; }
+.text-secondary { color: #06C167; }
+.bg-secondary { background-color: #06C167; }
+.bg-secondary\/10 { background-color: rgba(6, 193, 103, 0.10); }
+
 /* Base layout */
 html, body { background: var(--bg); color: var(--text); }
 body.admin-theme {
@@ -35,7 +41,7 @@ body.admin-theme {
 .top-nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 12px 8px 12px; display: flex; align-items: center; gap: 10px; box-shadow: 0 6px 14px rgba(2,6,23,0.04); position: sticky; top: calc(env(safe-area-inset-top) + 56px); z-index: 19; margin: 0; }
 .top-nav a { color: var(--text-muted); text-decoration: none; padding: 8px 12px; border-radius: 12px; font-weight: 600; transition: all .18s ease; }
 .top-nav a:hover { color: #111827; background: rgba(17,24,39,0.08); }
-.top-nav a.nav-active { color: #111827; background: rgba(17,24,39,0.16); }
+.top-nav a.nav-active { color: var(--accent); background: rgba(6, 193, 103, 0.10); }
 
 /* Cards and grid */
 .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }

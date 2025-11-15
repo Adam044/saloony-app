@@ -12,6 +12,15 @@
   <link rel="stylesheet" href="./assets/admin.css">
   <script defer src="./assets/dashboard.js"></script>
   <script defer src="./assets/admin-header.js"></script>
+  <style>
+    .ring { position:relative; width:60px; height:60px; border-radius:50%; background: conic-gradient(#06C167 var(--pct,0), #e5e7eb 0); display:grid; place-items:center; }
+    .ring::before { content:""; position:absolute; inset:8px; border-radius:50%; background:#fff; }
+    .ring-val { position:relative; font-weight:800; font-size:12px; color:#111827; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:60; }
+    .modal { width:96%; max-width:860px; background:#fff; border-radius:16px; border:1px solid #e5e7eb; box-shadow:0 16px 30px rgba(2,6,23,0.2); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid #e5e7eb; }
+    .modal-body { padding:16px; }
+  </style>
 </head>
 <body>
   <header class="admin-header">
@@ -71,6 +80,18 @@
         <button id="add-employee-save" class="px-3 py-2 rounded-lg bg-green-600 text-white"><i class="fas fa-check"></i> حفظ</button>
       </div>
       <p id="generated-password-hint" class="text-xs text-gray-500 mt-2 hidden"></p>
+  </div>
+  </div>
+
+  <div id="employee-report-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <strong id="employee-report-title">تقرير الموظف</strong>
+        <button id="employee-report-close" class="btn btn-outline"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="employee-report-body">
+        <div class="text-center text-gray-500 p-6">جاري تحميل التقرير...</div>
+      </div>
     </div>
   </div>
 
@@ -121,6 +142,7 @@
                   <td class="p-2 border">${r.city || ''}</td>
                   <td class="p-2 border">
                     <button class="btn btn-outline text-xs" onclick="resetEmployeePassword(${r.id})"><i class="fas fa-key"></i> توليد كلمة مرور</button>
+                    <a class="btn btn-outline text-xs" href="/admin/employee_report.html?id=${r.id}&name=${encodeURIComponent(r.name || '')}"><i class="fas fa-chart-line"></i> عرض التقرير</a>
                   </td>
                 </tr>
               `).join('')}
@@ -218,6 +240,84 @@
       }
     }
 
+    function openEmployeeReport(id, name) {
+      const modal = document.getElementById('employee-report-modal');
+      const title = document.getElementById('employee-report-title');
+      const body = document.getElementById('employee-report-body');
+      title.textContent = `تقرير الموظف: ${name}`;
+      body.innerHTML = '<div class="text-center text-gray-500 p-6">جاري تحميل التقرير...</div>';
+      modal.style.display = 'flex';
+      loadEmployeeReport(id);
+    }
+    function closeEmployeeReport() {
+      const modal = document.getElementById('employee-report-modal');
+      modal.style.display = 'none';
+    }
+    async function loadEmployeeReport(id) {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        const [summaryRes, todayRes] = await Promise.all([
+          fetch(`/api/admin/employees/${id}/analytics/summary`, { headers: { 'Authorization': `Bearer ${adminToken}` }}),
+          fetch(`/api/admin/employees/${id}/analytics/today`, { headers: { 'Authorization': `Bearer ${adminToken}` }})
+        ]);
+        const summary = await summaryRes.json();
+        const today = await todayRes.json();
+        if (!summaryRes.ok || !summary.success) { document.getElementById('employee-report-body').innerHTML = '<div class="text-center text-red-600 p-6">فشل تحميل الملخص</div>'; return; }
+        if (!todayRes.ok || !today.success) { document.getElementById('employee-report-body').innerHTML = '<div class="text-center text-red-600 p-6">فشل تحميل زيارات اليوم</div>'; return; }
+        const a = summary.all || { activated:0, interested:0, not_interested:0 };
+        const t = summary.today || { activated:0, interested:0, not_interested:0 };
+        const rev = summary.revenue || { today:0, all:0 };
+        const visits = today.visits || [];
+        const pctAll = Math.min(100, Math.round((Number(a.activated||0) / 100) * 100));
+        const pctToday = Math.min(100, Math.round((Number(t.activated||0) / Math.max(1, 10)) * 100));
+        const html = `
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div class="stat-card">
+              <div>
+                <div class="text-sm text-gray-500">إجمالي التفعيلات</div>
+                <div class="text-2xl font-extrabold">${Number(a.activated||0).toLocaleString('en-US')}</div>
+              </div>
+              <div class="ring" style="--pct:${pctAll}%"><span class="ring-val">${pctAll}%</span></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="text-sm text-gray-500">تفعيلات اليوم</div>
+                <div class="text-2xl font-extrabold">${Number(t.activated||0).toLocaleString('en-US')}</div>
+              </div>
+              <div class="ring" style="--pct:${pctToday}%"><span class="ring-val">${pctToday}%</span></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="text-sm text-gray-500">الإيراد الإجمالي</div>
+                <div class="text-2xl font-extrabold">₪${Number(rev.all||0).toLocaleString('en-US')}</div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-lg font-bold">زيارات اليوم (${visits.length})</div>
+            </div>
+            ${visits.length === 0 ? '<p class="text-center text-gray-500 p-6">لا توجد زيارات اليوم</p>' : visits.map(v => {
+              const timeOnly = new Date(v.visited_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+              const status = (v.status||'').toLowerCase();
+              const badge = status.includes('activated') || status.includes('paid')
+                ? '<span class="sub-badge">مفعّل</span>'
+                : status.includes('interested') ? '<span class="sub-badge">مهتم</span>' : '<span class="sub-badge">غير مهتم</span>';
+              return `
+                <div class="flex justify-between items-center border-b border-gray-100 py-2">
+                  <div class="font-semibold">${(v.salon_name||'—').replace(/</g,'&lt;')}</div>
+                  <div class="flex items-center gap-2 text-sm">${badge}<span class="text-gray-500">${timeOnly}</span></div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        document.getElementById('employee-report-body').innerHTML = html;
+      } catch (_) {
+        document.getElementById('employee-report-body').innerHTML = '<div class="text-center text-red-600 p-6">حدث خطأ</div>';
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('add-employee-btn').addEventListener('click', openAddEmployeeModal);
       document.getElementById('add-employee-close').addEventListener('click', closeAddEmployeeModal);
@@ -225,6 +325,7 @@
       document.getElementById('add-employee-save').addEventListener('click', saveAddEmployee);
       loadCitiesDropdown();
       fetchEmployees();
+      document.getElementById('employee-report-close').addEventListener('click', closeEmployeeReport);
     });
   </script>
 </body>

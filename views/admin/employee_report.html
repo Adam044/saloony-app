@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>تقرير الموظف - الإدارة</title>
+  <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="./assets/dashboard.css">
+  <link rel="stylesheet" href="./assets/admin.css">
+  <script defer src="./assets/dashboard.js"></script>
+  <script defer src="./assets/admin-header.js"></script>
+  <style>
+    .ring { position:relative; width:64px; height:64px; border-radius:50%; background: conic-gradient(#06C167 0% var(--pct, 0%), #e5e7eb var(--pct, 0%) 100%); display:grid; place-items:center; }
+    .ring::before { content:""; position:absolute; inset:8px; border-radius:50%; background:#fff; }
+    .ring-val { position:relative; font-weight:800; font-size:12px; color:#111827; }
+    .section-card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,0.06); padding:16px; }
+    .filters { display:grid; grid-template-columns: 1fr 160px 160px; gap:12px; }
+    .input { width:100%; border:1px solid #e5e7eb; border-radius:12px; padding:10px 14px; }
+    .table-wrapper { background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,0.06); overflow-x:auto; }
+    .badge { padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .badge-green { background:#D1FAE5; color:#065F46; }
+    .badge-blue { background:#DBEAFE; color:#1E40AF; }
+    .badge-red { background:#FEE2E2; color:#991B1B; }
+  </style>
+</head>
+<body>
+  <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top)); padding-bottom: calc(76px + env(safe-area-inset-bottom))">
+    <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
+    <div class="max-w-6xl mx-auto space-y-6">
+      <section class="section-card">
+        <div class="text-2xl font-extrabold text-primary-dark">تقرير الموظف: <span id="emp-name">—</span></div>
+      </section>
+
+      
+
+      <section id="sec-today" class="section-card">
+        <div class="text-xl font-extrabold text-primary-dark mb-3">اليوم</div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="stat-card">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm text-gray-500">تفعيلات اليوم</div>
+                <div class="text-2xl font-extrabold" id="kpi-acts-today">0</div>
+                <div class="muted">هدف 2</div>
+              </div>
+              <div class="ring" id="ring-acts-today" style="--pct:0%"><span class="ring-val">0%</span></div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div>
+              <div class="text-sm text-gray-500">🟡 مسجّل</div>
+              <div class="text-2xl font-extrabold" id="kpi-int-registered">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div>
+              <div class="text-sm text-gray-500">🕓 مهتم – لم يقرر بعد</div>
+              <div class="text-2xl font-extrabold" id="kpi-int-needs">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div>
+              <div class="text-sm text-gray-500">غير مهتمون اليوم</div>
+              <div class="text-2xl font-extrabold" id="kpi-no-today">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-3 mt-3">
+          <div class="stat-card">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm text-gray-500">زيارات اليوم</div>
+                <div class="text-2xl font-extrabold" id="kpi-visits-today">0</div>
+                <div class="muted">هدف 15</div>
+              </div>
+              <div class="ring" id="ring-visits-today" style="--pct:0%"><span class="ring-val">0%</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      
+
+      <section id="sec-calendar" class="section-card" style="display:none">
+        <div class="text-xl font-extrabold text-primary-dark mb-3">التقويم</div>
+        <div class="filters" style="grid-template-columns: 160px 160px 180px; margin-top: 12px;">
+          <select id="details-year" class="input"></select>
+          <select id="details-month" class="input"></select>
+          <select id="calendar-mode" class="input">
+            <option value="activated">التفعيلات</option>
+            <option value="visits">الزيارات</option>
+          </select>
+        </div>
+        <div id="calendar-grid" class="table-wrapper" style="margin-top: 12px;"></div>
+      </section>
+
+      <section id="sec-analytics" class="section-card" style="display:none">
+        <div class="flex justify-between items-center mb-2">
+          <div class="text-xl font-extrabold text-primary-dark">التحليلات</div>
+          <div class="flex items-center gap-2">
+            <button id="apply-month" class="btn"><i class="fas fa-calendar-alt"></i><span>هذا الشهر</span></button>
+            <button id="apply-today" class="btn"><i class="fas fa-sun"></i><span>اليوم</span></button>
+          </div>
+        </div>
+        <div class="filters" style="grid-template-columns: 160px 160px;">
+          <input id="date-from" type="date" class="input">
+          <input id="date-to" type="date" class="input">
+        </div>
+        <div id="range-kpis" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-3" style="margin-top:12px">
+          <div class="stat-card"><div><div class="text-sm text-gray-500">الزيارات</div><div class="text-2xl font-extrabold" id="range-visits-count">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">تفعيلات</div><div class="text-2xl font-extrabold" id="range-acts">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">🟡 مسجّل</div><div class="text-2xl font-extrabold" id="range-int-registered">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">🕓 مهتم – لم يقرر بعد</div><div class="text-2xl font-extrabold" id="range-int-needs">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">غير مهتمون</div><div class="text-2xl font-extrabold" id="range-no">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">إيراد النطاق</div><div class="text-2xl font-extrabold" id="range-rev">₪0</div></div></div>
+        </div>
+        <div id="range-visits" class="table-wrapper p-3" style="display:none"></div>
+      </section>
+
+      <section id="sec-visits" class="section-card" style="display:none">
+        <div class="text-xl font-extrabold text-primary-dark mb-3">الزيارات</div>
+        <div class="filters" style="grid-template-columns: 1fr 160px 160px 120px 120px;">
+          <input id="visits-search" class="input" placeholder="ابحث باسم الصالون">
+          <input id="visits-from" type="date" class="input">
+          <input id="visits-to" type="date" class="input">
+          <input id="visits-il-min" type="number" min="0" max="10" class="input" placeholder="أدنى اهتمام">
+          <input id="visits-il-max" type="number" min="0" max="10" class="input" placeholder="أعلى اهتمام">
+        </div>
+        <div class="filters" style="grid-template-columns: 160px 1fr; margin-top:8px">
+          <select id="visits-status" class="input">
+            <option value="">كل الحالات</option>
+            <option value="activated">🟢 مفعّل (مدفوع)</option>
+            <option value="signed_up">🟡 مسجّل</option>
+            <option value="interested">🕓 مهتم – لم يقرر بعد</option>
+            <option value="not_interested">🔴 غير مهتم حالياً</option>
+          </select>
+          <label class="flex items-center gap-2">
+            <input id="visits-has-comments" type="checkbox">
+            <span class="muted">فقط زيارات مع ملاحظات</span>
+          </label>
+        </div>
+        <div id="visits-list" class="table-wrapper p-3" style="margin-top:8px"><p class="muted text-center">لا توجد زيارات بعد</p></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="visit-details-modal" class="hidden fixed inset-0 bg-black/40 z-[100000]">
+    <div class="max-w-md mx-auto mt-24 bg-white rounded-2xl shadow-2xl p-4">
+      <div class="flex justify-between items-center mb-2">
+        <div class="text-lg font-extrabold text-primary-dark">تفاصيل الزيارة</div>
+        <button id="visit-modal-close" class="btn"><i class="fas fa-times"></i><span>إغلاق</span></button>
+      </div>
+      <div class="space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-store"></i><span>الصالون</span></div>
+          <span id="md-salon" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-calendar-day"></i><span>التاريخ</span></div>
+          <span id="md-time" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-tag"></i><span>الحالة</span></div>
+          <span id="md-status" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-heart"></i><span>مستوى الاهتمام</span></div>
+          <span id="md-interest" class="font-semibold">—</span>
+        </div>
+        <div>
+          <div class="inline-flex items-center gap-2 text-gray-500 mb-1"><i class="fas fa-comment-dots"></i><span>ملاحظات</span></div>
+          <div id="md-comments" class="text-gray-700 whitespace-pre-wrap break-words"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bg-white/95 backdrop-blur-sm p-2 flex items-center justify-around shadow-2xl" 
+       style="position: fixed !important; 
+              bottom: 0 !important; 
+              left: 0 !important; 
+              right: 0 !important; 
+              width: 100vw !important; 
+              z-index: 99999 !important;
+              min-height: 60px !important;
+              box-sizing: border-box !important;
+              margin: 0 !important;
+              padding-bottom: env(safe-area-inset-bottom) !important;">
+    <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-tab="sec-today">
+      <i class="fas fa-sun text-xl"></i>
+      <span class="text-xs font-bold mt-1">اليوم</span>
+    </button>
+    <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-tab="sec-calendar">
+      <i class="fas fa-calendar-alt text-xl"></i>
+      <span class="text-xs font-medium mt-1">التقويم</span>
+    </button>
+    <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-tab="sec-analytics">
+      <i class="fas fa-chart-pie text-xl"></i>
+      <span class="text-xs font-medium mt-1">التحليلات</span>
+    </button>
+    <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-tab="sec-visits">
+      <i class="fas fa-store text-xl"></i>
+      <span class="text-xs font-medium mt-1">الزيارات</span>
+    </button>
+  </nav>
+
+  <script>
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (_) { return null; }
+    }
+
+    function tokenSecondsLeft(token) {
+      const payload = parseJwt(token);
+      if (!payload || !payload.exp) return 0;
+      return Math.floor(payload.exp - (Date.now() / 1000));
+    }
+
+    async function attemptRefreshAdmin() {
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data && data.access_token) {
+          localStorage.setItem('adminToken', data.access_token);
+          return data.access_token;
+        }
+        return null;
+      } catch (_) { return null; }
+    }
+
+    function scheduleAdminRefresh() {
+      setInterval(async () => {
+        try {
+          const t = localStorage.getItem('adminToken') || localStorage.getItem('token');
+          if (!t) return;
+          const left = tokenSecondsLeft(t);
+          if (left <= 120) { await attemptRefreshAdmin(); }
+        } catch (_) {}
+      }, 60000);
+    }
+    function showMessage(text, type='info') {
+      const box = document.getElementById('message-box');
+      box.textContent = text;
+      box.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto';
+      if (type === 'success') box.classList.add('bg-green-100','text-green-800');
+      else if (type === 'error') box.classList.add('bg-red-100','text-red-800');
+      else box.classList.add('bg-blue-100','text-blue-800');
+      box.classList.remove('hidden');
+      setTimeout(() => box.classList.add('hidden'), 2500);
+    }
+
+    function getParam(key){ try { const u=new URL(location.href); return u.searchParams.get(key); } catch(_) { return null; } }
+
+    async function loadSummary(empId) {
+      try {
+        let token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+        if (!token) { showMessage('يرجى تسجيل الدخول كمسؤول', 'error'); return; }
+        let res = await fetch(`/api/admin/employees/${empId}/analytics/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.status === 401) {
+          const nt = await attemptRefreshAdmin();
+          if (!nt) { showMessage('تعذر تحميل الملخص', 'error'); return; }
+          token = nt;
+          res = await fetch(`/api/admin/employees/${empId}/analytics/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
+        }
+        const data = await res.json();
+        if (!res.ok || !data.success) { showMessage('تعذر تحميل الملخص', 'error'); return; }
+      const a = data.all || {}; const t = data.today || {}; const rev = data.revenue || {};
+      document.getElementById('kpi-acts-today').textContent = Number(t.activated||0).toLocaleString('en-US');
+      const regEl = document.getElementById('kpi-int-registered'); if (regEl) regEl.textContent = Number(t.signed_up||0).toLocaleString('en-US');
+      const needsEl = document.getElementById('kpi-int-needs'); if (needsEl) needsEl.textContent = Number(t.interested||0).toLocaleString('en-US');
+      const noToday = Number(t.not_interested||0);
+      const noEl = document.getElementById('kpi-no-today'); if (noEl) noEl.textContent = noToday.toLocaleString('en-US');
+      const visitsTodayCount = Number(t.activated||0) + Number(t.signed_up||0) + Number(t.interested||0) + Number(t.not_interested||0) + Number(t.unknown||0);
+      const visitsTodayEl = document.getElementById('kpi-visits-today');
+      if (visitsTodayEl) visitsTodayEl.textContent = visitsTodayCount.toLocaleString('en-US');
+      document.getElementById('kpi-acts-all').textContent = Number(a.activated||0).toLocaleString('en-US');
+      document.getElementById('kpi-int-all').textContent = Number(a.interested||0).toLocaleString('en-US');
+      document.getElementById('kpi-no-all').textContent = Number(a.not_interested||0).toLocaleString('en-US');
+      document.getElementById('kpi-rev-all').textContent = `₪${Number(data.revenue?.all||0).toLocaleString('en-US')}`;
+      const signGoal = 2; const visitGoal = 15;
+      const pctSign = Math.min(100, Math.round((Number(t.activated||0) / Math.max(1, signGoal)) * 100));
+      const pctVisit = Math.min(100, Math.round((visitsTodayCount / Math.max(1, visitGoal)) * 100));
+      const r1 = document.getElementById('ring-acts-today');
+      if (r1) {
+        r1.style.setProperty('--pct', pctSign + '%');
+        r1.style.backgroundImage = `conic-gradient(#06C167 0% ${pctSign}%, #e5e7eb ${pctSign}% 100%)`;
+        const rv = r1.querySelector('.ring-val'); if (rv) rv.textContent = pctSign + '%';
+      }
+      const r2 = document.getElementById('ring-visits-today');
+      if (r2) {
+        r2.style.setProperty('--pct', pctVisit + '%');
+        r2.style.backgroundImage = `conic-gradient(#06C167 0% ${pctVisit}%, #e5e7eb ${pctVisit}% 100%)`;
+        const rv = r2.querySelector('.ring-val'); if (rv) rv.textContent = pctVisit + '%';
+      }
+      } catch (_) { showMessage('تعذر تحميل الملخص', 'error'); }
+    }
+
+      async function loadRange(empId) {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      if (!token) { return; }
+      const fromEl = document.getElementById('date-from');
+      const toEl = document.getElementById('date-to');
+      const from = fromEl ? (fromEl.value || '') : '';
+      const to = toEl ? (toEl.value || '') : '';
+      const url = `/api/admin/employees/${empId}/analytics/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+      let data = {};
+      try {
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        data = await res.json();
+        if (!res.ok || !data.success) throw new Error('range failed');
+      } catch (_) { showMessage('تعذر تحميل نطاق التاريخ', 'error'); return; }
+      const m = data.map || {}; const visits = data.visits || []; const revenue = Number(data.revenue||0);
+      const totalVisits = Array.isArray(visits) ? visits.length : 0;
+      const acts = Number(m.activated||0);
+      const reg = Number(m.signed_up||0);
+      const needs = Number(m.interested||0);
+      const nos = Number(m.not_interested||0);
+      document.getElementById('range-visits-count').textContent = totalVisits.toLocaleString('en-US');
+      document.getElementById('range-acts').textContent = acts.toLocaleString('en-US');
+      document.getElementById('range-int-registered').textContent = reg.toLocaleString('en-US');
+      document.getElementById('range-int-needs').textContent = needs.toLocaleString('en-US');
+      document.getElementById('range-no').textContent = nos.toLocaleString('en-US');
+      document.getElementById('range-rev').textContent = `₪${revenue.toLocaleString('en-US')}`;
+    }
+
+    async function loadTodayVisits(empId) {
+      try {
+        let token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+        let res = await fetch(`/api/admin/employees/${empId}/analytics/today`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.status === 401) {
+          const nt = await attemptRefreshAdmin();
+          if (!nt) return;
+          token = nt;
+          res = await fetch(`/api/admin/employees/${empId}/analytics/today`, { headers: { 'Authorization': `Bearer ${token}` } });
+        }
+        if (!res.ok) return;
+        const data = await res.json();
+        const visitsCount = Number(data.visits_count || 0);
+        const elVC = document.getElementById('kpi-visits-today'); if (elVC) elVC.textContent = visitsCount.toLocaleString('en-US');
+      } catch (_) { }
+    }
+
+    async function init() {
+      const empId = Number(getParam('id') || 0);
+      const empName = getParam('name') || '—';
+      document.getElementById('emp-name').textContent = empName;
+      const today = new Date();
+      const iso = (d) => d.toISOString().slice(0,10);
+      const dateTo = document.getElementById('date-to'); if (dateTo) dateTo.value = iso(today);
+      const weekAgo = new Date(today.getTime() - 6*24*60*60*1000);
+      const dateFrom = document.getElementById('date-from'); if (dateFrom) dateFrom.value = iso(weekAgo);
+      let adminToken = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      if (!adminToken) { window.location.replace('/auth.html'); return; }
+      const left = tokenSecondsLeft(adminToken);
+      if (left <= 60) {
+        const nt = await attemptRefreshAdmin();
+        if (!nt) { window.location.replace('/auth.html'); return; }
+      }
+      try {
+        await loadSummary(empId);
+        await loadRange(empId);
+        await loadTodayVisits(empId);
+      } catch (e) { showMessage('فشل تحميل تقرير الموظف', 'error'); }
+      const btnApply = null;
+      function setPresetActive(which){
+        const m = document.getElementById('apply-month');
+        const t = document.getElementById('apply-today');
+        [m,t].forEach(b => { if (!b) return; b.classList.remove('text-secondary','bg-secondary/10'); });
+        if (which === 'month' && m){ m.classList.add('text-secondary','bg-secondary/10'); }
+        if (which === 'today' && t){ t.classList.add('text-secondary','bg-secondary/10'); }
+      }
+      const dfEl = document.getElementById('date-from'); const dtEl = document.getElementById('date-to');
+      ['change','input'].forEach(ev => {
+        dfEl?.addEventListener(ev, () => { setPresetActive(null); loadRange(empId); });
+        dtEl?.addEventListener(ev, () => { setPresetActive(null); loadRange(empId); });
+      });
+      const btnMonth = document.getElementById('apply-month'); if (btnMonth) btnMonth.addEventListener('click', () => { const d = new Date(); const y = d.getFullYear(); const m = d.getMonth()+1; const first = `${y}-${String(m).padStart(2,'0')}-01`; const last = String(new Date(y, m, 0).getDate()).padStart(2,'0'); const end = `${y}-${String(m).padStart(2,'0')}-${last}`; const df = document.getElementById('date-from'); const dt = document.getElementById('date-to'); if (df) df.value = first; if (dt) dt.value = end; setPresetActive('month'); loadRange(empId); });
+      const btnToday = document.getElementById('apply-today'); if (btnToday) btnToday.addEventListener('click', () => { const t = new Date().toISOString().slice(0,10); const df = document.getElementById('date-from'); const dt = document.getElementById('date-to'); if (df) df.value = t; if (dt) dt.value = t; setPresetActive('today'); loadRange(empId); });
+      scheduleAdminRefresh();
+
+      const ySel = document.getElementById('details-year');
+      const mSel = document.getElementById('details-month');
+      if (ySel && mSel) {
+        const yNow = today.getFullYear();
+        ySel.innerHTML = [yNow-1, yNow, yNow+1].map(y=>`<option value="${y}">${y}</option>`).join('');
+        ySel.value = yNow;
+        mSel.innerHTML = Array.from({length:12}, (_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+        mSel.value = today.getMonth()+1;
+
+        function monthRange(y, m){
+          const from = `${y}-${String(m).padStart(2,'0')}-01`;
+          const last = new Date(y, m, 0).getDate();
+          const to = `${y}-${String(m).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+          return { from, to, days: last };
+        }
+
+        function renderCalendarMonth(y, m){
+          const { from, to, days } = monthRange(y, m);
+          const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+          const modeEl = document.getElementById('calendar-mode');
+          const mode = (modeEl ? modeEl.value : 'activated');
+          const goal = mode === 'visits' ? 15 : 2;
+          fetch(`/api/admin/employees/${empId}/analytics/range?from=${from}&to=${to}`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r=>r.json()).then(data => {
+              const visits = data.visits || [];
+              const counts = Array(days).fill(0);
+              visits.forEach(v => {
+                const st = String(v.status||'').toLowerCase();
+                const d = new Date(v.visited_at).getDate();
+                if (mode === 'activated') { if (st === 'activated') counts[d-1] += 1; }
+                else { counts[d-1] += 1; }
+              });
+              const container = document.getElementById('calendar-grid'); if (!container) return;
+              const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+              const firstDay = new Date(y, m-1, 1).getDay();
+              let cells = '';
+              for (let i=0; i<firstDay; i++) cells += `<div class="p-3 rounded-lg border border-gray-200 bg-white"></div>`;
+              for (let d=1; d<=days; d++) {
+                const c = counts[d-1];
+                const hit = c >= goal;
+                const bg = hit ? '#D1FAE5' : '#FEE2E2';
+                const fg = hit ? '#065F46' : '#991B1B';
+                cells += `
+                  <div class="p-3 rounded-lg border border-gray-200" style="background:${bg}; color:${fg}">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold">${d}</span>
+                      <span class="text-xs font-extrabold">${c}</span>
+                    </div>
+                  </div>`;
+              }
+              container.innerHTML = `
+                <div class="flex items-center justify-between mb-3">
+                  <div class="font-extrabold text-primary-dark">${monthNames[m-1]} ${y}</div>
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="inline-flex items-center gap-1"><span style="width:14px;height:14px;background:#D1FAE5;display:inline-block;border-radius:4px;border:1px solid #d1d5db"></span> الهدف محقق (≥${goal})</span>
+                    <span class="inline-flex items-center gap-1"><span style="width:14px;height:14px;background:#FEE2E2;display:inline-block;border-radius:4px;border:1px solid #d1d5db"></span> أقل من الهدف</span>
+                  </div>
+                </div>
+                <div class="grid grid-cols-7 gap-2">
+                  ${cells}
+                </div>
+              `;
+            });
+        }
+
+        function updateCalendar(){
+          const y = Number(ySel.value);
+          const m = Number(mSel.value);
+          renderCalendarMonth(y, m);
+        }
+
+        ySel.addEventListener('change', updateCalendar);
+        mSel.addEventListener('change', updateCalendar);
+        const modeSel = document.getElementById('calendar-mode'); if (modeSel) modeSel.addEventListener('change', updateCalendar);
+        updateCalendar();
+      }
+
+      const vf = document.getElementById('visits-from'); const vt = document.getElementById('visits-to');
+      if (vf && vt) {
+        vf.value = iso(new Date(today.getTime() - 30*24*60*60*1000)); vt.value = iso(today);
+        function renderVisits() {
+          const from = vf.value; const to = vt.value; const q = (document.getElementById('visits-search')?.value || '').trim().toLowerCase(); const st = document.getElementById('visits-status')?.value || '';
+          const ilMinRaw = document.getElementById('visits-il-min')?.value || '';
+          const ilMaxRaw = document.getElementById('visits-il-max')?.value || '';
+          const ilMin = ilMinRaw === '' ? null : Math.max(0, Math.min(10, Number(ilMinRaw)));
+          const ilMax = ilMaxRaw === '' ? null : Math.max(0, Math.min(10, Number(ilMaxRaw)));
+          const onlyComments = !!document.getElementById('visits-has-comments')?.checked;
+          const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+          fetch(`/api/admin/employees/${empId}/analytics/range?from=${from}&to=${to}`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r=>r.json()).then(data => {
+              let visits = data.visits || [];
+              if (q) visits = visits.filter(v => String(v.salon_name||'').toLowerCase().includes(q));
+              if (st) {
+                visits = visits.filter(v => {
+                  const s = String(v.status||'').toLowerCase();
+                  if (st === 'activated') return s === 'activated';
+                  if (st === 'signed_up') return s === 'signed_up';
+                  if (st === 'interested') return s === 'interested';
+                  if (st === 'not_interested') return s === 'not_interested';
+                  return true;
+                });
+              }
+              if (onlyComments) visits = visits.filter(v => (String(v.comments||'').trim().length > 0));
+              if (ilMin !== null) visits = visits.filter(v => { const lv = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })(); return !isNaN(lv) && lv >= ilMin; });
+              if (ilMax !== null) visits = visits.filter(v => { const lv = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })(); return !isNaN(lv) && lv <= ilMax; });
+              const box = document.getElementById('visits-list'); if (!box) return;
+              if (visits.length === 0) box.innerHTML = '<p class="muted text-center">لا توجد زيارات</p>';
+              else {
+                const cards = visits.map(v => {
+                  const dateOnly = new Date(v.visited_at).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+                  const st = String(v.status||'').toLowerCase();
+                  const label = st === 'activated' ? '🟢 مفعّل (مدفوع)' : (st === 'signed_up' ? '🟡 مسجّل' : (st === 'interested' ? '🕓 مهتم – لم يقرر بعد' : '🔴 غير مهتم حالياً'));
+                  const color = label.startsWith('🟢') ? 'badge-green' : label.startsWith('🔴') ? 'badge-red' : 'badge-blue';
+                  const il = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })();
+                  const interestBadge = isNaN(il) ? '' : `<span class="badge" style="background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);">${il}/10</span>`;
+                  return `
+                    <div class="card modern p-3 border border-gray-100">
+                      <div class="flex justify-between items-start border-b pb-2 mb-2 border-gray-100">
+                        <div class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700"><i class="fas fa-store"></i><span>${(v.salon_name||'—').replace(/</g,'&lt;')}</span></div>
+                        <div class="inline-flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-calendar-day"></i><span>${dateOnly}</span></div>
+                      </div>
+                      <div class="flex justify-between items-center text-sm">
+                        <div class="flex items-center gap-2">
+                          <span class="badge ${color}">${label}</span>
+                          ${interestBadge}
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button class="btn" data-open-modal="true" data-salon="${(v.salon_name||'').replace(/"/g,'&quot;')}" data-time="${dateOnly}" data-status="${label}" data-interest="${isNaN(il)?'':il}" data-comments="${(String(v.comments||'').replace(/</g,'&lt;')).replace(/"/g,'&quot;')}"><i class="fas fa-eye"></i><span>تفاصيل</span></button>
+                        </div>
+                      </div>
+                    </div>`;
+                }).join('');
+                box.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">${cards}</div>`;
+                box.querySelectorAll('[data-open-modal="true"]').forEach(btn => {
+                  btn.addEventListener('click', () => {
+                    const m = document.getElementById('visit-details-modal');
+                    if (!m) return;
+                    m.querySelector('#md-salon').textContent = btn.getAttribute('data-salon') || '—';
+                    m.querySelector('#md-time').textContent = btn.getAttribute('data-time') || '—';
+                    m.querySelector('#md-status').textContent = btn.getAttribute('data-status') || '—';
+                    m.querySelector('#md-interest').textContent = (btn.getAttribute('data-interest') || '') ? (btn.getAttribute('data-interest') + '/10') : '—';
+                    m.querySelector('#md-comments').textContent = btn.getAttribute('data-comments') || '—';
+                    m.classList.remove('hidden');
+                  });
+                });
+              }
+            });
+        }
+        ['input','change'].forEach(ev => { document.getElementById('visits-search')?.addEventListener(ev, renderVisits); document.getElementById('visits-status')?.addEventListener(ev, renderVisits); vf.addEventListener(ev, renderVisits); vt.addEventListener(ev, renderVisits); document.getElementById('visits-il-min')?.addEventListener(ev, renderVisits); document.getElementById('visits-il-max')?.addEventListener(ev, renderVisits); document.getElementById('visits-has-comments')?.addEventListener(ev, renderVisits); });
+        renderVisits();
+      }
+
+      document.querySelectorAll('.nav-local').forEach(a => {
+        a.addEventListener('click', () => {
+          document.querySelectorAll('.nav-local').forEach(x => {
+            x.classList.remove('nav-active','text-secondary','bg-secondary/10');
+            x.classList.add('text-gray-500');
+          });
+          a.classList.add('nav-active','text-secondary','bg-secondary/10');
+          a.classList.remove('text-gray-500');
+          const tab = a.getAttribute('data-tab');
+          ['sec-today','sec-calendar','sec-analytics','sec-visits'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = (id===tab) ? '' : 'none'; });
+        });
+      });
+      const md = document.getElementById('visit-details-modal');
+      const mdClose = document.getElementById('visit-modal-close');
+      if (md && mdClose) { mdClose.addEventListener('click', () => md.classList.add('hidden')); }
+      if (md) { md.addEventListener('click', (e) => { if (e.target.id === 'visit-details-modal') md.classList.add('hidden'); }); }
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = document.getElementById('visit-details-modal'); if (m) m.classList.add('hidden'); } });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

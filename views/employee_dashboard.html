@@ -187,32 +187,29 @@
     </section>
 
     <!-- Today summary KPIs -->
-    <section class="grid grid-2 view-content" id="today-summary">
-      <div class="card kpi-card modern">
-        <div class="label">زيارات اليوم</div>
-        <div class="flex items-center justify-between">
-          <div class="value"><span id="kpi-visits">0</span><span class="muted text-lg" style="margin-right:6px">/ <span id="target-visits">15</span></span></div>
-          <div class="ring mini" id="ring-visits" style="--pct:0%"><span class="ring-val">0%</span></div>
-        </div>
+  <section class="grid grid-2 view-content" id="today-summary">
+    <div class="card kpi-card modern">
+      <div class="label">زيارات اليوم</div>
+      <div class="text-sm font-bold text-gray-700 mb-1" id="visits-bar-label">0 / 15</div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div id="bar-visits" class="h-2.5 rounded-full" style="width:0%; background-color: var(--color-secondary);"></div>
       </div>
-      <div class="card kpi-card modern">
-        <div class="label">آخر زيارة</div>
-        <div class="value text-2xl" id="kpi-last">—</div>
-      </div>
-    </section>
+    </div>
+    <div class="card kpi-card modern">
+      <div class="label">آخر زيارة</div>
+      <div class="value text-2xl" id="kpi-last">—</div>
+    </div>
+  </section>
 
     <!-- Today Registrations and Commissions -->
-    <section class="grid grid-2 view-content" id="today-kpis" style="margin-top:0;">
-      <div class="card kpi-card modern">
-        <div class="label">التسجيلات اليوم</div>
-        <div class="flex items-center justify-between">
-          <div class="value text-2xl"><span id="kpi-signups">0</span><span class="muted text-lg" style="margin-right:6px">/ <span id="target-signups">2</span></span></div>
-          <div class="ring mini" id="ring-signups" style="--pct:0%"><span class="ring-val">0%</span></div>
-        </div>
-        <div class="progress" style="height:8px; background:#e5e7eb; border-radius:8px; margin-top:8px">
-          <div id="bar-signups" style="height:8px; background:#06C167; border-radius:8px; width:0%"></div>
-        </div>
+  <section class="grid grid-2 view-content" id="today-kpis" style="margin-top:0;">
+    <div class="card kpi-card modern">
+      <div class="label">التسجيلات اليوم</div>
+      <div class="text-sm font-bold text-gray-700 mb-1" id="signups-bar-label">0 / 2</div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div id="bar-signups" class="h-2.5 rounded-full" style="width:0%; background-color: var(--color-secondary);"></div>
       </div>
+    </div>
       <div class="card kpi-card modern">
         <div class="label">عمولة اليوم</div>
         <div class="value text-2xl" id="kpi-commission-today">₪0</div>
@@ -230,8 +227,8 @@
       </div>
     </section>
 
-    <!-- Tab: Milestones -->
-    <section id="milestones-view" class="view-content hidden">
+  <!-- Tab: Milestones -->
+  <section id="milestones-view" class="view-content hidden">
       <!-- Motivational Title: Operation Peak Performance -->
       <div class="analytics-header mb-4">
         <div class="section-title text-2xl" style="color:var(--color-primary)"><i class="fas fa-fighter-jet text-blue-500 ml-2"></i> المهام والترقيات (Sales Quest)</div>
@@ -276,32 +273,87 @@
         </div>
         
       </div>
-    </section>
+  </section>
+
+  <!-- Employee Visit Details Modal -->
+  <div id="emp-visit-details-modal" class="hidden fixed inset-0 bg-black/40 z-[100000]">
+    <div class="max-w-md mx-auto mt-24 bg-white rounded-2xl shadow-2xl p-4">
+      <div class="flex justify-between items-center mb-2">
+        <div class="text-lg font-extrabold" style="color:var(--color-primary)">تفاصيل الزيارة</div>
+        <button id="emp-visit-modal-close" class="btn"><i class="fas fa-times"></i><span>إغلاق</span></button>
+      </div>
+      <div class="space-y-3 text-sm">
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-store"></i><span>الصالون</span></div>
+          <span id="emp-md-salon" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-calendar-day"></i><span>التاريخ</span></div>
+          <span id="emp-md-time" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-tag"></i><span>الحالة</span></div>
+          <span id="emp-md-status" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-heart"></i><span>مستوى الاهتمام</span></div>
+          <span id="emp-md-interest" class="font-semibold">—</span>
+        </div>
+        <div>
+          <div class="inline-flex items-center gap-2 text-gray-500 mb-1"><i class="fas fa-comment-dots"></i><span>ملاحظات</span></div>
+          <div id="emp-md-comments" class="text-gray-700 whitespace-pre-wrap break-words"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Visits (employee) -->
+  <section id="visits-view" class="view-content hidden">
+    <div class="analytics-header mb-3">
+      <div class="section-title text-xl" style="color:var(--color-primary)">الزيارات</div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <input id="emp-visits-search" class="input w-full min-w-0 border rounded-lg p-2" placeholder="ابحث باسم الصالون">
+      <input id="emp-visits-from" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+      <input id="emp-visits-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+      <input id="emp-visits-il-min" type="number" min="0" max="10" class="input w-full min-w-0 border rounded-lg p-2" placeholder="أدنى اهتمام">
+      <input id="emp-visits-il-max" type="number" min="0" max="10" class="input w-full min-w-0 border rounded-lg p-2" placeholder="أعلى اهتمام">
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+      <select id="emp-visits-status" class="input w-full min-w-0 border rounded-lg p-2">
+        <option value="">كل الحالات</option>
+        <option value="activated">🟢 مفعّل (مدفوع)</option>
+        <option value="signed_up">🟡 مسجّل</option>
+        <option value="interested">🕓 مهتم – لم يقرر بعد</option>
+        <option value="not_interested">🔴 غير مهتم حالياً</option>
+      </select>
+      <label class="flex items-center gap-2">
+        <input id="emp-visits-has-comments" type="checkbox">
+        <span class="muted">فقط زيارات مع ملاحظات</span>
+      </label>
+    </div>
+    <div id="emp-visits-list" class="table-wrapper p-3 mt-2"><p class="muted text-center">لا توجد زيارات</p></div>
+  </section>
 
     <!-- Tab: Analytics & Revenue -->
     <section id="analytics-view" class="view-content hidden">
       <div class="analytics-header">
         <div class="section-title text-2xl"><i class="fas fa-chart-line text-blue-500 ml-2"></i> التحليلات العامة</div>
-        <div class="analytics-subtitle">نظرة إجمالية على الأداء</div>
+        <div class="analytics-subtitle">نطاق التاريخ وتحليلات الأداء</div>
       </div>
-      <div class="analytics-grid">
-        <div class="card kpi-card modern">
-          <div class="label">إجمالي التفعيلات المدفوعة</div>
-          <div class="flex items-center justify-between">
-            <div class="value text-2xl" id="kpi-act-all">0</div>
-            <div class="ring mini" id="ring-act-all" style="--pct:0%"><span class="ring-val">0%</span></div>
-          </div>
-        </div>
-        <div class="card kpi-card modern"><div class="label">إجمالي المهتمين</div><div class="value text-2xl" id="kpi-int-all">0</div></div>
-        <div class="card kpi-card modern"><div class="label">إجمالي غير المهتمين</div><div class="value text-2xl" id="kpi-no-all">0</div></div>
+      <div class="grid gap-3" style="grid-template-columns: 160px 160px; margin-top:12px">
+        <input id="emp-date-from" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+        <input id="emp-date-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
       </div>
-      <div class="grid grid-1" style="margin-top:12px">
-        <div class="card kpi-card modern revenue-card">
-          <div class="label">الإيراد الإجمالي</div>
-          <div class="value text-3xl" id="kpi-rev-all">0 ILS</div>
-        </div>
+      <div id="emp-range-kpis" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-3" style="margin-top:12px">
+        <div class="card kpi-card modern"><div class="label">الزيارات</div><div class="value text-2xl" id="emp-range-visits-count">0</div></div>
+        <div class="card kpi-card modern"><div class="label">تفعيلات</div><div class="value text-2xl" id="emp-range-acts">0</div></div>
+        <div class="card kpi-card modern"><div class="label">🟡 مسجّل</div><div class="value text-2xl" id="emp-range-int-registered">0</div></div>
+        <div class="card kpi-card modern"><div class="label">🕓 مهتم – لم يقرر</div><div class="value text-2xl" id="emp-range-int-needs">0</div></div>
+        <div class="card kpi-card modern"><div class="label">غير مهتمون</div><div class="value text-2xl" id="emp-range-no">0</div></div>
+        <div class="card kpi-card modern"><div class="label">الإيراد</div><div class="value text-2xl" id="emp-range-rev">₪0</div></div>
       </div>
-      <!-- Removed: رواتب وتحفيز and أفضل الموظفين sections -->
+      
     </section>
   </main>
 
@@ -321,10 +373,10 @@
           <div>
             <label class="muted">3️⃣ الحالة</label>
             <select id="visit-status" class="w-full border rounded-lg p-2">
-              <option value="activated" data-detail="paid">🟢 مفعّل (مدفوع)</option>
-              <option value="interested" data-detail="registered">🟡 مسجّل</option>
-              <option value="interested" data-detail="needs_time">🕓 مهتم – لم يقرر بعد</option>
-              <option value="not_interested" data-detail="not_now">🔴 غير مهتم حالياً</option>
+              <option value="activated">🟢 مفعّل (مدفوع)</option>
+              <option value="signed_up">🟡 مسجّل</option>
+              <option value="interested">🕓 مهتم – لم يقرر بعد</option>
+              <option value="not_interested">🔴 غير مهتم حالياً</option>
             </select>
           </div>
         </div>
@@ -367,9 +419,85 @@
       <i class="fas fa-chart-line text-xl"></i>
       <span class="text-xs font-medium mt-1">التحليلات</span>
     </button>
+    <button id="nav-visits" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="visits-view">
+      <i class="fas fa-store text-xl"></i>
+      <span class="text-xs font-medium mt-1">الزيارات</span>
+    </button>
   </nav>
 
   <script>
+    // Employee Visits (range) rendering
+    function renderEmployeeVisits() {
+      const token = ensureEmployeeOrRedirect(); if (!token) return;
+      const vf = document.getElementById('emp-visits-from'); const vt = document.getElementById('emp-visits-to');
+      if (!vf || !vt) return;
+      const from = vf.value; const to = vt.value;
+      const q = (document.getElementById('emp-visits-search')?.value || '').trim().toLowerCase();
+      const st = document.getElementById('emp-visits-status')?.value || '';
+      const ilMinRaw = document.getElementById('emp-visits-il-min')?.value || '';
+      const ilMaxRaw = document.getElementById('emp-visits-il-max')?.value || '';
+      const ilMin = ilMinRaw === '' ? null : Math.max(0, Math.min(10, Number(ilMinRaw)));
+      const ilMax = ilMaxRaw === '' ? null : Math.max(0, Math.min(10, Number(ilMaxRaw)));
+      const onlyComments = !!document.getElementById('emp-visits-has-comments')?.checked;
+      fetch(`/api/employee/analytics/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json()).then(data => {
+          let visits = data.visits || [];
+          if (q) visits = visits.filter(v => String(v.salon_name||'').toLowerCase().includes(q));
+          if (st) {
+            visits = visits.filter(v => {
+              const s = String(v.status||'').toLowerCase();
+              if (st === 'activated') return s === 'activated';
+              if (st === 'signed_up') return s === 'signed_up';
+              if (st === 'interested') return s === 'interested';
+              if (st === 'not_interested') return s === 'not_interested';
+              return true;
+            });
+          }
+          if (onlyComments) visits = visits.filter(v => (String(v.comments||'').trim().length > 0));
+          if (ilMin !== null) visits = visits.filter(v => { const lv = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })(); return !isNaN(lv) && lv >= ilMin; });
+          if (ilMax !== null) visits = visits.filter(v => { const lv = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })(); return !isNaN(lv) && lv <= ilMax; });
+          const box = document.getElementById('emp-visits-list'); if (!box) return;
+          if (visits.length === 0) box.innerHTML = '<p class="muted text-center">لا توجد زيارات</p>';
+          else {
+            const cards = visits.map(v => {
+              const dateOnly = new Date(v.visited_at).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+              const s = String(v.status||'').toLowerCase();
+              const label = s === 'activated' ? '🟢 مفعّل (مدفوع)' : (s === 'signed_up' ? '🟡 مسجّل' : (s === 'interested' ? '🕓 مهتم – لم يقرر بعد' : '🔴 غير مهتم حالياً'));
+              const color = label.startsWith('🟢') ? 'badge-green' : label.startsWith('🔴') ? 'badge-red' : 'badge-blue';
+              const il = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })();
+              const interestBadge = isNaN(il) ? '' : `<span class="badge" style="background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);">${il}/10</span>`;
+              return `
+                <div class="card modern p-3 border border-gray-100">
+                  <div class="flex justify-between items-start border-b pb-2 mb-2 border-gray-100">
+                    <div class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700"><i class="fas fa-store"></i><span>${(v.salon_name||'—').replace(/</g,'&lt;')}</span></div>
+                    <div class="inline-flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-calendar-day"></i><span>${dateOnly}</span></div>
+                  </div>
+                  <div class="flex justify-between items-center text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="badge ${color}">${label}</span>
+                      ${interestBadge}
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button class="btn" data-open-emp-modal="true" data-salon="${(v.salon_name||'').replace(/"/g,'&quot;')}" data-time="${dateOnly}" data-status="${label}" data-interest="${isNaN(il)?'':il}" data-comments="${(String(v.comments||'').replace(/</g,'&lt;')).replace(/"/g,'&quot;')}"><i class="fas fa-eye"></i><span>تفاصيل</span></button>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('');
+            box.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">${cards}</div>`;
+            box.querySelectorAll('[data-open-emp-modal="true"]').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const m = document.getElementById('emp-visit-details-modal'); if (!m) return;
+                m.querySelector('#emp-md-salon').textContent = btn.getAttribute('data-salon') || '—';
+                m.querySelector('#emp-md-time').textContent = btn.getAttribute('data-time') || '—';
+                m.querySelector('#emp-md-status').textContent = btn.getAttribute('data-status') || '—';
+                m.querySelector('#emp-md-interest').textContent = (btn.getAttribute('data-interest') || '') ? (btn.getAttribute('data-interest') + '/10') : '—';
+                m.querySelector('#emp-md-comments').textContent = btn.getAttribute('data-comments') || '—';
+                m.classList.remove('hidden');
+              });
+            });
+          }
+        });
+    }
     function showMessage(text, type='info') {
       const box = document.getElementById('message-box');
       box.textContent = text;
@@ -499,7 +627,7 @@
         if (!res.ok || !data.success) { document.getElementById('visits-list').innerHTML = '<p class="text-center text-red-600 p-6">فشل تحميل بيانات اليوم</p>'; return; }
         const visits = data.visits || [];
         // Update KPIs
-        document.getElementById('kpi-visits').textContent = String(visits.length);
+        
         const last = visits[0] || visits[visits.length - 1];
         document.getElementById('kpi-last').textContent = last ? new Date(last.visited_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
         // Session removed: focus on today's analytics only
@@ -509,17 +637,18 @@
           // Render visit cards: show ONLY time (no date)
           document.getElementById('visits-list').innerHTML = visits.map(v => {
             const timeOnly = new Date(v.visited_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-            const statusDetail = (v.status_detail || '').toLowerCase();
             const interestVal = (() => {
               if (typeof v.interest_level !== 'undefined' && v.interest_level !== null) return Number(v.interest_level);
               try { const m = (v.comments || '').match(/اهتمام:\s*(\d+)\/10/); return m ? Number(m[1]) : NaN; } catch (_) { return NaN; }
             })();
             const interestBadge = isNaN(interestVal) ? '' : `<span class='badge badge-blue flex items-center gap-1 text-xs px-2 py-1 rounded-full' style='background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);'><i class="fas fa-star text-xs"></i> ${interestVal.toLocaleString('en-US')}/10</span>`;
             const statusBadge = (v.status === 'activated')
-              ? `<span class='badge badge-green text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-700'>مفعّل</span>`
-              : (v.status === 'interested')
-                ? (statusDetail === 'registered' ? `<span class='badge badge-blue text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-700'>مسجّل</span>` : `<span class='badge badge-blue text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-700'>مهتم</span>`)
-                : `<span class='badge badge-red text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-700'>غير مهتم</span>`;
+              ? `<span class='badge badge-green text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-700'>مفعّل (مدفوع)</span>`
+              : (v.status === 'signed_up')
+                ? `<span class='badge text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-700'>🟡 مسجّل</span>`
+                : (v.status === 'interested')
+                  ? `<span class='badge text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-700'>🕓 مهتم – لم يقرر بعد</span>`
+                  : `<span class='badge badge-red text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-700'>🔴 غير مهتم</span>`;
             
             // Format card for better mobile integration
             return `
@@ -541,22 +670,18 @@
           const activatedCount = visits.filter(v => v.status === 'activated').length;
           // Signups today (activated counts as paid signup) + progress
           const signupsTarget = Number((localStorage.getItem('emp_goal_signups')) || defaultGoals.signups);
-          document.getElementById('kpi-signups').textContent = activatedCount.toLocaleString('en-US');
-          document.getElementById('target-signups').textContent = String(signupsTarget);
+          
           const pctSignups = Math.min(100, Math.round((activatedCount / Math.max(1, signupsTarget)) * 100));
           document.getElementById('bar-signups').style.width = pctSignups + '%';
-          const ringSignups = document.getElementById('ring-signups');
-          if (ringSignups) {
-            ringSignups.style.setProperty('--pct', pctSignups + '%');
-            const valEl = ringSignups.querySelector('.ring-val'); if (valEl) valEl.textContent = pctSignups + '%';
-          }
+          const signupsLbl = document.getElementById('signups-bar-label'); if (signupsLbl) signupsLbl.textContent = `${activatedCount} / ${signupsTarget}`;
           // Commissions today: 20 ILS per paid signup
           const commissionToday = activatedCount * 20;
           document.getElementById('kpi-commission-today').textContent = `₪${commissionToday.toLocaleString('en-US')}`;
           const visitsTarget = Number((localStorage.getItem('emp_goal_visits')) || defaultGoals.visits);
           const pctVisits = Math.min(100, Math.round((visits.length / Math.max(1, visitsTarget)) * 100));
-          const ringVisits = document.getElementById('ring-visits');
-          if (ringVisits) { ringVisits.style.setProperty('--pct', pctVisits + '%'); const rv = ringVisits.querySelector('.ring-val'); if (rv) rv.textContent = pctVisits + '%'; }
+          const barVisits = document.getElementById('bar-visits'); if (barVisits) barVisits.style.width = pctVisits + '%';
+          const visitsLbl = document.getElementById('visits-bar-label'); if (visitsLbl) visitsLbl.textContent = `${visits.length} / ${visitsTarget}`;
+          
         }
       } catch (_) { document.getElementById('visits-list').innerHTML = '<p class="text-center text-red-600 p-6">حدث خطأ</p>'; }
     }
@@ -565,23 +690,55 @@
       const token = ensureEmployeeOrRedirect();
       if (!token) return;
       try {
-        const res = await fetch('/api/employee/analytics/summary', { headers: { 'Authorization': `Bearer ${token}` } });
-        const data = await res.json();
-        if (!res.ok || !data.success) return;
-        const a = data.all || {}; const rev = data.revenue || {};
-        // Overall KPIs
-        const actAll = Number(a.activated || 0);
-        const intAll = Number(a.interested || 0);
-        const noAll = Number(a.not_interested || 0);
-        document.getElementById('kpi-act-all').textContent = actAll.toLocaleString('en-US');
-        const elIntAll = document.getElementById('kpi-int-all'); if (elIntAll) elIntAll.textContent = intAll.toLocaleString('en-US');
-        const elNoAll = document.getElementById('kpi-no-all'); if (elNoAll) elNoAll.textContent = noAll.toLocaleString('en-US');
-        // Revenue: show only total with ILS suffix
-        const revAll = Number(rev.all || actAll * 20 || 0);
-        const elRevAll = document.getElementById('kpi-rev-all'); if (elRevAll) elRevAll.textContent = `${revAll.toLocaleString('en-US')} ILS`;
-        const ringAct = document.getElementById('ring-act-all');
-        if (ringAct) { const pctA = Math.min(100, Math.round((actAll / 100) * 100)); ringAct.style.setProperty('--pct', pctA + '%'); const rv = ringAct.querySelector('.ring-val'); if (rv) rv.textContent = pctA + '%'; }
-        
+        const today = new Date(); const iso = (d) => d.toISOString().slice(0,10);
+        const df = document.getElementById('emp-date-from'); const dt = document.getElementById('emp-date-to');
+        if (df && dt) { df.value = iso(new Date(today.getTime() - 6*24*60*60*1000)); dt.value = iso(today); }
+        const reloadRange = () => {
+          const from = df?.value || ''; const to = dt?.value || '';
+          fetch(`/api/employee/analytics/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(r => r.json()).then(data => {
+              if (!data.success) return;
+              const m = data.map || {}; const visits = data.visits || []; const revenue = Number(data.revenue||0);
+              const totalVisits = Array.isArray(visits) ? visits.length : 0;
+              document.getElementById('emp-range-visits-count').textContent = totalVisits.toLocaleString('en-US');
+              document.getElementById('emp-range-acts').textContent = Number(m.activated||0).toLocaleString('en-US');
+              document.getElementById('emp-range-int-registered').textContent = Number(m.signed_up||0).toLocaleString('en-US');
+              document.getElementById('emp-range-int-needs').textContent = Number(m.interested||0).toLocaleString('en-US');
+              document.getElementById('emp-range-no').textContent = Number(m.not_interested||0).toLocaleString('en-US');
+              document.getElementById('emp-range-rev').textContent = `₪${revenue.toLocaleString('en-US')}`;
+              const box = document.getElementById('emp-range-visits');
+              if (box) {
+                if (visits.length === 0) { box.style.display = ''; box.innerHTML = '<p class="muted text-center">لا توجد زيارات</p>'; }
+                else {
+                  const cards = visits.map(v => {
+                    const dateOnly = new Date(v.visited_at).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
+                    const s = String(v.status||'').toLowerCase();
+                    const label = s === 'activated' ? '🟢 مفعّل (مدفوع)' : (s === 'signed_up' ? '🟡 مسجّل' : (s === 'interested' ? '🕓 مهتم – لم يقرر بعد' : '🔴 غير مهتم حالياً'));
+                    const color = label.startsWith('🟢') ? 'badge-green' : label.startsWith('🔴') ? 'badge-red' : 'badge-blue';
+                    const il = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })();
+                    const interestBadge = isNaN(il) ? '' : `<span class="badge" style="background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);">${il}/10</span>`;
+                    return `
+                      <div class="card modern p-3 border border-gray-100">
+                        <div class="flex justify-between items-start border-b pb-2 mb-2 border-gray-100">
+                          <div class="inline-flex items-center gap-2 text-sm font-semibold text-gray-700"><i class="fas fa-store"></i><span>${(v.salon_name||'—').replace(/</g,'&lt;')}</span></div>
+                          <div class="inline-flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-calendar-day"></i><span>${dateOnly}</span></div>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                          <div class="flex items-center gap-2">
+                            <span class="badge ${color}">${label}</span>
+                            ${interestBadge}
+                          </div>
+                        </div>
+                      </div>`;
+                  }).join('');
+                  box.style.display = '';
+                  box.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">${cards}</div>`;
+                }
+              }
+            });
+        };
+        df?.addEventListener('change', reloadRange); dt?.addEventListener('change', reloadRange);
+        reloadRange();
       } catch (_) {}
     }
 
@@ -757,7 +914,7 @@
       }
     }
 
-    function switchView(viewId) {
+  function switchView(viewId) {
       // List of all sections that belong to the "Today" tab
       const todaySections = ['today-view', 'today-summary', 'today-kpis', 'today-visits'];
 
@@ -792,6 +949,20 @@
       if (viewId === 'today-view') { loadToday(); }
       if (viewId === 'milestones-view') { loadMilestones(); }
       if (viewId === 'analytics-view') { loadAnalytics(); }
+      if (viewId === 'visits-view') {
+        const today = new Date(); const iso = (d) => d.toISOString().slice(0,10);
+        const vf = document.getElementById('emp-visits-from'); const vt = document.getElementById('emp-visits-to');
+        if (vf && vt) { vf.value = iso(new Date(today.getTime() - 30*24*60*60*1000)); vt.value = iso(today); }
+        ['input','change'].forEach(ev => {
+          document.getElementById('emp-visits-search')?.addEventListener(ev, renderEmployeeVisits);
+          document.getElementById('emp-visits-status')?.addEventListener(ev, renderEmployeeVisits);
+          vf?.addEventListener(ev, renderEmployeeVisits); vt?.addEventListener(ev, renderEmployeeVisits);
+          document.getElementById('emp-visits-il-min')?.addEventListener(ev, renderEmployeeVisits);
+          document.getElementById('emp-visits-il-max')?.addEventListener(ev, renderEmployeeVisits);
+          document.getElementById('emp-visits-has-comments')?.addEventListener(ev, renderEmployeeVisits);
+        });
+        renderEmployeeVisits();
+      }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -822,6 +993,11 @@
       document.querySelectorAll('#bottom-nav .nav-item').forEach(btn => btn.addEventListener('click', (e) => {
         e.preventDefault(); const v = btn.getAttribute('data-view'); switchView(v);
       }));
+      const md = document.getElementById('emp-visit-details-modal');
+      const mdClose = document.getElementById('emp-visit-modal-close');
+      if (md && mdClose) { mdClose.addEventListener('click', () => md.classList.add('hidden')); }
+      if (md) { md.addEventListener('click', (e) => { if (e.target.id === 'emp-visit-details-modal') md.classList.add('hidden'); }); }
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = document.getElementById('emp-visit-details-modal'); if (m) m.classList.add('hidden'); } });
       switchView('today-view');
     });
 

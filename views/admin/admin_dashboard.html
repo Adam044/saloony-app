@@ -1031,48 +1031,32 @@
             });
             const stats = await response.json();
             // Revenue KPIs: align with progress.html using payments
-            let revenueCards = [];
+            let revToday = null;
+            let revTotal = null;
             try {
                 const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
                 const payments = pRes.ok ? await pRes.json() : [];
                 const completed = payments.filter(p => p.payment_status === 'completed' || p.payment_status === 'مكتملة');
-                const today = new Date();
-                const todayKey = today.toISOString().slice(0,10);
-                const monthKeyStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-                const lastMonthKey = `${today.getFullYear()}-${String(today.getMonth()).padStart(2,'0')}`;
+                const todayKey = new Date().toISOString().slice(0,10);
                 const sumAll = completed.reduce((acc, p) => acc + Number(p.amount || 0), 0);
                 const sumToday = completed.filter(p => (p.created_at || '').slice(0,10) === todayKey)
                                           .reduce((acc, p) => acc + Number(p.amount || 0), 0);
-                const sumMonth = completed.filter(p => monthKey(p.created_at) === monthKeyStr)
-                                          .reduce((acc, p) => acc + Number(p.amount || 0), 0);
-                const sumLastMonth = completed.filter(p => monthKey(p.created_at) === lastMonthKey)
-                                              .reduce((acc, p) => acc + Number(p.amount || 0), 0);
-                const revGrowth = sumLastMonth === 0 ? (sumMonth > 0 ? 100 : 0) : Math.round(((sumMonth - sumLastMonth) / sumLastMonth) * 100);
-                revenueCards = [
-                    { title: 'إيراد اليوم', count: formatCurrencyILS(sumToday), icon: 'fa-bolt', color: 'text-amber-500' },
-                    { title: 'إيراد هذا الشهر', count: formatCurrencyILS(sumMonth), icon: 'fa-wallet', color: 'text-indigo-600' },
-                    { title: 'إجمالي الإيرادات', count: formatCurrencyILS(sumAll), icon: 'fa-money-bill-wave', color: 'text-green-600' },
-                    { title: 'نمو الإيراد مقابل الشهر الماضي', count: `${revGrowth}%`, icon: 'fa-chart-line', color: 'text-blue-600' },
-                ];
+                revToday = formatCurrencyILS(sumToday);
+                revTotal = formatCurrencyILS(sumAll);
             } catch (_) {
-                // Fallback to server-provided revenue if payments fetch fails
-                revenueCards = [
-                    { title: 'إجمالي الإيرادات', count: `${stats.totalRevenue || 0} ₪`, icon: 'fa-money-bill-wave', color: 'text-green-600' },
-                ];
+                revTotal = `${stats.totalRevenue || 0} ₪`;
             }
             
             // Define stat cards
             const statCards = [
                 { title: 'إجمالي المستخدمين', count: stats.totalUsers || 0, icon: 'fa-users', color: 'text-blue-500' },
                 { title: 'إجمالي الصالونات', count: stats.totalSalons || 0, icon: 'fa-store-alt', color: 'text-primary-dark' },
+                { title: 'الصالونات النشطة', count: stats.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
                 { title: 'صالونات قيد الانتظار', count: stats.pendingSalons || 0, icon: 'fa-user-clock', color: 'text-red-500' },
                 { title: 'المواعيد الكلية', count: stats.totalAppointments || 0, icon: 'fa-calendar-check', color: 'text-secondary' },
-                { title: 'الصالونات النشطة', count: stats.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
-                { title: 'صالونات الرجال', count: stats.menSalons || 0, icon: 'fa-mars', color: 'text-indigo-500' },
-                { title: 'صالونات النساء', count: stats.womenSalons || 0, icon: 'fa-venus', color: 'text-pink-500' },
-            ];
-            // Append revenue cards (computed client-side)
-            statCards.push(...revenueCards);
+                revToday ? { title: 'إيراد اليوم', count: revToday, icon: 'fa-bolt', color: 'text-amber-500' } : null,
+                revTotal ? { title: 'إجمالي الإيرادات', count: revTotal, icon: 'fa-money-bill-wave', color: 'text-green-600' } : null,
+            ].filter(Boolean);
             
             grid.innerHTML = statCards.map(card => `
                 <div class="stat-card">
