@@ -270,11 +270,26 @@
         </div>
         
         <!-- Quest Log / Milestone Cards -->
-        <div id="milestone-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Cards will be populated by JS -->
-        </div>
-        
+      <div id="milestone-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Cards will be populated by JS -->
       </div>
+
+    </div>
+  </section>
+
+  <section id="helpful-view" class="view-content hidden mt-6">
+    <div class="card modern p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="inline-flex items-center gap-2 text-gray-600"><i class="fas fa-hands-helping"></i><span>روابط مفيدة</span></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <a href="tel:+970594444403" class="btn w-full"><i class="fas fa-phone"></i><span>اتصل بـ آدم حواش (IT)</span></a>
+        <a href="tel:+972595522004" class="btn w-full"><i class="fas fa-phone"></i><span>اتصل بـ اسامة الصيفي (مدير العمليات)</span></a>
+        <a href="/views/salon_marketing.html" class="btn w-full"><i class="fas fa-info-circle"></i><span>معلومات التسويق</span></a>
+        <a href="/views/pricing.html" class="btn w-full"><i class="fas fa-tags"></i><span>الأسعار</span></a>
+      </div>
+      </div>
+    </div>
   </section>
 
   <!-- Employee Visit Details Modal -->
@@ -448,6 +463,10 @@
     <button id="nav-visits" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="visits-view">
       <i class="fas fa-store text-xl"></i>
       <span class="text-xs font-medium mt-1">الزيارات</span>
+    </button>
+    <button id="nav-help" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="helpful-view">
+      <i class="fas fa-life-ring text-xl"></i>
+      <span class="text-xs font-medium mt-1">مساعدة</span>
     </button>
   </nav>
 
