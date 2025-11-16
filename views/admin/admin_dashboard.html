@@ -2808,5 +2808,18 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    try {
+      const socket = io();
+      socket.emit('joinAdmin');
+      socket.on('admin:activation', (data) => {
+        const box = document.getElementById('message-box');
+        const name = data && data.employee_name ? data.employee_name : 'موظف';
+        const salon = data && data.salon_name ? data.salon_name : 'صالون';
+        if (box) { box.classList.remove('hidden'); box.textContent = `${name} فعّل ${salon}`; box.className = 'p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto border bg-green-100 text-green-700 border-green-200'; setTimeout(()=> box.classList.add('hidden'), 7000); }
+      });
+    } catch (_) {}
+  </script>
 </body>
 </html>

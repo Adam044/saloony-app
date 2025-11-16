@@ -81,6 +81,10 @@
     .tier-gold .tier-badge-icon { background: var(--tier-gold); }
     .tier-diamond .tier-badge-icon { background: var(--tier-diamond); }
 
+    /* Progress Ring */
+    .ring { position:relative; width:64px; height:64px; border-radius:50%; display:grid; place-items:center; background: conic-gradient(var(--color-secondary) 0% var(--pct, 0%), #e5e7eb var(--pct, 0%) 100%); }
+    .ring .ring-val { font-weight:800; color:#0b1320; font-size:12px; }
+
     /* NEW: The Ascent Progress Bar (Hero Component) */
     .ascent-container {
         position: relative;
@@ -190,9 +194,8 @@
   <section class="grid grid-2 view-content" id="today-summary">
     <div class="card kpi-card modern">
       <div class="label">زيارات اليوم</div>
-      <div class="text-sm font-bold text-gray-700 mb-1" id="visits-bar-label">0 / 15</div>
-      <div class="w-full bg-gray-200 rounded-full h-2.5">
-        <div id="bar-visits" class="h-2.5 rounded-full" style="width:0%; background-color: var(--color-secondary);"></div>
+      <div class="flex justify-end">
+        <div id="ring-visits" class="ring" style="--pct:0%"><span id="ring-visits-val" class="ring-val">0/15</span></div>
       </div>
     </div>
     <div class="card kpi-card modern">
@@ -205,9 +208,8 @@
   <section class="grid grid-2 view-content" id="today-kpis" style="margin-top:0;">
     <div class="card kpi-card modern">
       <div class="label">التسجيلات اليوم</div>
-      <div class="text-sm font-bold text-gray-700 mb-1" id="signups-bar-label">0 / 2</div>
-      <div class="w-full bg-gray-200 rounded-full h-2.5">
-        <div id="bar-signups" class="h-2.5 rounded-full" style="width:0%; background-color: var(--color-secondary);"></div>
+      <div class="flex justify-end">
+        <div id="ring-signups" class="ring" style="--pct:0%"><span id="ring-signups-val" class="ring-val">0/2</span></div>
       </div>
     </div>
       <div class="card kpi-card modern">
@@ -248,15 +250,15 @@
         <!-- Ascent Progress Bar (Hero Component) -->
         <div class="ascent-container">
           <div class="flex justify-between text-white font-bold mb-2">
-            <span id="milestones-acts-hero">0 / 100 تفعيل</span>
+            <span id="milestones-acts-hero">0 / 125 تفعيل</span>
             <span id="milestones-days-left-hero"></span>
           </div>
           <div class="ascent-track">
             <!-- Markers -->
             <div class="ascent-marker" style="left: 10%;"><i class="fas fa-circle-notch"></i> 10</div>
             <div class="ascent-marker" style="left: 25%;"><i class="fas fa-circle-notch"></i> 25</div>
-            <div class="ascent-marker" style="left: 50%;"><i class="fas fa-circle-notch"></i> 50</div>
-            <div class="ascent-marker" style="left: 98%;">100 <i class="fas fa-trophy text-yellow-300"></i></div>
+            <div class="ascent-marker" style="left: 60%;"><i class="fas fa-circle-notch"></i> 75</div>
+            <div class="ascent-marker" style="left: 98%;">125 <i class="fas fa-trophy text-yellow-300"></i></div>
             <!-- Progress Fill -->
             <div id="milestones-ascent-fill" class="ascent-fill">
               <!-- Icon tracks the progress -->
@@ -346,12 +348,12 @@
         <input id="emp-date-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
       </div>
       <div id="emp-range-kpis" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-3" style="margin-top:12px">
-        <div class="card kpi-card modern"><div class="label">الزيارات</div><div class="value text-2xl" id="emp-range-visits-count">0</div></div>
-        <div class="card kpi-card modern"><div class="label">تفعيلات</div><div class="value text-2xl" id="emp-range-acts">0</div></div>
-        <div class="card kpi-card modern"><div class="label">🟡 مسجّل</div><div class="value text-2xl" id="emp-range-int-registered">0</div></div>
-        <div class="card kpi-card modern"><div class="label">🕓 مهتم – لم يقرر</div><div class="value text-2xl" id="emp-range-int-needs">0</div></div>
-        <div class="card kpi-card modern"><div class="label">غير مهتمون</div><div class="value text-2xl" id="emp-range-no">0</div></div>
-        <div class="card kpi-card modern"><div class="label">الإيراد</div><div class="value text-2xl" id="emp-range-rev">₪0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-store text-secondary ml-1"></i> الزيارات</div><div class="value text-2xl" id="emp-range-visits-count">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-check-circle text-green-500 ml-1"></i> تفعيلات</div><div class="value text-2xl" id="emp-range-acts">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-user-plus text-amber-500 ml-1"></i> مسجّل</div><div class="value text-2xl" id="emp-range-int-registered">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-hourglass-half text-blue-500 ml-1"></i> مهتم – لم يقرر</div><div class="value text-2xl" id="emp-range-int-needs">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-times-circle text-red-500 ml-1"></i> غير مهتمون</div><div class="value text-2xl" id="emp-range-no">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-money-bill-wave text-green-600 ml-1"></i> الإيراد</div><div class="value text-2xl" id="emp-range-rev">₪0</div></div>
       </div>
       
     </section>
@@ -373,10 +375,10 @@
           <div>
             <label class="muted">3️⃣ الحالة</label>
             <select id="visit-status" class="w-full border rounded-lg p-2">
-              <option value="activated">🟢 مفعّل (مدفوع)</option>
-              <option value="signed_up">🟡 مسجّل</option>
-              <option value="interested">🕓 مهتم – لم يقرر بعد</option>
-              <option value="not_interested">🔴 غير مهتم حالياً</option>
+              <option value="activated">مفعّل — مسجّل ومدفوع</option>
+              <option value="signed_up">مسجّل — لم يدفع بعد</option>
+              <option value="interested">مهتم – لم يقرر</option>
+              <option value="not_interested">غير مهتم</option>
             </select>
           </div>
         </div>
@@ -618,6 +620,8 @@
       } catch (_) { showMessage('خطأ في الاتصال بالخادم', 'error'); }
     }
 
+    
+
     async function loadToday() {
       const token = ensureEmployeeOrRedirect();
       if (!token) return;
@@ -643,12 +647,12 @@
             })();
             const interestBadge = isNaN(interestVal) ? '' : `<span class='badge badge-blue flex items-center gap-1 text-xs px-2 py-1 rounded-full' style='background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);'><i class="fas fa-star text-xs"></i> ${interestVal.toLocaleString('en-US')}/10</span>`;
             const statusBadge = (v.status === 'activated')
-              ? `<span class='badge badge-green text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-700'>مفعّل (مدفوع)</span>`
+              ? `<span class='badge badge-green text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-700 flex items-center gap-1'><i class="fas fa-check-circle"></i> مفعّل — مسجّل ومدفوع</span>`
               : (v.status === 'signed_up')
-                ? `<span class='badge text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-700'>🟡 مسجّل</span>`
+                ? `<span class='badge text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-700 flex items-center gap-1'><i class="fas fa-user-plus"></i> مسجّل — لم يدفع بعد</span>`
                 : (v.status === 'interested')
-                  ? `<span class='badge text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-700'>🕓 مهتم – لم يقرر بعد</span>`
-                  : `<span class='badge badge-red text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-700'>🔴 غير مهتم</span>`;
+                  ? `<span class='badge text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-700 flex items-center gap-1'><i class="fas fa-hourglass-half"></i> مهتم – لم يقرر</span>`
+                  : `<span class='badge badge-red text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-700 flex items-center gap-1'><i class="fas fa-times-circle"></i> غير مهتم</span>`;
             
             // Format card for better mobile integration
             return `
@@ -672,15 +676,27 @@
           const signupsTarget = Number((localStorage.getItem('emp_goal_signups')) || defaultGoals.signups);
           
           const pctSignups = Math.min(100, Math.round((activatedCount / Math.max(1, signupsTarget)) * 100));
-          document.getElementById('bar-signups').style.width = pctSignups + '%';
-          const signupsLbl = document.getElementById('signups-bar-label'); if (signupsLbl) signupsLbl.textContent = `${activatedCount} / ${signupsTarget}`;
+          const ringSign = document.getElementById('ring-signups');
+          if (ringSign) {
+            ringSign.style.setProperty('--pct', pctSignups + '%');
+            ringSign.style.backgroundImage = `conic-gradient(#06C167 0% ${pctSignups}%, #e5e7eb ${pctSignups}% 100%)`;
+            const rlbl = document.getElementById('ring-signups-val'); if (rlbl) rlbl.textContent = `${activatedCount}/${signupsTarget}`;
+          }
+          const todayKey = new Date().toISOString().slice(0,10);
+          if (pctSignups >= 100 && !localStorage.getItem(`dg_signups_${todayKey}`)) { localStorage.setItem(`dg_signups_${todayKey}`,'1'); confettiBurst(); showMessage('أحسنت! أنجزت هدف التسجيلات اليوم', 'success'); }
           // Commissions today: 20 ILS per paid signup
           const commissionToday = activatedCount * 20;
           document.getElementById('kpi-commission-today').textContent = `₪${commissionToday.toLocaleString('en-US')}`;
           const visitsTarget = Number((localStorage.getItem('emp_goal_visits')) || defaultGoals.visits);
           const pctVisits = Math.min(100, Math.round((visits.length / Math.max(1, visitsTarget)) * 100));
-          const barVisits = document.getElementById('bar-visits'); if (barVisits) barVisits.style.width = pctVisits + '%';
-          const visitsLbl = document.getElementById('visits-bar-label'); if (visitsLbl) visitsLbl.textContent = `${visits.length} / ${visitsTarget}`;
+          const ringVisits = document.getElementById('ring-visits');
+          if (ringVisits) {
+            ringVisits.style.setProperty('--pct', pctVisits + '%');
+            ringVisits.style.backgroundImage = `conic-gradient(#06C167 0% ${pctVisits}%, #e5e7eb ${pctVisits}% 100%)`;
+            const vlbl = document.getElementById('ring-visits-val'); if (vlbl) vlbl.textContent = `${visits.length}/${visitsTarget}`;
+          }
+          const todayKey2 = new Date().toISOString().slice(0,10);
+          if (pctVisits >= 100 && !localStorage.getItem(`dg_visits_${todayKey2}`)) { localStorage.setItem(`dg_visits_${todayKey2}`,'1'); confettiBurst(); showMessage('رائع! أنجزت هدف الزيارات اليوم', 'success'); }
           
         }
       } catch (_) { document.getElementById('visits-list').innerHTML = '<p class="text-center text-red-600 p-6">حدث خطأ</p>'; }
@@ -713,8 +729,8 @@
                   const cards = visits.map(v => {
                     const dateOnly = new Date(v.visited_at).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});
                     const s = String(v.status||'').toLowerCase();
-                    const label = s === 'activated' ? '🟢 مفعّل (مدفوع)' : (s === 'signed_up' ? '🟡 مسجّل' : (s === 'interested' ? '🕓 مهتم – لم يقرر بعد' : '🔴 غير مهتم حالياً'));
-                    const color = label.startsWith('🟢') ? 'badge-green' : label.startsWith('🔴') ? 'badge-red' : 'badge-blue';
+              const label = s === 'activated' ? `<i class="fas fa-check-circle"></i> مفعّل — مسجّل ومدفوع` : (s === 'signed_up' ? `<i class="fas fa-user-plus"></i> مسجّل — لم يدفع بعد` : (s === 'interested' ? `<i class="fas fa-hourglass-half"></i> مهتم – لم يقرر` : `<i class="fas fa-times-circle"></i> غير مهتم`));
+              const color = s === 'activated' ? 'badge-green' : s === 'not_interested' ? 'badge-red' : 'badge-blue';
                     const il = (v.interest_level!==undefined && v.interest_level!==null) ? Number(v.interest_level) : (()=>{ try { const m=(String(v.comments||'').match(/اهتمام:\s*(\d+)\/10/)); return m?Number(m[1]):NaN; } catch(_) { return NaN; } })();
                     const interestBadge = isNaN(il) ? '' : `<span class="badge" style="background: rgba(6,193,103,0.10); color:#06C167; border: 1px solid rgba(6,193,103,0.25);">${il}/10</span>`;
                     return `
@@ -806,7 +822,7 @@
       const start = bounds.start;
       const end = bounds.end;
       const daysLeft = Math.max(0, Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)));
-      const totalGoal = 100;
+      const totalGoal = 125;
       const percent = Math.min(100, Math.round((totalActivated / totalGoal) * 100));
       
       // 1. Update Hero/Ascent Bar
@@ -826,8 +842,8 @@
       const milestones = [
         { req:10, reward:75, title:'برونز', gamifiedTitle:'Bronze Tier' },
         { req:25, reward:200, title:'فضي', gamifiedTitle:'Silver Tier' },
-        { req:50, reward:400, title:'ذهبي', gamifiedTitle:'Gold Tier' },
-        { req:100, reward:1000, title:'ألماس', gamifiedTitle:'Diamond Tier' }
+        { req:75, reward:400, title:'ذهبي', gamifiedTitle:'Gold Tier' },
+        { req:125, reward:1000, title:'ألماس', gamifiedTitle:'Diamond Tier' }
       ];
 
       const next = milestones.find(m => totalActivated < m.req);
@@ -855,7 +871,7 @@
           const status = completed ? (claimedStatus ? 'تم الاستلام' : 'استلام المكافأة') : 'مقفل';
           const near = m.req - totalActivated;
           const motivate = completed ? 'مكتملة! عمل رائع!' : (near > 0 && near <= 5 ? `تبقّى ${near} فقط! أنت قريب جداً 🔥` : `إلى ${m.req} تفعيل`);
-          const tierClass = m.req === 10 ? 'tier-bronze' : m.req === 25 ? 'tier-silver' : m.req === 50 ? 'tier-gold' : 'tier-diamond';
+          const tierClass = m.req === 10 ? 'tier-bronze' : m.req === 25 ? 'tier-silver' : m.req === 75 ? 'tier-gold' : 'tier-diamond';
           const claimable = completed && !claimedStatus;
           const lockIcon = `<i class="fas fa-lock text-lg text-gray-400"></i>`;
           const claimIcon = `<i class="fas fa-hand-holding-usd text-lg"></i>`;
@@ -866,7 +882,7 @@
             statusIcon = claimedStatus ? completedIcon : claimIcon;
           }
           
-          const badgeIcon = m.req === 10 ? 'fa-medal' : m.req === 25 ? 'fa-star-half-alt' : m.req === 50 ? 'fa-star' : 'fa-gem';
+          const badgeIcon = m.req === 10 ? 'fa-medal' : m.req === 25 ? 'fa-star-half-alt' : m.req === 75 ? 'fa-star' : 'fa-gem';
 
           return `
             <div class="milestone-card ${tierClass} ${claimable ? 'claimable pulse' : ''} p-4">

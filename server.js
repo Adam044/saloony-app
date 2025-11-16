@@ -1938,6 +1938,22 @@ async function sendPushToTargets({ user_id, salon_id, payload }) {
     }
 }
 
+// Helper to send a push notification to all admin user subscriptions
+async function sendPushToAdmins(payload) {
+    try {
+        const rows = await dbAll('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id IN (SELECT id FROM users WHERE user_type = $1)', ['admin']);
+        if (!rows || rows.length === 0) return;
+        const payloadStr = JSON.stringify(payload);
+        await Promise.all(rows.map(async (row) => {
+            const sub = { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } };
+            try { await webPush.sendNotification(sub, payloadStr); } catch (err) {
+                if (err.statusCode === 404 || err.statusCode === 410) { try { await dbRun('DELETE FROM push_subscriptions WHERE endpoint = $1', [row.endpoint]); } catch (_) {} }
+                console.warn('Push send to admin failed:', err.message);
+            }
+        }));
+    } catch (err) { console.error('sendPushToAdmins error:', err.message); }
+}
+
 // ===================================
 // SSE: Real-time salon notifications
 // ===================================
@@ -5504,6 +5520,27 @@ app.post('/api/employee/visit', requireRole('employee'), async (req, res) => {
             [employeeId, String(salon_name).trim(), status, il, comments ? String(comments).trim() : null]
         );
         const visitId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
+        try {
+            if (status === 'activated') {
+                const emp = await db.get('SELECT id, name FROM users WHERE id = $1', [employeeId]);
+                const employeeName = emp && emp.name ? emp.name : String(employeeId);
+                if (global.broadcastToAdmins) {
+                    global.broadcastToAdmins('admin:activation', { employee_id: employeeId, employee_name: employeeName, salon_name: String(salon_name).trim() });
+                }
+                try {
+                    await sendPushToAdmins({
+                        title: 'تفعيل صالون',
+                        body: `${employeeName} فعّل الصالون: ${String(salon_name).trim()}`,
+                        url: '/views/admin/admin_dashboard.html',
+                        tag: 'employee_activation'
+                    });
+                } catch (pushErr) {
+                    console.warn('Push to admins failed:', pushErr.message);
+                }
+            }
+        } catch (notifyErr) {
+            console.warn('Admin notify error:', notifyErr.message);
+        }
         return res.json({ success: true, visit_id: visitId });
     } catch (e) {
         console.error('Employee visit log error:', e.message);
@@ -5976,6 +6013,17 @@ try {
             }
         });
 
+        socket.on('joinAdmin', () => {
+            try {
+                const room = 'admins';
+                socket.join(room);
+                socket.admin = true;
+                socket.emit('joinedAdmin', { room });
+            } catch (e) {
+                console.warn('joinAdmin handler error:', e.message);
+            }
+        });
+
         // Handle disconnection
         socket.on('disconnect', () => {
             if (socket.salonId) {
@@ -6000,6 +6048,14 @@ try {
         if (io) {
             io.to(`user_${userId}`).emit(event, data);
             console.log(`Broadcasted ${event} to user ${userId}`);
+        }
+    };
+
+    // Helper function to broadcast to all admin sockets
+    global.broadcastToAdmins = (event, data) => {
+        if (io) {
+            io.to('admins').emit(event, data);
+            console.log(`Broadcasted ${event} to admins`);
         }
     };
 
