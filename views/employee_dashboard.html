@@ -229,8 +229,57 @@
       </div>
     </section>
 
-  <!-- Tab: Milestones -->
-  <section id="milestones-view" class="view-content hidden">
+    <!-- Tab: Visits (employee) -->
+    <section id="visits-view" class="view-content hidden" style="margin-top:0;padding-top:0">
+      <div class="analytics-header mb-3">
+        <div class="section-title text-xl" style="color:var(--color-primary)">الزيارات</div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <input id="emp-visits-search" class="input w-full min-w-0 border rounded-lg p-2" placeholder="ابحث باسم الصالون">
+        <input id="emp-visits-from" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+        <input id="emp-visits-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+        <input id="emp-visits-il-min" type="number" min="0" max="10" class="input w-full min-w-0 border rounded-lg p-2" placeholder="أدنى اهتمام">
+        <input id="emp-visits-il-max" type="number" min="0" max="10" class="input w-full min-w-0 border rounded-lg p-2" placeholder="أعلى اهتمام">
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+        <select id="emp-visits-status" class="input w-full min-w-0 border rounded-lg p-2">
+          <option value="">كل الحالات</option>
+          <option value="activated">🟢 مفعّل (مدفوع)</option>
+          <option value="signed_up">🟡 مسجّل</option>
+          <option value="interested">🕓 مهتم – لم يقرر بعد</option>
+          <option value="not_interested">🔴 غير مهتم حالياً</option>
+        </select>
+        <label class="flex items-center gap-2">
+          <input id="emp-visits-has-comments" type="checkbox">
+          <span class="muted">فقط زيارات مع ملاحظات</span>
+        </label>
+      </div>
+      <div id="emp-visits-list" class="table-wrapper p-3 mt-2"><p class="muted text-center">لا توجد زيارات</p></div>
+    </section>
+
+    <!-- Tab: Analytics & Revenue -->
+    <section id="analytics-view" class="view-content hidden" style="margin-top:0;padding-top:0">
+      <div class="analytics-header">
+        <div class="section-title text-2xl"><i class="fas fa-chart-line text-blue-500 ml-2"></i> التحليلات العامة</div>
+        <div class="analytics-subtitle">نطاق التاريخ وتحليلات الأداء</div>
+      </div>
+      <div class="grid gap-3" style="grid-template-columns: 160px 160px; margin-top:12px">
+        <input id="emp-date-from" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+        <input id="emp-date-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
+      </div>
+      <div id="emp-range-kpis" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-3" style="margin-top:12px">
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-store text-secondary ml-1"></i> الزيارات</div><div class="value text-2xl" id="emp-range-visits-count">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-check-circle text-green-500 ml-1"></i> تفعيلات</div><div class="value text-2xl" id="emp-range-acts">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-user-plus text-amber-500 ml-1"></i> مسجّل</div><div class="value text-2xl" id="emp-range-int-registered">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-hourglass-half text-blue-500 ml-1"></i> مهتم – لم يقرر</div><div class="value text-2xl" id="emp-range-int-needs">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-times-circle text-red-500 ml-1"></i> غير مهتمون</div><div class="value text-2xl" id="emp-range-no">0</div></div>
+        <div class="card kpi-card modern"><div class="label"><i class="fas fa-money-bill-wave text-green-600 ml-1"></i> الإيراد</div><div class="value text-2xl" id="emp-range-rev">₪0</div></div>
+      </div>
+      
+    </section>
+
+    <!-- Tab: Milestones -->
+    <section id="milestones-view" class="view-content hidden">
       <!-- Motivational Title: Operation Peak Performance -->
       <div class="analytics-header mb-4">
         <div class="section-title text-2xl" style="color:var(--color-primary)"><i class="fas fa-fighter-jet text-blue-500 ml-2"></i> المهام والترقيات (Sales Quest)</div>
@@ -277,7 +326,7 @@
     </div>
   </section>
 
-  <section id="helpful-view" class="view-content hidden mt-6">
+  <section id="helpful-view" class="view-content hidden">
     <div class="card modern p-4">
       <div class="flex items-center justify-between mb-3">
         <div class="inline-flex items-center gap-2 text-gray-600"><i class="fas fa-hands-helping"></i><span>روابط مفيدة</span></div>
@@ -335,54 +384,6 @@
     </div>
   </div>
 
-  <!-- Tab: Visits (employee) -->
-  <section id="visits-view" class="view-content hidden">
-    <div class="analytics-header mb-3">
-      <div class="section-title text-xl" style="color:var(--color-primary)">الزيارات</div>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-      <input id="emp-visits-search" class="input w-full min-w-0 border rounded-lg p-2" placeholder="ابحث باسم الصالون">
-      <input id="emp-visits-from" type="date" class="input w-full min-w-0 border rounded-lg p-2">
-      <input id="emp-visits-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
-      <input id="emp-visits-il-min" type="number" min="0" max="10" class="input w-full min-w-0 border rounded-lg p-2" placeholder="أدنى اهتمام">
-      <input id="emp-visits-il-max" type="number" min="0" max="10" class="input w-full min-w-0 border rounded-lg p-2" placeholder="أعلى اهتمام">
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-      <select id="emp-visits-status" class="input w-full min-w-0 border rounded-lg p-2">
-        <option value="">كل الحالات</option>
-        <option value="activated">🟢 مفعّل (مدفوع)</option>
-        <option value="signed_up">🟡 مسجّل</option>
-        <option value="interested">🕓 مهتم – لم يقرر بعد</option>
-        <option value="not_interested">🔴 غير مهتم حالياً</option>
-      </select>
-      <label class="flex items-center gap-2">
-        <input id="emp-visits-has-comments" type="checkbox">
-        <span class="muted">فقط زيارات مع ملاحظات</span>
-      </label>
-    </div>
-    <div id="emp-visits-list" class="table-wrapper p-3 mt-2"><p class="muted text-center">لا توجد زيارات</p></div>
-  </section>
-
-    <!-- Tab: Analytics & Revenue -->
-    <section id="analytics-view" class="view-content hidden">
-      <div class="analytics-header">
-        <div class="section-title text-2xl"><i class="fas fa-chart-line text-blue-500 ml-2"></i> التحليلات العامة</div>
-        <div class="analytics-subtitle">نطاق التاريخ وتحليلات الأداء</div>
-      </div>
-      <div class="grid gap-3" style="grid-template-columns: 160px 160px; margin-top:12px">
-        <input id="emp-date-from" type="date" class="input w-full min-w-0 border rounded-lg p-2">
-        <input id="emp-date-to" type="date" class="input w-full min-w-0 border rounded-lg p-2">
-      </div>
-      <div id="emp-range-kpis" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-3" style="margin-top:12px">
-        <div class="card kpi-card modern"><div class="label"><i class="fas fa-store text-secondary ml-1"></i> الزيارات</div><div class="value text-2xl" id="emp-range-visits-count">0</div></div>
-        <div class="card kpi-card modern"><div class="label"><i class="fas fa-check-circle text-green-500 ml-1"></i> تفعيلات</div><div class="value text-2xl" id="emp-range-acts">0</div></div>
-        <div class="card kpi-card modern"><div class="label"><i class="fas fa-user-plus text-amber-500 ml-1"></i> مسجّل</div><div class="value text-2xl" id="emp-range-int-registered">0</div></div>
-        <div class="card kpi-card modern"><div class="label"><i class="fas fa-hourglass-half text-blue-500 ml-1"></i> مهتم – لم يقرر</div><div class="value text-2xl" id="emp-range-int-needs">0</div></div>
-        <div class="card kpi-card modern"><div class="label"><i class="fas fa-times-circle text-red-500 ml-1"></i> غير مهتمون</div><div class="value text-2xl" id="emp-range-no">0</div></div>
-        <div class="card kpi-card modern"><div class="label"><i class="fas fa-money-bill-wave text-green-600 ml-1"></i> الإيراد</div><div class="value text-2xl" id="emp-range-rev">₪0</div></div>
-      </div>
-      
-    </section>
   </main>
 
   <!-- New Visit Modal -->
@@ -937,11 +938,10 @@
       const f = (d) => `${d.getDate()}/${d.getMonth()+1}/${String(d.getFullYear()).slice(-2)}`;
       return `${f(start)} - ${f(end)}`;
     }
-    function startMilestonesCycle() {
+  function startMilestonesCycle() {
       const uid = getUidKey();
       const now = Date.now();
       localStorage.setItem(`emp_cycle_start_${uid}`, String(now));
-      localStorage.removeItem(`emp_claims_${uid}`);
       try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
       loadMilestones();
     }
@@ -966,7 +966,6 @@
         if (bounds && Date.now() > bounds.end.getTime()) {
           const uid = getUidKey();
           localStorage.removeItem(`emp_cycle_start_${uid}`);
-          localStorage.removeItem(`emp_claims_${uid}`);
         }
         if (cta) cta.style.display = 'flex';
         if (content) content.style.display = 'none';
@@ -1138,6 +1137,8 @@
         });
         renderEmployeeVisits();
       }
+
+      // No forced scrolling; views are placed near top for natural alignment
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
