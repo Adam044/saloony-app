@@ -305,6 +305,17 @@
           <div class="inline-flex items-center gap-2 text-gray-500 mb-1"><i class="fas fa-comment-dots"></i><span>ملاحظات</span></div>
           <div id="emp-md-comments" class="text-gray-700 whitespace-pre-wrap break-words"></div>
         </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-map-signs"></i><span>العنوان</span></div>
+          <span id="emp-md-address" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-location-dot"></i><span>الموقع</span></div>
+          <div class="inline-flex items-center gap-2">
+            <span id="emp-md-location-name" class="font-semibold">—</span>
+            <button id="emp-md-open-map" class="btn"><i class="fas fa-directions"></i><span>افتح الخريطة</span></button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -369,8 +380,19 @@
       <div class="modal-body">
         <div class="grid grid-2">
           <div>
+            <label class="muted">نوع الزيارة</label>
+            <select id="visit-type" class="w-full border rounded-lg p-2">
+              <option value="first">زيارة أولى</option>
+              <option value="follow_up">متابعة</option>
+            </select>
+          </div>
+          <div></div>
+          <div>
             <label class="muted">اسم الصالون</label>
             <input id="visit-salon" class="w-full border rounded-lg p-2" placeholder="اكتب اسم الصالون" />
+            <select id="visit-salon-existing" class="w-full border rounded-lg p-2" style="display:none"></select>
+            <label class="muted" style="margin-top:8px; display:block">العنوان</label>
+            <input id="visit-address" class="w-full border rounded-lg p-2" placeholder="وصف الموقع أو العنوان" required />
           </div>
           <div>
             <label class="muted">3️⃣ الحالة</label>
@@ -387,6 +409,8 @@
           <input type="range" id="visit-interest" min="0" max="10" value="5" class="w-full">
           <div class="muted">🎯 مدى اهتمام صاحب الصالون: <span id="interest-value">5</span>/10</div>
         </div>
+        <input type="hidden" id="visit-lat">
+        <input type="hidden" id="visit-lng">
         <label class="muted" style="margin-top:8px; display:block">ملاحظات</label>
         <textarea id="visit-comments" class="w-full border rounded-lg p-2" rows="3" placeholder="أي تفاصيل إضافية"></textarea>
         <div class="actions" style="margin-top:12px">
@@ -480,11 +504,11 @@
                       ${interestBadge}
                     </div>
                     <div class="flex items-center gap-2">
-                      <button class="btn" data-open-emp-modal="true" data-salon="${(v.salon_name||'').replace(/"/g,'&quot;')}" data-time="${dateOnly}" data-status="${label}" data-interest="${isNaN(il)?'':il}" data-comments="${(String(v.comments||'').replace(/</g,'&lt;')).replace(/"/g,'&quot;')}"><i class="fas fa-eye"></i><span>تفاصيل</span></button>
+                      <button class="btn" data-open-emp-modal="true" data-salon="${(v.salon_name||'').replace(/"/g,'&quot;')}" data-time="${dateOnly}" data-status="${label}" data-interest="${isNaN(il)?'':il}" data-comments="${(String(v.comments||'').replace(/</g,'&lt;')).replace(/"/g,'&quot;')}" data-address="${(v.address||'').replace(/"/g,'&quot;')}" data-lat="${v.lat||''}" data-lng="${v.lng||''}"><i class="fas fa-eye"></i><span>تفاصيل</span></button>
                     </div>
                   </div>
                 </div>`;
-            }).join('');
+              }).join('');
             box.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">${cards}</div>`;
             box.querySelectorAll('[data-open-emp-modal="true"]').forEach(btn => {
               btn.addEventListener('click', () => {
@@ -494,6 +518,17 @@
                 m.querySelector('#emp-md-status').textContent = btn.getAttribute('data-status') || '—';
                 m.querySelector('#emp-md-interest').textContent = (btn.getAttribute('data-interest') || '') ? (btn.getAttribute('data-interest') + '/10') : '—';
                 m.querySelector('#emp-md-comments').textContent = btn.getAttribute('data-comments') || '—';
+                m.querySelector('#emp-md-address').textContent = btn.getAttribute('data-address') || '—';
+                const lat = btn.getAttribute('data-lat'); const lng = btn.getAttribute('data-lng');
+                const nameEl = m.querySelector('#emp-md-location-name'); const mapBtn = m.querySelector('#emp-md-open-map');
+                if (lat && lng) {
+                  resolvePlaceName(Number(lat), Number(lng)).then(n => { if (nameEl) nameEl.textContent = n || `${lat},${lng}`; }).catch(()=> { if (nameEl) nameEl.textContent = `${lat},${lng}`; });
+                  const url = buildDirectionsUrl(Number(lat), Number(lng), m.querySelector('#emp-md-salon')?.textContent || 'الصالون');
+                  if (mapBtn) {
+                    mapBtn.classList.remove('hidden');
+                    mapBtn.onclick = () => { try { mapBtn.classList.add('animate-pulse'); setTimeout(()=> mapBtn.classList.remove('animate-pulse'), 800); } catch(_){} window.location.href = url; };
+                  }
+                } else { if (nameEl) nameEl.textContent = '—'; if (mapBtn) mapBtn.classList.add('hidden'); }
                 m.classList.remove('hidden');
               });
             });
@@ -509,6 +544,34 @@
       else box.classList.add('bg-blue-100','text-blue-800');
       box.classList.remove('hidden');
       setTimeout(() => box.classList.add('hidden'), 3000);
+    }
+
+    function buildDirectionsUrl(lat, lng, label) {
+      const ua = navigator.userAgent || '';
+      const name = label || 'الصالون';
+      if (/iP(hone|ad|od)|Macintosh/.test(ua)) {
+        if (lat && lng) return `maps://?daddr=${lat},${lng}&q=${encodeURIComponent(name)}`;
+        return `maps://?q=${encodeURIComponent(name)}`;
+      }
+      if (/Android/i.test(ua)) {
+        if (lat && lng) return `google.navigation:q=${lat},${lng}(${encodeURIComponent(name)})`;
+        return `geo:0,0?q=${encodeURIComponent(name)}`;
+      }
+      if (lat && lng) return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(name)}`;
+    }
+
+    async function resolvePlaceName(lat, lng) {
+      try {
+        const key = `geo_name_${lat}_${lng}`;
+        const cached = localStorage.getItem(key);
+        if (cached) return cached;
+        const u = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
+        const j = await fetch(u).then(r=>r.json()).catch(()=>null);
+        const name = j && (j.display_name || j.address?.road || j.address?.suburb || j.address?.city || j.address?.town) || '';
+        if (name) try { localStorage.setItem(key, name); } catch(_){}
+        return name;
+      } catch(_) { return ''; }
     }
 
     function parseJwt(token) {
@@ -581,34 +644,70 @@
     function openVisitModal() {
       const backdrop = document.getElementById('visit-modal');
       backdrop.style.display = 'flex';
+      const vt = document.getElementById('visit-type');
+      const sTxt = document.getElementById('visit-salon');
+      const sSel = document.getElementById('visit-salon-existing');
+      if (vt) vt.value = 'first';
+      if (sTxt) sTxt.style.display = '';
+      if (sSel) sSel.style.display = 'none';
     }
     function closeVisitModal() {
       const backdrop = document.getElementById('visit-modal');
       backdrop.style.display = 'none';
       // reset fields
       const salonInput = document.getElementById('visit-salon');
+      const addressInput = document.getElementById('visit-address');
       const statusSelect = document.getElementById('visit-status');
       const commentsArea = document.getElementById('visit-comments');
       const interestSlider = document.getElementById('visit-interest');
       const interestDisplay = document.getElementById('interest-value');
       if (salonInput) salonInput.value = '';
+      if (addressInput) addressInput.value = '';
       if (statusSelect) statusSelect.selectedIndex = 0;
       if (commentsArea) commentsArea.value = '';
       if (interestSlider) interestSlider.value = 5;
       if (interestDisplay) interestDisplay.textContent = '5';
     }
 
+    async function getLocationQuick() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        let done = false; const t = setTimeout(() => { if (!done) resolve(null); }, 4000);
+        navigator.geolocation.getCurrentPosition((pos) => {
+          done = true; clearTimeout(t);
+          resolve({ lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) });
+        }, () => { done = true; clearTimeout(t); resolve(null); }, { enableHighAccuracy: true, timeout: 3500, maximumAge: 60000 });
+      });
+    }
+
     async function saveVisit() {
       const token = ensureEmployeeOrRedirect();
       if (!token) return;
-      const salon = document.getElementById('visit-salon').value.trim();
+      const vt = document.getElementById('visit-type');
+      const type = vt ? vt.value : 'first';
+      let salon = document.getElementById('visit-salon').value.trim();
+      if (type === 'follow_up') salon = (document.getElementById('visit-salon-existing')?.value || '').trim();
       const statusEl = document.getElementById('visit-status');
       const status = statusEl.value;
       const interestLevel = Number(document.getElementById('visit-interest').value || 0);
-      const commentsInput = document.getElementById('visit-comments').value.trim();
-      const comments = `${commentsInput}${commentsInput ? ' | ' : ''}اهتمام: ${interestLevel}/10`;
+      const comments = document.getElementById('visit-comments').value.trim();
+      const address = (document.getElementById('visit-address')?.value || '').trim();
+      const saveBtn = document.getElementById('visit-save');
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.dataset.orig = saveBtn.innerHTML; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>جارٍ الحفظ</span>'; }
+      if (!address) { showMessage('يرجى إدخال العنوان', 'error'); if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = saveBtn.dataset.orig || '<i class="fas fa-check"></i><span>حفظ</span>'; } return; }
+      let lat = '';
+      let lng = '';
       try {
-        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments, interest_level: interestLevel }) });
+        const geo = await getLocationQuick();
+        if (geo) {
+          lat = String(geo.lat);
+          lng = String(geo.lng);
+          const latEl = document.getElementById('visit-lat'); const lngEl = document.getElementById('visit-lng');
+          if (latEl) latEl.value = lat; if (lngEl) lngEl.value = lng;
+        }
+      } catch (_) {}
+      try {
+        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments, interest_level: interestLevel, lat, lng, address }) });
         const data = await res.json();
         if (res.ok && data.success) {
           showMessage('تم حفظ الزيارة', 'success');
@@ -618,7 +717,37 @@
           showMessage(data.message || 'فشل حفظ الزيارة', 'error');
         }
       } catch (_) { showMessage('خطأ في الاتصال بالخادم', 'error'); }
+      finally { if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = saveBtn.dataset.orig || '<i class="fas fa-check"></i><span>حفظ</span>'; } }
     }
+
+    async function loadEmployeeSalonsList() {
+      const token = ensureEmployeeOrRedirect();
+      if (!token) return;
+      const sel = document.getElementById('visit-salon-existing');
+      if (!sel) return;
+      const r = await fetch('/api/employee/salons', { headers: { 'Authorization': `Bearer ${token}` } });
+      const j = await r.json();
+      const list = j.salons || [];
+      sel.innerHTML = list.length ? list.map(x => `<option value="${String(x.salon_name||'').replace(/"/g,'&quot;')}">${String(x.salon_name||'—').replace(/</g,'&lt;')}</option>`).join('') : '<option value="">—</option>';
+      try { sel.dataset.salons = JSON.stringify(list); } catch(_) { sel.dataset.salons = '[]'; }
+      const addrInput = document.getElementById('visit-address');
+      const updateAddr = () => {
+        const salons = (()=>{ try { return JSON.parse(sel.dataset.salons || '[]'); } catch(_) { return []; } })();
+        const name = sel.value;
+        const rec = salons.find(s => String(s.salon_name||'') === name);
+        if (addrInput) addrInput.value = String(rec && rec.address ? rec.address : '');
+      };
+      updateAddr();
+      sel.onchange = updateAddr;
+    }
+
+    document.getElementById('visit-type')?.addEventListener('change', async (e) => {
+      const v = e.target.value;
+      const sTxt = document.getElementById('visit-salon');
+      const sSel = document.getElementById('visit-salon-existing');
+      if (v === 'follow_up') { if (sTxt) sTxt.style.display = 'none'; if (sSel) { sSel.style.display = ''; await loadEmployeeSalonsList(); } }
+      else { if (sTxt) sTxt.style.display = ''; if (sSel) sSel.style.display = 'none'; }
+    });
 
     
 
@@ -721,7 +850,18 @@
               document.getElementById('emp-range-int-registered').textContent = Number(m.signed_up||0).toLocaleString('en-US');
               document.getElementById('emp-range-int-needs').textContent = Number(m.interested||0).toLocaleString('en-US');
               document.getElementById('emp-range-no').textContent = Number(m.not_interested||0).toLocaleString('en-US');
-              document.getElementById('emp-range-rev').textContent = `₪${revenue.toLocaleString('en-US')}`;
+              try {
+                const uid = getUidKey(); const claimsRaw = localStorage.getItem(`emp_claims_${uid}`) || '{}';
+                const claimed = JSON.parse(claimsRaw);
+                const milestones = [
+                  { req:10, reward:75 }, { req:25, reward:200 }, { req:75, reward:400 }, { req:125, reward:1000 }
+                ];
+                const claimedSum = milestones.reduce((sum, m) => sum + (claimed[m.req] ? m.reward : 0), 0);
+                const totalRev = revenue + claimedSum;
+                document.getElementById('emp-range-rev').textContent = `₪${totalRev.toLocaleString('en-US')}`;
+              } catch (_) {
+                document.getElementById('emp-range-rev').textContent = `₪${revenue.toLocaleString('en-US')}`;
+              }
               const box = document.getElementById('emp-range-visits');
               if (box) {
                 if (visits.length === 0) { box.style.display = ''; box.innerHTML = '<p class="muted text-center">لا توجد زيارات</p>'; }
@@ -851,7 +991,7 @@
       const elNextHero = document.getElementById('milestones-next-goal-hero'); 
       if (elNextHero) {
         if (next) {
-          elNextHero.innerHTML = `مكافأة البداية عند <span class="next-reward-amount">${next.req} تفعيل</span> - تبقى لك ${leftToNext} تفعيلات!`;
+          elNextHero.innerHTML = `المكافأة القادمة عند <span class="next-reward-amount">${next.req} تفعيل</span> - تبقى لك ${leftToNext} تفعيلات!`;
           elAscentIcon.innerHTML = `<i class="fas fa-star"></i>`;
         } else {
           elNextHero.innerHTML = `<span class="next-reward-amount text-white text-xl">🏆 كل الأهداف مكتملة! أنت بطل! 🏆</span>`;
@@ -982,19 +1122,20 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      let token = ensureEmployeeOrRedirect();
-      if (!token) return;
-      const left = tokenSecondsLeft(token);
-      if (left <= 60) {
+      const userStr = localStorage.getItem('salonni_user');
+      if (!userStr) { location.href = '/auth.html'; return; }
+      let user = {};
+      try { user = JSON.parse(userStr); } catch (_) { location.href = '/auth.html'; return; }
+      if (!user || user.user_type !== 'employee') { if (user && user.user_type === 'salon') location.href = '/home_salon.html'; else if (user && user.user_type === 'user') location.href = '/home_user.html'; else location.href = '/auth.html'; return; }
+      let token = localStorage.getItem('salonni_token');
+      const payload = token && parseJwt(token);
+      if (!token || !payload || tokenSecondsLeft(token) <= 60) {
         const nt = await attemptRefresh();
         if (!nt) { location.href = '/auth.html'; return; }
         token = nt;
       }
       scheduleTokenRefresh();
-      try {
-        const user = JSON.parse(localStorage.getItem('salonni_user') || '{}');
-        document.getElementById('emp-name').textContent = user.name || '';
-      } catch (_) {}
+      try { const u = JSON.parse(localStorage.getItem('salonni_user') || '{}'); document.getElementById('emp-name').textContent = u.name || ''; } catch (_) {}
       document.getElementById('logout-btn').addEventListener('click', () => { try { localStorage.removeItem('salonni_token'); localStorage.removeItem('salonni_user'); } catch (_) {} location.href = '/auth.html'; });
       // Update interest display live
       const interestSlider = document.getElementById('visit-interest');
@@ -1005,6 +1146,7 @@
       document.getElementById('new-visit-btn').addEventListener('click', openVisitModal);
       document.getElementById('visit-cancel').addEventListener('click', closeVisitModal);
       document.getElementById('visit-save').addEventListener('click', saveVisit);
+      try { loadToday(); } catch (_) {}
       // Bottom nav view switching
       document.querySelectorAll('#bottom-nav .nav-item').forEach(btn => btn.addEventListener('click', (e) => {
         e.preventDefault(); const v = btn.getAttribute('data-view'); switchView(v);

@@ -599,6 +599,10 @@ async function alignSchema() {
                     console.log('AlignSchema: Adding interest_level to employee_visits (PostgreSQL)...');
                     await db.run(`ALTER TABLE employee_visits ADD COLUMN interest_level INTEGER`);
                 }
+                if (!evSet.has('address')) {
+                    console.log('AlignSchema: Adding address to employee_visits (PostgreSQL)...');
+                    await db.run(`ALTER TABLE employee_visits ADD COLUMN address TEXT`);
+                }
             } catch (e) {
                 console.warn('AlignSchema: employee_visits interest_level align warning (PostgreSQL):', e.message);
             }
@@ -851,6 +855,10 @@ async function alignSchema() {
                 if (!evCols.has('interest_level')) {
                     console.log('AlignSchema: Adding interest_level to employee_visits (SQLite)...');
                     await db.run(`ALTER TABLE employee_visits ADD COLUMN interest_level INTEGER`);
+                }
+                if (!evCols.has('address')) {
+                    console.log('AlignSchema: Adding address to employee_visits (SQLite)...');
+                    await db.run(`ALTER TABLE employee_visits ADD COLUMN address TEXT`);
                 }
             } catch (e) {
                 console.warn('AlignSchema: SQLite employee_visits align warning:', e.message);
@@ -5428,7 +5436,18 @@ app.get('/api/admin/employees/:id/analytics/today', requireAdmin, async (req, re
         const today = new Date().toISOString().slice(0, 10);
         const session = await db.get('SELECT id, date, started_at FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
         const visits = await db.query(
-            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC',
+            `SELECT id,
+                    created_at AS visited_at,
+                    salon_name,
+                    status,
+                    interest_level,
+                    comments,
+                    address,
+                    (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
+                    (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) = $2
+             ORDER BY created_at DESC`,
             [employeeId, today]
         );
         const count = (visits || []).length;
@@ -5459,7 +5478,18 @@ app.get('/api/admin/employees/:id/analytics/range', requireAdmin, async (req, re
             [employeeId, from, to]
         );
         const visits = await db.query(
-            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3 ORDER BY created_at DESC',
+            `SELECT id,
+                    created_at AS visited_at,
+                    salon_name,
+                    status,
+                    interest_level,
+                    comments,
+                    address,
+                    (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
+                    (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
+             ORDER BY created_at DESC`,
             [employeeId, from, to]
         );
         const map = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
@@ -5502,9 +5532,9 @@ app.post('/api/employee/session/start', requireRole('employee'), async (req, res
 app.post('/api/employee/visit', requireRole('employee'), async (req, res) => {
     try {
         const employeeId = req.user.id;
-        let { salon_name, status, comments, interest_level } = req.body || {};
-        if (!salon_name || !status) {
-            return res.status(400).json({ success: false, message: 'salon_name and status are required.' });
+        let { salon_name, status, comments, interest_level, lat, lng, address } = req.body || {};
+        if (!salon_name || !status || !address || !String(address).trim()) {
+            return res.status(400).json({ success: false, message: 'salon_name, status and address are required.' });
         }
         // Normalize and validate status
         status = String(status).trim().toLowerCase();
@@ -5516,10 +5546,16 @@ app.post('/api/employee/visit', requireRole('employee'), async (req, res) => {
         let il = Number(interest_level);
         if (Number.isNaN(il)) il = null; else il = Math.max(0, Math.min(10, il));
         const inserted = await db.query(
-            'INSERT INTO employee_visits (employee_id, salon_name, status, interest_level, comments, created_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id',
-            [employeeId, String(salon_name).trim(), status, il, comments ? String(comments).trim() : null]
+            'INSERT INTO employee_visits (employee_id, salon_name, status, interest_level, comments, address, created_at) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id',
+            [employeeId, String(salon_name).trim(), status, il, comments ? String(comments).trim() : null, address ? String(address).trim() : null]
         );
         const visitId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
+        if (visitId && lat && lng) {
+            try {
+                await db.run('CREATE TABLE IF NOT EXISTS employee_visit_locations (id SERIAL PRIMARY KEY, visit_id INTEGER NOT NULL, lat DOUBLE PRECISION, lng DOUBLE PRECISION, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+                await db.run('INSERT INTO employee_visit_locations (visit_id, lat, lng) VALUES ($1, $2, $3)', [visitId, Number(lat), Number(lng)]);
+            } catch (locErr) { console.warn('Store location failed:', locErr.message); }
+        }
         try {
             if (status === 'activated') {
                 const emp = await db.get('SELECT id, name FROM users WHERE id = $1', [employeeId]);
@@ -5529,10 +5565,11 @@ app.post('/api/employee/visit', requireRole('employee'), async (req, res) => {
                 }
                 try {
                     await sendPushToAdmins({
-                        title: 'تفعيل صالون',
-                        body: `${employeeName} فعّل الصالون: ${String(salon_name).trim()}`,
+                        title: '🎉 تفعيل مدفوع جديد',
+                        body: `${employeeName} فعّل الصالون: ${String(salon_name).trim()} — 💸 دخل جديد!`,
                         url: '/views/admin/admin_dashboard.html',
-                        tag: 'employee_activation'
+                        tag: 'employee_activation',
+                        requireInteraction: true
                     });
                 } catch (pushErr) {
                     console.warn('Push to admins failed:', pushErr.message);
@@ -5635,7 +5672,18 @@ app.get('/api/employee/analytics/today', requireRole('employee'), async (req, re
         const session = await db.get('SELECT id, date, started_at FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
         // Visits: align to employee_visits schema (created_at, salon_name, status, comments)
         const visits = await db.query(
-            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 ORDER BY created_at DESC',
+            `SELECT id,
+                    created_at AS visited_at,
+                    salon_name,
+                    status,
+                    interest_level,
+                    comments,
+                    address,
+                    (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
+                    (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) = $2
+             ORDER BY created_at DESC`,
             [employeeId, today]
         );
         const count = (visits || []).length;
@@ -5663,7 +5711,18 @@ app.get('/api/employee/analytics/range', requireRole('employee'), async (req, re
             [employeeId, from, to]
         );
         const visits = await db.query(
-            'SELECT id, created_at AS visited_at, salon_name, status, interest_level, comments FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3 ORDER BY created_at DESC',
+            `SELECT id,
+                    created_at AS visited_at,
+                    salon_name,
+                    status,
+                    interest_level,
+                    comments,
+                    address,
+                    (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
+                    (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
+             FROM employee_visits
+             WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
+             ORDER BY created_at DESC`,
             [employeeId, from, to]
         );
         const map = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
@@ -5680,6 +5739,29 @@ app.get('/api/employee/analytics/range', requireRole('employee'), async (req, re
         return res.json({ success: true, map, visits: visits || [], revenue });
     } catch (e) {
         console.error('Employee range analytics error:', e.message);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+app.get('/api/employee/salons', requireRole('employee'), async (req, res) => {
+    try {
+        const employeeId = req.user.id;
+        const rows = await db.query(`
+            SELECT salon_name,
+                   MAX(created_at) AS last_visited,
+                   (
+                     SELECT address FROM employee_visits ev2
+                     WHERE ev2.employee_id = $1 AND ev2.salon_name = employee_visits.salon_name
+                     ORDER BY ev2.created_at DESC LIMIT 1
+                   ) AS address
+            FROM employee_visits
+            WHERE employee_id = $1
+            GROUP BY salon_name
+            ORDER BY last_visited DESC
+        `, [employeeId]);
+        return res.json({ success: true, salons: rows || [] });
+    } catch (e) {
+        console.error('Employee salons list error:', e.message);
         return res.status(500).json({ success: false, message: 'Server error' });
     }
 });

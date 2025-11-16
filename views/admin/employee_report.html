@@ -173,6 +173,17 @@
           <div class="inline-flex items-center gap-2 text-gray-500 mb-1"><i class="fas fa-comment-dots"></i><span>ملاحظات</span></div>
           <div id="md-comments" class="text-gray-700 whitespace-pre-wrap break-words"></div>
         </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-map-signs"></i><span>العنوان</span></div>
+          <span id="md-address" class="font-semibold">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-location-dot"></i><span>الموقع</span></div>
+          <div class="inline-flex items-center gap-2">
+            <span id="md-location-name" class="font-semibold">—</span>
+            <button id="md-open-map" class="btn"><i class="fas fa-directions"></i><span>افتح الخريطة</span></button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -359,7 +370,33 @@
       const empName = getParam('name') || '—';
       document.getElementById('emp-name').textContent = empName;
       const today = new Date();
-      const iso = (d) => d.toISOString().slice(0,10);
+    const iso = (d) => d.toISOString().slice(0,10);
+    function buildDirectionsUrl(lat, lng, label) {
+      const ua = navigator.userAgent || '';
+      const name = label || 'الصالون';
+      if (/iP(hone|ad|od)|Macintosh/.test(ua)) {
+        if (lat && lng) return `maps://?daddr=${lat},${lng}&q=${encodeURIComponent(name)}`;
+        return `maps://?q=${encodeURIComponent(name)}`;
+      }
+      if (/Android/i.test(ua)) {
+        if (lat && lng) return `google.navigation:q=${lat},${lng}(${encodeURIComponent(name)})`;
+        return `geo:0,0?q=${encodeURIComponent(name)}`;
+      }
+      if (lat && lng) return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(name)}`;
+    }
+    async function resolvePlaceName(lat, lng) {
+      try {
+        const key = `geo_name_${lat}_${lng}`;
+        const cached = localStorage.getItem(key);
+        if (cached) return cached;
+        const u = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar`;
+        const j = await fetch(u).then(r=>r.json()).catch(()=>null);
+        const name = j && (j.display_name || j.address?.road || j.address?.suburb || j.address?.city || j.address?.town) || '';
+        if (name) try { localStorage.setItem(key, name); } catch(_){}
+        return name;
+      } catch(_) { return ''; }
+    }
       const dateTo = document.getElementById('date-to'); if (dateTo) dateTo.value = iso(today);
       const weekAgo = new Date(today.getTime() - 6*24*60*60*1000);
       const dateFrom = document.getElementById('date-from'); if (dateFrom) dateFrom.value = iso(weekAgo);
@@ -519,7 +556,7 @@
                           ${interestBadge}
                         </div>
                         <div class="flex items-center gap-2">
-                          <button class="btn" data-open-modal="true" data-salon="${(v.salon_name||'').replace(/"/g,'&quot;')}" data-time="${dateOnly}" data-status="${label}" data-interest="${isNaN(il)?'':il}" data-comments="${(String(v.comments||'').replace(/</g,'&lt;')).replace(/"/g,'&quot;')}"><i class="fas fa-eye"></i><span>تفاصيل</span></button>
+                          <button class="btn" data-open-modal="true" data-salon="${(v.salon_name||'').replace(/"/g,'&quot;')}" data-time="${dateOnly}" data-status="${label}" data-interest="${isNaN(il)?'':il}" data-comments="${(String(v.comments||'').replace(/</g,'&lt;')).replace(/"/g,'&quot;')}" data-address="${(v.address||'').replace(/"/g,'&quot;')}" data-lat="${v.lat||''}" data-lng="${v.lng||''}"><i class="fas fa-eye"></i><span>تفاصيل</span></button>
                         </div>
                       </div>
                     </div>`;
@@ -534,6 +571,17 @@
                     m.querySelector('#md-status').textContent = btn.getAttribute('data-status') || '—';
                     m.querySelector('#md-interest').textContent = (btn.getAttribute('data-interest') || '') ? (btn.getAttribute('data-interest') + '/10') : '—';
                     m.querySelector('#md-comments').textContent = btn.getAttribute('data-comments') || '—';
+                    m.querySelector('#md-address').textContent = btn.getAttribute('data-address') || '—';
+                    const lat = btn.getAttribute('data-lat'); const lng = btn.getAttribute('data-lng');
+                    const nameEl = m.querySelector('#md-location-name'); const mapBtn = m.querySelector('#md-open-map');
+                    if (lat && lng) {
+                      resolvePlaceName(Number(lat), Number(lng)).then(n => { if (nameEl) nameEl.textContent = n || `${lat},${lng}`; }).catch(()=> { if (nameEl) nameEl.textContent = `${lat},${lng}`; });
+                      const url = buildDirectionsUrl(Number(lat), Number(lng), m.querySelector('#md-salon')?.textContent || 'الصالون');
+                      if (mapBtn) {
+                        mapBtn.classList.remove('hidden');
+                        mapBtn.onclick = () => { try { mapBtn.classList.add('animate-pulse'); setTimeout(()=> mapBtn.classList.remove('animate-pulse'), 800); } catch(_){} window.location.href = url; };
+                      }
+                    } else { if (nameEl) nameEl.textContent = '—'; if (mapBtn) mapBtn.classList.add('hidden'); }
                     m.classList.remove('hidden');
                   });
                 });

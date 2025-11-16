@@ -123,14 +123,14 @@ self.addEventListener('push', (event) => {
   const targetUrl = payload.url || '/home_salon.html';
   const options = {
     body: payload.body || 'لديك إشعار جديد',
-    icon: '/images/Saloony-app_icon.png',
-    badge: '/images/Saloony-app_icon.png',
+    icon: payload.icon || '/images/Saloony-app_icon.png',
+    badge: payload.badge || '/images/Saloony-app_icon.png',
     data: { url: targetUrl },
     lang: 'ar',
     dir: 'rtl',
     tag: payload.tag || 'saloony',
     renotify: true,
-    requireInteraction: false,
+    requireInteraction: payload.requireInteraction === true,
     timestamp: Date.now()
   };
   event.waitUntil(self.registration.showNotification(payload.title || 'Saloony', options));
