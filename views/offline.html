@@ -47,42 +47,30 @@
         <div class="logo">
           <img src="/images/Saloony-app_icon.png" alt="Saloony" style="width:24px;height:24px;border-radius:6px;" />
         </div>
-        <div class="title" id="title">يبدو أنك غير متصل بالإنترنت</div>
+        <div class="title" id="title">لا يوجد اتصال بالإنترنت</div>
       </div>
       <div class="content">
         <div class="scene">
           <div class="device">
             <div class="wifi">
-              <div class="wave"></div>
-              <div class="wave"></div>
-              <div class="wave"></div>
+              <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a11 11 0 0 1 14 0"/><path d="M8.5 15.5a7 7 0 0 1 7 0"/><path d="M12 19h0"/></svg>
             </div>
           </div>
         </div>
-        <p class="desc" id="desc">الرجاء التحقق من اتصال الواي فاي ثم إعادة المحاولة.</p>
+        <p class="desc" id="desc">تحقق من الشبكة ثم اضغط إعادة المحاولة.</p>
         <div class="status"><span class="dot"></span> بدون اتصال</div>
         <div class="actions">
           <button class="btn" id="retryBtn" type="button">إعادة المحاولة</button>
         </div>
       </div>
-      <div class="foot">ستُعاد المحاولة تلقائياً عند استعادة الاتصال.</div>
+      <div class="foot">سيتم العودة تلقائياً عند توفر الاتصال.</div>
     </div>
   </div>
   <script>
-    const btn = document.getElementById('retryBtn');
-    function attemptReconnect() {
-      if (navigator.onLine) {
-        location.reload();
-      } else {
-        const card = document.querySelector('.card');
-        card.classList.remove('shake');
-        void card.offsetWidth; // restart animation
-        card.classList.add('shake');
-        setTimeout(() => card.classList.remove('shake'), 450);
-      }
-    }
-    btn.addEventListener('click', attemptReconnect);
-    window.addEventListener('online', () => location.reload());
+    function ping(){var c=new AbortController();var t=setTimeout(function(){try{c.abort()}catch(_){}} ,2000);return fetch('/',{method:'HEAD',cache:'no-store',signal:c.signal}).finally(function(){clearTimeout(t)})}
+    var btn=document.getElementById('retryBtn');
+    btn.addEventListener('click',function(){if(navigator.onLine){ping().then(function(r){if(r&&r.ok){var last=null;try{last=sessionStorage.getItem('last_path')}catch(_){ } window.location.href=last||'/' }})} else {var card=document.querySelector('.card');card.classList.remove('shake');void card.offsetWidth;card.classList.add('shake');setTimeout(function(){card.classList.remove('shake')},450)}});
+    window.addEventListener('online',function(){var last=null;try{last=sessionStorage.getItem('last_path')}catch(_){ } window.location.href=last||'/'});
   </script>
 </body>
 </html>

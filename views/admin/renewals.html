@@ -234,11 +234,17 @@
     async function loadData() {
       try {
         const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-        if (sRes.ok) salons = await sRes.json();
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          salons = Array.isArray(sData) ? sData : (Array.isArray(sData.salons) ? sData.salons : []);
+        }
       } catch {}
       try {
         const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-        if (pRes.ok) payments = await pRes.json();
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
+        }
       } catch {}
       renderList();
     }
@@ -269,7 +275,7 @@
       const filter = document.getElementById('renewal-filter')?.value || 'all';
       const planFilter = document.getElementById('plan-filter')?.value || '';
 
-      const base = (salons || []);
+      const base = Array.isArray(salons) ? salons : [];
       const rows = base.map(salon => {
         const st = computeStatus(salon);
         return { salon, st };
@@ -391,12 +397,16 @@
         if (!res.ok) throw new Error('فشل حفظ التجديد');
         // Refresh payments to reflect new invoice
         const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-        if (pRes.ok) payments = await pRes.json();
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
+        }
         // Refresh salons to reflect new status and plan immediately
         try {
           const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
           if (sRes.ok) {
-            salons = await sRes.json();
+            const sData = await sRes.json();
+            salons = Array.isArray(sData) ? sData : (Array.isArray(sData.salons) ? sData.salons : []);
           } else {
             // Fallback: update current salon locally
             salons = (salons||[]).map(s => s.id === currentSalonForRenew.id
@@ -488,7 +498,10 @@
         });
         if (!res.ok) throw new Error('فشل تحديث الحالة');
         const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-        if (sRes.ok) salons = await sRes.json();
+        if (sRes.ok) {
+          const sData = await sRes.json();
+          salons = Array.isArray(sData) ? sData : (Array.isArray(sData.salons) ? sData.salons : []);
+        }
         showMessage(status === 'accepted' ? 'تم تفعيل الصالون' : 'تم تعطيل الصالون', 'success');
         renderList();
       } catch (e) {

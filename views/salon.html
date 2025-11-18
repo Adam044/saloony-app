@@ -17,10 +17,11 @@
     <title>تفاصيل الصالون</title>
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script>
-        (function() {
-            // Basic PWA and auth check: ensure user is logged in
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="/app-mode.js"></script>
+  <script>
+    (function() {
+      // Basic PWA and auth check: ensure user is logged in
             const token = localStorage.getItem('salonni_token');
             const userRaw = localStorage.getItem('salonni_user');
             const user = userRaw ? JSON.parse(userRaw) : null;

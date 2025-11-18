@@ -740,18 +740,7 @@
                 </div>
             </div>
 
-            <!-- 3. Favorites View -->
-            <div id="favorites-view" class="view-content hidden">
-                <h2 class="mt-6 text-3xl font-extrabold text-primary-dark mb-6 border-b pb-2 text-center">
-                    <span class="inline-flex items-center justify-center gap-2">
-                        <i class="fas fa-heart"></i>
-                        صالوناتي المفضلة
-                    </span>
-                </h2>
-                <div id="favorites-list-container" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <p class="text-gray-500 text-center py-8 col-span-full">جاري تحميل المفضلة...</p>
-                </div>
-            </div>
+            
 
             <!-- 4. Profile View (Polished) -->
             <div id="profile-view" class="view-content hidden">
@@ -801,6 +790,15 @@
                         </div>
 
                     </div>
+                    <div class="pt-4 border-t border-gray-100 mt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xl font-bold text-primary-dark">المفضلة</h3>
+                            <i class="fas fa-heart text-secondary"></i>
+                        </div>
+                        <div class="overflow-x-auto w-full">
+                            <div id="profile-favorites-strip" class="flex gap-4 p-1"></div>
+                        </div>
+                    </div>
                     
                     <!-- User Reviews Section -->
                     <div class="pt-4 border-t border-gray-100 mt-4">
@@ -834,13 +832,17 @@
             margin: 0 !important;
             padding-bottom: env(safe-area-inset-bottom) !important;
             transform: none !important;">
-    <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
-        <i class="fas fa-home text-xl"></i>
-        <span class="text-xs font-bold mt-1">الرئيسية</span>
-    </button>
     <button id="nav-appointments" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="appointments-view">
         <i class="fas fa-calendar-alt text-xl"></i>
         <span class="text-xs font-medium mt-1">مواعيدي</span>
+    </button>
+    <button id="nav-map" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-green-600 hover:bg-green-50" onclick="window.location.href='/home_user_salon_map.html'">
+        <i class="fas fa-map-marker-alt text-xl"></i>
+        <span class="text-xs font-medium mt-1">الخريطة</span>
+    </button>
+    <button id="nav-home" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-view="home-view">
+        <i class="fas fa-home text-xl"></i>
+        <span class="text-xs font-bold mt-1">الرئيسية</span>
     </button>
     <button id="nav-ai-chat" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-green-600 hover:bg-green-50" onclick="openAIChat()">
         <div class="relative">
@@ -848,10 +850,6 @@
             <div class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
         </div>
         <span class="text-xs font-medium mt-1">نوڤا AI</span>
-    </button>
-    <button id="nav-favorites" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="favorites-view">
-        <i class="fas fa-heart text-xl"></i>
-        <span class="text-xs font-medium mt-1">المفضلة</span>
     </button>
     <button id="nav-profile" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="profile-view">
         <i class="fas fa-user-circle text-xl"></i>
@@ -2268,7 +2266,7 @@ async function loadUserFavorites() {
 
 function switchView(viewId) {
     // Check for 3 strikes before allowing booking views
-    if ((viewId === 'home-view' || viewId === 'favorites-view') && currentUser.strikes_count >= 3) {
+    if ((viewId === 'home-view') && currentUser.strikes_count >= 3) {
         displayMessage('عفواً، لا يمكنك إجراء حجوزات جديدة حالياً بسبب تجاوز حد الإنذارات (3/3).', 'error');
         if (currentView === 'home-view' || currentView === 'favorites-view') {
             // Do not switch view if already on a booking view and strikes limit is reached
@@ -2278,7 +2276,7 @@ function switchView(viewId) {
     
     // SLIDE ANIMATIONS DISABLED TO FIX NAVBAR ISSUE
     // Define view order for slide direction
-    const viewOrder = ['home-view', 'appointments-view', 'favorites-view', 'profile-view'];
+    const viewOrder = ['home-view', 'appointments-view', 'profile-view'];
     const currentIndex = viewOrder.indexOf(currentView);
     const newIndex = viewOrder.indexOf(viewId);
     
@@ -2328,9 +2326,8 @@ function switchView(viewId) {
     if (viewId === 'appointments-view') {
         loadUserAppointments('upcoming'); // Default filter
         // WebSocket handles real-time updates, no polling needed
-    } else if (viewId === 'favorites-view') {
-        loadUserFavorites();
     } else if (viewId === 'profile-view') {
+        loadProfileFavoritesStrip();
         // Ensure profile data is fresh
         loadUserData(); 
     }
@@ -3616,7 +3613,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const viewMap = {
         home: 'home-view',
         appointments: 'appointments-view',
-        favorites: 'favorites-view',
         profile: 'profile-view'
     };
     let initialViewId = null;
@@ -3647,7 +3643,6 @@ window.addEventListener('pageshow', () => {
         const viewMap = {
             home: 'home-view',
             appointments: 'appointments-view',
-            favorites: 'favorites-view',
             profile: 'profile-view'
         };
         let targetView = null;
@@ -3662,6 +3657,24 @@ window.addEventListener('pageshow', () => {
 <script>
 // Shared services explorer modal (search + category + add)
 
+</script>
+<script>
+async function loadProfileFavoritesStrip() {
+  try {
+    const container = document.getElementById('profile-favorites-strip');
+    if (!container) return;
+    container.innerHTML = Array(6).fill().map(() => '<div class="flex flex-col items-center w-32 flex-shrink-0"><div class="w-20 h-20 rounded-full bg-gray-100 animate-pulse"></div><div class="h-4 w-16 bg-gray-100 rounded mt-2 animate-pulse"></div></div>').join('');
+    if (!currentUser || !currentUser.userId) { container.innerHTML = ''; return; }
+    const token = localStorage.getItem('salonni_token');
+    if (!token) { container.innerHTML = ''; return; }
+    const response = await fetch(`/api/favorites/${currentUser.userId}` , { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!response.ok) { container.innerHTML = ''; return; }
+    const favorites = await response.json();
+    if (!favorites || favorites.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = favorites.map(salon => renderSalonCard(salon, 'minimal')).join('');
+    addSalonCardListeners();
+  } catch (_) { try { document.getElementById('profile-favorites-strip').innerHTML = ''; } catch(e) {} }
+}
 </script>
 <!-- Header is non-sticky now -->
 <!-- Update Available Modal -->

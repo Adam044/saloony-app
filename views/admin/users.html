@@ -70,7 +70,14 @@
       container.innerHTML = '<p style="text-align:center; color:#6b7280; padding: 24px;">جاري تحميل المستخدمين...</p>';
       try {
         const res = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
-        const users = await res.json();
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Failed users fetch:', res.status, errText);
+          container.innerHTML = '<p style="text-align:center; color:#EF4444; padding: 24px;">فشل تحميل بيانات المستخدمين.</p>';
+          return;
+        }
+        const data = await res.json();
+        const users = Array.isArray(data) ? data : (Array.isArray(data.users) ? data.users : []);
 
         if (!Array.isArray(users) || users.length === 0) {
           container.innerHTML = '<p style="text-align:center; color:#6b7280; padding: 24px;">لا توجد سجلات مستخدمين حالياً.</p>';

@@ -1022,6 +1022,19 @@
     
     // --- Data Loading Functions ---
 
+    const ensureAdminSalonsMap = async () => {
+        if (window.adminSalonsMap) return;
+        try {
+            const res = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+            if (!res.ok) return;
+            const data = await res.json();
+            const salonsArr = Array.isArray(data) ? data : (Array.isArray(data.salons) ? data.salons : []);
+            const map = {};
+            salonsArr.forEach(s => { if (s && s.id != null) map[s.id] = s.salon_name || s.name || ''; });
+            window.adminSalonsMap = map;
+        } catch (_) {}
+    };
+
     const loadAdminStats = async () => {
         const grid = document.getElementById('stats-grid');
         grid.innerHTML = '<p class="col-span-full text-center text-gray-500">جاري تحميل الإحصائيات...</p>';
@@ -1030,12 +1043,21 @@
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             const stats = await response.json();
+            const totals = stats.totals || {
+                users: stats.totalUsers,
+                salons: stats.totalSalons,
+                activeSalons: stats.activeSalons,
+                pendingSalons: stats.pendingSalons,
+                menSalons: stats.menSalons,
+                womenSalons: stats.womenSalons
+            };
             // Revenue KPIs: align with progress.html using payments
             let revToday = null;
             let revTotal = null;
             try {
                 const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-                const payments = pRes.ok ? await pRes.json() : [];
+                const pData = pRes.ok ? await pRes.json() : [];
+                const payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
                 const completed = payments.filter(p => p.payment_status === 'completed' || p.payment_status === 'مكتملة');
                 const todayKey = new Date().toISOString().slice(0,10);
                 const sumAll = completed.reduce((acc, p) => acc + Number(p.amount || 0), 0);
@@ -1049,10 +1071,10 @@
             
             // Define stat cards
             const statCards = [
-                { title: 'إجمالي المستخدمين', count: stats.totalUsers || 0, icon: 'fa-users', color: 'text-blue-500' },
-                { title: 'إجمالي الصالونات', count: stats.totalSalons || 0, icon: 'fa-store-alt', color: 'text-primary-dark' },
-                { title: 'الصالونات النشطة', count: stats.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
-                { title: 'صالونات قيد الانتظار', count: stats.pendingSalons || 0, icon: 'fa-user-clock', color: 'text-red-500' },
+                { title: 'إجمالي المستخدمين', count: totals.users || 0, icon: 'fa-users', color: 'text-blue-500' },
+                { title: 'إجمالي الصالونات', count: totals.salons || 0, icon: 'fa-store-alt', color: 'text-primary-dark' },
+                { title: 'الصالونات النشطة', count: totals.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
+                { title: 'صالونات قيد الانتظار', count: totals.pendingSalons || 0, icon: 'fa-user-clock', color: 'text-red-500' },
                 { title: 'المواعيد الكلية', count: stats.totalAppointments || 0, icon: 'fa-calendar-check', color: 'text-secondary' },
                 revToday ? { title: 'إيراد اليوم', count: revToday, icon: 'fa-bolt', color: 'text-amber-500' } : null,
                 revTotal ? { title: 'إجمالي الإيرادات', count: revTotal, icon: 'fa-money-bill-wave', color: 'text-green-600' } : null,
@@ -1073,7 +1095,7 @@
             // Update pending badge in navigation
             const badge = document.getElementById('nav-pending-badge');
             const pendingCountEl = document.getElementById('pending-count');
-            const pendingCount = parseInt(stats.pendingSalons || 0);
+            const pendingCount = parseInt(totals.pendingSalons || 0);
             if (badge) {
                 badge.textContent = pendingCount;
                 badge.classList.toggle('hidden', pendingCount === 0);
@@ -1103,8 +1125,21 @@
             const response = await fetch('/api/admin/salons', {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
-            const allSalons = await response.json();
-            
+            if (!response.ok) {
+                const errBody = await response.text();
+                console.error('Error fetching salons:', errBody);
+                container.innerHTML = `<p class="text-center text-red-500 p-8">فشل تحميل الصالونات (${response.status}).</p>`;
+                hideDashboardLoading();
+                return;
+            }
+            const data = await response.json();
+            const allSalons = Array.isArray(data) ? data : (Array.isArray(data.salons) ? data.salons : []);
+            if (!Array.isArray(allSalons)) {
+                console.error('Unexpected salons payload shape:', data);
+                container.innerHTML = `<p class="text-center text-red-500 p-8">بيانات الصالونات غير متوقعة من الخادم.</p>`;
+                hideDashboardLoading();
+                return;
+            }
             pendingSalonsData = allSalons.filter(s => s.status === 'pending');
             let baseSalons = filter === 'all' ? allSalons : pendingSalonsData;
 
@@ -1125,7 +1160,10 @@
             if (planTerm && !window.allAdminPayments) {
                 try {
                     const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-                    if (pRes.ok) window.allAdminPayments = await pRes.json();
+                    if (pRes.ok) {
+                        const pData = await pRes.json();
+                        window.allAdminPayments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
+                    }
                 } catch (e) { /* ignore */ }
             }
 
@@ -1292,7 +1330,13 @@
             const response = await fetch('/api/admin/users', {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
-            const users = await response.json();
+            if (!response.ok) {
+                container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات المستخدمين.</p>';
+                hideDashboardLoading();
+                return;
+            }
+            const data = await response.json();
+            const users = Array.isArray(data) ? data : (Array.isArray(data.users) ? data.users : []);
 
             if (users.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-500 p-8">لا توجد سجلات مستخدمين حالياً.</p>';
@@ -1343,17 +1387,29 @@
             const response = await fetch('/api/admin/payments', {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
-            const payments = await response.json();
+            if (!response.ok) {
+                container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات المدفوعات.</p>';
+                hideDashboardLoading();
+                return;
+            }
+            const pData = await response.json();
+            const payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
 
-            // Store all payments globally for filtering
             window.allAdminPayments = payments;
 
-            if (payments.length === 0) {
+            await ensureAdminSalonsMap();
+            const enriched = payments.map(p => {
+                const sid = p.salon_id != null ? p.salon_id : p.salonId;
+                const name = p.salon_name || (window.adminSalonsMap && window.adminSalonsMap[sid]) || 'غير محدد';
+                return { ...p, salon_name: name };
+            });
+
+            if (enriched.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-500 p-8">لا توجد سجلات مدفوعات حالياً.</p>';
                 return;
             }
 
-            renderAdminPayments(payments);
+            renderAdminPayments(enriched);
         } catch (error) {
             console.error('Error fetching payments:', error);
             container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات المدفوعات.</p>';
@@ -1373,13 +1429,15 @@
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 ${payments.map((p, index) => {
                     const paymentDate = formatDate(p.created_at);
+                    const sid = p.salon_id != null ? p.salon_id : p.salonId;
+                    const displayName = p.salon_name || (window.adminSalonsMap && window.adminSalonsMap[sid]) || 'غير محدد';
                     
                     return `
                         <div class="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
                             <div class="p-6">
                                 <!-- Salon Name -->
                                 <div class="mb-3">
-                                    <h3 class="font-bold text-lg text-gray-800 truncate">${p.salon_name || 'غير محدد'}</h3>
+                                    <h3 class="font-bold text-lg text-gray-800 truncate">${displayName}</h3>
                                 </div>
                                 
                                 <!-- Invoice Number -->
@@ -1471,9 +1529,19 @@
             const response = await fetch('/api/admin/appointments', {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
-            const bookings = await response.json();
+            if (!response.ok) {
+                container.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل بيانات الحجوزات.</p>';
+                return;
+            }
+            const bData = await response.json();
+            allAdminBookings = Array.isArray(bData) ? bData : (Array.isArray(bData.appointments) ? bData.appointments : []);
 
-            allAdminBookings = Array.isArray(bookings) ? bookings : (bookings.appointments || []);
+            await ensureAdminSalonsMap();
+            allAdminBookings = allAdminBookings.map(b => {
+                const sid = b.salon_id != null ? b.salon_id : b.salonId;
+                const name = b.salon_name || (window.adminSalonsMap && window.adminSalonsMap[sid]) || 'صالون غير محدد';
+                return { ...b, salon_name: name };
+            });
 
             if (!allAdminBookings.length) {
                 container.innerHTML = '<p class="text-center text-gray-500 p-8">لا توجد حجوزات حالياً.</p>';
@@ -2065,7 +2133,7 @@
         const adminToken = localStorage.getItem('adminToken') || localStorage.getItem('token');
         fetch('/api/admin/payments', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
           .then(res => res.json())
-          .then(data => { window.allAdminPayments = data; renderInvoices(window.allAdminPayments); })
+          .then(data => { const arr = Array.isArray(data) ? data : (Array.isArray(data.payments) ? data.payments : (Array.isArray(data.items) ? data.items : [])); window.allAdminPayments = arr; renderInvoices(window.allAdminPayments); })
           .catch(() => { list.innerHTML = '<p class="muted" style="color:#EF4444">تعذر تحميل الفواتير. حاول لاحقاً.</p>'; modal.style.display = 'flex'; });
       }
     }

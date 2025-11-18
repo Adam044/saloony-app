@@ -1,5 +1,5 @@
-const CACHE_NAME = 'saloony-cache-v7';
-const APP_VERSION = '1.0.8'; // Update this with each deployment
+const CACHE_NAME = 'saloony-cache-v8';
+const APP_VERSION = '1.0.9'; // Update this with each deployment
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -8,6 +8,7 @@ const URLS_TO_CACHE = [
   '/home_salon.html',
   '/splash.html',
   '/offline.html',
+  '/outage.html',
   '/offline-detect.js',
   '/images/Saloony-app_icon.png',
   '/images/Saloony_logo.png',
@@ -63,20 +64,44 @@ self.addEventListener('fetch', (event) => {
   // Network-only for API requests to avoid caching dynamic data
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      fetch(req).catch(() => caches.match(req))
+      (async () => {
+        try {
+          const res = await fetch(req);
+          if (!res.ok && res.status >= 500) {
+            try {
+              const clients = await self.clients.matchAll();
+              clients.forEach((c) => c.postMessage({ type: 'OUTAGE' }));
+            } catch (_) {}
+          }
+          return res;
+        } catch (e) {
+          try {
+            const clients = await self.clients.matchAll();
+            clients.forEach((c) => c.postMessage({ type: 'OUTAGE' }));
+          } catch (_) {}
+          return caches.match(req);
+        }
+      })()
     );
     return;
   }
 
-  // Navigation requests: try network, then cache, then offline fallback
+  // Navigation requests: try network, handle server errors, then cache or offline/outage fallback
   if (req.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          return await fetch(req);
+          const res = await fetch(req);
+          if (!res.ok && res.status >= 500) {
+            const outage = await caches.match('/outage.html');
+            if (outage) return outage;
+          }
+          return res;
         } catch (e) {
           const cached = await caches.match(req);
           if (cached) return cached;
+          const outage = await caches.match('/outage.html');
+          if (outage) return outage;
           const offline = await caches.match('/offline.html');
           if (offline) return offline;
           return new Response(

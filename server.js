@@ -21,6 +21,9 @@ const jwt = require('jsonwebtoken'); // JWT issuance and verification
 const { z } = require('zod'); // Schema validation
 require('dotenv').config(); // Load environment variables (.env)
 
+// Legacy admin token set for backward compatibility
+const validAdminTokens = new Set();
+
 // Initialize Supabase client for storage
 const supabase = createClient(
     process.env.SUPABASE_URL || 'your-supabase-url',
@@ -310,7 +313,7 @@ async function initializeDb() {
             FOREIGN KEY (salon_id) REFERENCES salons(id)
         )`);
 
-        await db.run('')
+        
 
         await db.run(`CREATE TABLE IF NOT EXISTS schedule_modifications (
             id SERIAL PRIMARY KEY,
@@ -1074,6 +1077,27 @@ const upload = multer({
     }
 });
 
+const registerReviewsRoutes = require('./routes/reviews');
+const registerAdminRoutes = require('./routes/admin');
+const registerAppointmentsRoutes = require('./routes/appointments');
+const registerSalonRoutes = require('./routes/salon');
+
+registerReviewsRoutes(app, { dbAll, dbGet, dbRun, requireAuth });
+registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled });
+registerSalonRoutes(app, { dbAll, dbGet, dbRun });
+
+app.use((req, res, next) => {
+    const start = Date.now();
+    const id = (crypto.randomUUID && crypto.randomUUID()) || crypto.randomBytes(16).toString('hex');
+    req.id = id;
+    res.setHeader('X-Request-Id', id);
+    res.on('finish', () => {
+        const ms = Date.now() - start;
+        console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${ms}ms ${id}`);
+    });
+    next();
+});
+
 // ===============================
 // ===== JWT Helpers & Middleware =====
 function signAccessToken(userId, role) {
@@ -1160,6 +1184,9 @@ const reviewSchema = z.object({
     rating: z.preprocess(toNumber, z.number().int().min(1).max(5)),
     comment: z.string().min(1)
 });
+
+// Register appointments routes after schemas are initialized
+registerAppointmentsRoutes(app, { dbAll, dbGet, dbRun, requireAuth, bookingSchema, validateBookingSlot, sendSalonEvent, sendPushToTargets });
 // AI Beauty Assistant Endpoints
 // ===============================
 
@@ -1759,6 +1786,16 @@ app.get('/test-video', (req, res) => {
 // Root route should serve index for browser launches
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
+});
+
+// Lightweight health ping for outage detection (network-only via SW)
+app.get('/api/ping', (req, res) => {
+    try {
+        res.setHeader('Cache-Control', 'no-store');
+        res.status(200).json({ ok: true, t: Date.now() });
+    } catch (e) {
+        res.status(500).json({ ok: false });
+    }
 });
 
 // Employee presentation route
@@ -3369,424 +3406,14 @@ app.delete('/api/salon/schedule/modification/:mod_id', async (req, res) => {
 // --- Appointments Routes ---
 
 // Used by Admin/Salon to list appointments
-app.get('/api/salon/appointments/:salon_id/:filter', async (req, res) => {
-    try {
-        const { salon_id, filter } = req.params;
-        
-        // FIX: Add validation for salon_id
-        if (!salon_id || salon_id === 'undefined' || isNaN(parseInt(salon_id))) {
-             return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
-        }
-        
-        const now = new Date().toISOString();
-        let whereClause = '';
-        let params = [salon_id];
-        let orderBy = 'ASC';
-
-        if (filter === 'today') {
-            // Only show Scheduled appointments for today; exclude Completed from today
-            const today = new Date().toISOString().split('T')[0];
-            whereClause = `AND DATE(a.start_time) = $2 AND a.status = 'Scheduled'`;
-            params.push(today);
-            orderBy = 'ASC';
-        } else if (filter === 'completed') {
-            // Show all completed and absent appointments regardless of date
-            whereClause = `AND (a.status = 'Completed' OR a.status = 'Absent')`;
-            orderBy = 'DESC';
-        } else if (filter === 'upcoming') {
-            // Backward compatibility: upcoming shows only future scheduled
-            whereClause = `AND a.start_time > $2 AND a.status = 'Scheduled'`;
-            params.push(now);
-            orderBy = 'ASC';
-        } else if (filter === 'past') {
-            // Exclude cancelled and completed from past view
-            whereClause = `AND a.start_time <= $2 AND a.status <> 'Cancelled' AND a.status <> 'Completed'`;
-            params.push(now);
-            orderBy = 'DESC';
-        } else if (filter === 'cancelled') {
-            // Show only cancelled appointments
-            whereClause = `AND a.status = 'Cancelled'`;
-            orderBy = 'DESC';
-        } else {
-            return res.status(400).json({ success: false, message: 'Invalid filter.' });
-        }
-
-        const sql = `
-            SELECT 
-                a.id, a.start_time, a.end_time, a.status, a.price, 
-                u.name AS user_name, u.phone AS user_phone,
-                s.name_ar AS service_name,
-                st.name AS staff_name
-            FROM appointments a
-            JOIN users u ON a.user_id = u.id
-            JOIN services s ON a.service_id = s.id
-            LEFT JOIN staff st ON a.staff_id = st.id
-            WHERE a.salon_id = $1 ${whereClause}
-            ORDER BY a.start_time ${orderBy}
-        `;
-
-        const rows = await dbAll(sql, params);
-
-        // Fetch all services for each appointment
-        const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
-            try {
-                const servicesQuery = `
-                    SELECT s.name_ar, aps.price 
-                    FROM appointment_services aps
-                    JOIN services s ON aps.service_id = s.id
-                    WHERE aps.appointment_id = $1
-                `;
-                // Use dbAll which is an alias for db.query (PostgreSQL-safe)
-                const services = await dbAll(servicesQuery, [appointment.id]);
-                
-                return {
-                    ...appointment,
-                    all_services: services,
-                    services_names: services.map(s => s.name_ar).join(' + ')
-                };
-            } catch (serviceErr) {
-                console.error("Error fetching services for appointment:", serviceErr);
-                // In case of an error fetching services, return partial data instead of crashing
-                return {
-                    ...appointment,
-                    all_services: [],
-                    services_names: appointment.service_name || 'خدمة غير محددة'
-                };
-            }
-        }));
-
-        res.json({ success: true, appointments: appointmentsWithServices });
-    } catch (err) {
-        console.error("Appointments fetch error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error during appointment fetch: ' + err.message });
-    }
-});
 
 // Used by User booking logic to check availability for a specific date
-app.get('/api/salon/:salon_id/appointments/:date', async (req, res) => {
-    const { salon_id, date } = req.params;
-    
-    // FIX: Add validation for salon_id
-    if (!salon_id || salon_id === 'undefined' || isNaN(parseInt(salon_id))) {
-         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
-    }
-    
-    // FIX: Add validation for date parameter
-    if (!date || date === 'null' || date === 'undefined') {
-        return res.status(400).json({ success: false, message: 'Date is required and must be valid.' });
-    }
-    
-    // FIX: Using DATE() extraction function suitable for PostgreSQL and use $2 placeholder
-    const sql = `
-        SELECT id, start_time, end_time, staff_id, status
-        FROM appointments
-        WHERE salon_id = $1 AND DATE(start_time) = $2
-        AND status = 'Scheduled'
-    `;
-    
-    try {
-        const rows = await dbAll(sql, [salon_id, date]);
-        res.json({ success: true, appointments: rows });
-    } catch (err) {
-        console.error("Daily appointments fetch error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error.' });
-    }
-});
 
 
-app.post('/api/salon/appointment/status/:appointment_id', async (req, res) => {
-    const appointmentId = req.params.appointment_id;
-    const { status } = req.body; 
-
-    if (!['Completed', 'Cancelled', 'Absent'].includes(status)) {
-        return res.status(400).json({ success: false, message: 'Invalid status provided.' });
-    }
-    
-    try {
-        // First, get the appointment details to find the user_id and salon_id
-        const getAppointmentQuery = 'SELECT user_id, salon_id, status FROM appointments WHERE id = $1'; 
-        const appointment = await dbGet(getAppointmentQuery, [appointmentId]);
-
-        if (!appointment) {
-            return res.status(404).json({ success: false, message: 'Appointment not found.' });
-        }
-        
-        // Prevent setting status if already a terminal state
-        if (appointment.status !== 'Scheduled') {
-            return res.status(400).json({ success: false, message: `لا يمكن تغيير حالة موعد تم تحديده مسبقاً كـ "${appointment.status}"` });
-        }
-
-        // Update appointment status
-        const sql = `UPDATE appointments SET status = $1 WHERE id = $2`;
-        await dbRun(sql, [status, appointmentId]);
-
-        // WebSocket broadcast to salon room for real-time update
-        if (global.broadcastToSalon) {
-            global.broadcastToSalon(appointment.salon_id, 'appointment_status_updated', {
-                appointmentId,
-                status,
-                user_id: appointment.user_id
-            });
-        }
-
-        // WebSocket broadcast to user room for real-time update
-        if (global.broadcastToUser) {
-            global.broadcastToUser(appointment.user_id, 'appointment_status_updated', {
-                appointmentId,
-                status
-            });
-        }
-
-        // If status is "Absent", increment user strikes
-        if (status === 'Absent') {
-            const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1';
-            await dbRun(strikeQuery, [appointment.user_id]);
-            
-            res.json({ 
-                success: true, 
-                message: 'تم تحديث حالة الموعد وإضافة إنذار للمستخدم'
-            });
-        } else {
-            res.json({ 
-                success: true, 
-                message: `تم تحديث حالة الموعد إلى ${status === 'Completed' ? 'مكتمل' : 'ملغي'}`
-            });
-        }
-    } catch (err) {
-        console.error("Appointment status update error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error.' });
-    }
-});
 
 // Used by User to fetch their own appointment history (FIXED SQL QUERY)
-app.get('/api/appointments/user/:user_id/:filter', requireAuth, async (req, res) => {
-    const { user_id, filter } = req.params;
-    const authUserId = req.user && req.user.id;
-    if (!authUserId || String(authUserId) !== String(user_id)) {
-        return res.status(403).json({ success: false, message: 'غير مصرح لك بعرض هذه المواعيد.' });
-    }
-    // Use local time without timezone for comparison with database timestamps
-    const now = new Date().toISOString().slice(0, 19).replace('T', ' '); // Format: YYYY-MM-DD HH:mm:ss
-    let whereClause = '';
-    let params = [authUserId];
-    let orderBy = 'DESC';
-
-    // Debug logging
-    console.log(`[DEBUG] User appointments request - User ID: ${user_id}, Filter: ${filter}, Current time: ${now}`);
-
-    // FIX: Add validation for user_id
-    if (!user_id || user_id === 'undefined' || isNaN(parseInt(user_id))) {
-         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
-    }
-    
-    if (filter === 'upcoming') {
-         // FIX: Use $2 placeholder
-        whereClause = `AND a.start_time > $2 AND a.status = 'Scheduled'`;
-        params.push(now);
-        orderBy = 'ASC';
-        console.log(`[DEBUG] Upcoming filter - Looking for appointments after: ${now} with status 'Scheduled'`);
-    } else if (filter === 'past') {
-         // FIX: Use $2 placeholder
-        whereClause = `AND a.start_time <= $2`;
-        params.push(now);
-        orderBy = 'DESC';
-        console.log(`[DEBUG] Past filter - Looking for appointments before/at: ${now}`);
-    } else {
-        return res.status(400).json({ success: false, message: 'Invalid filter.' });
-    }
-
-    const sql = `
-        SELECT 
-            a.id, a.start_time, a.end_time, a.status, a.price, -- a.price is now correctly selected
-            s.salon_name,
-            serv.name_ar AS service_name,
-            st.name AS staff_name
-        FROM appointments a
-        JOIN salons s ON a.salon_id = s.id
-        JOIN services serv ON a.service_id = serv.id
-        LEFT JOIN staff st ON a.staff_id = st.id
-        WHERE a.user_id = $1 ${whereClause}
-        ORDER BY a.start_time ${orderBy}
-    `;
-
-    try {
-        const rows = await dbAll(sql, params);
-        console.log(`[DEBUG] SQL Query: ${sql}`);
-        console.log(`[DEBUG] Query params: ${JSON.stringify(params)}`);
-        console.log(`[DEBUG] Found ${rows.length} appointments`);
-        
-        // Log first few appointments for debugging
-        if (rows.length > 0) {
-            console.log(`[DEBUG] First appointment: ${JSON.stringify(rows[0])}`);
-        }
-        
-        // Fetch all services for each appointment
-        const appointmentsWithServices = await Promise.all(rows.map(async (appointment) => {
-            try {
-                const servicesQuery = `
-                    SELECT s.name_ar, aps.price 
-                    FROM appointment_services aps
-                    JOIN services s ON aps.service_id = s.id
-                    WHERE aps.appointment_id = $1
-                `;
-                const services = await dbAll(servicesQuery, [appointment.id]);
-
-                return {
-                    ...appointment,
-                    all_services: services,
-                    services_names: services.length > 0 ? services.map(s => s.name_ar).join(' + ') : appointment.service_name
-                };
-            } catch (serviceErr) {
-                console.error("Error fetching services for user appointment:", serviceErr);
-                return {
-                    ...appointment,
-                    all_services: [],
-                    services_names: appointment.service_name || 'خدمة غير محددة'
-                };
-            }
-        }));
-
-        res.json({ success: true, appointments: appointmentsWithServices });
-    } catch (err) {
-        console.error("User Appointments fetch error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error during appointment fetch.' });
-    }
-});
 
 // --- NEW: API to cancel an appointment (3-hour policy enforcement) ---
-app.post('/api/appointments/cancel/:appointment_id', requireAuth, async (req, res) => {
-    const appointmentId = req.params.appointment_id;
-    const minNoticeHours = 3; 
-    const authUserId = req.user && req.user.id;
-    if (!authUserId || isNaN(parseInt(authUserId))) {
-         return res.status(401).json({ success: false, message: 'يرجى تسجيل الدخول.' });
-    }
-
-    try {
-        // FIX: Use $1 placeholder
-        const row = await dbGet('SELECT salon_id, start_time, status, user_id FROM appointments WHERE id = $1', [appointmentId]);
-        
-        if (!row) {
-            return res.status(404).json({ success: false, message: 'Appointment not found.' });
-        }
-        
-        if (row.status !== 'Scheduled') {
-            return res.status(400).json({ success: false, message: 'لا يمكن إلغاء موعد حالته ليست "مؤكد".' });
-        }
-        
-        // Authorization check
-        if (String(row.user_id) !== String(authUserId)) {
-             return res.status(403).json({ success: false, message: 'غير مصرح لك بإلغاء هذا الموعد.' });
-        }
-
-
-        const appointmentTime = new Date(row.start_time).getTime();
-        const now = new Date().getTime();
-        const noticePeriodMs = minNoticeHours * 60 * 60 * 1000;
-        
-        if (appointmentTime - now < noticePeriodMs) {
-             // If cancellation is too late, still cancel, but issue a strike
-             await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
-             
-             // Issue strike to user and retrieve new strike count
-             const strikeQuery = 'UPDATE users SET strikes = strikes + 1 WHERE id = $1 RETURNING strikes';
-             const strikeResult = await dbGet(strikeQuery, [authUserId]);
-             const newStrikes = strikeResult ? strikeResult.strikes : 'غير معروف';
-
-             // Emit SSE notification to salon dashboard (includes push notifications)
-             await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
-                appointmentId,
-                user_id: authUserId,
-                start_time: row.start_time,
-                late: true,
-                strikes: newStrikes
-             });
-
-             // Push notify salon about late cancellation (only for today's appointments)
-             const appointmentDate = new Date(row.start_time);
-             const today = new Date();
-             
-             // Only send notification if appointment was for today (same day in Palestine timezone)
-             if (appointmentDate.toDateString() === nowLocal.toDateString()) {
-                 await sendPushToTargets({
-                    salon_id: row.salon_id,
-                    payload: {
-                        title: 'إلغاء موعد متأخر',
-                        body: (() => {
-                            try {
-                                const d = new Date(row.start_time);
-                                const date = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-                                let h = d.getHours();
-                                const isAM = h < 12;
-                                h = h % 12 || 12;
-                                const suffix = isAM ? 'صباحًا' : 'مساءً';
-                                const time = `${h} ${suffix}`;
-                                return `تم إلغاء موعد قريب بتاريخ ${date} على الساعة ${time}`;
-                            } catch {
-                                return `تم إلغاء موعد قريب بتاريخ ${new Date(row.start_time).toLocaleDateString('ar-EG')} على الساعة ${new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-                            }
-                        })(),
-                        url: '/home_salon.html#appointments'
-                    }
-                 });
-             }
-
-             return res.status(200).json({ 
-                success: true, 
-                message: `تم إلغاء الموعد. تم إضافة إنذار لحسابك (الإنذارات: ${newStrikes}/3) لأن الإلغاء كان متأخراً.`,
-                strikeIssued: true
-             });
-        }
-
-        // Proceed with cancellation without strike - FIX: Use $1 placeholder, ensure string literal is safe
-        await dbRun('UPDATE appointments SET status = $1 WHERE id = $2', ['Cancelled', appointmentId]);
-        // Emit SSE notification to salon dashboard (includes push notifications)
-        await sendSalonEvent(row.salon_id, 'appointment_cancelled', {
-            appointmentId,
-            user_id: authUserId,
-            start_time: row.start_time,
-            late: false
-        });
-        // Only send push notification for cancellations happening today (same day in Palestine timezone)
-        const appointmentDate = new Date(row.start_time);
-        const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
-        
-        // Check if appointment is today in Palestine timezone
-        const isRelevantCancellation = appointmentDate.toDateString() === nowLocal.toDateString();
-        
-        if (isRelevantCancellation) {
-            // Push notify salon about normal cancellation (clean Arabic text, no user name)
-            const fmtDate = (() => {
-                try {
-                    const d = new Date(row.start_time);
-                    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-                } catch { return new Date(row.start_time).toLocaleDateString('ar-EG'); }
-            })();
-            const fmtTime = (() => {
-                try {
-                    const d = new Date(row.start_time);
-                    let h = d.getHours();
-                    const isAM = h < 12;
-                    h = h % 12 || 12;
-                    const suffix = isAM ? 'صباحًا' : 'مساءً';
-                    return `${h} ${suffix}`;
-                } catch { return new Date(row.start_time).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }); }
-            })();
-            await sendPushToTargets({
-                salon_id: row.salon_id,
-                payload: {
-                    title: 'تم إلغاء موعد',
-                    body: `تم إلغاء موعد بتاريخ ${fmtDate} على الساعة ${fmtTime}`,
-                    url: '/home_salon.html#appointments'
-                }
-            });
-        }
-        res.json({ success: true, message: 'تم إلغاء الموعد بنجاح.' });
-    } catch (err) {
-        console.error("Cancellation error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error during cancellation.' });
-    }
-});
 
 // ===================================
 // Service Management/Discovery Routes 
@@ -3806,85 +3433,6 @@ app.get('/api/services/master/:gender', async (req, res) => {
     }
 });
 
-app.get('/api/salons/:salon_id/services', (req, res) => {
-    const salonId = req.params.salon_id;
-    
-    // FIX: Add validation for salonId (Prevents 500 when frontend sends 'undefined')
-    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
-         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
-    }
-    
-    const sql = `
-        SELECT s.id, s.name_ar, s.icon, s.service_type, ss.price, ss.duration
-        FROM salon_services ss
-        JOIN services s ON ss.service_id = s.id
-        WHERE ss.salon_id = $1
-    `;
-    // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
-    dbAll(sql, [salonId]).then(rows => {
-        res.json({ success: true, services: rows });
-    }).catch(err => {
-         console.error("Salon services fetch error:", err.message);
-         return res.status(500).json({ success: false, message: 'Database error.' });
-    });
-});
-
-// Get salon services (alternative endpoint for salon management)
-app.get('/api/salon/services/:salon_id', async (req, res) => {
-    try {
-        const salonId = req.params.salon_id;
-        
-        // FIX: Add validation for salonId
-        if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
-             return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
-        }
-        
-        const sql = `
-            SELECT s.id, s.name_ar, s.icon, s.service_type, ss.price, ss.duration
-            FROM salon_services ss
-            JOIN services s ON ss.service_id = s.id
-            WHERE ss.salon_id = $1
-        `;
-        const rows = await dbAll(sql, [salonId]);
-        res.json({ success: true, services: rows });
-    } catch (err) {
-        console.error("Salon services fetch error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error.' });
-    }
-});
-
-app.post('/api/salon/services/:salon_id', async (req, res) => {
-    const salonId = req.params.salon_id;
-    const services = req.body.services; // [{ service_id, price, duration }]
-    
-    // FIX: Add validation for salonId
-    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
-         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
-    }
-
-    if (!Array.isArray(services)) {
-        return res.status(400).json({ success: false, message: 'Invalid services format.' });
-    }
-
-    try {
-        // 1. Delete existing services for the salon
-        await dbRun('DELETE FROM salon_services WHERE salon_id = $1', [salonId]);
-
-        // 2. Insert new services
-        for (const service of services) {
-            // Allow duration to be 0 for add-ons, but ensure service_id and price are valid
-            if (service.service_id && service.price !== undefined && service.price !== null && service.duration !== undefined && service.duration !== null) {
-                await dbRun("INSERT INTO salon_services (salon_id, service_id, price, duration) VALUES ($1, $2, $3, $4)", 
-                    [salonId, service.service_id, service.price, service.duration]);
-            }
-        }
-
-        res.json({ success: true, message: 'Salon services updated successfully.' });
-    } catch (err) {
-        console.error("Service update error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error during service update.' });
-    }
-});
 
 // ===== SERVICES MANAGEMENT API ENDPOINTS =====
 
@@ -4695,6 +4243,61 @@ app.post('/api/appointment/book', requireAuth, async (req, res) => {
     }
 });
 
+app.get('/api/appointments/:appointment_id/ics', requireAuth, async (req, res) => {
+    try {
+        const appointmentId = Number(req.params.appointment_id);
+        if (!Number.isFinite(appointmentId) || appointmentId <= 0) {
+            return res.status(400).send('Invalid appointment id');
+        }
+        const appt = await dbGet(
+            `SELECT a.id, a.salon_id, a.user_id, a.start_time, a.end_time, a.price,
+                    s.salon_name, s.address, s.city
+             FROM appointments a
+             JOIN salons s ON s.id = a.salon_id
+             WHERE a.id = $1`,
+            [appointmentId]
+        );
+        if (!appt) {
+            return res.status(404).send('Appointment not found');
+        }
+        const requester = req.user?.id;
+        if (requester !== appt.user_id && req.user?.role !== 'admin') {
+            return res.status(403).send('Forbidden');
+        }
+        const start = new Date(appt.start_time);
+        const end = new Date(appt.end_time);
+        const pad = (n) => String(n).padStart(2, '0');
+        const fmt = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+        const dtstamp = fmt(new Date());
+        const dtstart = fmt(start);
+        const dtend = fmt(end);
+        const uid = `${appt.id}@saloony.app`;
+        const summary = `حجز في صالون ${appt.salon_name || ''}`.trim();
+        const location = [appt.address, appt.city].filter(Boolean).join(', ');
+        const desc = `سعر: ${appt.price}`;
+        const ics = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Saloony//EN',
+            'BEGIN:VEVENT',
+            `UID:${uid}`,
+            `DTSTAMP:${dtstamp}`,
+            `DTSTART:${dtstart}`,
+            `DTEND:${dtend}`,
+            `SUMMARY:${summary}`,
+            `DESCRIPTION:${desc}`,
+            `LOCATION:${location}`,
+            'END:VEVENT',
+            'END:VCALENDAR'
+        ].join('\r\n');
+        res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="appointment_${appt.id}.ics"`);
+        return res.status(200).send(ics);
+    } catch (e) {
+        return res.status(500).send('Failed to generate calendar');
+    }
+});
+
 
 // --- Discovery Routes (Real Data) ---
 const fetchSalonsWithAvailability = async (city, gender) => {
@@ -5035,163 +4638,8 @@ app.post('/api/favorites/toggle', requireAuth, (req, res) => {
     });
 });
 
-// ===== REVIEW ROUTES =====
+ 
 
-// Get user's reviews
-app.get('/api/reviews/user/:user_id', requireAuth, (req, res) => {
-    const { user_id: paramUserId } = req.params;
-    const authUserId = req.user?.id;
-    
-    // FIX: Add validation for user_id
-    if (!paramUserId || paramUserId === 'undefined' || isNaN(parseInt(paramUserId))) {
-         return res.status(400).json({ success: false, message: 'User ID is required and must be valid.' });
-    }
-    if (String(paramUserId) !== String(authUserId)) {
-         return res.status(403).json({ success: false, message: 'Forbidden: cannot access another user\'s reviews.' });
-    }
-    
-    // FIX: Use $1 placeholder
-    const query = `
-        SELECT r.*, s.salon_name, s.image_url as salon_image
-        FROM reviews r
-        JOIN salons s ON r.salon_id = s.id
-        WHERE r.user_id = $1
-        ORDER BY r.date_posted DESC
-    `;
-    
-    // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
-    dbAll(query, [authUserId]).then(rows => {
-        res.json({ success: true, reviews: rows });
-    }).catch(err => {
-        console.error("User reviews fetch error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error.' });
-    });
-});
-
-// Get salon reviews
-app.get('/api/reviews/salon/:salon_id', (req, res) => {
-    const { salon_id } = req.params;
-    
-    // FIX: Add validation for salon_id (Prevents 500 when frontend sends 'undefined')
-    if (!salon_id || salon_id === 'undefined' || isNaN(parseInt(salon_id))) {
-         return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
-    }
-    
-    // FIX: Use $1 placeholder
-    const query = `
-        SELECT r.*, u.name as user_name
-        FROM reviews r
-        JOIN users u ON r.user_id = u.id
-        WHERE r.salon_id = $1
-        ORDER BY r.date_posted DESC
-    `;
-    
-    // FIX: Use dbAll instead of db.all (PostgreSQL compatible wrapper)
-    dbAll(query, [salon_id]).then(rows => {
-        res.json({ success: true, reviews: rows });
-    }).catch(err => {
-        console.error("Salon reviews fetch error:", err.message);
-        return res.status(500).json({ success: false, message: 'Database error.' });
-    });
-});
-
-// Submit a new review
-app.post('/api/reviews/submit', requireAuth, async (req, res) => {
-    const parsed = reviewSchema.safeParse(req.body);
-    if (!parsed.success) {
-        return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message || 'Invalid review payload.' });
-    }
-    const { salon_id, rating, comment } = parsed.data;
-    const user_id = req.user?.id;
-    
-    // Validate required fields
-    if (!user_id || !salon_id || !rating || !comment || comment.trim() === '') {
-        return res.status(400).json({ success: false, message: 'Missing required fields. Comment is mandatory.' });
-    }
-    
-    // Validate rating range
-    if (rating < 1 || rating > 5) {
-        return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5.' });
-    }
-    
-    try {
-        // Check if user has already reviewed this salon - FIX: Use $1, $2 placeholders
-        const existingReview = await dbGet('SELECT id FROM reviews WHERE user_id = $1 AND salon_id = $2', [user_id, salon_id]);
-        
-        if (existingReview) {
-            return res.status(400).json({ success: false, message: 'You have already reviewed this salon.' });
-        }
-        
-        // Insert new review - FIX: Use $1, $2, ... placeholders and PostgreSQL NOW() function
-        const insertQuery = `
-            INSERT INTO reviews (user_id, salon_id, rating, comment, date_posted)
-            VALUES ($1, $2, $3, $4, NOW()) RETURNING id
-        `;
-        
-        const result = await dbGet(insertQuery, [user_id, salon_id, rating, comment || '']);
-        
-        res.json({ 
-            success: true, 
-            message: 'Review submitted successfully.',
-            review_id: result.id
-        });
-    } catch (err) {
-        // Handle PostgreSQL unique constraint violation (though checked above, good fallback)
-        if (err.code === '23505') { 
-            return res.status(400).json({ success: false, message: 'You have already reviewed this salon.' });
-        }
-        console.error("Review submission error:", err.message);
-        return res.status(500).json({ success: false, message: 'Failed to submit review.' });
-    }
-});
-
-// DELETE review endpoint
-app.delete('/api/reviews/delete', requireAuth, async (req, res) => {
-    const authUserId = req.user?.id;
-    const { salon_id } = req.body || {};
-    
-    // Validate required fields
-    if (!authUserId || !salon_id) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'User ID and Salon ID are required.' 
-        });
-    }
-    
-    try {
-        // Delete the review - FIX: Use $1, $2 placeholders
-        const deleteQuery = `
-            DELETE FROM reviews 
-            WHERE user_id = $1 AND salon_id = $2
-        `;
-        
-        const result = await dbRun(deleteQuery, [authUserId, salon_id]);
-        
-        // Check if any rows were affected
-        if (result.rowCount === 0) { 
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Review not found.' 
-            });
-        }
-        
-        res.json({ 
-            success: true, 
-            message: 'Review deleted successfully.'
-        });
-    } catch (err) {
-        console.error('Error deleting review:', err);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Database error occurred while deleting review.' 
-        });
-    }
-});
-
-// Simple in-memory token storage (in production, use Redis or database)
-const validAdminTokens = new Set();
-
-// Admin middleware to check if user is admin
 function requireAdmin(req, res, next) {
     const auth = req.headers.authorization || '';
     const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -5199,20 +4647,13 @@ function requireAdmin(req, res, next) {
         res.setHeader('WWW-Authenticate', 'Bearer realm="admin", error="invalid_token"');
         return res.status(401).json({ error: 'No token provided' });
     }
-    // Prefer JWT with role claim
     try {
         const payload = jwt.verify(bearer, JWT_SECRET);
         if (payload.role === 'admin') {
             req.user = { id: payload.sub, role: payload.role };
             return next();
         }
-    } catch (_) {
-        // fall through to legacy set check
-    }
-    // Legacy fallback: allow tokens present in in-memory set
-    if (validAdminTokens.has(bearer)) {
-        return next();
-    }
+    } catch (_) {}
     res.setHeader('WWW-Authenticate', 'Bearer realm="admin", error="invalid_token"');
     return res.status(401).json({ error: 'Invalid or unauthorized token' });
 }
@@ -5227,288 +4668,7 @@ function requireDebugEnabled(req, res, next) {
 }
 
 // Admin API endpoints (protected)
-app.get('/api/admin/stats', requireAdmin, async (req, res) => {
-    try {
-        // Total normal users (excluding admin users)
-        const totalUsersResult = await db.query('SELECT COUNT(*) as count FROM users WHERE user_type = $1', ['user']);
-        const totalUsers = totalUsersResult[0];
-        
-        // Total salons
-        const totalSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons');
-        const totalSalons = totalSalonsResult[0];
-        
-        // Salons by gender focus
-        const womenSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['women']);
-        const womenSalons = womenSalonsResult[0];
-        
-        const menSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['men']);
-        const menSalons = menSalonsResult[0];
-        
-        // Salons by status
-        const activeSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['accepted']);
-        const activeSalons = activeSalonsResult[0];
-        
-        const pendingSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['pending']);
-        const pendingSalons = pendingSalonsResult[0];
-        
-        const rejectedSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['rejected']);
-        const rejectedSalons = rejectedSalonsResult[0];
-        
-        // Total appointments
-        const totalAppointmentsResult = await db.query('SELECT COUNT(*) as count FROM appointments');
-        const totalAppointments = totalAppointmentsResult[0];
-        
-        // Total revenue from completed 200 ILS invoices
-        const totalRevenueResult = await db.query(`
-            SELECT COALESCE(SUM(amount), 0) as total_revenue 
-            FROM payments 
-            WHERE payment_type = $1 AND payment_status = $2
-        `, ['offer_200ils', 'مكتملة']);
-        const totalRevenue = totalRevenueResult[0];
-        
-        res.json({
-            totalUsers: parseInt(totalUsers.count) || 0,
-            totalSalons: parseInt(totalSalons.count) || 0,
-            womenSalons: parseInt(womenSalons.count) || 0,
-            menSalons: parseInt(menSalons.count) || 0,
-            activeSalons: parseInt(activeSalons.count) || 0,
-            pendingSalons: parseInt(pendingSalons.count) || 0,
-            rejectedSalons: parseInt(rejectedSalons.count) || 0,
-            totalAppointments: parseInt(totalAppointments.count) || 0,
-            totalRevenue: parseInt(totalRevenue.total_revenue) || 0
-        });
-    } catch (error) {
-        console.error('Error fetching admin stats:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-app.get('/api/admin/users', requireAdmin, async (req, res) => {
-    try {
-        const users = await db.query('SELECT id, name, email, phone, city, user_type FROM users ORDER BY id DESC');
-        res.json(users);
-    } catch (error) {
-        console.error('Error fetching users:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Admin: List employees
-app.get('/api/admin/employees', requireAdmin, async (req, res) => {
-    try {
-        const rows = await db.query(
-            'SELECT id, name, email, phone, city, strikes FROM users WHERE user_type = $1 ORDER BY id DESC',
-            ['employee']
-        );
-        return res.json({ success: true, employees: rows || [] });
-    } catch (e) {
-        console.error('Admin employees list error:', e.message);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// Admin: Create a new employee user
-app.post('/api/admin/employees', requireAdmin, async (req, res) => {
-    try {
-        const { name, email, phone, city, password } = req.body || {};
-        if (!name || !password) {
-            return res.status(400).json({ success: false, message: 'الاسم وكلمة المرور مطلوبان.', message_en: 'Name and password are required.' });
-        }
-        if (phone && !validatePhoneFormat(phone)) {
-            return res.status(400).json({ success: false, message: 'رقم الهاتف غير صالح.', message_en: 'Invalid phone format.' });
-        }
-
-        // Basic duplicate checks
-        if (phone) {
-            const existingPhone = await db.get('SELECT id FROM users WHERE phone = $1', [phone]);
-            if (existingPhone) {
-                return res.status(400).json({ success: false, message: 'رقم الهاتف مسجل بالفعل.', message_en: 'Phone already registered.' });
-            }
-        }
-        if (email) {
-            const existingEmail = await db.get('SELECT id FROM users WHERE email = $1', [email]);
-            if (existingEmail) {
-                return res.status(400).json({ success: false, message: 'البريد الإلكتروني مستخدم بالفعل.', message_en: 'Email already in use.' });
-            }
-        }
-
-        const hashedPassword = await hashPassword(password);
-        const insertSql = 'INSERT INTO users (name, email, phone, gender, city, password, user_type) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
-        const params = [name, email || null, phone || null, null, city || null, hashedPassword, 'employee'];
-        const inserted = await db.query(insertSql, params);
-        const newId = inserted && inserted[0] && inserted[0].id ? inserted[0].id : null;
-        return res.json({ success: true, employee: { id: newId, name, email, phone, city, user_type: 'employee' } });
-    } catch (e) {
-        console.error('Admin employee create error:', e.message);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// Admin: Reset an employee's password (returns a temporary password to admin for sharing)
-app.post('/api/admin/employees/:id/reset_password', requireAdmin, async (req, res) => {
-    try {
-        const id = parseInt(req.params.id, 10);
-        if (!id || Number.isNaN(id)) {
-            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
-        }
-
-        // Ensure target is an employee
-        const existing = await db.get('SELECT id, user_type FROM users WHERE id = $1', [id]);
-        if (!existing) {
-            return res.status(404).json({ success: false, message: 'Employee not found.' });
-        }
-        if (existing.user_type !== 'employee') {
-            return res.status(400).json({ success: false, message: 'Target user is not an employee.' });
-        }
-
-        // Allow optional custom password, else generate one
-        const requested = (req.body && req.body.password) ? String(req.body.password).trim() : '';
-        function generateTempPassword() {
-            const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-            let out = 'Emp';
-            for (let i = 0; i < 7; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
-            return out;
-        }
-        const tempPassword = requested || generateTempPassword();
-        const hashed = await hashPassword(tempPassword);
-
-        await db.run('UPDATE users SET password = $1 WHERE id = $2', [hashed, id]);
-        return res.json({ success: true, temp_password: tempPassword });
-    } catch (e) {
-        console.error('Admin employee reset password error:', e.message);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// Admin: Employee analytics summary (by employee id)
-app.get('/api/admin/employees/:id/analytics/summary', requireAdmin, async (req, res) => {
-    try {
-        const employeeId = parseInt(req.params.id, 10);
-        if (!employeeId || Number.isNaN(employeeId)) {
-            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
-        }
-        const today = new Date().toISOString().slice(0, 10);
-        const rowsToday = await db.query(
-            `SELECT status, COUNT(*) AS cnt
-             FROM employee_visits
-             WHERE employee_id = $1 AND DATE(created_at) = $2
-             GROUP BY status`,
-            [employeeId, today]
-        );
-        const rowsAll = await db.query(
-            `SELECT status, COUNT(*) AS cnt
-             FROM employee_visits
-             WHERE employee_id = $1
-             GROUP BY status`,
-            [employeeId]
-        );
-        const reduceToMap = (rows) => {
-            const m = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
-            (rows || []).forEach(r => {
-                const key = String(r.status || '').toLowerCase();
-                const n = Number(r.cnt || 0);
-                if (key === 'activated') m.activated += n;
-                else if (key === 'signed_up') m.signed_up += n;
-                else if (key === 'interested') m.interested += n;
-                else if (key === 'not_interested') m.not_interested += n;
-                else m.unknown += n;
-            });
-            return m;
-        };
-        const todayMap = reduceToMap(rowsToday);
-        const allMap = reduceToMap(rowsAll);
-        const revenueToday = todayMap.activated * 20;
-        const revenueAll = allMap.activated * 20;
-        return res.json({ success: true, today: todayMap, all: allMap, revenue: { today: revenueToday, all: revenueAll } });
-    } catch (e) {
-        console.error('Admin employee analytics summary error:', e.message);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// Admin: Employee today analytics (visits list for today)
-app.get('/api/admin/employees/:id/analytics/today', requireAdmin, async (req, res) => {
-    try {
-        const employeeId = parseInt(req.params.id, 10);
-        if (!employeeId || Number.isNaN(employeeId)) {
-            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
-        }
-        const today = new Date().toISOString().slice(0, 10);
-        const session = await db.get('SELECT id, date, started_at FROM employee_sessions WHERE employee_id = $1 AND date = $2', [employeeId, today]);
-        const visits = await db.query(
-            `SELECT id,
-                    created_at AS visited_at,
-                    salon_name,
-                    status,
-                    interest_level,
-                    comments,
-                    address,
-                    (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
-                    (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
-             FROM employee_visits
-             WHERE employee_id = $1 AND DATE(created_at) = $2
-             ORDER BY created_at DESC`,
-            [employeeId, today]
-        );
-        const count = (visits || []).length;
-        return res.json({ success: true, session, visits: visits || [], visits_count: count });
-    } catch (e) {
-        console.error('Admin employee today analytics error:', e.message);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// Admin: Employee analytics for date range
-app.get('/api/admin/employees/:id/analytics/range', requireAdmin, async (req, res) => {
-    try {
-        const employeeId = parseInt(req.params.id, 10);
-        if (!employeeId || Number.isNaN(employeeId)) {
-            return res.status(400).json({ success: false, message: 'Invalid employee ID.' });
-        }
-        const from = String(req.query.from || '').slice(0, 10);
-        const to = String(req.query.to || '').slice(0, 10);
-        if (!from || !to) {
-            return res.status(400).json({ success: false, message: 'from/to required (YYYY-MM-DD).' });
-        }
-        const rows = await db.query(
-            `SELECT status, COUNT(*) AS cnt
-             FROM employee_visits
-             WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
-             GROUP BY status`,
-            [employeeId, from, to]
-        );
-        const visits = await db.query(
-            `SELECT id,
-                    created_at AS visited_at,
-                    salon_name,
-                    status,
-                    interest_level,
-                    comments,
-                    address,
-                    (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
-                    (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
-             FROM employee_visits
-             WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
-             ORDER BY created_at DESC`,
-            [employeeId, from, to]
-        );
-        const map = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
-        (rows || []).forEach(r => {
-            const key = String(r.status || '').toLowerCase();
-            const n = Number(r.cnt || 0);
-            if (key === 'activated') map.activated += n;
-            else if (key === 'signed_up') map.signed_up += n;
-            else if (key === 'interested') map.interested += n;
-            else if (key === 'not_interested') map.not_interested += n;
-            else map.unknown += n;
-        });
-        const revenue = map.activated * 20;
-        return res.json({ success: true, map, visits: visits || [], revenue });
-    } catch (e) {
-        console.error('Admin employee range analytics error:', e.message);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
+ 
 
 // Employee: Start daily session
 app.post('/api/employee/session/start', requireRole('employee'), async (req, res) => {

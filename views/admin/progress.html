@@ -320,9 +320,9 @@
       const salonsJson = await salonsRes.json();
       const paymentsJson = await paymentsRes.json();
       const usersJson = await usersRes.json();
-      salons = Array.isArray(salonsJson) ? salonsJson : [];
-      payments = Array.isArray(paymentsJson) ? paymentsJson : [];
-      users = Array.isArray(usersJson) ? usersJson : [];
+      salons = Array.isArray(salonsJson) ? salonsJson : (Array.isArray(salonsJson.salons) ? salonsJson.salons : []);
+      payments = Array.isArray(paymentsJson) ? paymentsJson : (Array.isArray(paymentsJson.payments) ? paymentsJson.payments : (Array.isArray(paymentsJson.items) ? paymentsJson.items : []));
+      users = Array.isArray(usersJson) ? usersJson : (Array.isArray(usersJson.users) ? usersJson.users : []);
 
       // Build onboarding from actual salon signup timestamp (salons.created_at)
       onboarding = (salons || [])
