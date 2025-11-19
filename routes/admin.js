@@ -84,12 +84,92 @@ module.exports = function register(app, deps) {
     }
   });
 
-  app.get('/api/admin/payments', requireAdmin, async (req, res) => {
+
+  // Admin: Employee analytics summary
+  app.get('/api/admin/employees/:id/analytics/summary', requireAdmin, async (req, res) => {
     try {
-      const rows = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
-      res.json({ success: true, payments: rows });
+      const employeeId = Number(req.params.id);
+      const today = new Date().toISOString().slice(0, 10);
+      const rowsToday = await db.query(
+        `SELECT status, COUNT(*) AS cnt FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2 GROUP BY status`,
+        [employeeId, today]
+      );
+      const rowsAll = await db.query(
+        `SELECT status, COUNT(*) AS cnt FROM employee_visits WHERE employee_id = $1 GROUP BY status`,
+        [employeeId]
+      );
+      const reduceToMap = (rows) => {
+        const m = { activated: 0, interested: 0, not_interested: 0, unknown: 0, signed_up: 0 };
+        (rows || []).forEach(r => {
+          const key = String(r.status || '').toLowerCase();
+          const n = Number(r.cnt || 0);
+          if (key === 'activated') m.activated += n;
+          else if (key === 'interested') m.interested += n;
+          else if (key === 'not_interested') m.not_interested += n;
+          else if (key === 'signed_up') m.signed_up += n;
+          else m.unknown += n;
+        });
+        return m;
+      };
+      const todayMap = reduceToMap(rowsToday);
+      const allMap = reduceToMap(rowsAll);
+      const revenueToday = todayMap.activated * 20;
+      const revenueAll = allMap.activated * 20;
+      return res.json({ success: true, today: todayMap, all: allMap, revenue: { today: revenueToday, all: revenueAll } });
     } catch (e) {
-      res.status(500).json({ success: false });
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+
+  // Admin: Employee analytics today
+  app.get('/api/admin/employees/:id/analytics/today', requireAdmin, async (req, res) => {
+    try {
+      const employeeId = Number(req.params.id);
+      const today = new Date().toISOString().slice(0, 10);
+      const visits = await db.query(
+        `SELECT id FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) = $2`,
+        [employeeId, today]
+      );
+      const count = (visits || []).length;
+      return res.json({ success: true, visits_count: count });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+
+  // Admin: Employee analytics for date range
+  app.get('/api/admin/employees/:id/analytics/range', requireAdmin, async (req, res) => {
+    try {
+      const employeeId = Number(req.params.id);
+      const from = String(req.query.from || '').slice(0, 10);
+      const to = String(req.query.to || '').slice(0, 10);
+      const mapRows = await db.query(
+        `SELECT status, COUNT(*) AS cnt FROM employee_visits WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3 GROUP BY status`,
+        [employeeId, from, to]
+      );
+      const visits = await db.query(
+        `SELECT id, salon_name, status, interest_level, comments, address, created_at,
+                (SELECT lat FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lat,
+                (SELECT lng FROM employee_visit_locations WHERE visit_id = employee_visits.id ORDER BY id DESC LIMIT 1) AS lng
+         FROM employee_visits
+         WHERE employee_id = $1 AND DATE(created_at) BETWEEN $2 AND $3
+         ORDER BY created_at DESC`,
+        [employeeId, from, to]
+      );
+      const map = { activated: 0, signed_up: 0, interested: 0, not_interested: 0, unknown: 0 };
+      (mapRows || []).forEach(r => {
+        const key = String(r.status || '').toLowerCase();
+        const n = Number(r.cnt || 0);
+        if (key === 'activated') map.activated += n;
+        else if (key === 'signed_up') map.signed_up += n;
+        else if (key === 'interested') map.interested += n;
+        else if (key === 'not_interested') map.not_interested += n;
+        else map.unknown += n;
+      });
+      const revenue = map.activated * 20;
+      return res.json({ success: true, map, visits: visits || [], revenue });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'Server error' });
     }
   });
 

@@ -127,6 +127,20 @@
               <option value="rejected">غير نشط</option>
               <option value="pending">قيد الانتظار</option>
             </select>
+            <select id="filter-plan-core" class="text-sm">
+              <option value="">كل الخطط</option>
+              <option value="booking">مع حجوزات</option>
+              <option value="visibility_only">بدون حجوزات</option>
+            </select>
+            <select id="filter-plan-package" class="text-sm">
+              <option value="">كل الباقات</option>
+              <option value="2months_offer">عرض شهرين</option>
+              <option value="monthly_200">200ils</option>
+              <option value="monthly_60">60ils</option>
+              <option value="per_booking">لكل حجز</option>
+              <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
+              <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر</option>
+            </select>
           </div>
         </div>
       </div>
@@ -312,17 +326,20 @@
     }
 
     async function loadData() {
-      const [salonsRes, paymentsRes, usersRes] = await Promise.all([
+      const [salonsRes, paymentsRes, usersRes, subsRes] = await Promise.all([
         fetch('/api/admin/salons', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
         fetch('/api/admin/payments', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
-        fetch('/api/admin/users', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
+        fetch('/api/admin/users', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
+        fetch('/api/admin/subscriptions', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
       ]);
       const salonsJson = await salonsRes.json();
       const paymentsJson = await paymentsRes.json();
       const usersJson = await usersRes.json();
+      const subsJson = await subsRes.json();
       salons = Array.isArray(salonsJson) ? salonsJson : (Array.isArray(salonsJson.salons) ? salonsJson.salons : []);
       payments = Array.isArray(paymentsJson) ? paymentsJson : (Array.isArray(paymentsJson.payments) ? paymentsJson.payments : (Array.isArray(paymentsJson.items) ? paymentsJson.items : []));
       users = Array.isArray(usersJson) ? usersJson : (Array.isArray(usersJson.users) ? usersJson.users : []);
+      window.subscriptions = Array.isArray(subsJson) ? subsJson : (Array.isArray(subsJson.subscriptions) ? subsJson.subscriptions : []);
 
       // Build onboarding from actual salon signup timestamp (salons.created_at)
       onboarding = (salons || [])
@@ -352,16 +369,34 @@
       const gender = document.getElementById('filter-gender')?.value || '';
       const city = document.getElementById('filter-city')?.value || '';
       const status = document.getElementById('filter-status')?.value || '';
-      return { gender, city, status };
+      const planCore = document.getElementById('filter-plan-core')?.value || '';
+      const planPackage = document.getElementById('filter-plan-package')?.value || '';
+      return { gender, city, status, planCore, planPackage };
     }
 
+    function getLatestSubscriptionForSalon(salonId) {
+      try {
+        const related = (window.subscriptions || []).filter(s => s.salon_id === salonId);
+        if (!related.length) return null;
+        related.sort((a,b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+        return related[0];
+      } catch { return null; }
+    }
     function getFilteredOnboarding() {
-      const { gender, city, status } = getSalonFilters();
+      const { gender, city, status, planCore, planPackage } = getSalonFilters();
       return onboarding.filter(o => {
         const genderOk = !gender || o.gender === gender;
         const cityOk = !city || o.city === city;
         const statusOk = !status || o.status === status;
-        return genderOk && cityOk && statusOk;
+        const latestSub = getLatestSubscriptionForSalon(o.salon_id);
+        const planOk = !planCore || (
+          latestSub && (
+            (planCore === 'visibility_only' && latestSub.plan === 'visibility_only') ||
+            (planCore === 'booking' && latestSub.plan === 'booking')
+          )
+        );
+        const packageOk = !planPackage || (latestSub && latestSub.package === planPackage);
+        return genderOk && cityOk && statusOk && planOk && packageOk;
       });
     }
 
@@ -678,6 +713,13 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
+
+    // Filter change handlers
+    document.getElementById('filter-gender')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-city')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-status')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-plan-core')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-plan-package')?.addEventListener('change', refreshAllViews);
   </script>
 </body>
 </html>

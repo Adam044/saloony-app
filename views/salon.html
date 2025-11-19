@@ -1533,6 +1533,14 @@
                     salon.salon_phone = salonDetailsData.salon.salon_phone;
                     salon.owner_phone = salonDetailsData.salon.owner_phone;
                     salon.plan = salonDetailsData.salon.plan;
+                    try {
+                        const sRes = await fetch(`/api/salon/subscriptions/${salonIdSafe}`);
+                        if (sRes.ok) {
+                            const sData = await sRes.json();
+                            const subs = Array.isArray(sData) ? sData : (Array.isArray(sData.subscriptions) ? sData.subscriptions : []);
+                            window.salonSubscriptions = subs;
+                        }
+                    } catch (_) {}
                 }
             }
         } catch (error) {
@@ -3452,7 +3460,8 @@
     });
 </script>
         try {
-            const vp = String(salon.plan||'') === 'visibility_only';
+            const latestSub = (window.salonSubscriptions || []).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+            const vp = String(((latestSub && latestSub.plan) || '')) === 'visibility_only';
             if (vp) {
                 const bookBtn = document.getElementById('book-now-btn'); if (bookBtn) bookBtn.style.display = 'none';
                 const confirmBtn = document.getElementById('confirm-booking-btn'); if (confirmBtn) confirmBtn.style.display = 'none';

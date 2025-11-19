@@ -109,11 +109,19 @@
           <div>
             <select id="plan-filter" class="input">
               <option value="">كل الخطط</option>
+              <option value="booking">مع حجوزات</option>
+              <option value="visibility_only">بدون حجوزات</option>
+            </select>
+          </div>
+          <div>
+            <select id="package-filter" class="input">
+              <option value="">كل الباقات</option>
               <option value="2months_offer">عرض شهرين</option>
               <option value="monthly_200">200ils</option>
               <option value="monthly_60">60ils</option>
               <option value="per_booking">لكل حجز</option>
-              <option value="visibility_only">بدون حجوزات</option>
+              <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
+              <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر</option>
             </select>
           </div>
           <div>
@@ -151,14 +159,26 @@
           <div class="subtle mt-2">الخطة الحالية:</div>
           <div id="renew-current-plan" class="pill"></div>
           <div id="renew-inactive-note" class="subtle hidden" style="color:#991b1b">هذا الصالون غير نشط. سيؤدي التجديد إلى تفعيل الصالون تلقائيًا.</div>
-          <div class="subtle mt-2">اختر خطة التجديد:</div>
-          <div class="radio-group">
-            <label class="radio-item"><input type="radio" name="renew-plan" value="monthly_200"> <span>200ils</span></label>
-            <label class="radio-item"><input type="radio" name="renew-plan" value="monthly_60"> <span>60ils لكل كرسي</span></label>
-            <label class="radio-item"><input type="radio" name="renew-plan" value="per_booking"> <span>لكل حجز</span></label>
-            <label class="radio-item"><input type="radio" name="renew-plan" value="2months_offer"> <span>عرض شهرين</span></label>
-            <label class="radio-item"><input type="radio" name="renew-plan" value="visibility_only"> <span>99ils بدون حجوزات</span></label>
-            <label class="radio-item"><input type="radio" name="renew-plan" value="visibility_only_offer"> <span>عرض 199ils / 3 أشهر</span></label>
+          <div class="subtle mt-2">اختر نوع الاشتراك:</div>
+          <select id="renew-core-plan" class="input">
+            <option value="booking">مع نظام حجوزات</option>
+            <option value="visibility_only">بدون حجوزات</option>
+          </select>
+          <div id="renew-booking-suboptions" class="grid gap-2 mt-2">
+            <label class="subtle">اختر طريقة الاشتراك (مع الحجوزات)</label>
+            <select id="renew-booking-option" class="input">
+              <option value="monthly_200">200ils شهري</option>
+              <option value="monthly_60">لكل كرسي (60)</option>
+              <option value="per_booking">لكل حجز</option>
+              <option value="2months_offer">عرض شهرين (200 شيكل)</option>
+            </select>
+          </div>
+          <div id="renew-visibility-suboptions" class="grid gap-2 mt-2 hidden">
+            <label class="subtle">اختر طريقة الدفع (بدون حجوزات)</label>
+            <select id="renew-visibility-option" class="input">
+              <option value="visibility_only_monthly_99">99ils شهري</option>
+              <option value="visibility_only_offer_199">عرض 199ils / 3 أشهر</option>
+            </select>
           </div>
           <div id="chairs-container" class="hidden">
             <label class="subtle">عدد الكراسي عند اختيار 60ils:</label>
@@ -203,36 +223,26 @@
         return diff;
       } catch { return null; }
     }
-    function mapPaymentTypeToPlan(pt) {
-      switch(pt) {
-        case 'offer_200ils': return '2months_offer';
-        case 'monthly_subscription': return 'monthly_200';
-        case 'monthly_200': return 'monthly_200';
-        case 'per_chair': return 'monthly_60';
-        case 'monthly_60': return 'monthly_60';
-        case 'per_booking': return 'per_booking';
-        case 'visibility_only_monthly_99': return 'visibility_only';
-        case 'visibility_only_offer_199': return 'visibility_only';
-        default: return undefined;
+    function planLabel(plan, pkg) {
+      if (plan === 'booking') {
+        if (pkg === 'monthly_60') return '60ils';
+        if (pkg === 'monthly_200') return '200ils';
+        if (pkg === '2months_offer') return 'عرض شهرين';
+        if (pkg === 'per_booking') return 'لكل حجز';
       }
-    }
-    function planLabel(plan, chairs) {
-      if (plan === 'monthly_60') {
-        const c = chairs ? Number(chairs) : 1;
-        const total = c * 60;
-        return c ? `60ils (${formatNumber(c)}) = ${formatCurrency(total)}` : '60ils';
+      if (plan === 'visibility_only') {
+        if (pkg === 'visibility_only_monthly_99') return '99ils بدون حجوزات';
+        if (pkg === 'visibility_only_offer_199') return 'عرض 199ils / 3 أشهر';
       }
-      if (plan === 'monthly_200') return '200ils';
-      if (plan === '2months_offer') return 'عرض شهرين';
-      if (plan === 'per_booking') return 'لكل حجز';
-      if (plan === 'visibility_only') return '99ils بدون حجوزات';
       return '—';
     }
-    function getLatestPaymentForSalon(salonId) {
+    
+
+    function getLatestSubscriptionForSalon(salonId) {
       try {
-        const related = (payments || []).filter(p => p.salon_id === salonId);
+        const related = (window.subscriptions || []).filter(s => s.salon_id === salonId);
         if (!related.length) return null;
-        related.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+        related.sort((a,b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
         return related[0];
       } catch { return null; }
     }
@@ -252,27 +262,34 @@
           payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
         }
       } catch {}
+      try {
+        const subRes = await fetch('/api/admin/subscriptions', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (subRes.ok) {
+          const sData = await subRes.json();
+          window.subscriptions = Array.isArray(sData) ? sData : (Array.isArray(sData.subscriptions) ? sData.subscriptions : []);
+        }
+      } catch {}
       renderList();
     }
 
     function computeStatus(salon) {
       const isActive = salon.status === 'accepted';
-      const overridePlan = salon.plan || undefined;
-      const chairs = (salon.plan_chairs != null ? parseInt(salon.plan_chairs, 10) : undefined) || 1;
-      const latest = getLatestPaymentForSalon(salon.id);
-      const inferredPlan = overridePlan || mapPaymentTypeToPlan(latest?.payment_type);
-      const validUntil = latest?.valid_until || null;
+      const latestSub = getLatestSubscriptionForSalon(salon.id);
+      const inferredPlan = latestSub?.plan || null;
+      const inferredPackage = latestSub?.package || null;
+      const validUntil = latestSub?.end_date || null;
       const dLeft = daysUntil(validUntil);
+      const latest = latestSub || null;
 
       let status = 'no_payments';
-      if (latest) {
+      if (latestSub) {
         if (dLeft == null) status = 'active';
         else if (dLeft < 0) status = 'expired';
         else if (dLeft <= 7) status = 'expiring';
         else status = 'active';
       }
 
-      return { isActive, plan: inferredPlan, chairs, validUntil, daysLeft: dLeft, latest };
+      return { isActive, plan: inferredPlan, package: inferredPackage, validUntil, daysLeft: dLeft, latest };
     }
 
     function renderList() {
@@ -280,6 +297,7 @@
       const search = (document.getElementById('renewal-search')?.value || '').toLowerCase();
       const filter = document.getElementById('renewal-filter')?.value || 'all';
       const planFilter = document.getElementById('plan-filter')?.value || '';
+      const packageFilter = document.getElementById('package-filter')?.value || '';
 
       const base = Array.isArray(salons) ? salons : [];
       const rows = base.map(salon => {
@@ -296,8 +314,12 @@
           case 'inactive': filterMatch = row.salon.status === 'rejected'; break;
           default: filterMatch = true;
         }
-        const planMatch = !planFilter || row.st.plan === planFilter;
-        return nameMatch && filterMatch && planMatch;
+        const planMatch = !planFilter || (
+          (planFilter === 'visibility_only' && row.st.plan === 'visibility_only') ||
+          (planFilter === 'booking' && row.st.plan === 'booking')
+        );
+        const packageMatch = !packageFilter || (row.st.package === packageFilter);
+        return nameMatch && filterMatch && planMatch && packageMatch;
       });
 
       if (!rows.length) {
@@ -321,7 +343,7 @@
       }
 
       container.innerHTML = sorted.map(({ salon, st }) => {
-        const planLbl = planLabel(st.plan, st.chairs);
+        const planLbl = planLabel(st.plan, st.package);
         const vu = formatDate(st.validUntil);
         const days = st.daysLeft;
         let badgeClass = 'status-ok'; let badgeText = 'نشطة';
@@ -364,14 +386,27 @@
       if (!currentSalonForRenew) return;
       const st = computeStatus(currentSalonForRenew);
       document.getElementById('renew-salon-name').textContent = currentSalonForRenew.salon_name || '—';
-      document.getElementById('renew-current-plan').textContent = planLabel(st.plan, st.chairs);
+      document.getElementById('renew-current-plan').textContent = planLabel(st.plan, st.package);
       document.getElementById('renew-inactive-note').classList.toggle('hidden', currentSalonForRenew.status !== 'rejected');
-      const radios = document.querySelectorAll('input[name="renew-plan"]');
-      radios.forEach(r => r.checked = false);
-      const pre = st.latest ? (st.plan || 'monthly_200') : '2months_offer';
-      const preEl = document.querySelector(`input[name='renew-plan'][value='${pre}']`);
-      if (preEl) preEl.checked = true;
-      document.getElementById('chairs-container').classList.toggle('hidden', pre !== 'monthly_60');
+      const coreSel = document.getElementById('renew-core-plan');
+      const bookSel = document.getElementById('renew-booking-option');
+      const visSel = document.getElementById('renew-visibility-option');
+      const core = st.plan === 'visibility_only' ? 'visibility_only' : 'booking';
+      if (coreSel) coreSel.value = core;
+      const boxB = document.getElementById('renew-booking-suboptions');
+      const boxV = document.getElementById('renew-visibility-suboptions');
+      if (boxB && boxV) {
+        if (core === 'booking') { boxB.classList.remove('hidden'); boxV.classList.add('hidden'); }
+        else { boxV.classList.remove('hidden'); boxB.classList.add('hidden'); }
+      }
+      if (core === 'booking') {
+        const preB = st.latest ? (st.plan || 'monthly_200') : '2months_offer';
+        if (bookSel) bookSel.value = preB;
+        document.getElementById('chairs-container').classList.toggle('hidden', preB !== 'monthly_60');
+      } else {
+        if (visSel) visSel.value = 'visibility_only_monthly_99';
+        document.getElementById('chairs-container').classList.add('hidden');
+      }
       document.getElementById('chairs-input').value = st.chairs || 1;
       updateRenewAmount();
       modal.classList.add('modal-open');
@@ -385,64 +420,91 @@
 
     async function performRenewal(){
       if (!currentSalonForRenew) return;
-      const selected = document.querySelector('input[name="renew-plan"]:checked')?.value || 'monthly_200';
-      let invoiceOption = 'renewal';
-      if (selected === '2months_offer') invoiceOption = 'offer';
-      if (selected === 'visibility_only_offer') invoiceOption = 'visibility_only_offer_199';
-      const chairs = parseInt(document.getElementById('chairs-input').value || '1', 10);
-      const payload = {
-        status: 'accepted',
-        invoiceOption,
-        planType: selected,
-        planChairs: selected === 'monthly_60' ? chairs : null
-      };
+      const core = document.getElementById('renew-core-plan')?.value || 'booking';
+      const optionB = document.getElementById('renew-booking-option')?.value || 'monthly_200';
+      const optionV = document.getElementById('renew-visibility-option')?.value || 'visibility_only_monthly_99';
+      const plan = core;
+      const pkg = core === 'booking' ? optionB : optionV;
+      let ch = 1;
+      if (plan === 'booking' && pkg === 'monthly_60') {
+        const raw = document.getElementById('chairs-input')?.value || '1';
+        const n = parseInt(raw, 10);
+        ch = !isNaN(n) && n > 0 ? n : 1;
+      }
+      const payload = { plan, package: pkg, chairs: ch };
       try {
-        const res = await fetch(`/api/admin/salon/status/${currentSalonForRenew.id}` , {
+        const res = await fetch(`/api/admin/subscriptions/${currentSalonForRenew.id}` , {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('فشل حفظ التجديد');
-        // Refresh payments to reflect new invoice
-        const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
+        const sRes1 = await fetch('/api/admin/subscriptions', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+        if (sRes1.ok) {
+          const sData1 = await sRes1.json();
+          window.subscriptions = Array.isArray(sData1) ? sData1 : (Array.isArray(sData1.subscriptions) ? sData1.subscriptions : []);
         }
-        // Refresh salons to reflect new status and plan immediately
+        try {
+          const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
+          }
+        } catch {}
+        // Refresh salons to reflect new status immediately
         try {
           const sRes = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
           if (sRes.ok) {
             const sData = await sRes.json();
             salons = Array.isArray(sData) ? sData : (Array.isArray(sData.salons) ? sData.salons : []);
           } else {
-            // Fallback: update current salon locally
             salons = (salons||[]).map(s => s.id === currentSalonForRenew.id
-              ? { ...s, status: 'accepted', plan: payload.planType, plan_chairs: payload.planChairs || s.plan_chairs || 1 }
+              ? { ...s, status: 'accepted' }
               : s);
           }
         } catch {
           salons = (salons||[]).map(s => s.id === currentSalonForRenew.id
-            ? { ...s, status: 'accepted', plan: payload.planType, plan_chairs: payload.planChairs || s.plan_chairs || 1 }
+            ? { ...s, status: 'accepted' }
             : s);
         }
         closeRenewModal();
-        const msg = invoiceOption === 'offer' ? 'تم تفعيل الصالون على عرض شهرين (200 شيكل)' : (invoiceOption === 'visibility_only_offer_199' ? 'تم تفعيل خطة بدون حجوزات (عرض 199 شيكل / 3 أشهر)' : 'تم إنشاء الفاتورة وتجديد الاشتراك بنجاح');
-        showMessage(msg, 'success');
+        const msg = pkg === '2months_offer' ? 'تم تفعيل عرض شهرين' : (pkg === 'visibility_only_offer_199' ? 'تم تفعيل عرض 3 أشهر بدون حجوزات' : 'تم تجديد الاشتراك بنجاح');
+        showToast(msg, 'success');
         renderList();
       } catch (e) {
-        showMessage('حدث خطأ أثناء التجديد: ' + (e?.message || e), 'error');
+        showToast('حدث خطأ أثناء التجديد: ' + (e?.message || e), 'error');
       }
     }
 
-    function showMessage(text, type){
-      const box = document.getElementById('message-box');
-      box.textContent = text;
-      box.classList.remove('hidden');
-      box.classList.remove('bg-red-100','text-red-700','bg-green-100','text-green-700');
-      if (type === 'success') { box.classList.add('bg-green-100','text-green-700'); }
-      else { box.classList.add('bg-red-100','text-red-700'); }
-      setTimeout(() => { box.classList.add('hidden'); }, 3000);
+    function showToast(text, type){
+      const old = document.getElementById('toast-box');
+      if (old) old.remove();
+      const el = document.createElement('div');
+      el.id = 'toast-box';
+      el.style.position = 'fixed';
+      el.style.bottom = '20px';
+      el.style.right = '20px';
+      el.style.zIndex = '200';
+      el.style.padding = '12px 16px';
+      el.style.borderRadius = '12px';
+      el.style.boxShadow = '0 10px 25px rgba(0,0,0,0.25)';
+      el.style.color = '#fff';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.gap = '10px';
+      el.style.transform = 'translateY(20px)';
+      el.style.opacity = '0';
+      el.style.transition = 'transform .2s ease, opacity .2s ease';
+      const icon = document.createElement('i');
+      icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle';
+      const txt = document.createElement('span');
+      txt.textContent = text;
+      el.appendChild(icon);
+      el.appendChild(txt);
+      el.style.background = type === 'success' ? 'linear-gradient(135deg,#06C167,#059669)' : 'linear-gradient(135deg,#ef4444,#b91c1c)';
+      document.body.appendChild(el);
+      requestAnimationFrame(() => { el.style.transform = 'translateY(0)'; el.style.opacity = '1'; });
+      setTimeout(() => { el.style.transform = 'translateY(20px)'; el.style.opacity = '0'; setTimeout(() => el.remove(), 200); }, 3500);
     }
 
     // Friendly label for payment type
@@ -454,6 +516,8 @@
         case 'per_chair':
         case 'monthly_60': return 'اشتراك شهري لكل كرسي';
         case 'per_booking': return 'الدفع لكل حجز';
+        case 'visibility_only_monthly_99': return 'بدون حجوزات 99 شيكل شهرياً';
+        case 'visibility_only_offer_199': return 'عرض بدون حجوزات 199 شيكل / 3 أشهر';
         default: return 'نوع غير معروف';
       }
     }
@@ -549,10 +613,12 @@
       const s = sessionStorage.getItem('renewals:search') || '';
       const f = sessionStorage.getItem('renewals:filter') || 'all';
       const p = sessionStorage.getItem('renewals:plan') || '';
+      const pk = sessionStorage.getItem('renewals:package') || '';
       const o = sessionStorage.getItem('renewals:sort') || '';
       const si = document.getElementById('renewal-search'); if (si) si.value = s;
       const sf = document.getElementById('renewal-filter'); if (sf) sf.value = f;
       const sp = document.getElementById('plan-filter'); if (sp) sp.value = p;
+      const spk = document.getElementById('package-filter'); if (spk) spk.value = pk;
       const so = document.getElementById('sort-filter'); if (so) so.value = o;
     };
     let searchDebounceId = null;
@@ -569,6 +635,10 @@
       sessionStorage.setItem('renewals:plan', e.target.value || '');
       renderList();
     });
+    document.getElementById('package-filter')?.addEventListener('change', (e) => {
+      sessionStorage.setItem('renewals:package', e.target.value || '');
+      renderList();
+    });
     document.getElementById('sort-filter')?.addEventListener('change', (e) => {
       sessionStorage.setItem('renewals:sort', e.target.value || '');
       renderList();
@@ -577,33 +647,52 @@
     document.getElementById('renew-close-icon')?.addEventListener('click', closeRenewModal);
     document.getElementById('renew-modal')?.addEventListener('click', (e) => { if (e.target.id === 'renew-modal') closeRenewModal(); });
     document.getElementById('renew-confirm')?.addEventListener('click', performRenewal);
-    document.querySelectorAll("input[name='renew-plan']").forEach(r => {
-      r.addEventListener('change', (e) => {
-        const v = e.target.value;
-        document.getElementById('chairs-container').classList.toggle('hidden', v !== 'monthly_60');
-        updateRenewAmount();
-      });
-    });
+    function syncRenewUI(){
+      const core = document.getElementById('renew-core-plan')?.value || 'booking';
+      const boxB = document.getElementById('renew-booking-suboptions');
+      const boxV = document.getElementById('renew-visibility-suboptions');
+      if (boxB && boxV) {
+        if (core === 'booking') { boxB.classList.remove('hidden'); boxV.classList.add('hidden'); }
+        else { boxV.classList.remove('hidden'); boxB.classList.add('hidden'); }
+      }
+      const optB = document.getElementById('renew-booking-option')?.value || '';
+      document.getElementById('chairs-container').classList.toggle('hidden', !(core === 'booking' && optB === 'monthly_60'));
+      updateRenewAmount();
+    }
+    document.getElementById('renew-core-plan')?.addEventListener('change', syncRenewUI);
+    document.getElementById('renew-booking-option')?.addEventListener('change', syncRenewUI);
+    document.getElementById('renew-visibility-option')?.addEventListener('change', syncRenewUI);
     document.getElementById('chairs-input')?.addEventListener('input', () => updateRenewAmount());
 
     function updateRenewAmount(){
-      const selected = document.querySelector("input[name='renew-plan']:checked")?.value || 'monthly_200';
+      const core = document.getElementById('renew-core-plan')?.value || 'booking';
+      const optB = document.getElementById('renew-booking-option')?.value || 'monthly_200';
+      const optV = document.getElementById('renew-visibility-option')?.value || 'visibility_only_monthly_99';
       let chairs = parseInt(document.getElementById('chairs-input')?.value || '1', 10);
       if (isNaN(chairs) || chairs < 1) { chairs = 1; const ci = document.getElementById('chairs-input'); if (ci) ci.value = '1'; }
       const row = document.getElementById('renew-amount-row');
       const el = document.getElementById('renew-amount');
-      if (selected === 'monthly_60') {
-        const total = chairs * 60;
-        el.textContent = `${formatNumber(chairs)} كرسي = ${formatCurrency(total)}`;
-        row.classList.remove('hidden');
-      } else if (selected === 'monthly_200') {
-        el.textContent = formatCurrency(200);
-        row.classList.remove('hidden');
-      } else if (selected === '2months_offer') {
-        el.textContent = `${formatCurrency(200)} (عرض شهرين)`;
-        row.classList.remove('hidden');
+      if (core === 'booking') {
+        if (optB === 'monthly_60') {
+          const total = chairs * 60;
+          el.textContent = `${formatNumber(chairs)} كرسي = ${formatCurrency(total)}`;
+          row.classList.remove('hidden');
+        } else if (optB === 'monthly_200') {
+          el.textContent = formatCurrency(200);
+          row.classList.remove('hidden');
+        } else if (optB === '2months_offer') {
+          el.textContent = `${formatCurrency(200)} (عرض شهرين)`;
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
       } else {
-        row.classList.add('hidden');
+        if (optV === 'visibility_only_monthly_99') {
+          el.textContent = formatCurrency(99);
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
       }
     }
 

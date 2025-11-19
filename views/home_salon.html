@@ -446,7 +446,7 @@
 
 
 <div class="min-h-screen flex flex-col">
-    <header id="app-header" class="bg-primary-dark shadow-lg p-2 w-full z-20" style="padding-top: env(safe-area-inset-top);">
+  <header id="app-header" class="bg-primary-dark shadow-lg p-2 w-full z-20" style="padding-top: calc(env(safe-area-inset-top, 0px) + 8px);">
         <div class="flex justify-between items-center">
             <div class="flex items-center pl-8 pr-4">
                 <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=LOGO';" alt="شعار صالوني" class="w-12 h-12 object-contain object-center scale-[2.5]">
@@ -477,7 +477,7 @@
     
     <main class="flex-grow p-4 pt-[60px] md:p-8">
         <!-- Toast Notification Container -->
-        <div id="toast-container" class="fixed top-20 right-4 z-40 space-y-2"></div>
+  <div id="toast-container" class="fixed right-4 z-40 space-y-2" style="top: calc(env(safe-area-inset-top, 0px) + 20px);"></div>
         
         <div class="max-w-6xl mx-auto space-y-8">
             
@@ -5715,7 +5715,13 @@ const checkRoleSystemEnabled = async () => {
         console.log('📋 Role system response:', data);
         
         if (data.success && data.config.roles_enabled) {
-            console.log('🔐 Role system is ENABLED, showing PIN screen');
+            const hasRoles = Array.isArray(data.staff_roles) && data.staff_roles.length > 0;
+            if (!hasRoles) {
+                console.log('🔐 Role system enabled but no roles configured — bypassing PIN');
+                showMainApp();
+                return;
+            }
+            console.log('🔐 Role system is ENABLED with roles, showing PIN screen');
             // Store available biometric roles
             availableBiometricRoles = data.staff_roles.filter(role => role.biometric_enabled);
             
@@ -6369,6 +6375,21 @@ const logoutRole = async () => {
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.classList.add('overflow-hidden');
+            try {
+                var ua = navigator.userAgent || '';
+                var isiOS = /iP(hone|ad|od)/.test(ua);
+                if (isiOS) {
+                    var setVH = function(){ try{ var vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} };
+                    setVH();
+                    if (mapContainer) { mapContainer.style.height = 'calc(var(--vh, 1vh) * 70)'; mapContainer.style.minHeight = '320px'; }
+                    var invalidate = function(){ try{ mapInstance && mapInstance.invalidateSize(true); }catch(_){} };
+                    window.addEventListener('resize', function(){ setVH(); invalidate(); });
+                    window.addEventListener('orientationchange', function(){ setVH(); invalidate(); });
+                    if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
+                        window.visualViewport.addEventListener('resize', function(){ setVH(); invalidate(); });
+                    }
+                }
+            } catch(_) {}
             setTimeout(initMap, 50);
             // Ensure Leaflet recalculates dimensions once visible on mobile
             requestAnimationFrame(() => {

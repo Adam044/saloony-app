@@ -2885,6 +2885,7 @@ async function loadDiscoveryData(serviceFilterId = null) {
             featuredContainer.innerHTML = '<p class="text-gray-500 col-span-full text-center py-4">لا توجد صالونات مقترحة</p>';
         }
         
+        await hydrateSubscriptionsForDisplayedSalons(data);
         addSalonCardListeners();
         setupDiscoveryServiceListeners(); 
         populateServiceFilter(); // Populate service filter based on user gender
@@ -2894,6 +2895,42 @@ async function loadDiscoveryData(serviceFilterId = null) {
         console.error('Error loading discovery data:', error);
         displayMessage('حدث خطأ في تحميل البيانات', 'error');
     }
+}
+
+async function hydrateSubscriptionsForDisplayedSalons(data) {
+    try {
+        window.salonSubCache = window.salonSubCache || {};
+        const ids = new Set([
+            ...((data.citySalons||[]).map(s=> s.salon_id ?? s.salonId ?? s.id)),
+            ...((data.allSalons||[]).map(s=> s.salon_id ?? s.salonId ?? s.id))
+        ].filter(Boolean));
+        await Promise.all(Array.from(ids).map(async (sid) => {
+            if (window.salonSubCache[sid] !== undefined) return;
+            try {
+                const res = await fetch(`/api/salon/subscriptions/${sid}`);
+                if (res.ok) {
+                    const sData = await res.json();
+                    const subs = Array.isArray(sData) ? sData : (Array.isArray(sData.subscriptions) ? sData.subscriptions : []);
+                    const latest = subs.sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+                    window.salonSubCache[sid] = latest ? latest.plan : null;
+                } else {
+                    window.salonSubCache[sid] = null;
+                }
+            } catch (_) { window.salonSubCache[sid] = null; }
+        }));
+        document.querySelectorAll('.book-btn[data-salon-id]').forEach(btn => {
+            const sid = btn.getAttribute('data-salon-id');
+            const plan = window.salonSubCache[sid];
+            if (String(plan||'') === 'visibility_only') {
+                const parent = btn.parentElement;
+                btn.remove();
+                const badge = document.createElement('span');
+                badge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-700';
+                badge.textContent = 'بدون نظام حجوزات';
+                parent.appendChild(badge);
+            }
+        });
+    } catch (_) {}
 }
 
 async function toggleFavorite(salonId, button) {

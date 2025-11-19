@@ -325,4 +325,59 @@ module.exports = function register(app, deps) {
       return res.status(500).json({ success: false, message: 'فشل في حفظ الحجز.' });
     }
   });
+
+  app.get('/api/appointments/:appointment_id/ics', requireAuth, async (req, res) => {
+    try {
+      const appointmentId = Number(req.params.appointment_id);
+      if (!Number.isFinite(appointmentId) || appointmentId <= 0) {
+        return res.status(400).send('Invalid appointment id');
+      }
+      const appt = await dbGet(
+        `SELECT a.id, a.salon_id, a.user_id, a.start_time, a.end_time, a.price,
+                s.salon_name, s.address, s.city
+         FROM appointments a
+         JOIN salons s ON s.id = a.salon_id
+         WHERE a.id = $1`,
+        [appointmentId]
+      );
+      if (!appt) {
+        return res.status(404).send('Appointment not found');
+      }
+      const requester = req.user?.id;
+      if (requester !== appt.user_id && req.user?.role !== 'admin') {
+        return res.status(403).send('Forbidden');
+      }
+      const start = new Date(appt.start_time);
+      const end = new Date(appt.end_time);
+      const pad = (n) => String(n).padStart(2, '0');
+      const fmt = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+      const dtstamp = fmt(new Date());
+      const dtstart = fmt(start);
+      const dtend = fmt(end);
+      const uid = `${appt.id}@saloony.app`;
+      const summary = `حجز في صالون ${appt.salon_name || ''}`.trim();
+      const location = [appt.address, appt.city].filter(Boolean).join(', ');
+      const desc = `سعر: ${appt.price}`;
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Saloony//EN',
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${dtstart}`,
+        `DTEND:${dtend}`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${desc}`,
+        `LOCATION:${location}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="appointment_${appt.id}.ics"`);
+      return res.status(200).send(ics);
+    } catch (e) {
+      return res.status(500).send('Failed to generate calendar');
+    }
+  });
 }

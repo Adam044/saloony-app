@@ -209,58 +209,6 @@
                 </div>
             </div>
 
-            <!-- 2. Pending Salons -->
-            <div id="pending-salons-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-red-500/50 pb-2 flex justify-between items-center mt-8">
-                    <span class="inline-flex items-center gap-2">
-                         <i class="fas fa-clock-rotate-left text-red-500"></i> الصالونات قيد الانتظار (<span id="pending-count">0</span>)
-                    </span>
-                    <button id="refresh-pending-btn" class="text-gray-500 hover:text-gray-700 text-sm">
-                        <i class="fas fa-sync-alt ml-1"></i> تحديث
-                    </button>
-                </h2>
-                <!-- Filters: name, plan, status, city, date sort (Pending) -->
-                <div class="mb-4 bg-white p-4 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div class="relative">
-                        <input id="salon-name-search-pending" type="text" placeholder="البحث باسم الصالون..." 
-                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                        <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    </div>
-                    <div>
-                <select id="salon-plan-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                    <option value="">كل الخطط</option>
-                    <option value="2months_offer">عرض شهرين</option>
-                    <option value="monthly_200">200ils</option>
-                    <option value="monthly_60">60ils</option>
-                    <option value="per_booking">لكل حجز</option>
-                    <option value="visibility_only">بدون حجوزات</option>
-                </select>
-                    </div>
-                    <div>
-                        <select id="salon-status-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل الحالات</option>
-                            <option value="accepted">نشط</option>
-                            <option value="rejected">غير نشط</option>
-                            <option value="pending">قيد الانتظار</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="salon-city-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل المدن</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="salon-date-sort-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">ترتيب افتراضي</option>
-                            <option value="newest">الأحدث أولاً</option>
-                            <option value="oldest">الأقدم أولاً</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="pending-salons-list" class="table-wrapper">
-                    <p class="text-center text-gray-500 p-8">جاري تحميل الصالونات...</p>
-                </div>
-            </div>
 
             <!-- 3. All Salons -->
             <div id="all-salons-view" class="view-content hidden">
@@ -275,12 +223,20 @@
                     <div>
                 <select id="salon-plan-filter-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
                     <option value="">كل الخطط</option>
-                    <option value="2months_offer">عرض شهرين</option>
-                    <option value="monthly_200">200ils</option>
-                    <option value="monthly_60">60ils</option>
-                    <option value="per_booking">لكل حجز</option>
+                    <option value="booking">مع حجوزات</option>
                     <option value="visibility_only">بدون حجوزات</option>
                 </select>
+                    </div>
+                    <div>
+                        <select id="salon-package-filter-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الباقات</option>
+                            <option value="2months_offer">عرض شهرين</option>
+                            <option value="monthly_200">200ils</option>
+                            <option value="monthly_60">60ils</option>
+                            <option value="per_booking">لكل حجز</option>
+                            <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
+                            <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر</option>
+                        </select>
                     </div>
                     <div>
                         <select id="salon-status-filter-all" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
@@ -305,6 +261,60 @@
                 </div>
                 <div id="all-salons-list" class="table-wrapper">
                     <p class="text-center text-gray-500 p-8">جاري تحميل جميع الصالونات...</p>
+                </div>
+            </div>
+            
+            <!-- 3.5 Pending Salons -->
+            <div id="pending-salons-view" class="view-content hidden">
+                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">الصالونات قيد الانتظار</h2>
+                <!-- Filters: name, core plan, package, status, city, date sort (Pending) -->
+                <div class="mb-4 bg-white p-4 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div class="relative">
+                        <input id="salon-name-search-pending" type="text" placeholder="البحث باسم الصالون..." 
+                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                        <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <div>
+                        <select id="salon-plan-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الخطط</option>
+                            <option value="booking">مع حجوزات</option>
+                            <option value="visibility_only">بدون حجوزات</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-package-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الباقات</option>
+                            <option value="2months_offer">عرض شهرين</option>
+                            <option value="monthly_200">200ils</option>
+                            <option value="monthly_60">60ils</option>
+                            <option value="per_booking">لكل حجز</option>
+                            <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
+                            <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-status-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل الحالات</option>
+                            <option value="accepted">نشط</option>
+                            <option value="rejected">غير نشط</option>
+                            <option value="pending">قيد الانتظار</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-city-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">كل المدن</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="salon-date-sort-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                            <option value="">ترتيب افتراضي</option>
+                            <option value="newest">الأحدث أولاً</option>
+                            <option value="oldest">الأقدم أولاً</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="pending-salons-list" class="table-wrapper">
+                    <p class="text-center text-gray-500 p-8">جاري تحميل الصالونات قيد الانتظار...</p>
                 </div>
             </div>
             
@@ -435,6 +445,7 @@
                     <p class="text-center text-gray-500 p-8">جاري تحميل المدفوعات...</p>
                 </div>
             </div>
+
         </div>
     </main>
 
@@ -443,11 +454,6 @@
         <button id="nav-dashboard" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary nav-active" data-view="dashboard-view">
             <i class="fas fa-tachometer-alt text-xl"></i>
             <span class="text-xs font-bold mt-1">الرئيسية</span>
-        </button>
-        <button id="nav-pending" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="pending-salons-view">
-            <i class="fas fa-user-clock text-xl"></i>
-            <span class="text-xs font-medium mt-1">الانتظار</span>
-            <span id="nav-pending-badge" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full hidden">0</span>
         </button>
         <button id="nav-salons" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="all-salons-view">
             <i class="fas fa-store-alt text-xl"></i>
@@ -493,29 +499,32 @@
             </div>
         </div>
 
-        <!-- Plan selection (compact) -->
+        <!-- Plan selection (two-step) -->
         <div id="plan-options" class="mt-3 p-4 border border-gray-200 rounded-lg bg-white">
             <p class="font-bold text-primary-dark mb-3">تغيير الباقة</p>
             <div class="space-y-2">
                 <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <input type="radio" name="plan-type" id="plan-2months-offer" value="2months_offer" class="h-4 w-4 text-secondary">
-                    <span class="font-semibold">عرض شهرين</span>
+                    <input type="radio" name="plan-core" id="core-booking" value="booking" class="h-4 w-4 text-secondary">
+                    <span class="font-semibold">مع نظام حجوزات</span>
                 </label>
                 <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <input type="radio" name="plan-type" id="plan-monthly-200" value="monthly_200" class="h-4 w-4 text-secondary" checked>
+                    <input type="radio" name="plan-core" id="core-visibility" value="visibility_only" class="h-4 w-4 text-secondary">
+                    <span class="font-semibold">بدون حجوزات (ظهور + متجر + تقييمات)</span>
+                </label>
+            </div>
+            <div id="booking-suboptions" class="mt-3 space-y-2 hidden">
+                <div class="text-sm font-semibold text-gray-600">اختر طريقة الاشتراك</div>
+                <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
+                    <input type="radio" name="booking-option" id="opt-monthly-200" value="monthly_200" class="h-4 w-4 text-secondary">
                     <span class="font-semibold">شهري 200</span>
                 </label>
                 <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <input type="radio" name="plan-type" id="plan-monthly-60" value="monthly_60" class="h-4 w-4 text-secondary">
+                    <input type="radio" name="booking-option" id="opt-monthly-60" value="monthly_60" class="h-4 w-4 text-secondary">
                     <span class="font-semibold">لكل كرسي (60)</span>
                 </label>
                 <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <input type="radio" name="plan-type" id="plan-per-booking" value="per_booking" class="h-4 w-4 text-secondary">
+                    <input type="radio" name="booking-option" id="opt-per-booking" value="per_booking" class="h-4 w-4 text-secondary">
                     <span class="font-semibold">لكل حجز (1)</span>
-                </label>
-                <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
-                    <input type="radio" name="plan-type" id="plan-visibility-only" value="visibility_only" class="h-4 w-4 text-secondary">
-                    <span class="font-semibold">بدون حجوزات (ظهور + متجر + تقييمات)</span>
                 </label>
             </div>
         </div>
@@ -987,37 +996,20 @@ function mapPaymentTypeToPlan(paymentType) {
     }
 
     function formatSalonPlanForRow(salon) {
-        // Show plan badge only for accepted (active) salons, otherwise use muted placeholder
         const isActive = salon.status === 'accepted';
-        if (!isActive) {
-            return '<span class="text-gray-500">---</span>';
+        if (!isActive) return '<span class="text-gray-500">---</span>';
+        const latestSub = (window.allAdminSubscriptions || []).filter(x => x.salon_id === salon.id).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+        const core = latestSub?.plan || null;
+        const pkg = latestSub?.package || null;
+        if (!core) return '<span class="text-gray-500">---</span>';
+        if (core === 'visibility_only') {
+            return pkg === 'visibility_only_offer_199' ? '<span class="sub-badge">عرض 199ils / 3 أشهر</span>' : '<span class="sub-badge">99ils بدون حجوزات</span>';
         }
-
-        const override = (window.salonPlanOverrides || {})[salon.id];
-        let planType = salon.plan || override?.planType;
-        let chairs = (salon.plan_chairs != null ? parseInt(salon.plan_chairs, 10) : undefined);
-        if (chairs == null) chairs = override?.planChairs ? parseInt(override.planChairs, 10) : 1;
-
-        if (!planType) {
-            const last = getLatestPaymentForSalon(salon.id);
-            planType = mapPaymentTypeToPlan(last?.payment_type);
-        }
-
-        // Map to payments page labels and use the same sub-badge style
-        if (planType === '2months_offer') {
-            return '<span class="sub-badge">عرض شهرين</span>';
-        }
-        if (planType === 'monthly_200') {
-            return '<span class="sub-badge">200ils</span>';
-        }
-        if (planType === 'monthly_60') {
-            return '<span class="sub-badge">60ils</span>';
-        }
-        if (planType === 'per_booking') {
-            return '<span class="sub-badge">لكل حجز</span>';
-        }
-        if (planType === 'visibility_only') {
-            return '<span class="sub-badge">بدون حجوزات</span>';
+        if (core === 'booking') {
+            if (pkg === 'monthly_60') return '<span class="sub-badge">60ils</span>';
+            if (pkg === 'monthly_200') return '<span class="sub-badge">200ils</span>';
+            if (pkg === '2months_offer') return '<span class="sub-badge">عرض شهرين</span>';
+            if (pkg === 'per_booking') return '<span class="sub-badge">لكل حجز</span>';
         }
         return '<span class="text-gray-500">---</span>';
     }
@@ -1037,8 +1029,8 @@ function mapPaymentTypeToPlan(paymentType) {
     const navItems = document.querySelectorAll('.nav-item');
 
     const switchView = async (viewId) => {
-        Object.values(views).forEach(view => view.classList.add('hidden'));
-        views[viewId].classList.remove('hidden');
+        Object.values(views).filter(Boolean).forEach(view => view.classList.add('hidden'));
+        views[viewId]?.classList.remove('hidden');
 
         navItems.forEach(btn => {
             btn.classList.remove('nav-active', 'text-secondary', 'text-gray-500');
@@ -1060,8 +1052,6 @@ function mapPaymentTypeToPlan(paymentType) {
             await loadAdminStats();
         } else if (viewId === 'activation-view') {
             await loadActivationView();
-        } else if (viewId === 'pending-salons-view') {
-            await loadSalons('pending');
         } else if (viewId === 'all-salons-view') {
             await loadSalons('all');
         } else if (viewId === 'bookings-view') {
@@ -1113,14 +1103,20 @@ function mapPaymentTypeToPlan(paymentType) {
                     if (!prev || new Date(p.created_at) > new Date(prev.created_at)) latestPaymentBySalon[id] = p;
                 });
             } catch(_) {}
+            let latestSubBySalon = {};
+            try {
+                const sRes = await fetch('/api/admin/subscriptions', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                const sData = sRes.ok ? await sRes.json() : [];
+                const subs = Array.isArray(sData) ? sData : (Array.isArray(sData.subscriptions) ? sData.subscriptions : []);
+                subs.forEach(sub => {
+                    const id = sub.salon_id; if (!id) return; const prev = latestSubBySalon[id];
+                    if (!prev || new Date(sub.start_date || 0) > new Date(prev.start_date || 0)) latestSubBySalon[id] = sub;
+                });
+                window.allAdminSubscriptions = subs;
+            } catch(_) {}
             const derivePlan = (s) => {
-                const override = (window.salonPlanOverrides || {})[s.id];
-                let planType = s.plan || override?.planType;
-                if (!planType) {
-                    const last = latestPaymentBySalon[s.id];
-                    planType = mapPaymentTypeToPlan(last?.payment_type);
-                }
-                return planType;
+                const latest = latestSubBySalon[s.id];
+                return latest?.plan || null;
             };
             const matchesFilters = (s) => {
                 const cityOk = !document.getElementById('act-city')?.value || (s.city || 'غير محدد') === document.getElementById('act-city').value;
@@ -1133,10 +1129,7 @@ function mapPaymentTypeToPlan(paymentType) {
             const active = allSalons.filter(s => s.status === 'accepted').filter(matchesFilters);
             const planBadge = (p) => {
                 if (p === 'visibility_only') return '<span class="sub-badge">بدون حجوزات</span>';
-                if (p === 'monthly_60') return '<span class="sub-badge">60ils</span>';
-                if (p === 'monthly_200') return '<span class="sub-badge">200ils</span>';
-                if (p === '2months_offer') return '<span class="sub-badge">عرض شهرين</span>';
-                if (p === 'per_booking') return '<span class="sub-badge">لكل حجز</span>';
+                if (p === 'booking') return '<span class="sub-badge">مع حجوزات</span>';
                 return '<span class="text-gray-400">—</span>';
             };
             const renderCard = (s, type) => {
@@ -1281,6 +1274,7 @@ function mapPaymentTypeToPlan(paymentType) {
         const container = filter === 'pending' ? document.getElementById('pending-salons-list') : document.getElementById('all-salons-list');
         const listName = filter === 'pending' ? 'Pending Salons' : 'All Salons';
         
+        if (!container) { return; }
         container.innerHTML = `<p class="text-center text-gray-500 p-8">جاري تحميل ${listName}...</p>`;
         showDashboardLoading();
 
@@ -1309,12 +1303,14 @@ function mapPaymentTypeToPlan(paymentType) {
             // Read filters for the current view
             const nameInputId = filter === 'all' ? 'salon-name-search-all' : 'salon-name-search-pending';
             const planSelectId = filter === 'all' ? 'salon-plan-filter-all' : 'salon-plan-filter-pending';
+            const packageSelectId = filter === 'all' ? 'salon-package-filter-all' : 'salon-package-filter-pending';
             const statusSelectId = filter === 'all' ? 'salon-status-filter-all' : 'salon-status-filter-pending';
             const citySelectId = filter === 'all' ? 'salon-city-filter-all' : 'salon-city-filter-pending';
             const sortSelectId = filter === 'all' ? 'salon-date-sort-all' : 'salon-date-sort-pending';
 
             const nameTerm = document.getElementById(nameInputId)?.value?.toLowerCase()?.trim() || '';
             const planTerm = document.getElementById(planSelectId)?.value || '';
+            const packageTerm = document.getElementById(packageSelectId)?.value || '';
             const statusTerm = document.getElementById(statusSelectId)?.value || '';
             const cityTerm = document.getElementById(citySelectId)?.value || '';
             const sortTerm = document.getElementById(sortSelectId)?.value || '';
@@ -1330,15 +1326,11 @@ function mapPaymentTypeToPlan(paymentType) {
                 } catch (e) { /* ignore */ }
             }
 
-            // Helper: derive a plan key for filtering
-            const computePlanKey = (salon) => {
-                const override = (window.salonPlanOverrides || {})[salon.id];
-                let planType = salon.plan || override?.planType;
-                if (!planType) {
-                    const last = getLatestPaymentForSalon(salon.id);
-                    planType = mapPaymentTypeToPlan(last?.payment_type);
-                }
-                return planType;
+            // Helper: get latest subscription for salon
+            const getLatestSub = (salon) => {
+                return (window.allAdminSubscriptions || [])
+                    .filter(x => x.salon_id === salon.id)
+                    .sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
             };
 
             // Build counts for options (for display)
@@ -1347,28 +1339,49 @@ function mapPaymentTypeToPlan(paymentType) {
                 rejected: baseSalons.filter(s => s.status === 'rejected').length,
                 pending: baseSalons.filter(s => s.status === 'pending').length
             };
-            const planKeys = ['2months_offer','monthly_200','monthly_60','per_booking','visibility_only'];
-            const planCounts = planKeys.reduce((acc, k) => { acc[k] = baseSalons.filter(s => s.status === 'accepted' && computePlanKey(s) === k).length; return acc; }, {});
+            const planCounts = {
+                booking: baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.plan === 'booking').length,
+                visibility_only: baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.plan === 'visibility_only').length,
+            };
+            const packageCounts = {
+                '2months_offer': baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.package === '2months_offer').length,
+                'monthly_200': baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.package === 'monthly_200').length,
+                'monthly_60': baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.package === 'monthly_60').length,
+                'per_booking': baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.package === 'per_booking').length,
+                'visibility_only_monthly_99': baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.package === 'visibility_only_monthly_99').length,
+                'visibility_only_offer_199': baseSalons.filter(s => s.status === 'accepted' && getLatestSub(s)?.package === 'visibility_only_offer_199').length,
+            };
             const cityCounts = {};
             baseSalons.forEach(s => { const c = (s.city || 'غير محدد'); cityCounts[c] = (cityCounts[c] || 0) + 1; });
             const sortedCities = Object.keys(cityCounts).sort((a,b) => a.localeCompare(b));
 
             // Update plan/status/city select options with counts (preserve selection)
             const planSel = document.getElementById(planSelectId);
+            const pkgSel = document.getElementById(packageSelectId);
             const stSel = document.getElementById(statusSelectId);
             const ctSel = document.getElementById(citySelectId);
-            const prevPlan = planTerm; const prevStatus = statusTerm; const prevCity = cityTerm;
+            const prevPlan = planTerm; const prevPackage = packageTerm; const prevStatus = statusTerm; const prevCity = cityTerm;
             if (planSel) {
                 const totalPlans = Object.values(planCounts).reduce((a,b)=>a+b,0);
                 planSel.innerHTML = `
                     <option value="">كل الخطط (${totalPlans})</option>
-                <option value="2months_offer">عرض شهرين (${planCounts['2months_offer'] || 0})</option>
-                <option value="monthly_200">200ils (${planCounts['monthly_200'] || 0})</option>
-                <option value="monthly_60">60ils (${planCounts['monthly_60'] || 0})</option>
-                <option value="per_booking">لكل حجز (${planCounts['per_booking'] || 0})</option>
-                <option value="visibility_only">بدون حجوزات (${planCounts['visibility_only'] || 0})</option>
+                    <option value="booking">مع حجوزات (${planCounts['booking'] || 0})</option>
+                    <option value="visibility_only">بدون حجوزات (${planCounts['visibility_only'] || 0})</option>
                 `;
                 planSel.value = prevPlan;
+            }
+            if (pkgSel) {
+                const totalPkgs = Object.values(packageCounts).reduce((a,b)=>a+b,0);
+                pkgSel.innerHTML = `
+                    <option value="">كل الباقات (${totalPkgs})</option>
+                    <option value="2months_offer">عرض شهرين (${packageCounts['2months_offer'] || 0})</option>
+                    <option value="monthly_200">200ils (${packageCounts['monthly_200'] || 0})</option>
+                    <option value="monthly_60">60ils (${packageCounts['monthly_60'] || 0})</option>
+                    <option value="per_booking">لكل حجز (${packageCounts['per_booking'] || 0})</option>
+                    <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري (${packageCounts['visibility_only_monthly_99'] || 0})</option>
+                    <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر (${packageCounts['visibility_only_offer_199'] || 0})</option>
+                `;
+                pkgSel.value = prevPackage;
             }
             if (stSel) {
                 stSel.innerHTML = `
@@ -1392,8 +1405,15 @@ function mapPaymentTypeToPlan(paymentType) {
                 const matchesName = !nameTerm || (s.salon_name || '').toLowerCase().includes(nameTerm);
                 const matchesStatus = !statusTerm || s.status === statusTerm;
                 const matchesCity = !cityTerm || (s.city || 'غير محدد') === cityTerm;
-                const matchesPlan = !planTerm || (s.status === 'accepted' && computePlanKey(s) === planTerm);
-                return matchesName && matchesStatus && matchesCity && matchesPlan;
+                const latestSub = getLatestSub(s);
+                const matchesPlan = !planTerm || (
+                    s.status === 'accepted' && (
+                        (planTerm === 'visibility_only' && latestSub?.plan === 'visibility_only') ||
+                        (planTerm === 'booking' && latestSub?.plan === 'booking')
+                    )
+                );
+                const matchesPackage = !packageTerm || (s.status === 'accepted' && latestSub?.package === packageTerm);
+                return matchesName && matchesStatus && matchesCity && matchesPlan && matchesPackage;
             });
 
             if (sortTerm === 'newest' || sortTerm === 'oldest') {
@@ -1682,6 +1702,7 @@ function mapPaymentTypeToPlan(paymentType) {
 
         renderAdminPayments(filteredPayments);
     };
+
 
     // --- Bookings (Appointments) Management ---
     let allAdminBookings = [];
@@ -1979,38 +2000,18 @@ function mapPaymentTypeToPlan(paymentType) {
             statusToggle.checked = (salon.status === 'accepted');
         }
 
-        // Current plan: prefer backend stored plan, else infer from latest payment
+        // Current plan: prefer latest subscription, else backend stored plan, else latest payment
         const planEl = document.getElementById('modal-current-plan');
-        const planMap = {
-            '2months_offer': 'عرض شهرين',
-            'monthly_200': '200ils',
-            'monthly_60': '60ils',
-            'per_booking': 'لكل حجز (1)'
-        };
         let currentPlan = 'غير محدد';
-        if (salon.plan) {
-            if (salon.plan === 'monthly_60' && salon.plan_chairs) {
-                currentPlan = `لكل كرسي (${salon.plan_chairs})`;
-            } else {
-                currentPlan = planMap[salon.plan] || salon.plan;
+        const latestSub = (window.allAdminSubscriptions || []).filter(x => x.salon_id === salon.id).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+        if (latestSub && latestSub.plan) {
+            if (latestSub.plan === 'booking') {
+                const m = latestSub.package;
+                currentPlan = m === 'monthly_60' ? '60ils' : (m === 'monthly_200' ? '200ils' : (m === '2months_offer' ? 'عرض شهرين' : 'لكل حجز'));
+            } else if (latestSub.plan === 'visibility_only') {
+                const m = latestSub.package;
+                currentPlan = m === 'visibility_only_offer_199' ? 'عرض 199ils / 3 أشهر' : '99ils بدون حجوزات';
             }
-        } else {
-            try {
-                const payments = window.allAdminPayments || [];
-                const related = payments.filter(p => p.salon_id === salon.id);
-                if (related.length) {
-                    related.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    const last = related[0];
-                    const typeToPlan = mapPaymentTypeToPlan(last.payment_type);
-                    const paymentTypeMap = {
-                        '2months_offer': 'عرض شهرين',
-                        'monthly_200': '200ils',
-                        'monthly_60': '60ils',
-                        'per_booking': 'لكل حجز'
-                    };
-                    currentPlan = paymentTypeMap[typeToPlan] || paymentTypeMap[last.payment_type] || last.payment_type || 'غير محدد';
-                }
-            } catch (_) {}
         }
         if (planEl) planEl.textContent = currentPlan;
 
@@ -2029,45 +2030,33 @@ function mapPaymentTypeToPlan(paymentType) {
         } catch (_) {}
         if (lastPaymentEl) lastPaymentEl.textContent = lastPaymentDate;
 
-        // Preselect plan: prefer backend salon.plan, else infer from last payment
-        const planRadioMap = {
-            '2months_offer': 'plan-2months-offer',
-            'monthly_200': 'plan-monthly-200',
-            'monthly_60': 'plan-monthly-60',
-            'per_booking': 'plan-per-booking',
-            'visibility_only': 'plan-visibility-only'
-        };
-        if (salon.plan && planRadioMap[salon.plan] && document.getElementById(planRadioMap[salon.plan])) {
-            document.getElementById(planRadioMap[salon.plan]).checked = true;
+        const selectedPlanType = latestSub?.plan || null;
+        const coreElBooking = document.getElementById('core-booking');
+        const coreElVisibility = document.getElementById('core-visibility');
+        const subBox = document.getElementById('booking-suboptions');
+        if (selectedPlanType === 'visibility_only') {
+            if (coreElVisibility) coreElVisibility.checked = true;
+            if (subBox) subBox.classList.add('hidden');
         } else {
-            try {
-                const payments = window.allAdminPayments || [];
-                const related = payments.filter(p => p.salon_id === salon.id);
-                if (related.length) {
-                    related.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    const last = related[0];
-                    const pt = last.payment_type;
-                    const map = {
-                        'offer_200ils': 'plan-2months-offer',
-                        'monthly_subscription': 'plan-monthly-200',
-                        'per_chair': 'plan-monthly-60',
-                        'per_booking': 'plan-per-booking',
-                        'visibility_only_monthly_99': 'plan-visibility-only',
-                        'visibility_only_offer_199': 'plan-visibility-only'
-                    };
-                    const id = map[pt];
-                    if (id && document.getElementById(id)) {
-                        document.getElementById(id).checked = true;
-                    }
-                }
-            } catch(_) {}
+            if (coreElBooking) coreElBooking.checked = true;
+            if (subBox) subBox.classList.remove('hidden');
+            const optMap = {
+                'monthly_200': 'opt-monthly-200',
+                'monthly_60': 'opt-monthly-60',
+                'per_booking': 'opt-per-booking'
+            };
+            const optId = optMap[latestSub?.package];
+            if (optId && document.getElementById(optId)) document.getElementById(optId).checked = true;
         }
 
         // Sync chairs input and invoice option with selected plan
         const syncPlanUI = () => {
-            const selected = document.querySelector('input[name="plan-type"]:checked')?.value;
+            const core = document.querySelector('input[name="plan-core"]:checked')?.value || null;
+            const subBox2 = document.getElementById('booking-suboptions');
+            if (subBox2) { if (core === 'booking') subBox2.classList.remove('hidden'); else subBox2.classList.add('hidden'); }
+            const planTypeNow = core === 'booking' ? (document.querySelector('input[name="booking-option"]:checked')?.value || null) : 'visibility_only';
             const chairsContainer = document.getElementById('chairs-input-container');
-            if (selected === 'monthly_60') {
+            if (planTypeNow === 'monthly_60') {
                 chairsContainer?.classList.remove('hidden');
                 const ov = window.salonPlanOverrides[salon.id];
                 const el = document.getElementById('plan-chairs-input');
@@ -2078,27 +2067,32 @@ function mapPaymentTypeToPlan(paymentType) {
         };
         syncPlanUI();
 
-        document.querySelectorAll('input[name="plan-type"]').forEach(r => {
-            r.addEventListener('change', syncPlanUI);
-        });
+        document.querySelectorAll('input[name="plan-core"]').forEach(r => { r.addEventListener('change', syncPlanUI); });
+        document.querySelectorAll('input[name="booking-option"]').forEach(r => { r.addEventListener('change', syncPlanUI); });
 
         // Baseline state for change detection
         const statusToggleEl = document.getElementById('status-toggle');
-        const initiallySelectedPlan = document.querySelector('input[name="plan-type"]:checked')?.value || null;
+        const initiallySelectedCore = document.querySelector('input[name="plan-core"]:checked')?.value || (selectedPlanType==='visibility_only' ? 'visibility_only' : 'booking');
+        const initiallySelectedOption = initiallySelectedCore === 'booking' ? (document.querySelector('input[name="booking-option"]:checked')?.value || latestSub?.package || null) : null;
+        const initiallySelectedPlan = initiallySelectedCore === 'booking' ? initiallySelectedOption : 'visibility_only';
         const initialChairs = initiallySelectedPlan === 'monthly_60' ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
         window.approvalBaseline = window.approvalBaseline || {};
         window.approvalBaseline[currentSalonId] = {
             statusChecked: !!(statusToggleEl && statusToggleEl.checked),
+            coreSelected: initiallySelectedCore,
+            optionSelected: initiallySelectedOption,
             planSelected: initiallySelectedPlan,
             planChairs: initialChairs
         };
 
         // Helper to read current selection
         const getCurrentSelection = () => {
-            const selPlan = document.querySelector('input[name="plan-type"]:checked')?.value || null;
+            const core = document.querySelector('input[name="plan-core"]:checked')?.value || null;
+            const option = core === 'booking' ? (document.querySelector('input[name="booking-option"]:checked')?.value || null) : null;
+            const selPlan = core === 'booking' ? option : 'visibility_only';
             const selChairs = selPlan === 'monthly_60' ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
             const statusChecked = !!document.getElementById('status-toggle')?.checked;
-            return { selPlan, selChairs, statusChecked };
+            return { core, option, selPlan, selChairs, statusChecked };
         };
 
         // Update Save button visibility based on changes
@@ -2117,7 +2111,8 @@ function mapPaymentTypeToPlan(paymentType) {
 
         // Attach listeners to detect changes
         statusToggleEl?.addEventListener('change', updateSaveVisibility);
-        document.querySelectorAll('input[name="plan-type"]').forEach(r => r.addEventListener('change', updateSaveVisibility));
+        document.querySelectorAll('input[name="plan-core"]').forEach(r => r.addEventListener('change', updateSaveVisibility));
+        document.querySelectorAll('input[name="booking-option"]').forEach(r => r.addEventListener('change', updateSaveVisibility));
         document.getElementById('plan-chairs-input')?.addEventListener('input', updateSaveVisibility);
         // Initial visibility set
         updateSaveVisibility();
@@ -2137,10 +2132,12 @@ function mapPaymentTypeToPlan(paymentType) {
     const updateSalonStatus = async (status) => {
         if (!currentSalonId) return;
         const toggleEl = document.getElementById('status-toggle');
-        const planSelected = document.querySelector('input[name="plan-type"]:checked')?.value || 'monthly_200';
-        const invoiceSelected = (planSelected === '2months_offer') ? 'offer_200ils' : 'none';
+        const coreNow = document.querySelector('input[name="plan-core"]:checked')?.value || null;
+        const optionNow = coreNow === 'booking' ? (document.querySelector('input[name="booking-option"]:checked')?.value || 'monthly_200') : 'visibility_only';
+        const planSelected = coreNow === 'booking' ? optionNow : 'visibility_only';
+        const invoiceSelected = (planSelected === 'per_booking') ? 'none' : 'renewal';
         const planChairs = (planSelected === 'monthly_60') ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
-        const payment200ils = invoiceSelected === 'offer_200ils'; // legacy compatibility
+        const payment200ils = false;
         toggleEl && (toggleEl.disabled = true);
 
         try {
@@ -2181,7 +2178,9 @@ function mapPaymentTypeToPlan(paymentType) {
         if (!currentSalonId) return;
         const saveBtn = document.getElementById('save-plan-btn');
         const originalSaveText = saveBtn.innerHTML;
-        const planSelected = document.querySelector('input[name="plan-type"]:checked')?.value || 'monthly_200';
+        const coreNow = document.querySelector('input[name="plan-core"]:checked')?.value || null;
+        const optionNow = coreNow === 'booking' ? (document.querySelector('input[name="booking-option"]:checked')?.value || 'monthly_200') : 'visibility_only';
+        const planSelected = coreNow === 'booking' ? optionNow : 'visibility_only';
         const planChairs = (planSelected === 'monthly_60') ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
         const statusToggle = document.getElementById('status-toggle');
         const status = statusToggle && statusToggle.checked ? 'accepted' : 'rejected';
@@ -2221,12 +2220,14 @@ function mapPaymentTypeToPlan(paymentType) {
     const savePlanOnly = () => {
         if (!currentSalonId) return;
         // Determine if plan actually changed compared to baseline
-        const planSelected = document.querySelector('input[name="plan-type"]:checked')?.value || null;
+        const coreNow2 = document.querySelector('input[name="plan-core"]:checked')?.value || null;
+        const optionNow2 = coreNow2 === 'booking' ? (document.querySelector('input[name="booking-option"]:checked')?.value || null) : 'visibility_only';
+        const planSelected = coreNow2 === 'booking' ? optionNow2 : 'visibility_only';
         const planChairs = planSelected === 'monthly_60' ? parseInt(document.getElementById('plan-chairs-input')?.value || '1', 10) : null;
         const baseline = window.approvalBaseline && window.approvalBaseline[currentSalonId] ? window.approvalBaseline[currentSalonId] : { planSelected: null, planChairs: null };
         const planChanged = baseline.planSelected !== planSelected;
         const chairsChanged = (planSelected === 'monthly_60' || baseline.planSelected === 'monthly_60') ? (baseline.planChairs || 1) !== (planChairs || 1) : false;
-        const suggested = (planSelected === '2months_offer') ? 'offer_200ils' : (planSelected === 'per_booking' ? 'none' : 'renewal');
+        const suggested = (planSelected === 'per_booking' ? 'none' : 'renewal');
 
         if (planChanged || chairsChanged) {
             // Show invoice confirmation only when plan changed
@@ -2377,7 +2378,7 @@ function mapPaymentTypeToPlan(paymentType) {
             });
         }
         
-        document.getElementById('refresh-pending-btn').addEventListener('click', () => loadSalons('pending'));
+        document.getElementById('refresh-pending-btn')?.addEventListener('click', () => loadSalons('pending'));
 
         // Modal actions
         document.getElementById('approval-close-icon')?.addEventListener('click', hideApprovalModal);
@@ -2429,7 +2430,12 @@ function mapPaymentTypeToPlan(paymentType) {
         const paymentTypeMap = {
             'offer_200ils': 'عرض 200 شيكل',
             'monthly_subscription': 'اشتراك شهري',
-            'annual_subscription': 'اشتراك سنوي'
+            'annual_subscription': 'اشتراك سنوي',
+            'monthly_200': 'اشتراك شهري 200 شيكل',
+            'monthly_60': 'اشتراك شهري لكل كرسي (60 شيكل)',
+            'per_booking': 'لكل حجز',
+            'visibility_only_monthly_99': 'بدون حجوزات 99 شيكل شهرياً',
+            'visibility_only_offer_199': 'عرض بدون حجوزات 199 شيكل / 3 أشهر'
         };
         document.getElementById('payment-type').textContent = paymentTypeMap[payment.payment_type] || payment.payment_type;
         
@@ -2566,6 +2572,10 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.setItem('dashboard:salon:pending:plan', e.target.value || '');
         loadSalons('pending');
     });
+    document.getElementById('salon-package-filter-pending')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:pending:package', e.target.value || '');
+        loadSalons('pending');
+    });
     document.getElementById('salon-status-filter-pending')?.addEventListener('change', (e) => {
         sessionStorage.setItem('dashboard:salon:pending:status', e.target.value || '');
         loadSalons('pending');
@@ -2586,6 +2596,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('salon-plan-filter-all')?.addEventListener('change', (e) => {
         sessionStorage.setItem('dashboard:salon:all:plan', e.target.value || '');
+        loadSalons('all');
+    });
+    document.getElementById('salon-package-filter-all')?.addEventListener('change', (e) => {
+        sessionStorage.setItem('dashboard:salon:all:package', e.target.value || '');
         loadSalons('all');
     });
     document.getElementById('salon-status-filter-all')?.addEventListener('change', (e) => {
@@ -2651,11 +2665,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Salons - Pending
         const spName = sessionStorage.getItem('dashboard:salon:pending:name') || '';
         const spPlan = sessionStorage.getItem('dashboard:salon:pending:plan') || '';
+        const spPackage = sessionStorage.getItem('dashboard:salon:pending:package') || '';
         const spStatus = sessionStorage.getItem('dashboard:salon:pending:status') || '';
         const spCity = sessionStorage.getItem('dashboard:salon:pending:city') || '';
         const spSort = sessionStorage.getItem('dashboard:salon:pending:sort') || '';
         const spnEl = document.getElementById('salon-name-search-pending'); if (spnEl) spnEl.setAttribute('value', spName);
         const sppEl = document.getElementById('salon-plan-filter-pending'); if (sppEl) sppEl.value = spPlan;
+        const sppkgEl = document.getElementById('salon-package-filter-pending'); if (sppkgEl) sppkgEl.value = spPackage;
         const spsEl = document.getElementById('salon-status-filter-pending'); if (spsEl) spsEl.value = spStatus;
         const spcEl = document.getElementById('salon-city-filter-pending'); if (spcEl) spcEl.value = spCity;
         const spsrEl = document.getElementById('salon-date-sort-pending'); if (spsrEl) spsrEl.value = spSort;
@@ -2664,11 +2680,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Salons - All
         const saName = sessionStorage.getItem('dashboard:salon:all:name') || '';
         const saPlan = sessionStorage.getItem('dashboard:salon:all:plan') || '';
+        const saPackage = sessionStorage.getItem('dashboard:salon:all:package') || '';
         const saStatus = sessionStorage.getItem('dashboard:salon:all:status') || '';
         const saCity = sessionStorage.getItem('dashboard:salon:all:city') || '';
         const saSort = sessionStorage.getItem('dashboard:salon:all:sort') || '';
         const sanEl = document.getElementById('salon-name-search-all'); if (sanEl) sanEl.setAttribute('value', saName);
         const sapEl = document.getElementById('salon-plan-filter-all'); if (sapEl) sapEl.value = saPlan;
+        const sapkgEl = document.getElementById('salon-package-filter-all'); if (sapkgEl) sapkgEl.value = saPackage;
         const sasEl = document.getElementById('salon-status-filter-all'); if (sasEl) sasEl.value = saStatus;
         const sacEl = document.getElementById('salon-city-filter-all'); if (sacEl) sacEl.value = saCity;
         const sasrEl = document.getElementById('salon-date-sort-all'); if (sasrEl) sasrEl.value = saSort;
@@ -2725,7 +2743,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const paymentTypeMap = {
             'offer_200ils': 'عرض 200 شيكل',
             'monthly_subscription': 'اشتراك شهري',
-            'annual_subscription': 'اشتراك سنوي'
+            'annual_subscription': 'اشتراك سنوي',
+            'monthly_200': 'اشتراك شهري 200 شيكل',
+            'monthly_60': 'اشتراك شهري لكل كرسي (60 شيكل)',
+            'per_booking': 'لكل حجز',
+            'visibility_only_monthly_99': 'بدون حجوزات 99 شيكل شهرياً',
+            'visibility_only_offer_199': 'عرض بدون حجوزات 199 شيكل / 3 أشهر'
         };
         document.getElementById('clean-payment-type').textContent = paymentTypeMap[payment.payment_type] || payment.payment_type;
         

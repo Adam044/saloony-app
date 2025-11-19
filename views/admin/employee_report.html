@@ -23,6 +23,10 @@
     .badge-green { background:#D1FAE5; color:#065F46; }
     .badge-blue { background:#DBEAFE; color:#1E40AF; }
     .badge-red { background:#FEE2E2; color:#991B1B; }
+    @media (max-width: 640px) { #sec-calendar .filters { grid-template-columns: 1fr !important; } }
+    @media (min-width: 641px) { #sec-calendar .filters { grid-template-columns: repeat(3, minmax(140px, 1fr)) !important; } }
+    @media (max-width: 640px) { #sec-visits .filters { grid-template-columns: 1fr !important; } }
+    @media (min-width: 641px) { #sec-visits .filters:first-of-type { grid-template-columns: 1fr 160px 160px 120px 120px !important; } #sec-visits .filters:nth-of-type(2) { grid-template-columns: 160px 1fr !important; } }
   </style>
 </head>
 <body>
@@ -460,9 +464,13 @@
               const counts = Array(days).fill(0);
               visits.forEach(v => {
                 const st = String(v.status||'').toLowerCase();
-                const d = new Date(v.visited_at).getDate();
-                if (mode === 'activated') { if (st === 'activated') counts[d-1] += 1; }
-                else { counts[d-1] += 1; }
+                const ds = String(v.visited_at||'');
+                const mdt = ds.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                const d = mdt ? Number(mdt[3]) : new Date(ds).getDate();
+                if (!Number.isNaN(d) && d>=1 && d<=days) {
+                  if (mode === 'activated') { if (st === 'activated') counts[d-1] += 1; }
+                  else { counts[d-1] += 1; }
+                }
               });
               const container = document.getElementById('calendar-grid'); if (!container) return;
               const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];

@@ -13,7 +13,7 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
     body { font-family: 'Tajawal', sans-serif; background: #F3F4F6; padding-bottom: 80px; }
-    #salon-map { height: 70vh; width: 100%; border-radius: 1rem; }
+    #salon-map { height: calc(var(--vh, 1vh) * 70); min-height: 320px; width: 100%; border-radius: 1rem; -webkit-transform: translateZ(0); transform: translateZ(0); }
     .nav-active { color: #06C167 !important; background-color: rgba(6,193,103,0.1) !important; border-radius: 0.75rem !important; box-shadow: 0 2px 8px rgba(6,193,103,0.15) !important; }
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000000; display: none; justify-content: center; align-items: flex-end; inset: 0; overflow: hidden; }
     .modal-content { background-color: #fff; width: 100%; max-width: 600px; height: 88vh; border-top-left-radius: 30px; border-top-right-radius: 30px; overflow-y: auto; transform: translateY(100%); transition: transform 0.4s ease-out; max-height: calc(100vh - env(safe-area-inset-top)); margin-top: env(safe-area-inset-top); }
@@ -380,9 +380,16 @@
       if(fit){ try{ var b=L.latLngBounds(visible); map.fitBounds(b, { padding:[40,40], maxZoom: 15 }); }catch(_){} }
       setStatus(visible.length?('عدد الصالونات المعروضة: '+visible.length):'لا توجد نتائج');
     }
+    function setVH(){ try{ var vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} }
+    var invalidateTimer = null;
+    function invalidateLater(){ try{ if(invalidateTimer) clearTimeout(invalidateTimer); invalidateTimer = setTimeout(function(){ try{ map && map.invalidateSize(); }catch(_){} }, 200); }catch(_){} }
     async function init(){
+      setVH();
+      window.addEventListener('resize', function(){ setVH(); invalidateLater(); });
+      window.addEventListener('orientationchange', function(){ setVH(); invalidateLater(); });
       map=L.map('salon-map').setView([31.95, 35.0], 12);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; OpenStreetMap' }).addTo(map);
+      setTimeout(function(){ try{ map.invalidateSize(); }catch(_){} }, 300);
       try { navigator.geolocation.getCurrentPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, true); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); setTimeout(function(){ if(!hasCenteredOnUser && userLocation){ try{ map.setView([userLocation.lat, userLocation.lng], 14); hasCenteredOnUser=true; applyMobileOffset(); }catch(_){} } }, 1500); } catch(_) {}
       try { navigator.geolocation.watchPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); } catch(_) {}
       var d=await fetchDiscovery();
