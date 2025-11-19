@@ -310,10 +310,10 @@
 <div class="min-h-screen flex flex-col">
     <!-- Header (Simple back navigation) -->
     <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 sticky top-0" style="padding-top: env(safe-area-inset-top);">
-        <button id="back-to-home-btn" class="text-white hover:text-secondary transition duration-150 p-2 rounded-lg" aria-label="رجوع">
-            <i class="fas fa-arrow-right text-lg ml-2"></i>
+        <button id="back-to-home-btn" class="text-white hover:text-secondary transition duration-150 p-2 rounded-lg order-1" aria-label="رجوع">
+            <i class="fas fa-arrow-left text-lg mr-2"></i>
         </button>
-        <button id="favorite-toggle-btn" class="text-white hover:text-red-400 transition duration-150 p-2 rounded-lg">
+        <button id="favorite-toggle-btn" class="text-white hover:text-red-400 transition duration-150 p-2 rounded-lg order-2">
             <i class="fas fa-heart text-lg text-gray-300"></i>
         </button>
     </header>
@@ -703,6 +703,21 @@
                     تأكيد الحجز
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- No-Booking Modal -->
+<div id="no-booking-modal" class="confirmation-modal" style="display: none;">
+    <div class="confirmation-modal-content p-6 text-center">
+        <div class="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center shadow-sm">
+            <i class="fas fa-info-circle text-2xl text-gray-600"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-primary-dark mb-2">عذراً، الحجوزات غير متاحة</h3>
+        <p class="text-gray-600 mb-6">هذا الصالون لا يستقبل الحجوزات عبر التطبيق في الوقت الحالي.</p>
+        <div class="flex justify-center gap-3">
+            <a id="no-booking-call-btn" class="btn-secondary px-5 py-2 rounded-xl" style="display: none;">اتصل بالصالون</a>
+            <button id="no-booking-modal-close" class="btn-secondary px-5 py-2 rounded-xl">حسنًا</button>
         </div>
     </div>
 </div>
@@ -2088,14 +2103,18 @@
                      staffToRender.unshift(anyStaff);
                  }
 
-                 container.innerHTML = staffToRender.map(member => `
+                container.innerHTML = staffToRender.map(member => `
                      <div class="selection-card p-4 rounded-xl text-center staff-option" data-staff-id="${member.id}">
                          <input type="radio" name="staff" value="${member.id}" class="hidden">
                          <div class="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-3 flex items-center justify-center">
                              <i class="fas ${member.id === 0 ? 'fa-user-clock' : 'fa-user'} text-2xl text-gray-500"></i>
                          </div>
                          <h4 class="font-bold text-primary-dark">${member.name}</h4>
-                         <p class="text-sm text-gray-600">${member.id === 0 ? 'الأسرع للحجز' : member.specialization || 'مختص عام'}</p>
+                         ${member.id === 0 
+                            ? '<p class="text-sm text-gray-600">الأسرع للحجز</p>' 
+                            : ((member.specialization || member.role) 
+                                ? `<p class="text-sm text-gray-600">${member.specialization || member.role}</p>` 
+                                : '')}
                      </div>
                  `).join('');
                  
@@ -3077,7 +3096,14 @@
                 showAuthModal('book');
                 return;
             }
-            try { showBookingStep(1); } catch (e) { console.warn('Booking step init failed:', e.message); }
+            try {
+                const latestSub = (window.salonSubscriptions || []).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+                const planCore = String(((latestSub && latestSub.plan) || (window.selectedSalon && window.selectedSalon.plan) || '')).toLowerCase();
+                const pkg = String(((latestSub && latestSub.package) || '')).toLowerCase();
+                const vp = planCore === 'visibility_only' || pkg.includes('visibility_only');
+                if (vp) { showNoBookingModal(); return; }
+                showBookingStep(1);
+            } catch (e) { console.warn('Booking step init failed:', e.message); }
         });
         
         document.getElementById('cancel-booking-btn').addEventListener('click', hidePreBookingModal);
@@ -3227,14 +3253,16 @@
     function renderStaffPreview(staff) {
         const list = document.getElementById('preview-staff-list');
         if (!list) return;
-        if (!staff || staff.length === 0) {
+        const validStaff = Array.isArray(staff) ? staff.filter(m => (m && (m.name || m.staff_name))) : [];
+        if (validStaff.length === 0) {
             list.innerHTML = '<p class="text-gray-500">لا يوجد مختصون متاحون حالياً.</p>';
             return;
         }
-        list.innerHTML = staff.map(m => {
-            const name = m.name || m.staff_name || 'مختص';
-            const role = m.role || 'فني';
-            return `<div class="p-3 border rounded-xl flex items-center justify-between"><span class="font-bold text-primary-dark">${name}</span><span class="text-gray-600 text-sm">${role}</span></div>`;
+        list.innerHTML = validStaff.map(m => {
+            const name = m.name || m.staff_name;
+            const role = m.specialization || m.role || m.title || '';
+            const roleSpan = role ? `<span class="text-gray-600 text-sm">${role}</span>` : '';
+            return `<div class="p-3 border rounded-xl flex items-center justify-between"><span class="font-bold text-primary-dark">${name}</span>${roleSpan}</div>`;
         }).join('');
     }
     // Check for active appointments before opening booking modal
@@ -3342,6 +3370,13 @@
         const overlay = document.getElementById('booking-modal-overlay');
 
         const guardedOpen = async () => {
+            try {
+                const latestSub = (window.salonSubscriptions || []).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+                const planCore = String(((latestSub && latestSub.plan) || (window.selectedSalon && window.selectedSalon.plan) || '')).toLowerCase();
+                const pkg = String(((latestSub && latestSub.package) || '')).toLowerCase();
+                const vpEarly = planCore === 'visibility_only' || pkg.includes('visibility_only');
+                if (vpEarly) { showNoBookingModal(); return; }
+            } catch (_) {}
             try {
                 const uid = (currentUser && (currentUser.userId || currentUser.userid || currentUser.id)) || null;
                 if (uid) {
@@ -3459,12 +3494,43 @@
         }
     });
 </script>
-        try {
-            const latestSub = (window.salonSubscriptions || []).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
-            const vp = String(((latestSub && latestSub.plan) || '')) === 'visibility_only';
-            if (vp) {
-                const bookBtn = document.getElementById('book-now-btn'); if (bookBtn) bookBtn.style.display = 'none';
-                const confirmBtn = document.getElementById('confirm-booking-btn'); if (confirmBtn) confirmBtn.style.display = 'none';
-                const modalConfirmBtn = document.getElementById('modal-confirm-booking-btn'); if (modalConfirmBtn) modalConfirmBtn.style.display = 'none';
+<script>
+    function showNoBookingModal(){
+        const modal = document.getElementById('no-booking-modal');
+        if (modal){
+            var callBtn = document.getElementById('no-booking-call-btn');
+            var phone = null;
+            try {
+                phone = (window.selectedSalon && (window.selectedSalon.salon_phone || window.selectedSalon.owner_phone)) || null;
+            } catch(_) { phone = null; }
+            if (callBtn){
+                if (phone && String(phone).trim()) { callBtn.style.display = 'inline-flex'; callBtn.setAttribute('href', 'tel:'+String(phone).trim()); }
+                else { callBtn.style.display = 'none'; callBtn.removeAttribute('href'); }
             }
-        } catch (_) {}
+            modal.style.display = 'grid'; modal.classList.add('modal-open'); document.body.classList.add('overflow-hidden');
+        }
+    }
+    function hideNoBookingModal(){
+        const modal = document.getElementById('no-booking-modal');
+        if (modal){ modal.classList.remove('modal-open'); modal.style.display = 'none'; document.body.classList.remove('overflow-hidden'); }
+    }
+    document.getElementById('no-booking-modal-close')?.addEventListener('click', hideNoBookingModal);
+
+    try {
+        const latestSub = (window.salonSubscriptions || []).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+        const planCore = String(((latestSub && latestSub.plan) || (window.selectedSalon && window.selectedSalon.plan) || '')).toLowerCase();
+        const pkg = String(((latestSub && latestSub.package) || '')).toLowerCase();
+        const vp = planCore === 'visibility_only' || pkg.includes('visibility_only');
+        if (vp) {
+            const intercept = (el) => {
+                if (!el) return;
+                el.addEventListener('click', function(e){ e.preventDefault(); e.stopImmediatePropagation(); showNoBookingModal(); }, true);
+            };
+            intercept(document.getElementById('book-now-btn'));
+            intercept(document.getElementById('start-booking-btn'));
+            intercept(document.getElementById('confirm-booking-btn'));
+            intercept(document.getElementById('modal-confirm-booking-btn'));
+        }
+    } catch (_) {}
+    document.getElementById('no-booking-call-btn')?.addEventListener('click', function(){ hideNoBookingModal(); });
+</script>

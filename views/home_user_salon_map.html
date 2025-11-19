@@ -13,9 +13,9 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
     body { font-family: 'Tajawal', sans-serif; background: #F3F4F6; padding-bottom: 80px; }
-    #salon-map { height: calc(var(--vh, 1vh) * 70); min-height: 320px; width: 100%; border-radius: 1rem; -webkit-transform: translateZ(0); transform: translateZ(0); }
+    #salon-map { height: calc(var(--vh, 1vh) * 70); min-height: 320px; width: 100%; border-radius: 1rem; -webkit-transform: translateZ(0); transform: translateZ(0); backface-visibility: hidden; will-change: transform; contain: layout paint size; }
     .nav-active { color: #06C167 !important; background-color: rgba(6,193,103,0.1) !important; border-radius: 0.75rem !important; box-shadow: 0 2px 8px rgba(6,193,103,0.15) !important; }
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000000; display: none; justify-content: center; align-items: flex-end; inset: 0; overflow: hidden; }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000000; display: none; justify-content: center; align-items: flex-end; inset: 0; overflow: hidden; -webkit-overflow-scrolling: touch; }
     .modal-content { background-color: #fff; width: 100%; max-width: 600px; height: 88vh; border-top-left-radius: 30px; border-top-right-radius: 30px; overflow-y: auto; transform: translateY(100%); transition: transform 0.4s ease-out; max-height: calc(100vh - env(safe-area-inset-top)); margin-top: env(safe-area-inset-top); }
     @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
     .modal-overlay.is-open { display: flex; animation: fadeIn 0.25s ease-out forwards; }
@@ -33,11 +33,7 @@
     })();
   </script>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-  <header class="px-4 pt-4">
-    <h1 class="text-2xl font-extrabold text-[#1E293B]">خريطة الصالونات</h1>
-    <p class="text-sm text-gray-600">ابحث وحدد أفضل الصالونات على الخريطة</p>
-</header>
+<body class="min-h-screen bg-gray-50">
 <main class="p-4 space-y-4 page-enter">
     <div class="bg-white rounded-2xl shadow-lg p-3">
       <div class="flex flex-col sm:flex-row gap-2 items-stretch">
@@ -167,13 +163,15 @@
     var minUpdateMs = 1500;
     var minMoveMeters = 7;
     var geoWatchId = null;
+    var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     function applyMobileOffset(){ try{ if(window.innerWidth<=768){ map.panBy([-100,0]); } }catch(_){} }
     function uniqById(arr){
       var seen = new Set();
       var out = [];
-      for (var i=0;i<arr.length;i++){ var s=arr[i]; var id=(s.salonId??s.salonid??s.id??s.salon_id); if(!id||seen.has(id)) continue; seen.add(id); out.push(s); }
+      for (var i=0;i<arr.length;i++){ var s=arr[i]; var id=getSalonId(s); if(!id||seen.has(id)) continue; seen.add(id); out.push(s); }
       return out;
     }
+    function getSalonId(s){ return s ? (s.salonId || s.salonid || s.id || s.salon_id) : null; }
     function setStatus(t){ var el=document.getElementById('map-status'); if(el) el.textContent=t||''; }
     async function fetchDiscovery(){
       var uRaw=localStorage.getItem('salonni_user');
@@ -209,7 +207,7 @@
       return 'closed';
     }
     function createMarker(s){
-      var id=(s.salonId??s.salonid??s.id??s.salon_id);
+      var id=getSalonId(s);
       var name=s.salon_name||'صالون';
       var city=s.city||'';
       var rating=parseFloat(s.avg_rating||0);
@@ -319,16 +317,16 @@
     }
     function closeServiceDropdown(){ var m=document.getElementById('service-dropdown-menu'); var a=document.getElementById('service-dropdown-arrow'); if(m) m.classList.add('hidden'); if(a) a.classList.remove('rotate-180'); }
     function toggleServiceDropdown(){ var m=document.getElementById('service-dropdown-menu'); var a=document.getElementById('service-dropdown-arrow'); if(m) m.classList.toggle('hidden'); if(a) a.classList.toggle('rotate-180'); }
-    function showFiltersModal(){ var modal=document.getElementById('filters-modal'); if(modal){ modal.classList.add('is-open'); document.body.classList.add('modal-open'); } }
-    function hideFiltersModal(){ var modal=document.getElementById('filters-modal'); if(modal){ modal.classList.remove('is-open'); document.body.classList.remove('modal-open'); } }
+    function showFiltersModal(){ var modal=document.getElementById('filters-modal'); if(modal){ modal.classList.add('is-open'); document.body.classList.add('modal-open'); invalidateLater(); } }
+    function hideFiltersModal(){ var modal=document.getElementById('filters-modal'); if(modal){ modal.classList.remove('is-open'); document.body.classList.remove('modal-open'); invalidateLater(); } }
     function haversineKm(lat1, lon1, lat2, lon2){ var R=6371; var dLat=(lat2-lat1)*Math.PI/180; var dLon=(lon2-lon1)*Math.PI/180; var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2); var c=2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R*c; }
     async function applyFiltersNew(fit){
       fit = !!fit;
       var q=document.getElementById('map-search').value.trim().toLowerCase();
       var cityF=document.getElementById('modal-city-filter').value;
       var ratingMin=parseFloat(document.getElementById('modal-rating-filter').value||0);
-      var needOpen=document.getElementById('filter-open-now')?.checked;
-      var needAvail=document.getElementById('filter-available-today')?.checked;
+      var needOpen=(function(){ var el=document.getElementById('filter-open-now'); return el?el.checked:false; })();
+      var needAvail=(function(){ var el=document.getElementById('filter-available-today'); return el?el.checked:false; })();
       var selectedServiceIds=[];
       var allCb=document.getElementById('service-all');
       if(allCb && !allCb.checked){ var cbs=document.querySelectorAll('.service-checkbox:not(#service-all)'); cbs.forEach(function(cb){ if(cb.checked){ selectedServiceIds.push(parseInt(cb.value)); } }); }
@@ -347,7 +345,7 @@
         if(needOpen && !(s.status==='open')) continue;
         if(needAvail && !(s.is_available_today)) continue;
         if(selectedServiceIds.length){
-          var id=(s.salonId??s.salonid??s.id??s.salon_id);
+          var id=getSalonId(s);
           var cacheKey='salon_services_'+id;
           var sv=null;
           try{ var cached=localStorage.getItem(cacheKey); if(cached){ sv=JSON.parse(cached); } }catch(_){ }
@@ -356,8 +354,8 @@
           if(Array.isArray(sv)){ for(var k=0;k<sv.length;k++){ if(selectedServiceIds.indexOf(parseInt(sv[k].id))>=0){ has=true; break; } } }
           if(!has) continue;
         }
-        var dm=document.getElementById('distance-mode')?.value;
-        var dmin=parseFloat(document.getElementById('distance-minutes')?.value||0);
+        var dm=(function(){ var el=document.getElementById('distance-mode'); return el?el.value:''; })();
+        var dmin=(function(){ var el=document.getElementById('distance-minutes'); var v=el?el.value:''; return parseFloat(v||0); })();
         if(userLocation && dm && dmin>0){
           var distKm=haversineKm(userLocation.lat, userLocation.lng, s._lat, s._lng);
           var speedKmh = dm==='walking' ? 5 : 35;
@@ -367,7 +365,7 @@
         }
         filtered.push(s);
       }
-      var dmSel=document.getElementById('distance-mode')?.value;
+      var dmSel=(function(){ var el=document.getElementById('distance-mode'); return el?el.value:''; })();
       if(dmSel){ filtered.sort(function(a,b){ return (a._eta_minutes||Infinity) - (b._eta_minutes||Infinity); }); }
       var visible=[];
       for(var j=0;j<filtered.length;j++){
@@ -380,15 +378,18 @@
       if(fit){ try{ var b=L.latLngBounds(visible); map.fitBounds(b, { padding:[40,40], maxZoom: 15 }); }catch(_){} }
       setStatus(visible.length?('عدد الصالونات المعروضة: '+visible.length):'لا توجد نتائج');
     }
-    function setVH(){ try{ var vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} }
+    function setVH(){ try{ var vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} }
     var invalidateTimer = null;
     function invalidateLater(){ try{ if(invalidateTimer) clearTimeout(invalidateTimer); invalidateTimer = setTimeout(function(){ try{ map && map.invalidateSize(); }catch(_){} }, 200); }catch(_){} }
     async function init(){
       setVH();
       window.addEventListener('resize', function(){ setVH(); invalidateLater(); });
       window.addEventListener('orientationchange', function(){ setVH(); invalidateLater(); });
-      map=L.map('salon-map').setView([31.95, 35.0], 12);
+      try{ if(window.visualViewport){ visualViewport.addEventListener('resize', function(){ setVH(); invalidateLater(); }, { passive: true }); visualViewport.addEventListener('scroll', function(){ setVH(); invalidateLater(); }, { passive: true }); } }catch(_){}
+      window.addEventListener('pageshow', function(){ setVH(); invalidateLater(); });
+      map=L.map('salon-map', { zoomAnimation: !isIOS, fadeAnimation: !isIOS, inertia: !isIOS, tap: false }).setView([31.95, 35.0], 12);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; OpenStreetMap' }).addTo(map);
+      try{ var c=map.getContainer(); c.style.webkitTransform='translateZ(0)'; c.style.transform='translateZ(0)'; c.style.backfaceVisibility='hidden'; }catch(_){}
       setTimeout(function(){ try{ map.invalidateSize(); }catch(_){} }, 300);
       try { navigator.geolocation.getCurrentPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, true); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); setTimeout(function(){ if(!hasCenteredOnUser && userLocation){ try{ map.setView([userLocation.lat, userLocation.lng], 14); hasCenteredOnUser=true; applyMobileOffset(); }catch(_){} } }, 1500); } catch(_) {}
       try { navigator.geolocation.watchPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); } catch(_) {}
@@ -397,7 +398,7 @@
       var enriched=[];
       for(var i=0;i<base.length;i++){
         var s=base[i];
-        var id=(s.salonId??s.salonid??s.id??s.salon_id);
+        var id=getSalonId(s);
         if(!id) continue;
         var loc=await getSalonLocation(id, s);
         if(loc){ s._lat=loc.lat; s._lng=loc.lng; enriched.push(s); }
@@ -461,11 +462,11 @@
       var rEl = document.getElementById('preview-rating'); if(rEl){ rEl.innerHTML = rating>0?('<i class="fas fa-star text-yellow-500"></i><span class="font-bold">'+rating.toFixed(1)+'</span>'+ (reviews>0?('<span class="text-gray-500">('+reviews+')</span>'):'') ):''; }
       var cEl = document.getElementById('preview-city-tag'); if(cEl){ cEl.innerHTML = city?('<i class="fas fa-map-marker-alt"></i><span>'+city+'</span>'):''; }
       var aTag = document.getElementById('preview-address-tag'); if(aTag){ aTag.innerHTML = address?('<i class="fas fa-map-pin"></i><span>'+address+'</span>'):''; }
-      var dTag = document.getElementById('preview-distance-tag'); if(dTag){ var dm=document.getElementById('distance-mode')?.value; if(userLocation){ var distKm=haversineKm(userLocation.lat, userLocation.lng, s._lat, s._lng); var txt=distKm?((distKm.toFixed(1))+' كم'):' '; if(dm){ var speedKmh=dm==='walking'?5:35; var minutes=(distKm/speedKmh)*60; var modeLabel=(dm==='walking'?'مشياً':'بالسيارة'); txt += ' • '+modeLabel+' ~'+Math.round(minutes)+' دقيقة'; } dTag.innerHTML = '<i class="fas fa-route"></i><span>'+txt+'</span>'; } else { dTag.innerHTML = ''; } }
+      var dTag = document.getElementById('preview-distance-tag'); if(dTag){ var dm=(function(){ var el=document.getElementById('distance-mode'); return el?el.value:''; })(); if(userLocation){ var distKm=haversineKm(userLocation.lat, userLocation.lng, s._lat, s._lng); var txt=distKm?((distKm.toFixed(1))+' كم'):' '; if(dm){ var speedKmh=dm==='walking'?5:35; var minutes=(distKm/speedKmh)*60; var modeLabel=(dm==='walking'?'مشياً':'بالسيارة'); txt += ' • '+modeLabel+' ~'+Math.round(minutes)+' دقيقة'; } dTag.innerHTML = '<i class="fas fa-route"></i><span>'+txt+'</span>'; } else { dTag.innerHTML = ''; } }
       var svcEl = document.getElementById('preview-services-list');
       if(svcEl){
         svcEl.innerHTML='';
-        var sid=(s.salonId??s.salonid??s.id??s.salon_id);
+        var sid=getSalonId(s);
         var cacheKey='salon_services_'+sid;
         var sv=null;
         try{ var cached=localStorage.getItem(cacheKey); if(cached){ sv=JSON.parse(cached); } }catch(_){ }
@@ -488,13 +489,13 @@
             var chip='<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-200 bg-white text-xs font-medium">'+iconHtml+'<span class="truncate max-w-[120px]">'+name+'</span><span class="text-gray-500">'+dur+'</span><span class="text-[#06C167] font-bold">'+(isNaN(price)?'':price.toFixed(0)+' شيكل')+'</span></span>';
             svcEl.insertAdjacentHTML('beforeend', chip);
           }
-        })();
+      })();
       }
-      var modal = document.getElementById('salon-preview-modal'); if(modal){ modal.classList.add('is-open'); document.body.classList.add('modal-open'); }
+      try{ var modal = document.getElementById('salon-preview-modal'); if(modal){ modal.classList.add('is-open'); document.body.classList.add('modal-open'); invalidateLater(); } }catch(_){}
     }
-    function hideSalonPreview(){ var modal=document.getElementById('salon-preview-modal'); if(modal){ modal.classList.remove('is-open'); document.body.classList.remove('modal-open'); } }
-    document.getElementById('close-preview-modal-btn')?.addEventListener('click', hideSalonPreview);
-    document.getElementById('preview-learn-more')?.addEventListener('click', function(){ var s = currentPreviewSalon; if(!s) return; var id=(s.salonId??s.salonid??s.id??s.salon_id); if(id){ if(window.AppMode&&AppMode.transitionTo){ AppMode.transitionTo('/salon/'+id, { delay: 200, loading: true }); } else { window.location.href = '/salon/'+id; } } });
+    function hideSalonPreview(){ var modal=document.getElementById('salon-preview-modal'); if(modal){ modal.classList.remove('is-open'); document.body.classList.remove('modal-open'); invalidateLater(); } }
+    var cpm=document.getElementById('close-preview-modal-btn'); if(cpm){ cpm.addEventListener('click', hideSalonPreview); }
+    var plm=document.getElementById('preview-learn-more'); if(plm){ plm.addEventListener('click', function(){ var s = currentPreviewSalon; if(!s) return; var id=getSalonId(s); if(id){ if(window.AppMode&&AppMode.transitionTo){ AppMode.transitionTo('/salon/'+id, { delay: 200, loading: true }); } else { window.location.href = '/salon/'+id; } } }); }
   </script>
 </body>
 </html>

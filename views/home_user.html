@@ -1136,6 +1136,7 @@
     </div>
 </div>
 
+
 <script>
 // Home User JavaScript - Polished and Integrated Scheduling Logic
 
@@ -2590,9 +2591,7 @@ function renderSalonCard(salon, cardType = 'detail') {
                 </div>
 
                 <div class="pt-2 border-t border-gray-100 flex justify-end">
-        ${String(salon.plan||'')==='visibility_only' 
-            ? '<span class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-700">بدون نظام حجوزات</span>' 
-            : `<button class="btn-secondary px-4 py-2 rounded-lg text-sm book-btn" data-salon-id="${safeSalonId}">احجز الآن</button>`}
+                    <button class="btn-secondary px-4 py-2 rounded-lg text-sm book-btn" data-salon-id="${safeSalonId}">احجز الآن</button>
                 </div>
             </div>
         </div>
@@ -2912,24 +2911,19 @@ async function hydrateSubscriptionsForDisplayedSalons(data) {
                     const sData = await res.json();
                     const subs = Array.isArray(sData) ? sData : (Array.isArray(sData.subscriptions) ? sData.subscriptions : []);
                     const latest = subs.sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
-                    window.salonSubCache[sid] = latest ? latest.plan : null;
+                    if (latest) {
+                        const planCore = String(latest.plan||'').toLowerCase();
+                        const pkg = String(latest.package||'').toLowerCase();
+                        window.salonSubCache[sid] = (planCore === 'visibility_only' || pkg.includes('visibility_only')) ? 'visibility_only' : planCore;
+                    } else {
+                        window.salonSubCache[sid] = null;
+                    }
                 } else {
                     window.salonSubCache[sid] = null;
                 }
             } catch (_) { window.salonSubCache[sid] = null; }
         }));
-        document.querySelectorAll('.book-btn[data-salon-id]').forEach(btn => {
-            const sid = btn.getAttribute('data-salon-id');
-            const plan = window.salonSubCache[sid];
-            if (String(plan||'') === 'visibility_only') {
-                const parent = btn.parentElement;
-                btn.remove();
-                const badge = document.createElement('span');
-                badge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-700';
-                badge.textContent = 'بدون نظام حجوزات';
-                parent.appendChild(badge);
-            }
-        });
+        // No interception for home_user; booking flows remain accessible from cards
     } catch (_) {}
 }
 
