@@ -86,6 +86,13 @@
   }
 
   function applyPageEnter() {
+    var p = '';
+    try { p = window.location.pathname || ''; } catch (_) {}
+    if (p === '/auth.html' || (p && p.endsWith('/auth.html'))) {
+      document.body.classList.remove('page-fade-out');
+      document.body.classList.remove('page-fade-in');
+      return;
+    }
     document.body.classList.remove('page-fade-out');
     document.body.classList.add('page-fade-in');
   }
@@ -119,6 +126,9 @@
 
   function bindGlobalLoading() {
     document.addEventListener('click', function(e){
+      var p = '';
+      try { p = window.location.pathname || ''; } catch (_) {}
+      if (p === '/auth.html' || (p && p.endsWith('/auth.html'))) return;
       var a = e.target && e.target.closest ? e.target.closest('a') : null;
       if (!a) return;
       var href = a.getAttribute('href') || '';
@@ -132,8 +142,19 @@
       showLoading();
       document.body.classList.add('page-fade-out');
     }, true);
-    document.addEventListener('submit', function(){ showLoading(); document.body.classList.add('page-fade-out'); }, true);
-    window.addEventListener('beforeunload', function(){ showLoading(); });
+    document.addEventListener('submit', function(e){
+      var p = '';
+      try { p = window.location.pathname || ''; } catch (_) {}
+      if (p === '/auth.html' || (p && p.endsWith('/auth.html'))) return;
+      showLoading();
+      document.body.classList.add('page-fade-out');
+    }, true);
+    window.addEventListener('beforeunload', function(){
+      var p = '';
+      try { p = window.location.pathname || ''; } catch (_) {}
+      if (p === '/auth.html' || (p && p.endsWith('/auth.html'))) return;
+      showLoading();
+    });
   }
 
   window.AppMode = {

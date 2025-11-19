@@ -113,10 +113,8 @@
         /* END: Input Styling */
         /* ------------------------------------------------------------- */
 
-        /* Transition for switching between Login/Signup main containers */
-        .form-content-transition {
-            transition: opacity 0.3s ease-in-out;
-        }
+        /* Disable animations for auth containers */
+        .form-content-transition { transition: none !important; }
         /* Styling for the role switch buttons */
         #role-user.bg-white, #role-salon.bg-white {
             transform: scale(1.05);
@@ -371,9 +369,6 @@
     </div>
 </div>
 
-<div id="global-loading" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] hidden">
-  <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-300" style="border-top-color:#06C167"></div>
-  </div>
 
 <div id="reset-start-modal" class="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-6 hidden z-[9999]">
   <div class="relative bg-white p-6 rounded-3xl w-full max-w-md shadow-2xl border border-gray-100">
@@ -543,7 +538,7 @@ class AuthManager {
             }
         }
 
-        this.showLoadingSpinner(true, 'login');
+        this.showLoadingSpinner(true, 'login-form');
 
         try {
             const loginData = { identifier, password };
@@ -695,23 +690,18 @@ class AuthManager {
 
             if (response.ok) {
                 this.showToast('تم إنشاء الحساب بنجاح!', 'success');
-                
-                // Store unified user object for immediate redirection
                 localStorage.setItem('salonni_user', JSON.stringify(result.user));
-                
-                // Redirect based on user type
                 if (result.user.user_type === 'salon') {
                     window.location.href = '/home_salon.html';
                 } else {
-                    this.showFeatureSlide();
+                    window.location.href = '/home_user.html';
                 }
             } else {
                 this.showToast(result.message || 'خطأ في إنشاء الحساب', 'error');
+                this.showLoadingSpinner(false, currentButtonId);
             }
         } catch (error) {
-            console.error('❌ Signup error:', error);
             this.showToast('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.', 'error');
-        } finally {
             this.showLoadingSpinner(false, currentButtonId);
         }
     }
@@ -839,35 +829,14 @@ class AuthManager {
 
         messageBox.classList.remove('hidden');
         
-        setTimeout(() => {
-            messageBox.classList.add('hidden');
-        }, 5000);
+        if (type !== 'error') {
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
     }
 
-    showLoadingSpinner(show, formId = null) {
-        const form = formId ? document.getElementById(formId) : null;
-        const buttons = form ? form.querySelectorAll('button[type="submit"]') : document.querySelectorAll('button[type="submit"]');
-        const overlay = document.getElementById('global-loading');
-
-        buttons.forEach(button => {
-            if (show) {
-                button.disabled = true;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
-                if (overlay && formId && formId !== 'login-form') { overlay.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-            } else {
-                button.disabled = false;
-                // Restore original button text based on button context
-                if (button.closest('#login-form')) {
-                    button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل الدخول';
-                } else if (button.closest('#user-signup-form')) {
-                    button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كمستخدم';
-                } else if (button.closest('#salon-signup-form')) {
-                    button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كصالون';
-                }
-                if (overlay && formId && formId !== 'login-form') { overlay.classList.add('hidden'); document.body.style.overflow = ''; }
-            }
-        });
-    }
+    showLoadingSpinner(show, formId = null) { return; }
 
     openResetStartModal() {
         const m = document.getElementById('reset-start-modal'); if (m) { m.classList.remove('hidden'); }
@@ -889,7 +858,7 @@ class AuthManager {
         const identifier = idEl?.value?.trim(); const code = codeEl?.value?.trim(); const np = newEl?.value || ''; const cp = confEl?.value || '';
         if (!identifier || !code || !np || !cp) { this.showToast('يرجى ملء جميع الحقول', 'error'); return; }
         if (np !== cp) { this.showToast('كلمات المرور غير متطابقة', 'error'); return; }
-        const overlay = document.getElementById('global-loading'); if (overlay) { overlay.classList.remove('hidden'); document.body.style.overflow='hidden'; }
+        const submitBtn = document.getElementById('reset-submit'); if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...'; }
         try {
             const vRes = await fetch('/api/auth/password-reset/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ identifier, code }) });
             const vData = await vRes.json();
@@ -901,7 +870,7 @@ class AuthManager {
             this.closeResetCodeModal();
             window.location.href = '/auth.html';
         } catch (_) { this.showToast('خطأ في الاتصال بالخادم', 'error'); }
-        finally { const overlay2 = document.getElementById('global-loading'); if (overlay2) { overlay2.classList.add('hidden'); document.body.style.overflow=''; } }
+        finally { if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = 'تأكيد'; } }
     }
 }
 
