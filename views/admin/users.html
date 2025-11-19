@@ -94,6 +94,7 @@
                 <th>الهاتف</th>
                 <th>المدينة</th>
                 <th>النوع</th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -109,6 +110,9 @@
                       ${u.user_type === 'user' ? 'مستخدم' : u.user_type === 'salon' ? 'صالون' : 'إدارة'}
                     </span>
                   </td>
+                  <td>
+                    <button class="btn" onclick="generateResetCode('${(u.email||u.phone||'').replace(/'/g,'')}')"><i class="fas fa-key"></i> كود استعادة</button>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -118,6 +122,20 @@
         console.error('Failed to load users:', e);
         container.innerHTML = '<p style="text-align:center; color:#EF4444; padding: 24px;">فشل تحميل بيانات المستخدمين.</p>';
       }
+    }
+
+    async function generateResetCode(identifier){
+      try {
+        const token = localStorage.getItem('adminToken');
+        const res = await fetch('/api/admin/password-reset/generate', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ identifier }) });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          try { await navigator.clipboard.writeText(String(data.code)); } catch(_) {}
+          alert('رمز الاستعادة: ' + String(data.code));
+        } else {
+          alert(data.message || 'فشل إنشاء الرمز');
+        }
+      } catch (_) { alert('خطأ في الاتصال بالخادم'); }
     }
 
     document.addEventListener('DOMContentLoaded', loadUsersStandalone);

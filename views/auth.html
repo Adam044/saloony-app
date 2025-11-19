@@ -181,6 +181,9 @@
             <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
                 <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل الدخول
             </button>
+            <div class="text-center mt-3">
+              <button type="button" id="forgot-password-btn" class="underline font-extrabold text-primary-dark">نسيت كلمة المرور؟</button>
+            </div>
         </form>
     </div>
 
@@ -368,6 +371,37 @@
     </div>
 </div>
 
+<div id="global-loading" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] hidden">
+  <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-300" style="border-top-color:#06C167"></div>
+  </div>
+
+<div id="reset-start-modal" class="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-6 hidden z-[9999]">
+  <div class="relative bg-white p-6 rounded-3xl w-full max-w-md shadow-2xl border border-gray-100">
+    <button id="reset-start-close" class="absolute top-4 right-4 w-9 h-9 rounded-full border flex items-center justify-center"><i class="fas fa-times"></i></button>
+    <div class="text-xl font-extrabold text-primary-dark mb-3 text-center">استعادة كلمة المرور</div>
+    <div class="grid gap-3">
+      <a href="/contact.html" class="btn-primary w-full py-3 rounded-xl text-lg font-bold flex items-center justify-center text-center">تواصل معنا</a>
+      <button id="reset-go-code" class="w-full py-3 rounded-xl text-lg font-bold border">أدخل الكود</button>
+    </div>
+  </div>
+</div>
+
+<div id="reset-code-modal" class="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-6 hidden z-[9999]">
+  <div class="relative bg-white p-6 rounded-3xl w-full max-w-md shadow-2xl border border-gray-100">
+    <button id="reset-code-close" class="absolute top-4 right-4 w-9 h-9 rounded-full border flex items-center justify-center"><i class="fas fa-times"></i></button>
+    <div class="text-xl font-extrabold text-primary-dark mb-3 text-center">أدخل الكود</div>
+    <div class="grid gap-3">
+      <input id="reset-identifier" type="text" placeholder="البريد الإلكتروني أو رقم الهاتف" class="w-full p-3 border border-gray-200 rounded-xl">
+      <input id="reset-code" type="text" placeholder="رمز التحقق (6 أرقام)" class="w-full p-3 border border-gray-200 rounded-xl">
+      <input id="reset-new" type="password" placeholder="كلمة المرور الجديدة" class="w-full p-3 border border-gray-200 rounded-xl">
+      <input id="reset-confirm" type="password" placeholder="تأكيد كلمة المرور" class="w-full p-3 border border-gray-200 rounded-xl">
+      <div class="flex gap-3">
+        <button id="reset-submit" class="btn-primary flex-1 py-3 rounded-xl font-bold">تأكيد</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 class AuthManager {
     constructor() {
@@ -398,6 +432,11 @@ class AuthManager {
         
         // Pending salon modal button
         document.getElementById('pending-salon-btn').addEventListener('click', () => this.hidePendingSalonModal());
+        const fp = document.getElementById('forgot-password-btn'); if (fp) fp.addEventListener('click', () => this.openResetStartModal());
+        const rsx = document.getElementById('reset-start-close'); if (rsx) rsx.addEventListener('click', () => this.closeResetStartModal());
+        const rgc = document.getElementById('reset-go-code'); if (rgc) rgc.addEventListener('click', () => { this.closeResetStartModal(); this.openResetCodeModal(); });
+        const rcx = document.getElementById('reset-code-close'); if (rcx) rcx.addEventListener('click', () => this.closeResetCodeModal());
+        const rs = document.getElementById('reset-submit'); if (rs) rs.addEventListener('click', () => this.handleResetSubmit());
     }
 
     async populateCities() {
@@ -521,40 +560,26 @@ class AuthManager {
 
             if (response.ok) {
                 this.showToast('تم تسجيل الدخول بنجاح!', 'success');
-                
-                // --- CRITICAL FIX: Handle unified user structure ---
                 if (result.userType === 'admin') {
                     localStorage.setItem('adminToken', result.token);
-                    setTimeout(() => {
-      window.location.href = '/admin/admin_dashboard.html';
-                    }, 1500);
+                    window.location.href = '/admin/admin_dashboard.html';
                 } else {
-                    // Store the unified user object which now contains userId and/or salonId
                     localStorage.setItem('salonni_token', result.token);
                     localStorage.setItem('salonni_user', JSON.stringify(result.user));
-                    
-                    // Redirect based on the user_type returned by the server
                     if (result.user.user_type === 'salon') {
-                        setTimeout(() => {
-                            window.location.href = '/home_salon.html';
-                        }, 1500);
+                        window.location.href = '/home_salon.html';
                     } else if (result.user.user_type === 'user') {
-                         setTimeout(() => {
-                            window.location.href = '/home_user.html';
-                         }, 1500);
+                        window.location.href = '/home_user.html';
                     } else if (result.user.user_type === 'employee') {
-                        setTimeout(() => {
-                            window.location.href = '/employee_dashboard.html';
-                        }, 1500);
+                        window.location.href = '/employee_dashboard.html';
                     }
                 }
             } else {
                 this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
+                this.showLoadingSpinner(false, 'login');
             }
         } catch (error) {
-            console.error('❌ Login error:', error);
             this.showToast('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.', 'error');
-        } finally {
             this.showLoadingSpinner(false, 'login');
         }
     }
@@ -674,9 +699,9 @@ class AuthManager {
                 // Store unified user object for immediate redirection
                 localStorage.setItem('salonni_user', JSON.stringify(result.user));
                 
-                // Show appropriate modal based on user type
+                // Redirect based on user type
                 if (result.user.user_type === 'salon') {
-                    this.showPendingSalonModal();
+                    window.location.href = '/home_salon.html';
                 } else {
                     this.showFeatureSlide();
                 }
@@ -822,11 +847,13 @@ class AuthManager {
     showLoadingSpinner(show, formId = null) {
         const form = formId ? document.getElementById(formId) : null;
         const buttons = form ? form.querySelectorAll('button[type="submit"]') : document.querySelectorAll('button[type="submit"]');
+        const overlay = document.getElementById('global-loading');
 
         buttons.forEach(button => {
             if (show) {
                 button.disabled = true;
                 button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
+                if (overlay && formId && formId !== 'login-form') { overlay.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
             } else {
                 button.disabled = false;
                 // Restore original button text based on button context
@@ -837,8 +864,44 @@ class AuthManager {
                 } else if (button.closest('#salon-signup-form')) {
                     button.innerHTML = '<i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كصالون';
                 }
+                if (overlay && formId && formId !== 'login-form') { overlay.classList.add('hidden'); document.body.style.overflow = ''; }
             }
         });
+    }
+
+    openResetStartModal() {
+        const m = document.getElementById('reset-start-modal'); if (m) { m.classList.remove('hidden'); }
+    }
+    closeResetStartModal() {
+        const m = document.getElementById('reset-start-modal'); if (m) { m.classList.add('hidden'); }
+    }
+    openResetCodeModal() {
+        const m = document.getElementById('reset-code-modal'); if (m) { m.classList.remove('hidden'); }
+    }
+    closeResetCodeModal() {
+        const m = document.getElementById('reset-code-modal'); if (m) { m.classList.add('hidden'); }
+    }
+    async handleResetSubmit(){
+        const idEl = document.getElementById('reset-identifier');
+        const codeEl = document.getElementById('reset-code');
+        const newEl = document.getElementById('reset-new');
+        const confEl = document.getElementById('reset-confirm');
+        const identifier = idEl?.value?.trim(); const code = codeEl?.value?.trim(); const np = newEl?.value || ''; const cp = confEl?.value || '';
+        if (!identifier || !code || !np || !cp) { this.showToast('يرجى ملء جميع الحقول', 'error'); return; }
+        if (np !== cp) { this.showToast('كلمات المرور غير متطابقة', 'error'); return; }
+        const overlay = document.getElementById('global-loading'); if (overlay) { overlay.classList.remove('hidden'); document.body.style.overflow='hidden'; }
+        try {
+            const vRes = await fetch('/api/auth/password-reset/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ identifier, code }) });
+            const vData = await vRes.json();
+            if (!vRes.ok || !vData.success) { this.showToast(vData.message || 'فشل التحقق من الرمز', 'error'); return; }
+            const cRes = await fetch('/api/auth/password-reset/complete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ reset_token: vData.reset_token, new_password: np }) });
+            const cData = await cRes.json();
+            if (!cRes.ok || !cData.success) { this.showToast(cData.message || 'فشل إكمال الاستعادة', 'error'); return; }
+            this.showToast('تم تحديث كلمة المرور بنجاح', 'success');
+            this.closeResetCodeModal();
+            window.location.href = '/auth.html';
+        } catch (_) { this.showToast('خطأ في الاتصال بالخادم', 'error'); }
+        finally { const overlay2 = document.getElementById('global-loading'); if (overlay2) { overlay2.classList.add('hidden'); document.body.style.overflow=''; } }
     }
 }
 

@@ -419,6 +419,14 @@
               <option value="not_interested">غير مهتم</option>
             </select>
           </div>
+          <div>
+            <label class="muted">4️⃣ الخطة المفضلة</label>
+            <select id="visit-plan-pref" class="w-full border rounded-lg p-2">
+              <option value="">—</option>
+              <option value="booking">نظام حجوزات</option>
+              <option value="visibility_only">بدون حجوزات (99/شهري)</option>
+            </select>
+          </div>
         </div>
         <div style="margin-top:12px">
           <label class="muted">4️⃣ مستوى الاهتمام (0–10)</label>
@@ -711,6 +719,8 @@
       const status = statusEl.value;
       const interestLevel = Number(document.getElementById('visit-interest').value || 0);
       const comments = document.getElementById('visit-comments').value.trim();
+      const planPref = document.getElementById('visit-plan-pref')?.value || '';
+      const planNote = planPref ? (planPref === 'visibility_only' ? 'الخطة: بدون حجوزات' : 'الخطة: نظام حجوزات') : '';
       const address = (document.getElementById('visit-address')?.value || '').trim();
       const saveBtn = document.getElementById('visit-save');
       if (saveBtn) { saveBtn.disabled = true; saveBtn.dataset.orig = saveBtn.innerHTML; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>جارٍ الحفظ</span>'; }
@@ -727,7 +737,7 @@
         }
       } catch (_) {}
       try {
-        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments, interest_level: interestLevel, lat, lng, address }) });
+        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments: (planNote ? (comments ? (comments + ' | ' + planNote) : planNote) : comments), interest_level: interestLevel, lat, lng, address }) });
         const data = await res.json();
         if (res.ok && data.success) {
           showMessage('تم حفظ الزيارة', 'success');

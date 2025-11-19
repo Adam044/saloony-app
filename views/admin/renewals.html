@@ -90,8 +90,8 @@
       <h2 class="text-3xl font-extrabold text-primary-dark mb-2 border-b-4 border-secondary/50 pb-2 mt-8">إدارة التجديدات</h2>
 
       <!-- Filters -->
-      <div class="renewal-card">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="renewal-card">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="relative md:col-span-2">
             <input id="renewal-search" type="text" placeholder="البحث باسم الصالون..." class="input pr-10">
             <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -113,6 +113,7 @@
               <option value="monthly_200">200ils</option>
               <option value="monthly_60">60ils</option>
               <option value="per_booking">لكل حجز</option>
+              <option value="visibility_only">بدون حجوزات</option>
             </select>
           </div>
           <div>
@@ -156,6 +157,8 @@
             <label class="radio-item"><input type="radio" name="renew-plan" value="monthly_60"> <span>60ils لكل كرسي</span></label>
             <label class="radio-item"><input type="radio" name="renew-plan" value="per_booking"> <span>لكل حجز</span></label>
             <label class="radio-item"><input type="radio" name="renew-plan" value="2months_offer"> <span>عرض شهرين</span></label>
+            <label class="radio-item"><input type="radio" name="renew-plan" value="visibility_only"> <span>99ils بدون حجوزات</span></label>
+            <label class="radio-item"><input type="radio" name="renew-plan" value="visibility_only_offer"> <span>عرض 199ils / 3 أشهر</span></label>
           </div>
           <div id="chairs-container" class="hidden">
             <label class="subtle">عدد الكراسي عند اختيار 60ils:</label>
@@ -208,6 +211,8 @@
         case 'per_chair': return 'monthly_60';
         case 'monthly_60': return 'monthly_60';
         case 'per_booking': return 'per_booking';
+        case 'visibility_only_monthly_99': return 'visibility_only';
+        case 'visibility_only_offer_199': return 'visibility_only';
         default: return undefined;
       }
     }
@@ -220,6 +225,7 @@
       if (plan === 'monthly_200') return '200ils';
       if (plan === '2months_offer') return 'عرض شهرين';
       if (plan === 'per_booking') return 'لكل حجز';
+      if (plan === 'visibility_only') return '99ils بدون حجوزات';
       return '—';
     }
     function getLatestPaymentForSalon(salonId) {
@@ -380,7 +386,9 @@
     async function performRenewal(){
       if (!currentSalonForRenew) return;
       const selected = document.querySelector('input[name="renew-plan"]:checked')?.value || 'monthly_200';
-      const invoiceOption = selected === '2months_offer' ? 'offer' : 'renewal';
+      let invoiceOption = 'renewal';
+      if (selected === '2months_offer') invoiceOption = 'offer';
+      if (selected === 'visibility_only_offer') invoiceOption = 'visibility_only_offer_199';
       const chairs = parseInt(document.getElementById('chairs-input').value || '1', 10);
       const payload = {
         status: 'accepted',
@@ -419,7 +427,7 @@
             : s);
         }
         closeRenewModal();
-        const msg = invoiceOption === 'offer' ? 'تم تفعيل الصالون على عرض شهرين (200 شيكل)' : 'تم إنشاء الفاتورة وتجديد الاشتراك بنجاح';
+        const msg = invoiceOption === 'offer' ? 'تم تفعيل الصالون على عرض شهرين (200 شيكل)' : (invoiceOption === 'visibility_only_offer_199' ? 'تم تفعيل خطة بدون حجوزات (عرض 199 شيكل / 3 أشهر)' : 'تم إنشاء الفاتورة وتجديد الاشتراك بنجاح');
         showMessage(msg, 'success');
         renderList();
       } catch (e) {

@@ -488,6 +488,19 @@ async function initializeDb() {
         )`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_social_links_salon ON social_links(salon_id)`);
 
+        await db.run(`CREATE TABLE IF NOT EXISTS password_reset_codes (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            code_hash TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            attempts_left INTEGER NOT NULL DEFAULT 5,
+            used_at TIMESTAMP,
+            generated_by_admin_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_prc_user ON password_reset_codes(user_id)`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_prc_expires ON password_reset_codes(expires_at)`);
+
         console.log("✅ Database schema created successfully (including optimized AI Analytics tables).");
         
     } catch (error) {
@@ -2158,14 +2171,28 @@ app.post('/api/contact', async (req, res) => {
 // Unified register endpoint
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { user_type, name, email, password, phone, city, gender, owner_name, owner_phone, address, gender_focus, image_url } = req.body;
+        let { user_type, name, email, password, phone, city, gender, owner_name, owner_phone, address, gender_focus, image_url } = req.body;
         
         console.log('=== REGISTER REQUEST ===');
         console.log('User type:', user_type);
         console.log('Email:', email);
+        console.log('Raw phones:', phone, owner_phone);
         
+        // Canonicalize phone inputs to local format (0 + 9 digits) to reduce 400s on formats like +972...
+        const toLocalPhone = (input) => {
+            if (!input) return input;
+            const digits = normalizePhoneNumber(input);
+            if (!digits) return input;
+            const last9 = digits.slice(-9);
+            return `0${last9}`;
+        };
+        phone = toLocalPhone(phone);
+        owner_phone = toLocalPhone(owner_phone);
+        console.log('Normalized phones:', phone, owner_phone);
+
         // Validate phone format
         if (user_type === 'user' && phone && !validatePhoneFormat(phone)) {
+            console.warn('Register invalid user phone:', phone);
             return res.status(400).json({ 
                 success: false, 
                 message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
@@ -2175,6 +2202,7 @@ app.post('/api/auth/register', async (req, res) => {
         
         if (user_type === 'salon') {
             if (phone && !validatePhoneFormat(phone)) {
+                console.warn('Register invalid salon phone:', phone);
                 return res.status(400).json({ 
                     success: false, 
                     message: 'رقم هاتف الصالون يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
@@ -2182,6 +2210,7 @@ app.post('/api/auth/register', async (req, res) => {
                 });
             }
             if (owner_phone && !validatePhoneFormat(owner_phone)) {
+                console.warn('Register invalid owner phone:', owner_phone);
                 return res.status(400).json({ 
                     success: false, 
                     message: 'رقم هاتف المالك يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
@@ -2204,6 +2233,7 @@ app.post('/api/auth/register', async (req, res) => {
             if (user_phone_to_use) {
                 const existingUser = await db.get('SELECT id FROM users WHERE phone = $1', [user_phone_to_use]);
                 if (existingUser) {
+                    console.warn('Register duplicate owner_phone:', user_phone_to_use, 'existing id:', existingUser.id);
                     return res.status(400).json({ 
                         success: false, 
                         message: 'رقم الهاتف مسجل بالفعل.', 
@@ -2212,29 +2242,23 @@ app.post('/api/auth/register', async (req, res) => {
                 }
             }
 
-            // For salon signup, also check if salon phone (if provided) conflicts with any user phone
-            if (user_type === 'salon' && phone && phone !== owner_phone) {
-                const existingSalonPhone = await db.get('SELECT id FROM users WHERE phone = $1', [phone]);
-                if (existingSalonPhone) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: 'رقم هاتف الصالون مسجل بالفعل.', 
-                        message_en: 'Salon phone number already registered.' 
-                    });
-                }
-            }
+            // Relaxed: do not block if salon phone matches an existing user phone
+            // We only enforce uniqueness on owner_phone in users table.
 
             let userResult;
             try {
-                // Convert empty email to null for optional email field
-                const emailToInsert = email && email.trim() !== '' ? email : null;
+                let emailToInsert = email && email.trim() !== '' ? email : null;
+                if (emailToInsert) {
+                    const existingEmail = await db.get('SELECT id FROM users WHERE email = $1', [emailToInsert]);
+                    if (existingEmail) emailToInsert = null;
+                }
                 userResult = await db.query(userSql, [user_name_to_use, emailToInsert, user_phone_to_use, gender_to_use, city, hashedPassword, user_type]);
             } catch (err) {
-                if (err.code === '23505') { // PostgreSQL unique constraint violation
+                if (err.code === '23505') {
+                    console.warn('Register email unique violation:', email);
                     return res.status(400).json({ success: false, message: 'البريد الإلكتروني مسجل بالفعل.', message_en: 'Email already registered.' });
                 }
-                // LOGGING IMPROVEMENT: Log the full error object
-                console.error("User signup DB error:", err); 
+                console.error('User signup DB error:', err);
                 return res.status(500).json({ success: false, message: 'خطأ في قاعدة البيانات أثناء تسجيل المستخدم.', message_en: 'Database error during user registration.' });
             }
             
@@ -2346,6 +2370,7 @@ app.post('/api/auth/register', async (req, res) => {
                 });
             }
         } else {
+            console.warn('Register invalid user_type:', user_type);
             return res.status(400).json({ success: false, message: 'نوع المستخدم غير صحيح.', message_en: 'Invalid user type.' });
         }
     } catch (error) {
@@ -2559,6 +2584,88 @@ app.post('/api/auth/logout', async (req, res) => {
     }
 });
 
+const resetVerifyLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 20 });
+const resetCompleteLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 10 });
+
+app.post('/api/admin/password-reset/generate', requireAdmin, async (req, res) => {
+    try {
+        const { identifier, user_id } = req.body || {};
+        let user;
+        if (user_id) {
+            user = await dbGet('SELECT id, email, phone FROM users WHERE id = $1', [Number(user_id)]);
+        } else if (identifier) {
+            const input = String(identifier).trim();
+            const isEmail = input.includes('@');
+            if (isEmail) {
+                user = await dbGet('SELECT id, email, phone FROM users WHERE email = $1', [input]);
+            } else {
+                const norm = normalizePhoneNumber(input);
+                const rows = await db.query("SELECT id, email, phone FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = $1", [norm]);
+                user = rows && rows[0];
+            }
+        }
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const hash = await bcrypt.hash(code, 12);
+        const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        await dbRun('INSERT INTO password_reset_codes (user_id, code_hash, expires_at, attempts_left, generated_by_admin_id) VALUES ($1, $2, $3, $4, $5)', [user.id, hash, expires, 5, req.user.id]);
+        return res.json({ success: true, code });
+    } catch (e) {
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+app.post('/api/auth/password-reset/verify', resetVerifyLimiter, async (req, res) => {
+    try {
+        const { identifier, code } = req.body || {};
+        if (!identifier || !code) return res.status(400).json({ success: false, message: 'identifier and code required' });
+        const input = String(identifier).trim();
+        const isEmail = input.includes('@');
+        let user;
+        if (isEmail) {
+            user = await dbGet('SELECT id FROM users WHERE email = $1', [input]);
+        } else {
+            const norm = normalizePhoneNumber(input);
+            const rows = await db.query("SELECT id FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = $1", [norm]);
+            user = rows && rows[0];
+        }
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        const row = await dbGet('SELECT id, code_hash, expires_at, attempts_left, used_at FROM password_reset_codes WHERE user_id = $1 ORDER BY created_at DESC', [user.id]);
+        if (!row) return res.status(404).json({ success: false, message: 'No reset code' });
+        if (row.used_at) return res.status(400).json({ success: false, message: 'Code used' });
+        if (new Date(row.expires_at).getTime() <= Date.now()) return res.status(400).json({ success: false, message: 'Code expired' });
+        const ok = await bcrypt.compare(String(code), row.code_hash);
+        if (!ok) {
+            const left = Math.max(0, Number(row.attempts_left || 0) - 1);
+            await dbRun('UPDATE password_reset_codes SET attempts_left = $1 WHERE id = $2', [left, row.id]);
+            return res.status(401).json({ success: false, message: 'Invalid code', attempts_left: left });
+        }
+        const token = jwt.sign({ sub: user.id, role: 'reset', prc_id: row.id }, JWT_SECRET, { expiresIn: '10m' });
+        return res.json({ success: true, reset_token: token });
+    } catch (e) {
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+app.post('/api/auth/password-reset/complete', resetCompleteLimiter, async (req, res) => {
+    try {
+        const { reset_token, new_password } = req.body || {};
+        if (!reset_token || !new_password) return res.status(400).json({ success: false, message: 'reset_token and new_password required' });
+        let payload;
+        try { payload = jwt.verify(reset_token, JWT_SECRET); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid token' }); }
+        if (payload.role !== 'reset') return res.status(403).json({ success: false, message: 'Forbidden' });
+        const prc = await dbGet('SELECT id, user_id, used_at FROM password_reset_codes WHERE id = $1', [payload.prc_id]);
+        if (!prc || prc.user_id !== payload.sub) return res.status(400).json({ success: false, message: 'Invalid state' });
+        if (prc.used_at) return res.status(400).json({ success: false, message: 'Already used' });
+        const hash = await hashPassword(String(new_password));
+        await dbRun('UPDATE users SET password = $1 WHERE id = $2', [hash, payload.sub]);
+        await dbRun('UPDATE password_reset_codes SET used_at = CURRENT_TIMESTAMP WHERE id = $1', [prc.id]);
+        await dbRun('UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1', [payload.sub]);
+        return res.json({ success: true });
+    } catch (e) {
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 
 // API to get user profile (for home_user data load)
 app.post('/api/user/profile', async (req, res) => {
@@ -2915,12 +3022,13 @@ app.get('/api/salon/details/:salon_id', async (req, res) => {
             s.image_url,
             s.salon_phone,
             s.owner_phone,
+            s.plan,
             COALESCE(AVG(r.rating), 0) AS avg_rating,
             COUNT(r.id) AS review_count
         FROM salons s
         LEFT JOIN reviews r ON s.id = r.salon_id
         WHERE s.id = $1
-        GROUP BY s.id, s.salon_phone, s.owner_phone
+        GROUP BY s.id, s.salon_phone, s.owner_phone, s.plan
     `;
     try {
         const row = await dbGet(sql, [salonId]);
@@ -4040,6 +4148,15 @@ app.post('/api/appointment/book', requireAuth, async (req, res) => {
         return res.status(400).json({ success: false, message: 'بيانات الحجز غير كاملة.' });
     }
 
+    try {
+        const planRow = await dbGet('SELECT plan FROM salons WHERE id = $1', [salon_id]);
+        if (planRow && String(planRow.plan) === 'visibility_only') {
+            return res.status(403).json({ success: false, message: 'الحجز غير متاح لهذا الصالون حالياً.' });
+        }
+    } catch (e) {
+        console.warn('Plan check failed:', e?.message || e);
+    }
+
     // Support both old format (single service_id) and new format (services array)
     let servicesToBook = [];
     if (services && Array.isArray(services) && services.length > 0) {
@@ -4312,12 +4429,13 @@ const fetchSalonsWithAvailability = async (city, gender) => {
                 s.image_url, 
                 s.gender_focus,
                 s.special,
+                s.plan,
                 COALESCE(AVG(r.rating), 0) AS avg_rating,
                 COUNT(r.id) AS review_count
             FROM salons s
             LEFT JOIN reviews r ON s.id = r.salon_id
             WHERE s.gender_focus = $1 AND s.status = 'accepted'
-            GROUP BY s.id, s.special
+            GROUP BY s.id, s.special, s.plan
             ORDER BY s.special DESC, COALESCE(AVG(r.rating), 0) DESC
         `;
         const result = await db.query(sql, [gender]);
@@ -4996,7 +5114,7 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
         }
 
         // Normalize plan fields
-        const allowedPlans = new Set(['2months_offer', 'monthly_200', 'monthly_60', 'per_booking']);
+        const allowedPlans = new Set(['2months_offer', 'monthly_200', 'monthly_60', 'per_booking', 'visibility_only']);
         const normalizedPlan = allowedPlans.has(planType) ? planType : null;
         const normalizedChairs = normalizedPlan === 'monthly_60' ? Math.max(1, parseInt(planChairs || '1', 10)) : null;
 
@@ -5026,6 +5144,11 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                 amount = 200; // rounded price
                 validUntil.setMonth(validUntil.getMonth() + 2);
                 description = 'عرض خاص للصالونات الجديدة - 200 شيكل لمدة شهرين';
+            } else if (invoiceOption === 'offer' && normalizedPlan === 'visibility_only') {
+                paymentType = 'visibility_only_offer_199';
+                amount = 199;
+                validUntil.setMonth(validUntil.getMonth() + 3);
+                description = 'خطة بدون حجوزات: عرض خاص 3 أشهر مقابل 199 شيكل';
             } else if (invoiceOption === 'renewal') {
                 if (normalizedPlan === 'monthly_200') {
                     paymentType = 'monthly_200';
@@ -5044,6 +5167,11 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                     amount = 200;
                     validUntil.setMonth(validUntil.getMonth() + 1);
                     description = 'تجديد شهري: 200 شيكل';
+                } else if (normalizedPlan === 'visibility_only') {
+                    paymentType = 'visibility_only_monthly_99';
+                    amount = 99;
+                    validUntil.setMonth(validUntil.getMonth() + 1);
+                    description = 'خطة بدون حجوزات: اشتراك شهري 99 شيكل';
                 } else {
                     // per_booking doesn't produce upfront invoice on renewal
                     paymentType = null;

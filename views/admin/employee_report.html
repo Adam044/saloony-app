@@ -287,6 +287,7 @@
           token = nt;
           res = await fetch(`/api/admin/employees/${empId}/analytics/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
         }
+        if (!res.ok) { showMessage('تعذر تحميل الملخص', 'error'); return; }
         const data = await res.json();
         if (!res.ok || !data.success) { showMessage('تعذر تحميل الملخص', 'error'); return; }
       const a = data.all || {}; const t = data.today || {}; const rev = data.revenue || {};
@@ -331,8 +332,9 @@
       let data = {};
       try {
         const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) { showMessage('تعذر تحميل نطاق التاريخ', 'error'); return; }
         data = await res.json();
-        if (!res.ok || !data.success) throw new Error('range failed');
+        if (!data.success) { showMessage('تعذر تحميل نطاق التاريخ', 'error'); return; }
       } catch (_) { showMessage('تعذر تحميل نطاق التاريخ', 'error'); return; }
       const m = data.map || {}; const visits = data.visits || []; const revenue = Number(data.revenue||0);
       const totalVisits = Array.isArray(visits) ? visits.length : 0;
@@ -358,7 +360,7 @@
           token = nt;
           res = await fetch(`/api/admin/employees/${empId}/analytics/today`, { headers: { 'Authorization': `Bearer ${token}` } });
         }
-        if (!res.ok) return;
+        if (!res.ok) { showMessage('تعذر تحميل زيارات اليوم', 'error'); return; }
         const data = await res.json();
         const visitsCount = Number(data.visits_count || 0);
         const elVC = document.getElementById('kpi-visits-today'); if (elVC) elVC.textContent = visitsCount.toLocaleString('en-US');
@@ -452,7 +454,8 @@
           const mode = (modeEl ? modeEl.value : 'activated');
           const goal = mode === 'visits' ? 15 : 2;
           fetch(`/api/admin/employees/${empId}/analytics/range?from=${from}&to=${to}`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(r=>r.json()).then(data => {
+            .then(r=> r.ok ? r.json() : Promise.resolve({ success:false, visits:[] }))
+            .then(data => {
               const visits = data.visits || [];
               const counts = Array(days).fill(0);
               visits.forEach(v => {
@@ -518,7 +521,8 @@
           const onlyComments = !!document.getElementById('visits-has-comments')?.checked;
           const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
           fetch(`/api/admin/employees/${empId}/analytics/range?from=${from}&to=${to}`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(r=>r.json()).then(data => {
+            .then(r=> r.ok ? r.json() : Promise.resolve({ success:false, visits:[] }))
+            .then(data => {
               let visits = data.visits || [];
               if (q) visits = visits.filter(v => String(v.salon_name||'').toLowerCase().includes(q));
               if (st) {

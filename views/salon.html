@@ -1532,6 +1532,7 @@
                     salon.review_count = salonDetailsData.salon.review_count;
                     salon.salon_phone = salonDetailsData.salon.salon_phone;
                     salon.owner_phone = salonDetailsData.salon.owner_phone;
+                    salon.plan = salonDetailsData.salon.plan;
                 }
             }
         } catch (error) {
@@ -3450,3 +3451,11 @@
         }
     });
 </script>
+        try {
+            const vp = String(salon.plan||'') === 'visibility_only';
+            if (vp) {
+                const bookBtn = document.getElementById('book-now-btn'); if (bookBtn) bookBtn.style.display = 'none';
+                const confirmBtn = document.getElementById('confirm-booking-btn'); if (confirmBtn) confirmBtn.style.display = 'none';
+                const modalConfirmBtn = document.getElementById('modal-confirm-booking-btn'); if (modalConfirmBtn) modalConfirmBtn.style.display = 'none';
+            }
+        } catch (_) {}

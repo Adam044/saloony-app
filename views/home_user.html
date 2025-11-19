@@ -2590,9 +2590,9 @@ function renderSalonCard(salon, cardType = 'detail') {
                 </div>
 
                 <div class="pt-2 border-t border-gray-100 flex justify-end">
-        <button class="btn-secondary px-4 py-2 rounded-lg text-sm book-btn" data-salon-id="${safeSalonId}">
-            احجز الآن
-        </button>
+        ${String(salon.plan||'')==='visibility_only' 
+            ? '<span class="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-700">بدون نظام حجوزات</span>' 
+            : `<button class="btn-secondary px-4 py-2 rounded-lg text-sm book-btn" data-salon-id="${safeSalonId}">احجز الآن</button>`}
                 </div>
             </div>
         </div>
