@@ -6111,7 +6111,7 @@ const logoutRole = async () => {
 
     <!-- Location Modal -->
     <div id="location-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center" style="z-index: 2000000;">
-        <div class="bg-white w-[95vw] max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+        <div class="bg-white w-[95vw] max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" style="margin-top: env(safe-area-inset-top); margin-bottom: env(safe-area-inset-bottom);">
             <div class="flex items-center justify-between px-4 py-3 border-b">
                 <h3 class="text-lg font-bold text-primary-dark">
                     <i class="fas fa-map-marker-alt ml-2"></i>
@@ -6151,7 +6151,7 @@ const logoutRole = async () => {
 
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">الخريطة</label>
-                    <div id="location-map" class="w-full h-72 rounded-xl border border-gray-200" style="transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;"></div>
+                    <div id="location-map" class="w-full h-80 rounded-xl border border-gray-200" style="transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;"></div>
                 </div>
 
                 <div class="flex gap-3 pt-2">
@@ -6181,7 +6181,7 @@ const logoutRole = async () => {
 
     // Leaflet/Safari compositing hints to avoid tile seams/splitting
     (function() {
-        var css = `#location-map, #location-map .leaflet-container, #location-map .leaflet-pane, #location-map .leaflet-tile {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  /* Ensure GPU layer and predictable stacking for Safari */\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}`;
+        var css = `#location-map, #location-map canvas, #location-map .maplibregl-canvas {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}`;
         try {
             var styleEl = document.createElement('style');
             styleEl.type = 'text/css';
@@ -6378,23 +6378,21 @@ const logoutRole = async () => {
             try {
                 var ua = navigator.userAgent || '';
                 var isiOS = /iP(hone|ad|od)/.test(ua);
-                if (isiOS) {
-                    var setVH = function(){ try{ var vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} };
-                    setVH();
-                    if (mapContainer) { mapContainer.style.height = 'calc(var(--vh, 1vh) * 70)'; mapContainer.style.minHeight = '320px'; }
-                    var invalidate = function(){ try{ mapInstance && mapInstance.invalidateSize(true); }catch(_){} };
-                    window.addEventListener('resize', function(){ setVH(); invalidate(); });
-                    window.addEventListener('orientationchange', function(){ setVH(); invalidate(); });
-                    if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
-                        window.visualViewport.addEventListener('resize', function(){ setVH(); invalidate(); });
-                    }
+                var setVH = function(){ try{ var vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} };
+                setVH();
+                if (mapContainer) { mapContainer.style.height = 'calc(var(--vh, 1vh) * 70)'; mapContainer.style.minHeight = '360px'; }
+                var invalidate = function(){ try{ mapInstance && mapInstance.resize(); }catch(_){} };
+                window.addEventListener('resize', function(){ setVH(); invalidate(); });
+                window.addEventListener('orientationchange', function(){ setVH(); invalidate(); });
+                if (window.visualViewport && typeof window.visualViewport.addEventListener === 'function') {
+                    window.visualViewport.addEventListener('resize', function(){ setVH(); invalidate(); });
                 }
             } catch(_) {}
             setTimeout(initMap, 50);
             // Ensure Leaflet recalculates dimensions once visible on mobile
             requestAnimationFrame(() => {
-                setTimeout(() => { try { mapInstance && mapInstance.invalidateSize(true); } catch(_) {} }, 200);
-                setTimeout(() => { try { mapInstance && mapInstance.invalidateSize(true); } catch(_) {} }, 500);
+                setTimeout(() => { try { mapInstance && mapInstance.resize(); } catch(_) {} }, 200);
+                setTimeout(() => { try { mapInstance && mapInstance.resize(); } catch(_) {} }, 500);
             });
             // Ensure cities are loaded for selection
             try { populateCitySelect_v2(); } catch (_) {}
@@ -6449,10 +6447,10 @@ const logoutRole = async () => {
             const hasCoords = typeof currentLat === 'number' && typeof currentLng === 'number';
             const setDefaultView = () => { try{ mapInstance.setCenter([35.22, 31.95]); mapInstance.setZoom(12); }catch(_){} };
             if (hasCoords) {
-                try{ mapInstance.setCenter([currentLng, currentLat]); mapInstance.setZoom(15); }catch(_){ setDefaultView(); }
+                try{ setMarker([currentLat, currentLng]); }catch(_){ setDefaultView(); }
             } else if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => { try{ mapInstance.setCenter([pos.coords.longitude, pos.coords.latitude]); mapInstance.setZoom(15); }catch(_){ setDefaultView(); } },
+                    (pos) => { try{ setMarker([pos.coords.latitude, pos.coords.longitude]); }catch(_){ setDefaultView(); } },
                     () => setDefaultView(),
                     { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
