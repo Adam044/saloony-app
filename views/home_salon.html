@@ -18,9 +18,9 @@
     <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- Leaflet CSS/JS for map-based location picker -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- MapLibre GL JS for map-based location picker -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
     <script>
         (function() {
             const token = localStorage.getItem('salonni_token');
@@ -6433,35 +6433,32 @@ const logoutRole = async () => {
             document.body.classList.remove('overflow-hidden');
         }
 
-        function initMap() {
+        async function initMap() {
             if (mapInstance) return;
-            mapInstance = L.map(mapContainer);
+            let cfg=null; try{ const r=await fetch('/api/map/config'); if(r&&r.ok){ cfg=await r.json(); } }catch(_){}
+            const styleUrl=(cfg&&cfg.styleUrl)?cfg.styleUrl:'https://ogmap.com/styles/light_fresh.json';
+            let styleObj=null; try{ const rs=await fetch(styleUrl); if(rs&&rs.ok){ styleObj=await rs.json(); } }catch(_){}
+            if(styleObj&&styleObj.sources){
+                for(const k in styleObj.sources){ const src=styleObj.sources[k]; if(!src) continue; if(typeof src.url==='string' && src.url.indexOf('tiles.ogmap.com')>=0){ delete src.url; src.tiles=[(window.location.origin||'')+'/api/ogmap/tiles/{z}/{x}/{y}.pbf']; } if(Array.isArray(src.tiles)){ src.tiles=src.tiles.map(u=> u.indexOf('tiles.ogmap.com')>=0 ? (window.location.origin||'')+'/api/ogmap/tiles/{z}/{x}/{y}.pbf' : u ); } }
+            }
+            mapInstance = new maplibregl.Map({ container: mapContainer, style: styleObj||styleUrl, center: [35.22, 31.95], zoom: 12, minZoom: 3, maxZoom: 19, dragRotate: false, pitchWithRotate: false, antialias: true, attributionControl: true });
+            mapInstance.on('click', function(e){ setMarker([e.lngLat.lat, e.lngLat.lng]); });
+            const handleResize = () => { try { mapInstance && mapInstance.resize(); } catch(_) {} };
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', handleResize);
             const hasCoords = typeof currentLat === 'number' && typeof currentLng === 'number';
-            const setDefaultView = () => mapInstance.setView([31.95, 35.22], 12); // regional fallback
+            const setDefaultView = () => { try{ mapInstance.setCenter([35.22, 31.95]); mapInstance.setZoom(12); }catch(_){} };
             if (hasCoords) {
-                mapInstance.setView([currentLat, currentLng], 15);
+                try{ mapInstance.setCenter([currentLng, currentLat]); mapInstance.setZoom(15); }catch(_){ setDefaultView(); }
             } else if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        mapInstance.setView([pos.coords.latitude, pos.coords.longitude], 15);
-                    },
+                    (pos) => { try{ mapInstance.setCenter([pos.coords.longitude, pos.coords.latitude]); mapInstance.setZoom(15); }catch(_){ setDefaultView(); } },
                     () => setDefaultView(),
                     { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
             } else {
                 setDefaultView();
             }
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(mapInstance);
-            mapInstance.on('click', function(e) {
-                setMarker([e.latlng.lat, e.latlng.lng]);
-            });
-            // Handle resize/orientation changes on mobile to prevent tile seams
-            const handleResize = () => { try { mapInstance && mapInstance.invalidateSize(true); } catch(_) {} };
-            window.addEventListener('resize', handleResize);
-            window.addEventListener('orientationchange', handleResize);
         }
 
         async function populateCitySelect() {
@@ -6497,24 +6494,16 @@ const logoutRole = async () => {
 
         function setMarker(latlng) {
             if (!mapInstance) return;
+            const p = { lat: Number(latlng[0]), lng: Number(latlng[1]) };
             if (!marker) {
-                marker = L.marker(latlng, { draggable: true }).addTo(mapInstance);
-                marker.on('dragend', function(ev) {
-                    const p = ev.target.getLatLng();
-                    currentLat = p.lat;
-                    currentLng = p.lng;
-                    latInput.value = p.lat.toFixed(6);
-                    lngInput.value = p.lng.toFixed(6);
-                    toggleNameLoading(true);
-                    reverseGeocode_v2(p.lat, p.lng);
-                });
+                marker = new maplibregl.Marker({ draggable: true }).setLngLat([p.lng, p.lat]).addTo(mapInstance);
+                marker.on('dragend', function(){ try{ const ll = marker.getLngLat(); currentLat = ll.lat; currentLng = ll.lng; latInput.value = currentLat.toFixed(6); lngInput.value = currentLng.toFixed(6); toggleNameLoading(true); reverseGeocode_v2(currentLat, currentLng); }catch(_){} });
             } else {
-                marker.setLatLng(latlng);
+                try{ marker.setLngLat([p.lng, p.lat]); }catch(_){}
             }
-            mapInstance.setView(latlng, 15);
-            try { mapInstance.invalidateSize(true); } catch(_) {}
-            currentLat = Number(latlng[0]);
-            currentLng = Number(latlng[1]);
+            try{ mapInstance.setCenter([p.lng, p.lat]); mapInstance.setZoom(15); mapInstance.resize(); }catch(_){}
+            currentLat = p.lat;
+            currentLng = p.lng;
             latInput.value = currentLat.toFixed(6);
             lngInput.value = currentLng.toFixed(6);
             toggleNameLoading(true);
@@ -6777,7 +6766,7 @@ const logoutRole = async () => {
         }
 
         async function reverseGeocode_v2(lat, lng) {
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ar&zoom=18&namedetails=1&extratags=1`;
+            const url = `/api/proxy/nominatim?reverse=1&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&namedetails=1&extratags=1`;
             try {
                 const resp = await fetch(url);
                 const data = await resp.json();

@@ -1201,15 +1201,27 @@ app.get('/api/map/config', (req, res) => {
 // Server-side proxy to Nominatim to avoid browser CORS blocks
 app.get('/api/proxy/nominatim', async (req, res) => {
     try {
-        const q = (req.query.q || '').toString();
-        if (!q || q.length < 2) return res.json([]);
-        const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&accept-language=ar';
+        const isReverse = (req.query.reverse || '').toString() === '1';
+        let url = '';
+        if (isReverse) {
+            const lat = (req.query.lat || '').toString();
+            const lon = (req.query.lon || '').toString();
+            if (!lat || !lon) return res.json({});
+            const zoom = (req.query.zoom || '18').toString();
+            const namedetails = (req.query.namedetails || '1').toString();
+            const extratags = (req.query.extratags || '1').toString();
+            url = `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&accept-language=ar&zoom=${encodeURIComponent(zoom)}&namedetails=${encodeURIComponent(namedetails)}&extratags=${encodeURIComponent(extratags)}`;
+        } else {
+            const q = (req.query.q || '').toString();
+            if (!q || q.length < 2) return res.json([]);
+            url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&accept-language=ar';
+        }
         const r = await fetch(url, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)' } });
-        if (!r.ok) return res.status(r.status).json([]);
+        if (!r.ok) return res.status(r.status).json(isReverse ? {} : []);
         const j = await r.json();
         return res.json(j);
     } catch (e) {
-        return res.status(502).json([]);
+        return res.status(502).json({});
     }
 });
 

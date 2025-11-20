@@ -33,8 +33,7 @@
     .maplibregl-ctrl button { color: #1E293B; background: #FFFFFF; }
     .maplibregl-ctrl button:hover { background: #F3F4F6; }
     .maplibregl-ctrl-attrib { background: rgba(255,255,255,0.9); border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .salon-marker { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 50%; box-shadow: 0 6px 16px rgba(0,0,0,0.18); transition: transform 0.12s ease; }
-    .salon-marker:hover { transform: scale(1.06); }
+    .salon-marker { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 50%; box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
     .user-dot { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; transform: translate(-50%, -50%); background: #06C167; border: 2px solid #fff; border-radius: 9999px; box-shadow: 0 6px 14px rgba(6,193,103,0.35); }
     .user-ring { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); border: 2px solid rgba(6,193,103,0.35); border-radius: 9999px; animation: pulseRing 2s infinite; }
     @keyframes pulseRing { 0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; } 70% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } }
@@ -427,15 +426,13 @@
         }
         if(styleObj.sources.protomaps){ styleObj.sources.protomaps.attribution='© <a href="https://ogmap.com">OGMAP</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'; }
       }
-      map = new maplibregl.Map({ container: 'salon-map', style: styleObj||styleUrl, center: [35.0, 31.95], zoom: 12, pitch: 20, bearing: 0, antialias: true, attributionControl: true });
+      map = new maplibregl.Map({ container: 'salon-map', style: styleObj||styleUrl, center: [35.0, 31.95], zoom: 12, minZoom: 3, maxZoom: 19, dragRotate: false, pitchWithRotate: false, touchZoomRotate: true, doubleClickZoom: true, antialias: true, attributionControl: true });
       try { map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right'); } catch(_) {}
       try { map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: true, showUserHeading: true, fitBoundsOptions: { maxZoom: 15 } }), 'top-right'); } catch(_) {}
       try { map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left'); } catch(_) {}
       
       map.on('load', function(){ try{ map.resize(); }catch(_){ } try{ map.setLight({ color: '#ffffff', intensity: 0.3 }); }catch(_){ } try{ map.setFog({ color: '#eaf7f0', 'horizon-blend': 0.08, range: [0.8, 8] }); }catch(_){ } });
-      setTimeout(function(){ try{ map.resize(); }catch(_){} }, 300);
-      setTimeout(function(){ try{ map.resize(); }catch(_){} }, 900);
-      setTimeout(function(){ try{ map.resize(); }catch(_){} }, 1800);
+      setTimeout(function(){ try{ map.resize(); }catch(_){} }, 500);
       try { navigator.geolocation.getCurrentPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, true); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); setTimeout(function(){ if(!hasCenteredOnUser && userLocation){ try{ map.setCenter([userLocation.lng, userLocation.lat]); map.setZoom(14); hasCenteredOnUser=true; applyMobileOffset(); }catch(_){} } }, 1500); } catch(_) {}
       try { navigator.geolocation.watchPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); } catch(_) {}
       var d=await fetchDiscovery();
