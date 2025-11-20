@@ -169,6 +169,7 @@
     var currentUser = null;
     var map = null;
     var markers = [];
+    var suspendAutoCenter = false;
     var salonsData = [];
     var allMasterServices = [];
     var userLocation = null;
@@ -222,26 +223,10 @@
       if(s && s.status==='opening_soon') return 'opening_soon';
       return 'closed';
     }
-    function createMarker(s){
+    function toSalonFeature(s){
       var id=getSalonId(s);
-      var name=s.salon_name||'صالون';
-      var city=s.city||'';
-      var rating=parseFloat(s.avg_rating||0);
       var st=getSalonState(s);
-      var statusColor='#9CA3AF';
-      if(st==='open'){ statusColor='#06C167'; }
-      else if(st==='closed'){ statusColor='#EF4444'; }
-      else if(st==='closing_soon'){ statusColor='#F59E0B'; }
-      else if(st==='opening_soon'){ statusColor='#3B82F6'; }
-      var iconClass='fa-scissors';
-      var el=document.createElement('div');
-      el.innerHTML = '<div class="salon-marker" style="border:2px solid '+statusColor+'; color:#1E293B;">\
-        <i class="fas '+iconClass+'"></i>\
-        <span style="position:absolute;bottom:-3px;right:-3px;width:10px;height:10px;border:2px solid #fff;background:'+statusColor+';border-radius:50%;"></span>\
-      </div>';
-      var m=new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([s._lng, s._lat]).addTo(map);
-      el.addEventListener('click', function(){ window.sessionStorage.setItem('previousSection', 'home-view'); showSalonPreview(s); });
-      return m;
+      return { type:'Feature', geometry:{ type:'Point', coordinates:[s._lng, s._lat] }, properties:{ id:id, status:st } };
     }
     function clearMarkers(){ for(var i=0;i<markers.length;i++){ try{ markers[i].marker.remove(); }catch(_){} } markers=[]; }
     function applyFilters(){
@@ -384,10 +369,17 @@
       var visible=[];
       for(var j=0;j<filtered.length;j++){
         var s=filtered[j];
-        var marker=createMarker(s);
-        markers.push({ salon:s, marker:marker });
         visible.push([s._lat, s._lng]);
       }
+      try{
+        if(!map.getSource('salons')){
+          map.addSource('salons', { type:'geojson', data:{ type:'FeatureCollection', features:[] } });
+          map.addLayer({ id:'salons-circles', type:'circle', source:'salons', paint:{ 'circle-color': ['match', ['get','status'], 'open', '#06C167', 'closing_soon', '#F59E0B', 'opening_soon', '#3B82F6', 'closed', '#EF4444', '#9CA3AF'], 'circle-radius': 9, 'circle-stroke-color':'#FFFFFF', 'circle-stroke-width': 1 } });
+          map.on('click','salons-circles', function(e){ try{ var f=e.features&&e.features[0]; if(!f) return; var sid=f.properties&&f.properties.id; if(!sid) return; for(var i=0;i<salonsData.length;i++){ var ss=salonsData[i]; var iid=getSalonId(ss); if(iid==sid){ showSalonPreview(ss); break; } } }catch(_){} });
+        }
+        var feats=[]; for(var j=0;j<filtered.length;j++){ feats.push(toSalonFeature(filtered[j])); }
+        map.getSource('salons').setData({ type:'FeatureCollection', features:feats });
+      }catch(_){ }
       if(userLocation){ visible.push([userLocation.lat, userLocation.lng]); }
       if(fit){ try{ var b=new maplibregl.LngLatBounds(); for(var k=0;k<visible.length;k++){ var p=visible[k]; b.extend([p[1], p[0]]); } map.fitBounds(b, { padding: 40, maxZoom: 15 }); }catch(_){} }
       setStatus(visible.length?('عدد الصالونات المعروضة: '+visible.length):'لا توجد نتائج');
@@ -428,7 +420,7 @@
       }
       map = new maplibregl.Map({ container: 'salon-map', style: styleObj||styleUrl, center: [35.0, 31.95], zoom: 12, minZoom: 3, maxZoom: 19, dragRotate: false, pitchWithRotate: false, touchZoomRotate: true, doubleClickZoom: true, antialias: true, attributionControl: true });
       try { map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right'); } catch(_) {}
-      try { map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: true, showUserHeading: true, fitBoundsOptions: { maxZoom: 15 } }), 'top-right'); } catch(_) {}
+      try { map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false, showUserHeading: true, fitBoundsOptions: { maxZoom: 16 } }), 'top-right'); } catch(_) {}
       try { map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left'); } catch(_) {}
       
       map.on('load', function(){ try{ map.resize(); }catch(_){ } try{ map.setLight({ color: '#ffffff', intensity: 0.3 }); }catch(_){ } try{ map.setFog({ color: '#eaf7f0', 'horizon-blend': 0.08, range: [0.8, 8] }); }catch(_){ } });
@@ -461,26 +453,31 @@
       var sdb=document.getElementById('service-dropdown-btn'); if(sdb) sdb.addEventListener('click', toggleServiceDropdown);
       var all=document.getElementById('service-all'); if(all) all.addEventListener('change', function(){ var cbs=document.querySelectorAll('.service-checkbox:not(#service-all)'); if(all.checked){ cbs.forEach(function(cb){ cb.checked=false; }); } });
       var bb=document.getElementById('back-btn'); if(bb){ bb.classList.add('show'); bb.addEventListener('click', function(){ try{ if(window.history.length>1){ if(window.AppMode&&AppMode.transitionBack){ AppMode.transitionBack({ delay: 200 }); } else { window.history.back(); } } else { if(window.AppMode&&AppMode.transitionTo){ AppMode.transitionTo('/home_user.html', { delay: 200 }); } else { window.location.href='/home_user.html'; } } }catch(_){ if(window.AppMode&&AppMode.transitionTo){ AppMode.transitionTo('/home_user.html', { delay: 200 }); } else { window.location.href='/home_user.html'; } } }); }
+      try{ map.on('dragstart', function(){ suspendAutoCenter=true; }); map.on('zoomstart', function(){ suspendAutoCenter=true; }); }catch(_){ }
     }
     document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible'){ try{ if(geoWatchId===null){ geoWatchId = navigator.geolocation.watchPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false); }, function(){}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 }); } }catch(_){} } else { try{ if(geoWatchId!==null){ navigator.geolocation.clearWatch(geoWatchId); geoWatchId=null; } }catch(_){} } });
     document.addEventListener('DOMContentLoaded', init);
+    var pulseTimer=null; function startPulse(){ if(pulseTimer) return; var r=18; var dir=1; pulseTimer=setInterval(function(){ try{ r += dir*0.8; if(r>26){ dir=-1; } else if(r<18){ dir=1; } if(map && map.getLayer('user-ring')){ map.setPaintProperty('user-ring', 'circle-radius', r); var op=0.22 + (r-18)*0.01; map.setPaintProperty('user-ring', 'circle-stroke-opacity', Math.max(0.15, Math.min(0.35, op))); } }catch(_){} }, 60); }
     function updateUserLocation(lat, lng, accuracy, center){
       var now = Date.now();
       var moved = userLocation ? (haversineKm(userLocation.lat, userLocation.lng, lat, lng) * 1000) : Infinity;
       var improved = (typeof accuracy==='number') ? (accuracy < bestAccuracy - 10) : false;
       if((now - lastUserUpdateTs) < minUpdateMs && !improved && moved < minMoveMeters){ return; }
       userLocation = { lat: lat, lng: lng };
-      var html = '<div style="position:relative;width:28px;height:28px">\
-        <span class="user-dot"></span>\
-        <span class="user-ring"></span>\
-      </div>';
-      var el=document.createElement('div');
-      el.innerHTML = html;
-      if(!window.userMarker){ window.userMarker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map); } else { window.userMarker.setLngLat([lng, lat]); window.userMarker.getElement().innerHTML = html; }
-      if(center && !hasCenteredOnUser){ try{ map.setCenter([lng, lat]); map.setZoom(14); hasCenteredOnUser=true; if(typeof accuracy==='number'){ bestAccuracy=accuracy; } lastCentered=[lat,lng]; applyMobileOffset(); }catch(_){} }
-      else if(hasCenteredOnUser && accuracy && accuracy < bestAccuracy && accuracy <= 50){ try{ map.setCenter([lng, lat]); map.setZoom(14); bestAccuracy=accuracy; lastCentered=[lat,lng]; }catch(_){} }
+      try{
+        if(!map.getSource('user-point')){
+          map.addSource('user-point', { type:'geojson', data:{ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } } });
+          map.addLayer({ id:'user-dot', type:'circle', source:'user-point', paint:{ 'circle-color':'#06C167', 'circle-radius': 8, 'circle-stroke-color':'#FFFFFF', 'circle-stroke-width': 3, 'circle-blur': 0 } });
+          map.addLayer({ id:'user-ring', type:'circle', source:'user-point', paint:{ 'circle-color':'rgba(6,193,103,0)', 'circle-radius': 18, 'circle-stroke-color':'#06C167', 'circle-stroke-width': 2, 'circle-stroke-opacity': 0.25 } });
+          startPulse();
+        } else {
+          map.getSource('user-point').setData({ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } });
+        }
+      }catch(_){ }
+      if(center && !hasCenteredOnUser && !suspendAutoCenter){ try{ map.setCenter([lng, lat]); map.setZoom(16); hasCenteredOnUser=true; if(typeof accuracy==='number'){ bestAccuracy=accuracy; } lastCentered=[lat,lng]; }catch(_){} }
+      else if(!suspendAutoCenter && hasCenteredOnUser && accuracy && accuracy < bestAccuracy && accuracy <= 50){ try{ map.setCenter([lng, lat]); map.setZoom(16); bestAccuracy=accuracy; lastCentered=[lat,lng]; }catch(_){} }
       if(accuracy && accuracy > 0){
-        try{ if(map && map.isStyleLoaded && map.isStyleLoaded()){ var zoom=map.getZoom(); var mpp=156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2, zoom); var pr=Math.max(6, Math.min(140, accuracy/mpp)); var point={ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } }; var src=map.getSource('user-accuracy'); if(!src){ map.addSource('user-accuracy', { type:'geojson', data: point }); map.addLayer({ id:'user-accuracy-circle', type:'circle', source:'user-accuracy', paint:{ 'circle-color':'#93C5FD', 'circle-opacity':0.20, 'circle-stroke-color':'#3B82F6', 'circle-stroke-width':1, 'circle-radius': pr } }); } else { src.setData(point); map.setPaintProperty('user-accuracy-circle', 'circle-radius', pr); } } }catch(_){}
+        try{ if(map && map.isStyleLoaded && map.isStyleLoaded()){ var zoom=map.getZoom(); var mpp=156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2, zoom); var pr=Math.max(8, Math.min(160, accuracy/mpp)); var point={ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } }; var src=map.getSource('user-accuracy'); if(!src){ map.addSource('user-accuracy', { type:'geojson', data: point }); map.addLayer({ id:'user-accuracy-circle', type:'circle', source:'user-accuracy', paint:{ 'circle-color':'rgba(6,193,103,0)', 'circle-stroke-color':'#06C167', 'circle-stroke-width':2, 'circle-stroke-opacity':0.18, 'circle-radius': pr } }); } else { src.setData(point); map.setPaintProperty('user-accuracy-circle', 'circle-radius', pr); } } }catch(_){}
       }
       lastUserUpdateTs = now;
     }
