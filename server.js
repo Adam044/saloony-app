@@ -1226,25 +1226,80 @@ app.get('/api/proxy/nominatim', async (req, res) => {
 });
 
 // Proxy OGMAP vector tiles through our server to bypass domain allowlist during development
+// In-memory tile cache and throttled upstream fetch to avoid 429s
+const tileCache = new Map(); // key: `${z}/${x}/${y}` -> { buf: Buffer, ts: number }
+const inFlight = new Map(); // key -> Promise<Buffer>
+let tileActive = 0;
+const TILE_MAX_ACTIVE = parseInt(process.env.TILE_CONCURRENCY || '8', 10);
+const TILE_TTL_MS = parseInt(process.env.TILE_CACHE_TTL_MS || String(10 * 60 * 1000), 10);
+const tileQueue = [];
+function fetchTileThrottled(job) {
+  return new Promise((resolve, reject) => {
+    tileQueue.push({ job, resolve, reject });
+    process.nextTick(runTileQueue);
+  });
+}
+function runTileQueue() {
+  while (tileActive < TILE_MAX_ACTIVE && tileQueue.length) {
+    const { job, resolve, reject } = tileQueue.shift();
+    tileActive++;
+    job().then((buf) => { tileActive--; resolve(buf); runTileQueue(); }).catch((err) => { tileActive--; reject(err); runTileQueue(); });
+  }
+}
 app.get('/api/ogmap/tiles/:z/:x/:y.pbf', async (req, res) => {
-    try {
-        const { z, x, y } = req.params;
-        const key = process.env.OGMAP_API_KEY || '';
-        const url = `https://tiles.ogmap.com/${encodeURIComponent(z)}/${encodeURIComponent(x)}/${encodeURIComponent(y)}.pbf${key ? `?key=${encodeURIComponent(key)}` : ''}`;
-        const origin = (req.headers.origin && typeof req.headers.origin === 'string') ? req.headers.origin : `${req.protocol}://${req.get('host')}`;
-        const ref = (req.headers.referer && typeof req.headers.referer === 'string') ? req.headers.referer : origin + '/';
-        const r = await fetch(url, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)', 'Origin': origin, 'Referer': ref } });
-        if (!r.ok) {
-            res.status(r.status).send();
-            return;
-        }
-        const ab = await r.arrayBuffer();
-        res.setHeader('Content-Type', 'application/x-protobuf');
-        res.setHeader('Cache-Control', 'public, max-age=600');
-        res.send(Buffer.from(ab));
-    } catch (e) {
-        res.status(502).send();
+  try {
+    const { z, x, y } = req.params;
+    const cacheKey = `${z}/${x}/${y}`;
+    const cached = tileCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && (now - cached.ts) < TILE_TTL_MS) {
+      res.setHeader('Content-Type', 'application/x-protobuf');
+      res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+      return res.send(cached.buf);
     }
+    if (inFlight.has(cacheKey)) {
+      const buf = await inFlight.get(cacheKey);
+      res.setHeader('Content-Type', 'application/x-protobuf');
+      res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+      return res.send(buf);
+    }
+    const key = process.env.OGMAP_API_KEY || '';
+    const url = `https://tiles.ogmap.com/${encodeURIComponent(z)}/${encodeURIComponent(x)}/${encodeURIComponent(y)}.pbf${key ? `?key=${encodeURIComponent(key)}` : ''}`;
+    const origin = (req.headers.origin && typeof req.headers.origin === 'string') ? req.headers.origin : `${req.protocol}://${req.get('host')}`;
+    const ref = (req.headers.referer && typeof req.headers.referer === 'string') ? req.headers.referer : origin + '/';
+    const doFetch = async () => {
+      const r = await fetch(url, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)', 'Origin': origin, 'Referer': ref } });
+      if (!r.ok) {
+        const status = r.status || 502;
+        if (status === 429) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+          // one retry after short backoff
+          const rr = await fetch(url, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)', 'Origin': origin, 'Referer': ref } });
+          if (!rr.ok) throw new Error(`Upstream ${status}`);
+          const abb = await rr.arrayBuffer();
+          return Buffer.from(abb);
+        }
+        throw new Error(`Upstream ${status}`);
+      }
+      const ab = await r.arrayBuffer();
+      return Buffer.from(ab);
+    };
+    const p = fetchTileThrottled(doFetch);
+    inFlight.set(cacheKey, p);
+    try {
+      const buf = await p;
+      inFlight.delete(cacheKey);
+      tileCache.set(cacheKey, { buf, ts: Date.now() });
+      res.setHeader('Content-Type', 'application/x-protobuf');
+      res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+      return res.send(buf);
+    } catch (err) {
+      inFlight.delete(cacheKey);
+      return res.status(502).send();
+    }
+  } catch (e) {
+    return res.status(502).send();
+  }
 });
 
 // Middleware setup
