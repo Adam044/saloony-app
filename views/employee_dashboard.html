@@ -419,22 +419,19 @@
               <option value="not_interested">غير مهتم</option>
             </select>
           </div>
-          <div>
-            <label class="muted">4️⃣ الخطة المفضلة</label>
-            <select id="visit-plan-pref" class="w-full border rounded-lg p-2">
+          <div id="visit-plan-section" class="hidden">
+            <label class="muted">4️⃣ الخطة</label>
+            <select id="visit-plan-combined" class="w-full border rounded-lg p-2">
+              <option value="">—</option>
+            </select>
+          </div>
+          <div id="visit-interest-section" class="hidden">
+            <label class="muted">4️⃣ مهتم بـ</label>
+            <select id="visit-interest-pref" class="w-full border rounded-lg p-2">
               <option value="">—</option>
               <option value="booking">نظام حجوزات</option>
-              <option value="visibility_only">بدون حجوزات (99/شهري)</option>
+              <option value="visibility_only">بدون حجوزات</option>
             </select>
-            <div id="visit-plan-suboptions" class="mt-2 hidden">
-              <label class="muted">اختر طريقة الاشتراك</label>
-              <select id="visit-plan-option" class="w-full border rounded-lg p-2">
-                <option value="">—</option>
-                <option value="monthly_200">شهري 200</option>
-                <option value="monthly_60">لكل كرسي (60)</option>
-                <option value="per_booking">لكل حجز (1)</option>
-              </select>
-            </div>
           </div>
         </div>
         <div style="margin-top:12px">
@@ -678,33 +675,53 @@
 
     const defaultGoals = { signups: 2, visits: 15 };
 
-    function openVisitModal() {
-      const backdrop = document.getElementById('visit-modal');
-      backdrop.style.display = 'flex';
-      const vt = document.getElementById('visit-type');
-      const sTxt = document.getElementById('visit-salon');
-      const sSel = document.getElementById('visit-salon-existing');
-      if (vt) vt.value = 'first';
-      if (sTxt) sTxt.style.display = '';
-      if (sSel) sSel.style.display = 'none';
-    }
-    function closeVisitModal() {
-      const backdrop = document.getElementById('visit-modal');
-      backdrop.style.display = 'none';
-      // reset fields
-      const salonInput = document.getElementById('visit-salon');
-      const addressInput = document.getElementById('visit-address');
-      const statusSelect = document.getElementById('visit-status');
-      const commentsArea = document.getElementById('visit-comments');
-      const interestSlider = document.getElementById('visit-interest');
-      const interestDisplay = document.getElementById('interest-value');
-      if (salonInput) salonInput.value = '';
-      if (addressInput) addressInput.value = '';
-      if (statusSelect) statusSelect.selectedIndex = 0;
-      if (commentsArea) commentsArea.value = '';
-      if (interestSlider) interestSlider.value = 5;
-      if (interestDisplay) interestDisplay.textContent = '5';
-    }
+  function openVisitModal() {
+    const backdrop = document.getElementById('visit-modal');
+    backdrop.style.display = 'flex';
+    const vt = document.getElementById('visit-type');
+    const sTxt = document.getElementById('visit-salon');
+    const sSel = document.getElementById('visit-salon-existing');
+    const planSection = document.getElementById('visit-plan-section');
+    const planCombined = document.getElementById('visit-plan-combined');
+    const interestSection = document.getElementById('visit-interest-section');
+    const interestPref = document.getElementById('visit-interest-pref');
+    const statusSel = document.getElementById('visit-status');
+    if (vt) vt.value = 'first';
+    if (sTxt) sTxt.style.display = '';
+    if (sSel) sSel.style.display = 'none';
+    // Default status to activated and show plan dropdown initially
+    if (statusSel) statusSel.value = 'activated';
+    if (planSection) planSection.classList.remove('hidden');
+    populatePlanCombinedOptions();
+    if (planCombined) planCombined.value = '';
+    if (interestSection) interestSection.classList.add('hidden');
+    if (interestPref) interestPref.value = '';
+  }
+  function closeVisitModal() {
+    const backdrop = document.getElementById('visit-modal');
+    backdrop.style.display = 'none';
+    // reset fields
+    const salonInput = document.getElementById('visit-salon');
+    const addressInput = document.getElementById('visit-address');
+    const statusSelect = document.getElementById('visit-status');
+    const commentsArea = document.getElementById('visit-comments');
+    const interestSlider = document.getElementById('visit-interest');
+    const interestDisplay = document.getElementById('interest-value');
+    const planSection = document.getElementById('visit-plan-section');
+    const planCombined = document.getElementById('visit-plan-combined');
+    const interestSection = document.getElementById('visit-interest-section');
+    const interestPref = document.getElementById('visit-interest-pref');
+    if (salonInput) salonInput.value = '';
+    if (addressInput) addressInput.value = '';
+    if (statusSelect) statusSelect.selectedIndex = 0;
+    if (commentsArea) commentsArea.value = '';
+    if (interestSlider) interestSlider.value = 5;
+    if (interestDisplay) interestDisplay.textContent = '5';
+    if (planSection) planSection.classList.add('hidden');
+    if (planCombined) planCombined.value = '';
+    if (interestSection) interestSection.classList.add('hidden');
+    if (interestPref) interestPref.value = '';
+  }
 
     async function getLocationQuick() {
       return new Promise((resolve) => {
@@ -728,12 +745,21 @@
       const status = statusEl.value;
       const interestLevel = Number(document.getElementById('visit-interest').value || 0);
       const comments = document.getElementById('visit-comments').value.trim();
-      const planPref = document.getElementById('visit-plan-pref')?.value || '';
-      const planCore = planPref || '';
-      const planOption = planCore === 'booking' ? (document.getElementById('visit-plan-option')?.value || '') : '';
+      let planCore = '';
+      let planOption = '';
+      if (status === 'activated'){
+        const combined = document.getElementById('visit-plan-combined')?.value || '';
+        if (!combined){ showMessage('يرجى اختيار الخطة', 'error'); if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = saveBtn.dataset.orig || '<i class="fas fa-check"></i><span>حفظ</span>'; } return; }
+        planOption = combined;
+        planCore = (combined.startsWith('visibility_only')) ? 'visibility_only' : 'booking';
+      } else if (status === 'signed_up' || status === 'interested'){
+        planCore = document.getElementById('visit-interest-pref')?.value || '';
+        planOption = '';
+      }
       const address = (document.getElementById('visit-address')?.value || '').trim();
       const saveBtn = document.getElementById('visit-save');
       if (saveBtn) { saveBtn.disabled = true; saveBtn.dataset.orig = saveBtn.innerHTML; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>جارٍ الحفظ</span>'; }
+      if (status === 'activated' && (!planCore || !planOption)) { showMessage('يرجى اختيار الخطة', 'error'); if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = saveBtn.dataset.orig || '<i class="fas fa-check"></i><span>حفظ</span>'; } return; }
       if (!address) { showMessage('يرجى إدخال العنوان', 'error'); if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = saveBtn.dataset.orig || '<i class="fas fa-check"></i><span>حفظ</span>'; } return; }
       let lat = '';
       let lng = '';
@@ -747,7 +773,7 @@
         }
       } catch (_) {}
       try {
-        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments, interest_level: interestLevel, lat, lng, address, plan_core: planCore || null, plan_option: (planCore==='booking' ? (planOption||null) : null) }) });
+        const res = await fetch('/api/employee/visit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ salon_name: salon, status, comments, interest_level: interestLevel, lat, lng, address, plan_core: planCore || null, plan_option: (status==='activated' ? (planOption||null) : null) }) });
         const data = await res.json();
         if (res.ok && data.success) {
           showMessage('تم حفظ الزيارة', 'success');
@@ -789,12 +815,36 @@
       else { if (sTxt) sTxt.style.display = ''; if (sSel) sSel.style.display = 'none'; }
     });
 
-    document.getElementById('visit-plan-pref')?.addEventListener('change', (e) => {
+    function populatePlanCombinedOptions(){
+      const sel = document.getElementById('visit-plan-combined');
+      if (!sel) return;
+      sel.innerHTML = [
+        {v:'2months_offer', t:'عرض شهرين (حجوزات)'},
+        {v:'monthly_200', t:'شهري 200 (حجوزات)'},
+        {v:'monthly_60', t:'لكل كرسي (60) (حجوزات)'},
+        {v:'per_booking', t:'لكل حجز (حجوزات)'},
+        {v:'visibility_only_offer_199', t:'عرض 3 أشهر 199 شيكل (بدون حجوزات)'},
+        {v:'visibility_only_monthly_99', t:'99/شهري (بدون حجوزات)'}
+      ].map(o=>`<option value="${o.v}">${o.t}</option>`).join('');
+      sel.insertAdjacentHTML('afterbegin','<option value="">—</option>');
+    }
+
+    document.getElementById('visit-status')?.addEventListener('change', (e) => {
       const v = e.target.value;
-      const box = document.getElementById('visit-plan-suboptions');
-      if (box) {
-        if (v === 'booking') { box.classList.remove('hidden'); }
-        else { box.classList.add('hidden'); const opt = document.getElementById('visit-plan-option'); if (opt) opt.value = ''; }
+      const planSection = document.getElementById('visit-plan-section');
+      const planCombined = document.getElementById('visit-plan-combined');
+      const interestSection = document.getElementById('visit-interest-section');
+      if (v === 'activated'){
+        if (planSection) planSection.classList.remove('hidden');
+        if (interestSection) interestSection.classList.add('hidden');
+        populatePlanCombinedOptions();
+        if (planCombined) planCombined.value = '';
+      } else if (v === 'signed_up' || v === 'interested'){
+        if (planSection) planSection.classList.add('hidden');
+        if (interestSection) interestSection.classList.remove('hidden');
+      } else {
+        if (planSection) planSection.classList.add('hidden');
+        if (interestSection) interestSection.classList.add('hidden');
       }
     });
 

@@ -39,7 +39,10 @@ module.exports = function register(app, deps) {
           const cores = new Set(['booking','visibility_only']);
           if (cores.has(coreRaw)) core = coreRaw; else core = null;
           if (core === 'booking') {
-            const opts = new Set(['monthly_200','monthly_60','per_booking']);
+            const opts = new Set(['monthly_200','monthly_60','per_booking','2months_offer']);
+            option = opts.has(optionRaw) ? optionRaw : null;
+          } else if (core === 'visibility_only') {
+            const opts = new Set(['visibility_only_monthly_99','visibility_only_offer_199']);
             option = opts.has(optionRaw) ? optionRaw : null;
           } else {
             option = null;
