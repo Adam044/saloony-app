@@ -1083,6 +1083,10 @@ app.use(helmet({
                 'https://cdn.jsdelivr.net',
                 "'unsafe-inline'"
             ],
+            'worker-src': [
+                "'self'",
+                'blob:'
+            ],
             // Match script-src for script elements explicitly
             'script-src-elem': [
                 "'self'",
@@ -1125,8 +1129,11 @@ app.use(helmet({
                 'data:',
                 'blob:',
                 'https:',
-                'https://tile.openstreetmap.org'
-            ],
+                'https://tile.openstreetmap.org',
+                'https://demotiles.maplibre.org',
+                'https://ogmap.com',
+                'https://tiles.ogmap.com'
+            ].concat((process.env.MAP_TILE_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)),
             // Allow inline event handlers to preserve current behavior
             'script-src-attr': ["'unsafe-inline'"],
             // Network requests restricted to same origin by default
@@ -1145,16 +1152,19 @@ app.use(helmet({
                 'https://fonts.gstatic.com',
                 'https://nominatim.openstreetmap.org',
                 'https://*.supabase.co',
+                'https://demotiles.maplibre.org',
+                'https://ogmap.com',
+                'https://tiles.ogmap.com',
                 'ws:',
                 'wss:'
-            ],
+            ].concat((process.env.MAP_TILE_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)),
         }
     }
 }));
 
 // Additional security headers
 app.use(helmet.frameguard({ action: 'deny' })); // Disallow embedding
-app.use(helmet.referrerPolicy({ policy: 'no-referrer' })); // No referrer leakage
+app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' })); // Preserve origin for allowlist checks
 // Restrict powerful browser features
 app.use((req, res, next) => {
     // Allow geolocation for this origin while keeping camera/microphone disabled
@@ -1179,6 +1189,51 @@ const authLimiter = rateLimit({
     legacyHeaders: false
 });
 app.use(['/api/auth', '/api/ai-chat'], authLimiter);
+
+// Map config for frontend
+app.get('/api/map/config', (req, res) => {
+    const styleUrl = process.env.OGMAP_STYLE_URL || 'https://ogmap.com/styles/bright_city_style.json';
+    const apiKey = process.env.OGMAP_API_KEY || '';
+    const tilesBase = 'https://tiles.ogmap.com/{z}/{x}/{y}.pbf';
+    res.json({ success: true, styleUrl, apiKey, tilesBase });
+});
+
+// Server-side proxy to Nominatim to avoid browser CORS blocks
+app.get('/api/proxy/nominatim', async (req, res) => {
+    try {
+        const q = (req.query.q || '').toString();
+        if (!q || q.length < 2) return res.json([]);
+        const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&accept-language=ar';
+        const r = await fetch(url, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)' } });
+        if (!r.ok) return res.status(r.status).json([]);
+        const j = await r.json();
+        return res.json(j);
+    } catch (e) {
+        return res.status(502).json([]);
+    }
+});
+
+// Proxy OGMAP vector tiles through our server to bypass domain allowlist during development
+app.get('/api/ogmap/tiles/:z/:x/:y.pbf', async (req, res) => {
+    try {
+        const { z, x, y } = req.params;
+        const key = process.env.OGMAP_API_KEY || '';
+        const url = `https://tiles.ogmap.com/${encodeURIComponent(z)}/${encodeURIComponent(x)}/${encodeURIComponent(y)}.pbf${key ? `?key=${encodeURIComponent(key)}` : ''}`;
+        const origin = (req.headers.origin && typeof req.headers.origin === 'string') ? req.headers.origin : `${req.protocol}://${req.get('host')}`;
+        const ref = (req.headers.referer && typeof req.headers.referer === 'string') ? req.headers.referer : origin + '/';
+        const r = await fetch(url, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)', 'Origin': origin, 'Referer': ref } });
+        if (!r.ok) {
+            res.status(r.status).send();
+            return;
+        }
+        const ab = await r.arrayBuffer();
+        res.setHeader('Content-Type', 'application/x-protobuf');
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        res.send(Buffer.from(ab));
+    } catch (e) {
+        res.status(502).send();
+    }
+});
 
 // Middleware setup
 app.use(compression()); // Compress all responses to improve load times
