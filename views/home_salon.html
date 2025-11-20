@@ -6111,8 +6111,8 @@ const logoutRole = async () => {
 
     <!-- Location Modal -->
     <div id="location-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center" style="z-index: 2000000;">
-        <div class="bg-white w-[95vw] max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" style="margin-top: env(safe-area-inset-top); margin-bottom: env(safe-area-inset-bottom);">
-            <div class="flex items-center justify-between px-4 py-3 border-b">
+        <div class="bg-white w-[95vw] max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[85vh]" style="margin-top: env(safe-area-inset-top); margin-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain;">
+            <div class="flex items-center justify-between px-3 py-2 border-b">
                 <h3 class="text-lg font-bold text-primary-dark">
                     <i class="fas fa-map-marker-alt ml-2"></i>
                     إضافة/تعديل موقع الصالون
@@ -6121,7 +6121,7 @@ const logoutRole = async () => {
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-4 space-y-4">
+            <div class="p-3 space-y-3">
                 <div class="space-y-2 relative">
                     <label for="location-address-input" class="block text-sm font-medium text-gray-700">اسم المكان (يظهر تلقائيًا بعد تحريك العلامة)</label>
                     <input id="location-address-input" type="text" placeholder="اسحب العلامة على الخريطة لتحديد موقعك" class="w-full p-3 border border-gray-300 rounded-xl text-right bg-gray-50" autocomplete="off" readonly>
@@ -6137,7 +6137,7 @@ const logoutRole = async () => {
                             <i class="fas fa-location-crosshairs ml-2"></i>
                             استخدام موقعي الحالي
                         </button>
-                        <div class="flex items-center gap-2 w-full md:w-auto">
+                    <div class="flex items-center gap-2 w-full md:w-auto">
                             <label for="location-city-select" class="text-sm text-gray-700 whitespace-nowrap">اختر المدينة</label>
                             <select id="location-city-select" class="p-3 border border-gray-300 rounded-xl bg-white text-right w-full md:w-56">
                                 <option value="">— اختر المدينة —</option>
@@ -6151,13 +6151,13 @@ const logoutRole = async () => {
 
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">الخريطة</label>
-                    <div id="location-map" class="w-full h-80 rounded-xl border border-gray-200" style="transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;">
+                    <div id="location-map" class="w-full rounded-xl border border-gray-200" style="height: 220px; transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;">
                       <div id="loc-map-loading-badge" class="loc-map-badge" style="display:none;">جارٍ تحميل الخريطة…</div>
                       <div id="loc-map-skeleton" class="loc-skeleton" style="display:none;"><div class="loc-skeleton-inner"><div class="loc-skeleton-bar" style="width: 60%"></div><div class="loc-skeleton-bar" style="width: 40%"></div><div class="loc-skeleton-bar" style="width: 80%"></div><div class="loc-skeleton-bar" style="width: 50%"></div></div></div>
                     </div>
                 </div>
 
-                <div class="flex gap-3 pt-2">
+                <div class="flex gap-2 pt-2" style="position: sticky; bottom: 0; background: #ffffff; border-top: 1px solid #e5e7eb; padding: 12px; box-shadow: 0 -4px 12px rgba(0,0,0,0.04);">
                     <button id="save-location-btn" class="btn-action flex-1 py-3 rounded-xl font-bold">
                         <i class="fas fa-save ml-2"></i>
                         حفظ الموقع
@@ -6184,7 +6184,7 @@ const logoutRole = async () => {
 
     // Leaflet/Safari compositing hints to avoid tile seams/splitting
     (function() {
-        var css = `#location-map, #location-map canvas, #location-map .maplibregl-canvas {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}\n.loc-map-badge{ position:absolute; top:10px; left:10px; z-index:10; background:rgba(255,255,255,0.95); color:#1E293B; border:1px solid rgba(0,0,0,0.08); border-radius:9999px; box-shadow:0 6px 16px rgba(0,0,0,0.12); padding:8px 12px; font-size:12px; }\n.loc-skeleton{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:linear-gradient(90deg, rgba(243,244,246,0.95) 0%, rgba(255,255,255,0.95) 50%, rgba(243,244,246,0.95) 100%); z-index:9; }\n.loc-skeleton-inner{ width:80%; max-width:420px; }\n.loc-skeleton-bar{ height:12px; border-radius:9999px; background:rgba(0,0,0,0.06); margin:10px 0; }`;
+        var css = `#location-map, #location-map canvas, #location-map .maplibregl-canvas {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}\n.loc-map-badge{ position:absolute; top:10px; left:10px; z-index:10; background:rgba(255,255,255,0.95); color:#1E293B; border:1px solid rgba(0,0,0,0.08); border-radius:9999px; box-shadow:0 6px 16px rgba(0,0,0,0.12); padding:8px 12px; font-size:12px; }\n.loc-skeleton{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:linear-gradient(90deg, rgba(243,244,246,0.95) 0%, rgba(255,255,255,0.95) 50%, rgba(243,244,246,0.95) 100%); z-index:9; }\n.loc-skeleton-inner{ width:80%; max-width:420px; }\n.loc-skeleton-bar{ height:12px; border-radius:9999px; background:rgba(0,0,0,0.06); margin:10px 0; }\n@media (min-width: 640px){ #location-map{ height:260px !important; } }\n@media (min-width: 768px){ #location-map{ height:300px !important; } }`;
         try {
             var styleEl = document.createElement('style');
             styleEl.type = 'text/css';
@@ -6383,7 +6383,7 @@ const logoutRole = async () => {
                 var isiOS = /iP(hone|ad|od)/.test(ua);
                 var setVH = function(){ try{ var vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) * 0.01; document.documentElement.style.setProperty('--vh', vh + 'px'); }catch(_){} };
                 setVH();
-                if (mapContainer) { mapContainer.style.height = 'calc(var(--vh, 1vh) * 70)'; mapContainer.style.minHeight = '360px'; }
+                if (mapContainer) { mapContainer.style.height = 'calc(var(--vh, 1vh) * 35)'; mapContainer.style.minHeight = '220px'; }
                 var invalidate = function(){ try{ mapInstance && mapInstance.resize(); }catch(_){} };
                 window.addEventListener('resize', function(){ setVH(); invalidate(); });
                 window.addEventListener('orientationchange', function(){ setVH(); invalidate(); });
@@ -6505,9 +6505,9 @@ const logoutRole = async () => {
                 marker = new maplibregl.Marker({ draggable: true }).setLngLat([p.lng, p.lat]).addTo(mapInstance);
                 marker.on('dragend', function(){ try{ const ll = marker.getLngLat(); currentLat = ll.lat; currentLng = ll.lng; latInput.value = currentLat.toFixed(6); lngInput.value = currentLng.toFixed(6); toggleNameLoading(true); reverseGeocode_v2(currentLat, currentLng); }catch(_){} });
             } else {
-                try{ marker.setLngLat([p.lng, p.lat]); }catch(_){}
+                try{ marker.setLngLat([p.lng, p.lat]); }catch(_){ }
             }
-            try{ mapInstance.setCenter([p.lng, p.lat]); mapInstance.setZoom(15); mapInstance.resize(); }catch(_){}
+            try{ mapInstance.setCenter([p.lng, p.lat]); mapInstance.setZoom(15); }catch(_){}
             currentLat = p.lat;
             currentLng = p.lng;
             latInput.value = currentLat.toFixed(6);
