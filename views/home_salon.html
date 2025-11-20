@@ -6151,7 +6151,10 @@ const logoutRole = async () => {
 
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">الخريطة</label>
-                    <div id="location-map" class="w-full h-80 rounded-xl border border-gray-200" style="transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;"></div>
+                    <div id="location-map" class="w-full h-80 rounded-xl border border-gray-200" style="transform: translateZ(0); will-change: transform; backface-visibility: hidden; position: relative; z-index: 0;">
+                      <div id="loc-map-loading-badge" class="loc-map-badge" style="display:none;">جارٍ تحميل الخريطة…</div>
+                      <div id="loc-map-skeleton" class="loc-skeleton" style="display:none;"><div class="loc-skeleton-inner"><div class="loc-skeleton-bar" style="width: 60%"></div><div class="loc-skeleton-bar" style="width: 40%"></div><div class="loc-skeleton-bar" style="width: 80%"></div><div class="loc-skeleton-bar" style="width: 50%"></div></div></div>
+                    </div>
                 </div>
 
                 <div class="flex gap-3 pt-2">
@@ -6181,7 +6184,7 @@ const logoutRole = async () => {
 
     // Leaflet/Safari compositing hints to avoid tile seams/splitting
     (function() {
-        var css = `#location-map, #location-map canvas, #location-map .maplibregl-canvas {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}`;
+        var css = `#location-map, #location-map canvas, #location-map .maplibregl-canvas {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n  backface-visibility: hidden;\n}\n#location-modal {\n  transform: translateZ(0);\n  -webkit-transform: translateZ(0);\n}\n.loc-map-badge{ position:absolute; top:10px; left:10px; z-index:10; background:rgba(255,255,255,0.95); color:#1E293B; border:1px solid rgba(0,0,0,0.08); border-radius:9999px; box-shadow:0 6px 16px rgba(0,0,0,0.12); padding:8px 12px; font-size:12px; }\n.loc-skeleton{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:linear-gradient(90deg, rgba(243,244,246,0.95) 0%, rgba(255,255,255,0.95) 50%, rgba(243,244,246,0.95) 100%); z-index:9; }\n.loc-skeleton-inner{ width:80%; max-width:420px; }\n.loc-skeleton-bar{ height:12px; border-radius:9999px; background:rgba(0,0,0,0.06); margin:10px 0; }`;
         try {
             var styleEl = document.createElement('style');
             styleEl.type = 'text/css';
@@ -6433,13 +6436,18 @@ const logoutRole = async () => {
 
         async function initMap() {
             if (mapInstance) return;
+            try{ var sk=document.getElementById('loc-map-skeleton'); if(sk) sk.style.display='flex'; var mb=document.getElementById('loc-map-loading-badge'); if(mb) mb.style.display='block'; }catch(_){}
             let cfg=null; try{ const r=await fetch('/api/map/config'); if(r&&r.ok){ cfg=await r.json(); } }catch(_){}
             const styleUrl=(cfg&&cfg.styleUrl)?cfg.styleUrl:'https://ogmap.com/styles/light_fresh.json';
             let styleObj=null; try{ const rs=await fetch(styleUrl); if(rs&&rs.ok){ styleObj=await rs.json(); } }catch(_){}
             if(styleObj&&styleObj.sources){
                 for(const k in styleObj.sources){ const src=styleObj.sources[k]; if(!src) continue; if(typeof src.url==='string' && src.url.indexOf('tiles.ogmap.com')>=0){ delete src.url; src.tiles=[(window.location.origin||'')+'/api/ogmap/tiles/{z}/{x}/{y}.pbf']; } if(Array.isArray(src.tiles)){ src.tiles=src.tiles.map(u=> u.indexOf('tiles.ogmap.com')>=0 ? (window.location.origin||'')+'/api/ogmap/tiles/{z}/{x}/{y}.pbf' : u ); } }
             }
-            mapInstance = new maplibregl.Map({ container: mapContainer, style: styleObj||styleUrl, center: [35.22, 31.95], zoom: 12, minZoom: 3, maxZoom: 19, dragRotate: false, pitchWithRotate: false, antialias: true, attributionControl: true });
+            mapInstance = new maplibregl.Map({ container: mapContainer, style: styleObj||styleUrl, center: [35.22, 31.95], zoom: 12, minZoom: 3, maxZoom: 19, dragRotate: false, pitchWithRotate: false, antialias: true, attributionControl: true, refreshExpiredTiles: false, maxTileCacheSize: 512 });
+            try { mapInstance.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right'); } catch(_){}
+            try { mapInstance.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false, showUserHeading: true, fitBoundsOptions: { maxZoom: 16 } }), 'top-right'); } catch(_){}
+            try { mapInstance.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left'); } catch(_){}
+            mapInstance.on('load', function(){ try{ var sk=document.getElementById('loc-map-skeleton'); if(sk) sk.style.display='none'; var mb=document.getElementById('loc-map-loading-badge'); if(mb) mb.style.display='none'; }catch(_){} });
             mapInstance.on('click', function(e){ setMarker([e.lngLat.lat, e.lngLat.lng]); });
             const handleResize = () => { try { mapInstance && mapInstance.resize(); } catch(_) {} };
             window.addEventListener('resize', handleResize);
