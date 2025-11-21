@@ -130,6 +130,25 @@ module.exports = function register(app, deps) {
     }
   });
 
+  app.post('/api/salons/locations/batch', async (req, res) => {
+    try {
+      const idsRaw = (req.body && req.body.ids) || [];
+      const ids = Array.isArray(idsRaw) ? idsRaw.map((x) => Number(x)).filter((n) => Number.isFinite(n)) : [];
+      if (!ids.length) return res.json({ success: true, locations: [] });
+      let rows = [];
+      if (db.isProduction) {
+        rows = await db.query(`SELECT salon_id, latitude, longitude FROM salon_locations WHERE salon_id = ANY($1)`, [ids]);
+      } else {
+        const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+        rows = await db.query(`SELECT salon_id, latitude, longitude FROM salon_locations WHERE salon_id IN (${placeholders})`, ids);
+      }
+      const list = (rows || []).map((r) => ({ salon_id: Number(r.salon_id), latitude: r.latitude, longitude: r.longitude }));
+      return res.json({ success: true, locations: list });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'فشل في تحميل مواقع الصالونات', error: String(e && e.message || '') });
+    }
+  });
+
   app.post('/api/salon/location/:salon_id', async (req, res) => {
     try {
       const salonId = parseInt(req.params.salon_id);
