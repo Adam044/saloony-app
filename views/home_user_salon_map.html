@@ -197,7 +197,7 @@
     var minUpdateMs = 1500;
     var minMoveMeters = 7;
     var geoWatchId = null;
-    var isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // We removed the isIOS check dependency for pixelRatio to ensure consistent rendering
     var imagesReady = false;
     var salonLayerUpgraded = false;
     var restoredCamera = false;
@@ -296,14 +296,18 @@
     function ringColorForStatus(st){ return st==='open' ? '#06C167' : st==='opening_soon' ? '#3B82F6' : st==='closing_soon' ? '#F59E0B' : '#9CA3AF'; }
     
     function embeddedScissorsSVG(){ return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g stroke="#1E293B" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="22" r="7" fill="#1E293B"/><circle cx="20" cy="42" r="7" fill="#1E293B"/><path d="M28 28 L 46 16"/><path d="M28 36 L 46 48"/></g></svg>'; }
+    
+    // UPDATED: Removed createImageBitmap to prevent iOS hangs
     async function loadFAIconBitmap(){ try{ if(document && document.fonts && document.fonts.load){ try{ await document.fonts.load('900 28px "Font Awesome 6 Free"'); }catch(_){ } }
       var size=32; var c=document.createElement('canvas'); c.width=size; c.height=size; var x=c.getContext('2d'); var cx=size/2, cy=size/2; x.clearRect(0,0,size,size);
       x.fillStyle='#1E293B'; x.textAlign='center'; x.textBaseline='middle'; x.font='900 20px "Font Awesome 6 Free"';
       var glyph='\uf0c4';
       try{ x.fillText(glyph, cx, cy); }catch(_){ }
-      try{ var bm=await createImageBitmap(c); return bm; }catch(_){ }
+      // FIX: Return the canvas directly instead of createImageBitmap
+      return c; 
     }catch(_){ }
     return null; }
+
     function drawSalonIconWithBitmap(bm, ringColor){ var size=64; var c=document.createElement('canvas'); c.width=size; c.height=size; var x=c.getContext('2d'); var cx=size/2, cy=size/2; x.clearRect(0,0,size,size); x.save(); x.shadowColor='rgba(0,0,0,0.18)'; x.shadowBlur=10; var grad=x.createRadialGradient(cx, cy, 6, cx, cy, 28); grad.addColorStop(0,'#FFFFFF'); grad.addColorStop(1,'#F8FAFC'); x.beginPath(); x.arc(cx, cy, 24, 0, Math.PI*2); x.fillStyle=grad; x.fill(); x.lineWidth=5; x.strokeStyle=ringColor; x.stroke(); x.restore(); try{ var inner=26; var scale=Math.min(inner/bm.width, inner/bm.height); var w=bm.width*scale; var h=bm.height*scale; x.drawImage(bm, cx-w/2, cy-h/2, w, h); }catch(_){ } return c; }
     function drawSalonFARingIconWithDot(bm, ringColor){ var size=64; var c=document.createElement('canvas'); c.width=size; c.height=size; var x=c.getContext('2d'); var cx=size/2, cy=size/2; x.clearRect(0,0,size,size); x.save(); x.shadowColor='rgba(0,0,0,0.14)'; x.shadowBlur=10; var baseGrad=x.createRadialGradient(cx, cy, 6, cx, cy, 28); baseGrad.addColorStop(0,'#FFFFFF'); baseGrad.addColorStop(1,'#F8FAFC'); x.beginPath(); x.arc(cx, cy, 24, 0, Math.PI*2); x.fillStyle=baseGrad; x.fill(); x.restore(); var gap=0.48; x.lineCap='round'; x.lineJoin='round'; var ringGrad=x.createLinearGradient(cx-24, cy, cx+24, cy); ringGrad.addColorStop(0, ringColor); ringGrad.addColorStop(1, ringColor); x.lineWidth=4; x.strokeStyle=ringGrad; x.beginPath(); x.arc(cx, cy, 24, gap/2, Math.PI*2-gap/2); x.stroke(); x.lineWidth=2; x.strokeStyle='rgba(255,255,255,0.92)'; x.beginPath(); x.arc(cx, cy, 22, gap/2, Math.PI*2-gap/2); x.stroke(); try{ var inner=26; var scale=Math.min(inner/bm.width, inner/bm.height); var w=bm.width*scale; var h=bm.height*scale; x.drawImage(bm, cx-w/2, cy-h/2, w, h); }catch(_){ } x.save(); var dotR=5; var dotX=cx+16; var dotY=cy+16; x.beginPath(); x.arc(dotX, dotY, dotR, 0, Math.PI*2); x.fillStyle=ringColor; x.fill(); x.lineWidth=4; x.strokeStyle='#FFFFFF'; x.stroke(); x.restore(); return c; }
     function makeSalonImageWithDot(color){ var size=64; var c=document.createElement('canvas'); c.width=size; c.height=size; var x=c.getContext('2d'); var cx=size/2, cy=size/2; x.clearRect(0,0,size,size); x.save(); x.shadowColor='rgba(0,0,0,0.18)'; x.shadowBlur=10; var grad=x.createRadialGradient(cx, cy, 6, cx, cy, 28); grad.addColorStop(0,'#FFFFFF'); grad.addColorStop(1,'#F8FAFC'); x.beginPath(); x.arc(cx, cy, 24, 0, Math.PI*2); x.fillStyle=grad; x.fill(); x.lineWidth=4; x.strokeStyle=color; x.stroke(); x.restore(); x.lineCap='round'; x.lineJoin='round'; var sc='#1E293B'; var r=11; var h=7; x.lineWidth=2.6; x.strokeStyle=sc; x.beginPath(); x.moveTo(cx-r, cy-h); x.lineTo(cx+h, cy+h); x.moveTo(cx-r, cy+h); x.lineTo(cx+h, cy-h); x.stroke(); x.beginPath(); x.arc(cx-r, cy-h, 4, 0, Math.PI*2); x.fillStyle=sc; x.fill(); x.beginPath(); x.arc(cx-r, cy+h, 4, 0, Math.PI*2); x.fillStyle=sc; x.fill(); x.save(); var dotR=5; var dotX=cx+16; var dotY=cy+16; x.beginPath(); x.arc(dotX, dotY, dotR, 0, Math.PI*2); x.fillStyle=color; x.fill(); x.lineWidth=4; x.strokeStyle='#FFFFFF'; x.stroke(); x.restore(); return c; }
@@ -317,26 +321,33 @@
     var iconCache = {};
     var iconInflight = {};
     var unifiedBitmap = null;
+    
+    // UPDATED: Fixed pixelRatio to 2 constant
     async function ensureUnifiedSalonImages(){ try{ if(!map) return; if(!(map.isStyleLoaded && map.isStyleLoaded())) return; if(!unifiedBitmap){ unifiedBitmap=await loadFAIconBitmap(); }
       var defs=[ ['salon-unified-open','#06C167'], ['salon-unified-closing','#F59E0B'], ['salon-unified-opening','#3B82F6'], ['salon-unified-closed','#9CA3AF'], ['salon-unified-default','#9CA3AF'] ];
-      var ua=(navigator&&navigator.userAgent)||''; var isIOS=/iPad|iPhone|iPod/.test(ua) || (ua.indexOf('Macintosh')>=0 && 'ontouchend' in document);
-      var pr=isIOS?1:2;
+      
+      // FIX: Always use pixelRatio 2 for 64px images to look sharp (32px) on all devices
+      var pr = 2; 
+
       for(var i=0;i<defs.length;i++){ var name=defs[i][0], col=defs[i][1]; if(!map.hasImage(name)){ var c=null; if(unifiedBitmap){ c=drawSalonFARingIconWithDot(unifiedBitmap, col); } else { c=makeSalonImageWithDot(col); } var img=toImageData(c); if(img){ map.addImage(name, img, { pixelRatio: pr }); } } }
       imagesReady = defs.every(function(d){ return map.hasImage(d[0]); });
     }catch(_){} }
     
+    // UPDATED: Fixed pixelRatio to 2 constant
     function ensureSalonImages(){
       if(!map) return;
       try{
         if(!(map.isStyleLoaded && map.isStyleLoaded())) return;
         var defs=[ ['salon-open','#06C167'], ['salon-closing','#F59E0B'], ['salon-opening','#3B82F6'], ['salon-closed','#9CA3AF'], ['salon-default','#9CA3AF'] ];
         var ready=true;
+        
+        // FIX: Consistently use pixelRatio 2
+        var pr = 2;
+
         for(var i=0;i<defs.length;i++){
           var name=defs[i][0], col=defs[i][1];
           if(!map.hasImage(name)){
             var img = toImageData(makeSalonImageWithDot(col));
-            var ua=(navigator&&navigator.userAgent)||''; var isIOS=/iPad|iPhone|iPod/.test(ua) || (ua.indexOf('Macintosh')>=0 && 'ontouchend' in document);
-            var pr=isIOS?1:2;
             if(img){ map.addImage(name, img, { pixelRatio: pr }); ready=false; }
           }
         }
@@ -344,10 +355,16 @@
         if(imagesReady) upgradeSalonLayer();
       }catch(_){}
     }
+
+    // UPDATED: Fixed pixelRatio to 2 constant
     function ensureUserLayers(){
       try{
         if(!map) return; if(!userLocation) return; if(!(map.isStyleLoaded && map.isStyleLoaded())) return;
-        try{ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ var ua=(navigator&&navigator.userAgent)||''; var isIOS=/iPad|iPhone|iPod/.test(ua) || (ua.indexOf('Macintosh')>=0 && 'ontouchend' in document); var pr=isIOS?1:2; map.addImage('user-pin', up, { pixelRatio: pr }); } } else { var up2 = toImageData(makeUserImage()); if(up2){ map.updateImage('user-pin', up2); } } }catch(_){ }
+        
+        // FIX: Consistently use pixelRatio 2
+        var pr = 2;
+
+        try{ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); } } else { var up2 = toImageData(makeUserImage()); if(up2){ map.updateImage('user-pin', up2); } } }catch(_){ }
         var pt = { type:'Feature', geometry:{ type:'Point', coordinates:[userLocation.lng, userLocation.lat] } };
         if(!map.getSource('user-point')){ map.addSource('user-point', { type:'geojson', data: pt }); }
         if(!map.getLayer('user-halo')){ map.addLayer({ id:'user-halo', type:'circle', source:'user-point', paint:{ 'circle-color':'rgba(26,115,232,0.25)', 'circle-radius': 24, 'circle-blur': 0.8 }, layout:{ 'visibility':'visible' } }); }
@@ -570,7 +587,15 @@
       try{ map.on('styledata', async function(){ try{ imagesReady=false; ensureSalonImages(); await ensureUnifiedSalonImages(); toggleSalonLayerVisibility(); ensureUserLayers(); }catch(_){ } }); }catch(_){ }
       // Early retry loop to avoid races on slow devices/styles
       (function(){ var attempts=0; var max=8; var t=setInterval(function(){ attempts++; try{ ensureUnifiedSalonImages(); ensureFallbackCirclesLayer(); if(imagesReady){ try{ if(map.getLayer('salons-symbols')) map.setLayoutProperty('salons-symbols','visibility','visible'); }catch(_){} try{ if(map.getLayer('salons-circles')) map.setLayoutProperty('salons-circles','visibility','none'); }catch(_){} clearInterval(t); } }catch(_){ } if(attempts>=max){ clearInterval(t); } }, 350); })();
-      try{ map.on('styleimagemissing', async function(e){ try{ var id=e.id||''; var ua=(navigator&&navigator.userAgent)||''; var isIOS=/iPad|iPhone|iPod/.test(ua) || (ua.indexOf('Macintosh')>=0 && 'ontouchend' in document); var pr=isIOS?1:2; if(id==='user-pin'){ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); ensureUserLayers(); } } return; } if(id.indexOf('salon-unified-')===0){ await ensureUnifiedSalonImages(); toggleSalonLayerVisibility(); return; } var col='#9CA3AF'; if(id==='salon-open') col='#06C167'; else if(id==='salon-closing') col='#F59E0B'; else if(id==='salon-opening') col='#3B82F6'; else if(id==='salon-closed') col='#9CA3AF'; else if(id==='salon-default') col='#9CA3AF'; if(id.indexOf('salon-')===0 && !map.hasImage(id)){ var si = toImageData(makeSalonImage(col)); if(si){ map.addImage(id, si, { pixelRatio: pr }); toggleSalonLayerVisibility(); } } }catch(_){} }); }catch(_){ }
+      
+      // UPDATED: Fixed pixelRatio to 2 constant
+      try{ map.on('styleimagemissing', async function(e){ try{ var id=e.id||''; 
+        
+        // FIX: Always use pixelRatio 2 for 64px images to look sharp (32px) on all devices
+        var pr = 2; 
+
+        if(id==='user-pin'){ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); ensureUserLayers(); } } return; } if(id.indexOf('salon-unified-')===0){ await ensureUnifiedSalonImages(); toggleSalonLayerVisibility(); return; } var col='#9CA3AF'; if(id==='salon-open') col='#06C167'; else if(id==='salon-closing') col='#F59E0B'; else if(id==='salon-opening') col='#3B82F6'; else if(id==='salon-closed') col='#9CA3AF'; else if(id==='salon-default') col='#9CA3AF'; if(id.indexOf('salon-')===0 && !map.hasImage(id)){ var si = toImageData(makeSalonImage(col)); if(si){ map.addImage(id, si, { pixelRatio: pr }); toggleSalonLayerVisibility(); } } }catch(_){} }); }catch(_){ }
+      
       setTimeout(function(){ try{ map.resize(); }catch(_){} }, 500);
       if(cam){ restoredCamera=true; }
       try { navigator.geolocation.getCurrentPosition(function(pos){ updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, !restoredCamera); ensureUserLayers(); }, function(){}, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }); setTimeout(function(){ if(!hasCenteredOnUser && userLocation && !restoredCamera){ try{ map.setCenter([userLocation.lng, userLocation.lat]); map.setZoom(14); hasCenteredOnUser=true; applyMobileOffset(); }catch(_){} } }, 1500); } catch(_) {}
@@ -626,7 +651,11 @@
       userLocation = { lat: lat, lng: lng };
       try{
         if(!map.getSource('user-point')){ map.addSource('user-point', { type:'geojson', data:{ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } } }); }
-        try{ if(!map.hasImage('user-pin')){ var up2 = toImageData(makeUserImage()); if(up2){ map.addImage('user-pin', up2, { pixelRatio: 2 }); } } else { var up3 = toImageData(makeUserImage()); if(up3){ map.updateImage('user-pin', up3); } } }catch(_){}
+        
+        // FIX: Always use pixelRatio 2 for user pin
+        var pr = 2;
+
+        try{ if(!map.hasImage('user-pin')){ var up2 = toImageData(makeUserImage()); if(up2){ map.addImage('user-pin', up2, { pixelRatio: pr }); } } else { var up3 = toImageData(makeUserImage()); if(up3){ map.updateImage('user-pin', up3); } } }catch(_){}
         if(!map.getLayer('user-pin-symbol')){ map.addLayer({ id:'user-pin-symbol', type:'symbol', source:'user-point', layout:{ 'icon-image':'user-pin', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-anchor':'center' } }); }
         try{ map.getSource('user-point').setData({ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } }); }catch(_){}
       }catch(_){ }
