@@ -177,4 +177,10 @@
   } else {
     ensureStyles(); applyPageEnter(); bindGlobalLoading();
   }
+
+  window.addEventListener('pageshow', function(){
+    hideLoading();
+    document.body.classList.remove('page-fade-out');
+    applyPageEnter();
+  });
 })();
