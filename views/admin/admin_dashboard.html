@@ -1853,17 +1853,20 @@ function mapPaymentTypeToPlan(paymentType) {
                     <div class="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
                         <div class="p-6">
                             <div class="flex items-center gap-3 mb-4">
-                                ${service.icon ? 
-                                    `<img src="${service.icon}" alt="${service.name_ar}" class="w-12 h-12 object-cover rounded-lg border border-gray-200">` :
-                                    `<div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                                        <i class="fas fa-concierge-bell text-xl text-gray-400"></i>
-                                    </div>`
-                                }
+                                ${(() => {
+                                    const ic = service.icon || '';
+                                    const isUrl = ic.startsWith('http') || ic.includes('supabase');
+                                    if (isUrl) return `<img src="${ic}" alt="${service.name_ar}" class="w-12 h-12 object-cover rounded-lg border border-gray-200">`;
+                                    const fa = ic && ic.startsWith('fa-') ? ic : 'fa-concierge-bell';
+                                    return `<div class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200"><i class="fas ${fa} text-xl text-gray-400"></i></div>`;
+                                })()}
                                 <div>
                                     <h3 class="font-bold text-lg text-gray-800">${service.name_ar}</h3>
+                                    ${service.is_active ? '' : '<span class="text-amber-700 text-xs bg-amber-100 px-2 py-0.5 rounded ml-1">غير نشط</span>'}
                                     <span class="text-sm px-2 py-1 rounded-full ${service.gender === 'women' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}">${service.gender === 'women' ? 'نساء' : 'رجال'}</span>
                                 </div>
                             </div>
+                            ${service.home_page_icon ? `<div class="mt-2 text-xs text-gray-500">صورة الصفحة الرئيسية:</div><img src="${service.home_page_icon}" alt="homepage" class="w-16 h-16 object-cover rounded-md border border-gray-200">` : ''}
                             
                             <div class="flex gap-2">
                                 <button onclick="editService(${service.id})" class="flex-1 bg-secondary text-white px-3 py-2 rounded-lg hover:bg-secondary/90 transition-colors text-sm">
@@ -1903,10 +1906,14 @@ function mapPaymentTypeToPlan(paymentType) {
             document.getElementById('service-name').value = service.name_ar;
             document.getElementById('service-gender').value = service.gender;
             document.getElementById('service-id').value = service.id;
+            const preview = document.getElementById('home-icon-preview');
+            if (preview && service.home_page_icon) { preview.src = service.home_page_icon; preview.classList.remove('hidden'); }
         } else {
             title.textContent = 'إضافة خدمة جديدة';
             form.reset();
             document.getElementById('service-id').value = '';
+            const preview = document.getElementById('home-icon-preview');
+            if (preview) { preview.classList.add('hidden'); preview.src = ''; }
         }
         
         modal.classList.add('modal-open');
@@ -1927,12 +1934,16 @@ function mapPaymentTypeToPlan(paymentType) {
         const name = document.getElementById('service-name').value;
         const gender = document.getElementById('service-gender').value;
         const iconFile = document.getElementById('service-icon').files[0];
+        const homeIconFile = document.getElementById('service-home-icon').files[0];
         
         formData.append('name_ar', name);
         formData.append('gender', gender);
         formData.append('service_type', 'main'); // Add required service_type field
         if (iconFile) {
             formData.append('icon', iconFile);
+        }
+        if (homeIconFile) {
+            formData.append('home_page_icon', homeIconFile);
         }
         
         try {
@@ -1972,13 +1983,18 @@ function mapPaymentTypeToPlan(paymentType) {
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             
-            if (!response.ok) throw new Error('Failed to delete service');
+            if (!response.ok) {
+                let msg = 'فشل في حذف الخدمة';
+                try { const j = await response.json(); if (j && j.message) msg = j.message; } catch(_){}
+                showMessage(messageBox, msg, false);
+                return;
+            }
             
             await loadServices();
-            showMessage('تم حذف الخدمة بنجاح', 'success');
+            showMessage(messageBox, 'تم حذف الخدمة بنجاح', true);
         } catch (error) {
             console.error('Error deleting service:', error);
-            showMessage('فشل في حذف الخدمة', 'error');
+            showMessage(messageBox, 'فشل في حذف الخدمة', false);
         }
     };
 
@@ -3049,6 +3065,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="file" id="service-icon" accept="image/*" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
                     <p class="text-xs text-gray-500 mt-1">اختياري - يفضل PNG أو JPG بحجم 64x64 بكسل</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">صورة الصفحة الرئيسية (اختياري)</label>
+                    <input type="file" id="service-home-icon" accept="image/*"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
+                    <img id="home-icon-preview" class="mt-2 w-16 h-16 object-cover rounded-md border border-gray-200 hidden" alt="homepage preview">
+                    <p class="text-xs text-gray-500 mt-1">تستخدم لعرض الخدمة في الصفحة الرئيسية مستقبلاً</p>
                 </div>
             </div>
             

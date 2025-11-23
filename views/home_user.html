@@ -386,7 +386,7 @@
             box-shadow: 0 4px 10px rgba(30, 41, 59, 0.2);
         }
         .discovery-service-card.active i {
-            color: #06C167 !important; /* Keep icon bright */
+            color: #06C167 !important;
         }
 
         /* Confirmation Modal Styles - CLEANER DESIGN */
@@ -750,66 +750,69 @@
                         ملفي الشخصي
                     </span>
                 </h2>
-                <div class="bg-white p-6 rounded-2xl shadow-xl space-y-4 border-t-4 border-secondary">
-                    
-                    <div class="flex items-center space-x-4 space-x-reverse pb-4 border-b border-gray-100">
-                        <i class="fas fa-user-circle text-3xl text-secondary"></i>
-                        <div>
-                            <p class="font-bold text-lg text-primary-dark" id="profile-name">...</p>
-                            <p class="text-sm text-gray-500">الحالة: <span class="font-medium text-secondary">مستخدم فعال</span></p>
+                <div class="bg-white p-6 rounded-2xl shadow-xl space-y-6 border-t-4 border-secondary">
+                    <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-secondary to-green-500 p-0.5">
+                                <div class="w-full h-full rounded-full bg-white flex items-center justify-center">
+                                    <i class="fas fa-user text-secondary text-2xl"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="font-extrabold text-xl text-primary-dark" id="profile-name">...</p>
+                                <span class="inline-flex items-center gap-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">مستخدم فعال</span>
+                            </div>
+                        </div>
+                        <div class="hidden md:flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                                <i class="fas fa-city"></i>
+                                <span id="profile-city">...</span>
+                            </span>
+                            <span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                <i class="fas fa-venus-mars"></i>
+                                <span id="profile-gender">...</span>
+                            </span>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="p-3 bg-gray-50 rounded-lg">
-                            <p class="text-sm font-medium text-gray-500"><i class="fas fa-envelope ml-1"></i> البريد الإلكتروني</p>
+                        <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                            <div class="flex items-center gap-2 text-sm font-medium text-gray-600"><i class="fas fa-envelope"></i><span>البريد الإلكتروني</span></div>
                             <p class="font-bold text-primary-dark mt-1" id="profile-email">...</p>
                         </div>
-                        <div class="p-3 bg-gray-50 rounded-lg">
-                            <p class="text-sm font-medium text-gray-500"><i class="fas fa-phone ml-1"></i> رقم الهاتف</p>
+                        <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                            <div class="flex items-center gap-2 text-sm font-medium text-gray-600"><i class="fas fa-phone"></i><span>رقم الهاتف</span></div>
                             <p class="font-bold text-primary-dark mt-1" id="profile-phone">...</p>
                         </div>
-                        <div class="p-3 bg-gray-50 rounded-lg">
-                            <p class="text-sm font-medium text-gray-500"><i class="fas fa-venus-mars ml-1"></i> الجنس</p>
-                            <p class="font-bold text-primary-dark mt-1" id="profile-gender">...</p>
-                        </div>
-                        <div class="p-3 bg-gray-50 rounded-lg">
-                            <p class="text-sm font-medium text-gray-500"><i class="fas fa-city ml-1"></i> المدينة</p>
-                            <p class="font-bold text-primary-dark mt-1" id="profile-city">...</p>
-                        </div>
-                        
-                        <!-- Strikes Section -->
-                        <div class="p-3 bg-red-50 rounded-lg">
-                            <p class="text-sm font-medium text-gray-500"><i class="fas fa-triangle-exclamation ml-1 text-red-500"></i> الإنذارات</p>
+                        <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                            <div class="flex items-center gap-2 text-sm font-medium text-gray-600"><i class="fas fa-triangle-exclamation text-red-500"></i><span>الإنذارات</span></div>
                             <p class="font-bold text-red-700 mt-1" id="profile-strikes">0 / 3</p>
                         </div>
-                        
-                        <div class="p-3 bg-gray-50 rounded-lg">
-                            <p class="text-sm font-medium text-gray-500"><i class="fas fa-heart ml-1"></i> المفضلة</p>
-                            <p class="font-bold text-primary-dark mt-1">تتبع 0 صالون</p>
+                        <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                            <div class="flex items-center gap-2 text-sm font-medium text-gray-600"><i class="fas fa-heart"></i><span>المفضلة</span></div>
+                            <p class="font-bold text-primary-dark mt-1" id="profile-favorites-count">تتبع 0 صالون</p>
                         </div>
-
                     </div>
-                    <div class="pt-4 border-t border-gray-100 mt-4">
+
+                    <div class="pt-2">
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-xl font-bold text-primary-dark">المفضلة</h3>
                             <i class="fas fa-heart text-secondary"></i>
                         </div>
                         <div class="overflow-x-auto w-full">
-                            <div id="profile-favorites-strip" class="flex gap-4 p-1"></div>
+                            <div id="profile-favorites-strip" class="flex gap-3 p-1"></div>
                         </div>
                     </div>
-                    
-                    <!-- User Reviews Section -->
-                    <div class="pt-4 border-t border-gray-100 mt-4">
+
+                    <div class="pt-2">
                         <h3 class="text-xl font-bold text-primary-dark mb-3 flex justify-between items-center">
                             مراجعاتي المكتوبة
                             <i class="fas fa-comment-dots text-secondary text-lg"></i>
                         </h3>
                         <div id="user-reviews-list" class="space-y-3">
-                            <div class="empty-state py-8">
-                                <i class="fas fa-pencil-alt text-3xl"></i>
-                                <p class="mt-2">لم تكتب أي مراجعات بعد.</p>
+                            <div class="empty-state py-8 text-center">
+                                <i class="fas fa-pencil-alt text-3xl text-gray-400"></i>
+                                <p class="mt-2 text-gray-600">لم تكتب أي مراجعات بعد.</p>
                             </div>
                         </div>
                     </div>
@@ -2468,9 +2471,7 @@ async function deleteUserReview(salonId) {
 function renderServiceCard(service) {
     const isActive = activeServiceFilterId && parseInt(activeServiceFilterId) === service.id;
 
-    // Check if icon is an image URL or FontAwesome class
     const isImageIcon = service.icon && (service.icon.startsWith('http') || service.icon.includes('supabase'));
-    
     return `
         <div class="scroll-item w-48 flex-shrink-0 rounded-2xl shadow-lg transition-all duration-300 border border-secondary-soft discovery-service-card ${isActive ? 'active' : 'hover:bg-gray-100 bg-white'}" data-service-id="${service.id}">
             <div class="p-4 text-center">
@@ -2827,10 +2828,30 @@ async function loadDiscoveryData(serviceFilterId = null) {
         const data = await response.json();
         
         data.services = data.services || [];
+
+        function getImportantTokens(g){
+            const m = ['قص','حلاقة','حلاق','لحية','صبغة','تنظيف','بشرة','حمام','كيراتين'];
+            const w = ['قص','صبغة','سشوار','تصفيف','مكياج','أظافر','بدكير','منكير','كيراتين','حمام'];
+            if (g === 'men' || g === 'male') return m; return w;
+        }
+        function priorityFor(name, tokens){
+            const s = String(name || '').toLowerCase();
+            for (let i=0;i<tokens.length;i++) { if (s.includes(tokens[i])) return i; }
+            return Infinity;
+        }
+        function selectImportant(list, gender){
+            const tokens = getImportantTokens(gender);
+            const tagged = list.map(s => ({ s, p: priorityFor(s.name_ar, tokens) }));
+            const filtered = tagged.filter(x => x.p !== Infinity);
+            if (!filtered.length) return list; // fallback if no matches
+            filtered.sort((a,b) => a.p - b.p);
+            return filtered.map(x => x.s).slice(0, 8);
+        }
+        const importantServices = selectImportant(data.services, currentUser.gender);
         data.citySalons = data.citySalons || [];
         data.allSalons = data.allSalons || [];
         
-        allMasterServices = data.services; // Store master services including icons
+        allMasterServices = importantServices; // limit to important services for homepage
         allSalons = data.allSalons; // Store all salons for filtering
 
         // Merge user's favorites to ensure hearts persist red on reload
@@ -2862,8 +2883,8 @@ async function loadDiscoveryData(serviceFilterId = null) {
         data.allSalons = data.allSalons.map(markFavorite);
         
         const servicesContainer = document.getElementById('discover-services-container');
-        if (data.services.length > 0) {
-            servicesContainer.innerHTML = data.services.map(service => renderServiceCard(service)).join('');
+        if (importantServices.length > 0) {
+            servicesContainer.innerHTML = importantServices.map(service => renderServiceCard(service)).join('');
         } else {
             servicesContainer.innerHTML = '<p class="text-gray-500 scroll-item pl-4">لا توجد خدمات متاحة</p>';
         }
@@ -3031,15 +3052,15 @@ async function loadUserData() {
                 }
                 if (favResponse.ok) {
                     const favs = await favResponse.json();
-                    document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع ${favs.length} صالون`;
+                    document.getElementById('profile-favorites-count').textContent = `تتبع ${favs.length} صالون`;
                 } else {
-                    document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع 0 صالون`;
+                    document.getElementById('profile-favorites-count').textContent = `تتبع 0 صالون`;
                 }
             } else {
-                document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع 0 صالون`;
+                document.getElementById('profile-favorites-count').textContent = `تتبع 0 صالون`;
             }
         } catch (_) {
-            document.querySelector('#profile-view .p-3:last-child p:last-child').textContent = `تتبع 0 صالون`;
+            document.getElementById('profile-favorites-count').textContent = `تتبع 0 صالون`;
         }
         
         // Load user's own reviews (authorized only)

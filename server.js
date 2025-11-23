@@ -165,8 +165,23 @@ async function initializeDb() {
             icon TEXT NOT NULL,
             gender TEXT NOT NULL,
             service_type TEXT NOT NULL DEFAULT 'main',
+            is_active BOOLEAN DEFAULT TRUE,
             UNIQUE(name_ar, gender)
         )`);
+
+        try {
+            const svcPragma = await db.query(`PRAGMA table_info(services)`);
+            const svcCols = new Set((svcPragma || []).map(r => r.name));
+            if (!svcCols.has('home_page_icon')) {
+                await db.run(`ALTER TABLE services ADD COLUMN home_page_icon TEXT`);
+            }
+            if (!svcCols.has('is_active')) {
+                await db.run(`ALTER TABLE services ADD COLUMN is_active BOOLEAN DEFAULT TRUE`);
+            }
+        } catch (e) {
+            try { await db.run(`ALTER TABLE services ADD COLUMN IF NOT EXISTS home_page_icon TEXT`); } catch (_) {}
+            try { await db.run(`ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`); } catch (_) {}
+        }
 
         await db.run(`CREATE TABLE IF NOT EXISTS reviews (
             id SERIAL PRIMARY KEY,
@@ -1306,6 +1321,8 @@ app.get('/api/ogmap/tiles/:z/:x/:y.pbf', async (req, res) => {
 app.use(compression()); // Compress all responses to improve load times
 app.use(bodyParser.json({ limit: '10mb' })); // Reasonable JSON body limit
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+
+// Lightweight image transform proxy for square thumbnails
 
 // Configure multer for file uploads
 const upload = multer({
@@ -2624,7 +2641,7 @@ app.get('/api/services/master/:gender', async (req, res) => {
     try {
         const gender = req.params.gender;
         // FIX: Use $1 placeholder
-        const sql = "SELECT id, name_ar, icon, service_type FROM services WHERE gender = $1";
+        const sql = "SELECT id, name_ar, icon, home_page_icon, service_type FROM services WHERE gender = $1 AND COALESCE(is_active, TRUE) = TRUE";
         
         const rows = await dbAll(sql, [gender]);
         res.json({ success: true, services: rows });
@@ -2642,7 +2659,7 @@ app.get('/api/admin/services', async (req, res) => {
     try {
         const { gender, search } = req.query;
         
-        let sql = "SELECT id, name_ar, icon, service_type, gender FROM services WHERE 1=1";
+        let sql = "SELECT id, name_ar, icon, home_page_icon, service_type, gender, COALESCE(is_active, TRUE) AS is_active FROM services WHERE 1=1";
         const params = [];
         
         if (gender && gender !== 'all') {
@@ -2666,7 +2683,7 @@ app.get('/api/admin/services', async (req, res) => {
 });
 
 // Add new service with image upload
-app.post('/api/admin/services', upload.single('icon'), async (req, res) => {
+app.post('/api/admin/services', upload.fields([{ name: 'icon', maxCount: 1 }, { name: 'home_page_icon', maxCount: 1 }]), async (req, res) => {
     try {
         const { name_ar, gender, service_type } = req.body;
         
@@ -2678,16 +2695,20 @@ app.post('/api/admin/services', upload.single('icon'), async (req, res) => {
         }
         
         let iconUrl = null;
+        let homeIconUrl = null;
         
         // Handle image upload if provided
-        if (req.file) {
+        const iconFile = req.files?.icon?.[0] || null;
+        const homeFile = req.files?.home_page_icon?.[0] || null;
+
+        if (iconFile) {
             try {
                 // Generate unique filename
                 const timestamp = Date.now();
                 const filename = `service-${timestamp}-${Math.random().toString(36).substring(7)}.webp`;
                 
                 // Optimize image using Sharp
-                const optimizedBuffer = await sharp(req.file.buffer)
+                const optimizedBuffer = await sharp(iconFile.buffer)
                     .resize(64, 64, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
                     .webp({ quality: 90 })
                     .toBuffer();
@@ -2728,15 +2749,39 @@ app.post('/api/admin/services', upload.single('icon'), async (req, res) => {
                 });
             }
         }
+
+        if (homeFile) {
+            try {
+                const timestamp = Date.now();
+                const filename = `home-service-${timestamp}-${Math.random().toString(36).substring(7)}.webp`;
+                const optimizedBuffer = await sharp(homeFile.buffer)
+                    .resize(128, 128, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
+                    .webp({ quality: 92 })
+                    .toBuffer();
+                const { data, error } = await supabase.storage
+                    .from('service-icons')
+                    .upload(filename, optimizedBuffer, { contentType: 'image/webp', upsert: false });
+                if (error) {
+                    console.error('Supabase upload error:', error);
+                } else {
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('service-icons')
+                        .getPublicUrl(filename);
+                    homeIconUrl = publicUrl;
+                }
+            } catch (e) {
+                console.error('Homepage image upload error:', e);
+            }
+        }
         
         // Insert service into database
         const sql = `
-            INSERT INTO services (name_ar, icon, service_type, gender) 
-            VALUES ($1, $2, $3, $4) 
-            RETURNING id, name_ar, icon, service_type, gender
+            INSERT INTO services (name_ar, icon, home_page_icon, service_type, gender) 
+            VALUES ($1, $2, $3, $4, $5) 
+            RETURNING id, name_ar, icon, home_page_icon, service_type, gender
         `;
         
-        const result = await dbGet(sql, [name_ar, iconUrl, service_type, gender]);
+        const result = await dbGet(sql, [name_ar, iconUrl, homeIconUrl, service_type, gender]);
         
         res.json({ 
             success: true, 
@@ -2751,7 +2796,7 @@ app.post('/api/admin/services', upload.single('icon'), async (req, res) => {
 });
 
 // Update existing service with optional image upload
-app.put('/api/admin/services/:service_id', upload.single('icon'), async (req, res) => {
+app.put('/api/admin/services/:service_id', upload.fields([{ name: 'icon', maxCount: 1 }, { name: 'home_page_icon', maxCount: 1 }]), async (req, res) => {
     try {
         const serviceId = req.params.service_id;
         const { name_ar, gender, service_type } = req.body;
@@ -2780,9 +2825,12 @@ app.put('/api/admin/services/:service_id', upload.single('icon'), async (req, re
         }
         
         let iconUrl = currentService.icon; // Keep existing icon by default
+        let homeIconUrl = currentService.home_page_icon; // Keep existing homepage icon by default
         
         // Handle new image upload if provided
-        if (req.file) {
+        const iconFile = req.files?.icon?.[0] || null;
+        const homeFile = req.files?.home_page_icon?.[0] || null;
+        if (iconFile) {
             try {
                 // Delete old image from Supabase if it exists and is a Supabase URL
                 if (currentService.icon && currentService.icon.includes('supabase')) {
@@ -2797,7 +2845,7 @@ app.put('/api/admin/services/:service_id', upload.single('icon'), async (req, re
                 const filename = `service-${timestamp}-${Math.random().toString(36).substring(7)}.webp`;
                 
                 // Optimize image using Sharp
-                const optimizedBuffer = await sharp(req.file.buffer)
+                const optimizedBuffer = await sharp(iconFile.buffer)
                     .resize(64, 64, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
                     .webp({ quality: 90 })
                     .toBuffer();
@@ -2838,16 +2886,40 @@ app.put('/api/admin/services/:service_id', upload.single('icon'), async (req, re
                 });
             }
         }
+
+        if (homeFile) {
+            try {
+                if (currentService.home_page_icon && currentService.home_page_icon.includes('supabase')) {
+                    const oldFilename = currentService.home_page_icon.split('/').pop();
+                    await supabase.storage.from('service-icons').remove([oldFilename]);
+                }
+                const timestamp = Date.now();
+                const filename = `home-service-${timestamp}-${Math.random().toString(36).substring(7)}.webp`;
+                const optimizedBuffer = await sharp(homeFile.buffer)
+                    .resize(128, 128, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
+                    .webp({ quality: 92 })
+                    .toBuffer();
+                const { data, error } = await supabase.storage
+                    .from('service-icons')
+                    .upload(filename, optimizedBuffer, { contentType: 'image/webp', upsert: false });
+                if (!error) {
+                    const { data: { publicUrl } } = supabase.storage.from('service-icons').getPublicUrl(filename);
+                    homeIconUrl = publicUrl;
+                }
+            } catch (e) {
+                console.error('Homepage image upload error:', e);
+            }
+        }
         
         // Update service in database
         const sql = `
             UPDATE services 
-            SET name_ar = $1, icon = $2, service_type = $3, gender = $4 
-            WHERE id = $5 
-            RETURNING id, name_ar, icon, service_type, gender
+            SET name_ar = $1, icon = $2, home_page_icon = $3, service_type = $4, gender = $5 
+            WHERE id = $6 
+            RETURNING id, name_ar, icon, home_page_icon, service_type, gender
         `;
         
-        const result = await dbGet(sql, [name_ar, iconUrl, service_type, gender, serviceId]);
+        const result = await dbGet(sql, [name_ar, iconUrl, homeIconUrl, service_type, gender, serviceId]);
         
         res.json({ 
             success: true, 
@@ -2882,25 +2954,40 @@ app.delete('/api/admin/services/:service_id', async (req, res) => {
             });
         }
         
-        // Check if service is being used by any salons
+        // Check if service is being used; if so, cascade delete dependents
         const usageCheck = await dbGet("SELECT COUNT(*) as count FROM salon_services WHERE service_id = $1", [serviceId]);
         if (usageCheck.count > 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Cannot delete service. It is currently being used by salons.' 
-            });
+            await dbRun("DELETE FROM salon_services WHERE service_id = $1", [serviceId]);
+        }
+        // Remove appointment-services entries and any appointments that directly reference this service
+        const apptSvcCount = await dbGet("SELECT COUNT(*) as count FROM appointment_services WHERE service_id = $1", [serviceId]);
+        if (apptSvcCount.count > 0) {
+            await dbRun("DELETE FROM appointment_services WHERE service_id = $1", [serviceId]);
+        }
+        const apptCount = await dbGet("SELECT COUNT(*) as count FROM appointments WHERE service_id = $1", [serviceId]);
+        if (apptCount.count > 0) {
+            await dbRun("DELETE FROM appointments WHERE service_id = $1", [serviceId]);
         }
         
-        // Delete image from Supabase if it exists and is a Supabase URL
-        if (service.icon && service.icon.includes('supabase')) {
+    // Delete image from Supabase if it exists and is a Supabase URL
+    if (service.icon && service.icon.includes('supabase')) {
+        try {
+            const filename = service.icon.split('/').pop();
+            await supabase.storage
+                .from('service-icons')
+                .remove([filename]);
+        } catch (imageError) {
+            console.warn('Failed to delete service icon:', imageError);
+            // Continue with service deletion even if image deletion fails
+        }
+    }
+        // Delete homepage image as well if present
+        if (service.home_page_icon && service.home_page_icon.includes('supabase')) {
             try {
-                const filename = service.icon.split('/').pop();
-                await supabase.storage
-                    .from('service-icons')
-                    .remove([filename]);
+                const filename = service.home_page_icon.split('/').pop();
+                await supabase.storage.from('service-icons').remove([filename]);
             } catch (imageError) {
-                console.warn('Failed to delete service icon:', imageError);
-                // Continue with service deletion even if image deletion fails
+                console.warn('Failed to delete service homepage icon:', imageError);
             }
         }
         
@@ -3816,4 +3903,23 @@ server.listen(PORT, async () => {
     } catch (error) {
         console.error("Database initialization error:", error.message);
     }
+});
+// Image proxy to mitigate HTTP/3/QUIC issues with some CDNs (restricted to Pexels)
+app.get('/api/proxy/image', async (req, res) => {
+  try {
+    const rawUrl = (req.query.url || '').toString();
+    if (!rawUrl) return res.status(400).send('Missing url');
+    const parsed = new URL(rawUrl);
+    const allowedHosts = new Set(['images.pexels.com']);
+    if (!allowedHosts.has(parsed.hostname)) return res.status(403).send('Host not allowed');
+    const r = await fetch(rawUrl, { headers: { 'User-Agent': 'Saloony/1.0 (+mailto:saloony.service@gmail.com)' } });
+    if (!r.ok) return res.status(r.status).send('Upstream error');
+    const ct = r.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', ct);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const ab = await r.arrayBuffer();
+    return res.send(Buffer.from(ab));
+  } catch (e) {
+    return res.status(502).send('Proxy error');
+  }
 });
