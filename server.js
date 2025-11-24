@@ -1590,6 +1590,9 @@ app.use('/videos', express.static(path.join(__dirname, 'videos'), {
     }
 }));
 
+// Serve map icons
+app.use('/map_icons', express.static(path.join(__dirname, 'map_icons'), { maxAge: '7d', etag: true }));
+
 // Test route for video
 app.get('/test-video', (req, res) => {
     const videoPath = path.join(__dirname, 'videos', 'app.mp4');

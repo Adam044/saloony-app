@@ -176,7 +176,7 @@
                 <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
             </div>
 
-            <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
+            <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold transition-transform active:scale-95">
                 <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل الدخول
             </button>
             <div class="text-center mt-3">
@@ -252,7 +252,7 @@
                     <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
                 
-                <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
+                <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold transition-transform active:scale-95">
                     <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كمستخدم
                 </button>
             </form>
@@ -320,7 +320,7 @@
                     <i class="fas fa-lock text-xl text-primary-dark absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 </div>
 
-                <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold">
+                <button type="submit" class="btn-primary w-full py-4 mt-6 rounded-xl text-lg font-extrabold transition-transform active:scale-95">
                     <i class="fas fa-arrow-circle-left text-xl ml-2"></i> تسجيل كصالون
                 </button>
             </form>
@@ -586,11 +586,11 @@ class AuthManager {
                 } else {
                     this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
                 }
-                this.showLoadingSpinner(false, 'login');
+                this.showLoadingSpinner(false, 'login-form');
             }
         } catch (error) {
             this.showToast('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.', 'error');
-            this.showLoadingSpinner(false, 'login');
+            this.showLoadingSpinner(false, 'login-form');
         }
     }
 
@@ -875,30 +875,51 @@ class AuthManager {
     }
 
     showToast(message, type = 'info') {
-        const messageBox = document.getElementById('message-box');
-        messageBox.textContent = message;
-        messageBox.className = `p-3 mb-4 text-center rounded-xl font-medium`;
-
-        const baseClasses = ['p-3', 'mb-4', 'text-center', 'rounded-xl', 'font-medium'];
-        
-        if (type === 'success') {
-            messageBox.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200', ...baseClasses);
-        } else if (type === 'error') {
-            messageBox.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200', ...baseClasses);
-        } else {
-            messageBox.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-200', ...baseClasses);
+        const box = document.getElementById('message-box');
+        const colors = type === 'success' ? { bg: 'bg-green-50', text: 'text-green-800', ring: 'ring-green-200' } : (type === 'error' ? { bg: 'bg-red-50', text: 'text-red-800', ring: 'ring-red-200' } : { bg: 'bg-blue-50', text: 'text-blue-800', ring: 'ring-blue-200' });
+        const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+        box.className = `p-4 mb-4 rounded-2xl font-bold shadow-lg ring-1 ${colors.bg} ${colors.text} ring ${colors.ring} flex items-center justify-center gap-3 transition-all duration-300`;
+        box.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span><button type="button" class="ml-2 px-2 py-1 rounded-lg bg-white/40 hover:bg-white/60">إغلاق</button>`;
+        box.classList.remove('hidden');
+        box.style.opacity = '0';
+        box.style.transform = 'translateY(6px)';
+        requestAnimationFrame(() => { box.style.opacity = '1'; box.style.transform = 'translateY(0)'; });
+        const closeBtn = box.querySelector('button');
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                box.style.opacity = '0';
+                box.style.transform = 'translateY(6px)';
+                setTimeout(() => box.classList.add('hidden'), 250);
+            };
         }
-
-        messageBox.classList.remove('hidden');
-        
         if (type !== 'error') {
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
+            clearTimeout(box._hideTimer);
+            box._hideTimer = setTimeout(() => {
+                if (!box.classList.contains('hidden')) {
+                    box.style.opacity = '0';
+                    box.style.transform = 'translateY(6px)';
+                    setTimeout(() => box.classList.add('hidden'), 250);
+                }
             }, 5000);
         }
     }
 
-    showLoadingSpinner(show, formId = null) { return; }
+    showLoadingSpinner(show, formId = null) {
+        const selector = formId ? `#${formId} button[type="submit"]` : null;
+        const btn = selector ? document.querySelector(selector) : null;
+        if (!btn) return;
+        if (show) {
+            btn.disabled = true;
+            btn.dataset.originalText = btn.innerHTML;
+            const isLogin = formId === 'login-form';
+            const text = isLogin ? 'جاري تسجيل الدخول...' : 'جاري إنشاء الحساب...';
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin ml-2"></i> ${text}`;
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+            delete btn.dataset.originalText;
+        }
+    }
 
     openResetStartModal() {
         const m = document.getElementById('reset-start-modal'); if (m) { m.classList.remove('hidden'); }

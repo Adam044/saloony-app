@@ -493,6 +493,14 @@
                             <i class="fas fa-sync-alt"></i>
                             تحديث
                         </button>
+                        <button id="open-block-slot-btn" class="ml-2 px-3 py-1 text-sm rounded-xl bg-red-100 hover:bg-red-200 text-red-700 inline-flex items-center gap-2" title="حجب وقت">
+                            <i class="fas fa-calendar-times"></i>
+                            حجب وقت
+                        </button>
+                        <button id="open-blocked-times-btn" class="ml-2 px-3 py-1 text-sm rounded-xl bg-blue-100 hover:bg-blue-200 text-blue-800 inline-flex items-center gap-2" title="عرض الإغلاقات">
+                            <i class="fas fa-list"></i>
+                            عرض الإغلاقات
+                        </button>
                     </h2>
                     <div class="flex space-x-2 space-x-reverse mb-4 border-b pb-2">
                         <button class="tab-appointments px-3 py-1 font-bold text-sm rounded-xl text-white bg-primary-dark transition-all" data-filter="today">اليوم</button>
@@ -505,6 +513,61 @@
                         <p class="text-gray-500 text-center py-4">جاري تحميل المواعيد...</p>
                     </div>
                 </section>
+            </div>
+
+            <div id="block-slot-modal" class="fixed inset-0 bg-black/50 z-50 items-center justify-center hidden">
+                <div class="bg-white rounded-2xl shadow-2xl w-11/12 max-w-md p-5">
+                    <div class="text-center font-bold text-primary-dark mb-3">حجب وقت مؤقت</div>
+                    <div class="grid gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">التاريخ</label>
+                            <input type="date" id="block-date" class="w-full p-3 border border-gray-300 rounded-lg">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">من</label>
+                                <input type="time" id="block-start" class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">إلى</label>
+                                <input type="time" id="block-end" class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">تنطبق على</label>
+                            <select id="block-staff-select" class="w-full p-3 border border-gray-300 rounded-lg appearance-none text-right"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">السبب (اختياري)</label>
+                            <input type="text" id="block-reason" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="مثال: حجز عبر الهاتف">
+                        </div>
+                        <div class="flex gap-3 mt-2">
+                            <button id="block-cancel-btn" class="flex-1 px-4 py-2 rounded-xl border">إلغاء</button>
+                            <button id="block-submit-btn" class="flex-1 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold">حجب</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="blocked-times-modal" class="fixed inset-0 bg-black/50 z-50 items-center justify-center hidden">
+                <div class="bg-white rounded-2xl shadow-2xl w-11/12 max-w-2xl p-5">
+                    <div class="text-center font-bold text-primary-dark mb-3">الإغلاقات المؤقتة</div>
+                    <div class="grid gap-3 mb-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">التاريخ</label>
+                                <input type="date" id="blocked-date" class="w-full p-3 border border-gray-300 rounded-lg">
+                            </div>
+                            <div class="flex items-end">
+                                <button id="blocked-refresh-btn" class="px-4 py-2 rounded-xl bg-primary-dark text-white">تحديث</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="blocked-list" class="space-y-2"></div>
+                    <div class="flex gap-3 mt-4">
+                        <button id="blocked-close-btn" class="flex-1 px-4 py-2 rounded-xl border">إغلاق</button>
+                    </div>
+                </div>
             </div>
             
             <div id="management-view" class="view-content hidden">
@@ -1579,59 +1642,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Toast Notification System
     const showToast = (message, isSuccess = true, duration = 4000) => {
         const toast = document.createElement('div');
-        toast.className = `
-            transform translate-x-full opacity-0 transition-all duration-300 ease-out
-            max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden
-        `;
-        
-        const bgColor = isSuccess ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
-        const iconColor = isSuccess ? 'text-green-400' : 'text-red-400';
-        const textColor = isSuccess ? 'text-green-800' : 'text-red-800';
+        const colors = isSuccess ? { bg: 'bg-emerald-50', ring: 'ring-emerald-200', text: 'text-emerald-800', icon: 'text-emerald-600' } : { bg: 'bg-rose-50', ring: 'ring-rose-200', text: 'text-rose-800', icon: 'text-rose-600' };
         const icon = isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle';
-        
+        toast.className = `max-w-sm w-full ${colors.bg} rounded-2xl shadow-2xl ring ${colors.ring} pointer-events-auto overflow-hidden transform translate-x-full opacity-0 transition-all duration-300`;
         toast.innerHTML = `
-            <div class="p-4 ${bgColor} border-l-4">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <i class="fas ${icon} ${iconColor}"></i>
-                    </div>
-                    <div class="ml-3 w-0 flex-1">
-                        <p class="text-sm font-medium ${textColor}">${message}</p>
-                    </div>
-                    <div class="ml-4 flex-shrink-0 flex">
-                        <button class="toast-close bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none">
-                            <i class="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-                </div>
+            <div class="p-4 flex items-center gap-3">
+                <i class="fas ${icon} ${colors.icon}"></i>
+                <div class="flex-1 ${colors.text} font-semibold">${message}</div>
+                <button class="toast-close w-7 h-7 rounded-full bg-white/60 hover:bg-white/80 flex items-center justify-center"><i class="fas fa-times text-xs"></i></button>
             </div>
+            <div class="h-1 bg-black/10"><div class="h-full bg-black/20" data-bar style="width: 100%;"></div></div>
         `;
-        
         toastContainer.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => {
-            toast.classList.remove('translate-x-full', 'opacity-0');
-            toast.classList.add('translate-x-0', 'opacity-100');
-        }, 100);
-        
-        // Close button functionality
+        setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); toast.classList.add('translate-x-0', 'opacity-100'); }, 50);
         const closeBtn = toast.querySelector('.toast-close');
-        closeBtn.addEventListener('click', () => removeToast(toast));
-        
-        // Auto remove after duration
-        setTimeout(() => removeToast(toast), duration);
-        
+        const bar = toast.querySelector('[data-bar]');
+        setTimeout(() => { bar.style.transition = `width ${duration}ms linear`; bar.style.width = '0%'; }, 100);
+        const remove = () => { toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => { toast.remove(); }, 280); };
+        closeBtn.addEventListener('click', remove);
+        setTimeout(remove, duration + 150);
         return toast;
-    };
-    
-    const removeToast = (toast) => {
-        toast.classList.add('translate-x-full', 'opacity-0');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 300);
     };
     
     // Update showMessage to use toast notifications
@@ -1649,6 +1679,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const breakEndInput = document.getElementById('break-end-input');
     const breakReasonInput = document.getElementById('break-reason-input');
     const breaksListContainer = document.getElementById('breaks-list-container');
+    const openBlockBtn = document.getElementById('open-block-slot-btn');
+    const blockModal = document.getElementById('block-slot-modal');
+    const blockDateInput = document.getElementById('block-date');
+    const blockStartInput = document.getElementById('block-start');
+    const blockEndInput = document.getElementById('block-end');
+    const blockStaffSelect = document.getElementById('block-staff-select');
+    const blockReasonInput = document.getElementById('block-reason');
+    const blockCancelBtn = document.getElementById('block-cancel-btn');
+    const blockSubmitBtn = document.getElementById('block-submit-btn');
+    const openBlockedBtn = document.getElementById('open-blocked-times-btn');
+    const blockedModal = document.getElementById('blocked-times-modal');
+    const blockedDateInput = document.getElementById('blocked-date');
+    const blockedList = document.getElementById('blocked-list');
+    const blockedRefreshBtn = document.getElementById('blocked-refresh-btn');
+    const blockedCloseBtn = document.getElementById('blocked-close-btn');
     
     // Hours calculation functionality
     const hoursDisplay = document.getElementById('hours-display');
@@ -1688,6 +1733,162 @@ document.addEventListener('DOMContentLoaded', async () => {
             hoursDisplay.classList.add('hidden');
         }
     }
+
+    function openBlockSlotModal() {
+        try { blockDateInput.value = new Date().toISOString().split('T')[0]; } catch (_) {}
+        if (blockStaffSelect) {
+            const fill = (list) => {
+                blockStaffSelect.innerHTML = '';
+                (list || []).forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name;
+                    blockStaffSelect.appendChild(opt);
+                });
+            };
+            const applyStaffLockIfRole = () => {
+                if (window.currentUserRole === 'staff' && Number.isFinite(window.currentStaffId)) {
+                    const only = [{ id: window.currentStaffId, name: window.currentStaffName || `#${window.currentStaffId}` }];
+                    fill(only);
+                    blockStaffSelect.disabled = true;
+                } else {
+                    blockStaffSelect.disabled = false;
+                    if (Array.isArray(staffList) && staffList.length > 0) {
+                        fill(staffList);
+                    } else {
+                        fetch(`/api/salon/staff/${salonId}`).then(r => r.ok ? r.json() : { staff: [] }).then(d => { staffList = d.staff || []; fill(staffList); }).catch(() => {});
+                    }
+                }
+            };
+            applyStaffLockIfRole();
+        }
+        blockStartInput.value = '';
+        blockEndInput.value = '';
+        blockReasonInput.value = '';
+        blockModal.classList.remove('hidden');
+        blockModal.classList.add('flex');
+    }
+
+    function closeBlockSlotModal() {
+        blockModal.classList.add('hidden');
+        blockModal.classList.remove('flex');
+    }
+
+    async function submitBlockSlot() {
+        const d = blockDateInput.value;
+        const s = blockStartInput.value;
+        const e = blockEndInput.value;
+        const r = (blockReasonInput.value || '').trim();
+        let staffId = parseInt(blockStaffSelect.value);
+        if (window.currentUserRole === 'staff' && Number.isFinite(window.currentStaffId)) {
+            staffId = window.currentStaffId;
+        }
+        if (!d || !s || !e) { showToast('يرجى ملء التاريخ والوقت', false); return; }
+        if (s >= e) { showToast('وقت البداية يجب أن يكون قبل النهاية', false); return; }
+        const payload = { mod_type: 'once', closure_type: 'interval', mod_date: d, start_time: s, end_time: e, staff_id: staffId, reason: (r || 'حجز عبر الهاتف') };
+        try {
+            blockSubmitBtn.disabled = true;
+            blockSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> جاري الحجب';
+            const res = await fetch(`/api/salon/schedule/modification/${salonId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if (data && data.success) {
+                showToast('تم حجب الوقت بنجاح', true);
+                closeBlockSlotModal();
+                if (typeof currentAppointmentsFilter !== 'undefined') { loadAppointments(currentAppointmentsFilter, { showLoading: false }); }
+            } else {
+                showToast((data && data.message) || 'فشل حجب الوقت', false);
+            }
+        } catch (_) {
+            showToast('خطأ في الشبكة أثناء الحجب', false);
+        } finally {
+            blockSubmitBtn.disabled = false;
+            blockSubmitBtn.innerHTML = 'حجب';
+        }
+    }
+
+    if (openBlockBtn) openBlockBtn.addEventListener('click', openBlockSlotModal);
+    if (blockCancelBtn) blockCancelBtn.addEventListener('click', closeBlockSlotModal);
+    if (blockModal) blockModal.addEventListener('click', function(e){ if (e.target === blockModal) closeBlockSlotModal(); });
+    if (blockSubmitBtn) blockSubmitBtn.addEventListener('click', submitBlockSlot);
+
+    function renderBlockedList(items, staffMap) {
+        let source = items;
+        if (window.currentUserRole === 'staff' && Number.isFinite(window.currentStaffId)) {
+            source = items.filter(m => parseInt(m.staff_id || 0) === window.currentStaffId);
+        }
+        blockedList.innerHTML = source.length ? '' : '<div class="p-4 text-center text-gray-500 border rounded-xl">لا توجد إغلاقات في هذا التاريخ</div>';
+        source.forEach(m => {
+            const staffName = m.staff_id ? (staffMap[m.staff_id] || `#${m.staff_id}`) : 'جميع العاملين';
+            const row = document.createElement('div');
+            row.className = 'p-3 bg-blue-50 rounded-xl border border-blue-200 flex items-center justify-between';
+            row.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center"><i class="fas fa-ban text-blue-600"></i></div>
+                    <div class="text-sm">
+                        <div class="font-bold text-primary-dark">${m.start_time} - ${m.end_time}</div>
+                        <div class="text-gray-600">${staffName}</div>
+                        <div class="text-gray-500">${m.reason || ''}</div>
+                    </div>
+                </div>
+                <button class="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm" data-del="${m.id}">حذف</button>
+            `;
+            blockedList.appendChild(row);
+        });
+        blockedList.querySelectorAll('[data-del]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = parseInt(e.currentTarget.getAttribute('data-del'));
+                try {
+                    const res = await fetch(`/api/salon/schedule/modification/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data && data.success) {
+                        showToast('تم حذف الإغلاق', true);
+                        loadBlockedForDate(blockedDateInput.value);
+                    } else {
+                        showToast((data && data.message) || 'فشل حذف الإغلاق', false);
+                    }
+                } catch (_) {
+                    showToast('خطأ في الشبكة أثناء الحذف', false);
+                }
+            });
+        });
+    }
+
+    async function loadBlockedForDate(dateStr) {
+        try {
+            const res = await fetch(`/api/salon/schedule/${salonId}`);
+            const data = await res.json();
+            const mods = (data && data.modifications) || [];
+            const staffRows = (data && data.breaks) ? [] : [];
+            const staffRes = await fetch(`/api/salon/staff/${salonId}`);
+            const staffData = await staffRes.json().catch(() => ({ staff: [] }));
+            const staffMap = {};
+            (staffData.staff || []).forEach(s => { staffMap[s.id] = s.name; });
+            const d = new Date(dateStr);
+            const dayIdx = d.getDay();
+            const filtered = mods.filter(m => m.closure_type === 'interval' && (
+                (m.mod_type === 'once' && m.mod_date === dateStr) ||
+                (m.mod_type === 'recurring' && parseInt(m.mod_day_index) === dayIdx)
+            ));
+            renderBlockedList(filtered, staffMap);
+        } catch (_) {
+            blockedList.innerHTML = '<div class="p-4 text-center text-red-600 border rounded-xl">فشل تحميل الإغلاقات</div>';
+        }
+    }
+
+    function openBlockedModal() {
+        blockedDateInput.value = new Date().toISOString().split('T')[0];
+        blockedModal.classList.remove('hidden');
+        blockedModal.classList.add('flex');
+        loadBlockedForDate(blockedDateInput.value);
+    }
+    function closeBlockedModal() {
+        blockedModal.classList.add('hidden');
+        blockedModal.classList.remove('flex');
+    }
+    if (openBlockedBtn) openBlockedBtn.addEventListener('click', openBlockedModal);
+    if (blockedCloseBtn) blockedCloseBtn.addEventListener('click', closeBlockedModal);
+    if (blockedModal) blockedModal.addEventListener('click', function(e){ if (e.target === blockedModal) closeBlockedModal(); });
+    if (blockedRefreshBtn) blockedRefreshBtn.addEventListener('click', function(){ loadBlockedForDate(blockedDateInput.value); });
     
     function timeToMinutes(timeStr) {
         const [hours, minutes] = timeStr.split(':').map(Number);

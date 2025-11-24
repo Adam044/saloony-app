@@ -260,7 +260,7 @@
       try{
         if(!map || !map.getSource('salons')) return;
         if(!map.getLayer('salons-symbols')){
-          map.addLayer({ id:'salons-symbols', type:'symbol', source:'salons', layout:{ 'icon-image': ['match',['get','status'],'open','salon-unified-open','closing_soon','salon-unified-closing','opening_soon','salon-unified-opening','closed','salon-unified-closed','salon-unified-default'], 'icon-size': 1.25, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-anchor': 'center', 'visibility': 'visible' } });
+          map.addLayer({ id:'salons-symbols', type:'symbol', source:'salons', layout:{ 'icon-image': 'salon-icon', 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1.1], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-anchor': 'center', 'visibility': 'visible' } });
         }
         if(map.getLayer('salons-circles')){ map.setLayoutProperty('salons-circles','visibility','none'); }
         salonLayerUpgraded = true;
@@ -331,8 +331,22 @@
     var iconCache = {};
     var iconInflight = {};
     var unifiedBitmap = null;
+    var triedLocalSalon = false;
+    var triedLocalUser = false;
     
-    // UPDATED: Added Retry Logic for map readiness
+    // UPDATED: Local salon icon loader
+    async function ensureLocalSalonIcon(){
+      return new Promise(function(resolve){
+        if(map.hasImage('salon-icon')) { resolve(true); return; }
+        if(triedLocalSalon) { resolve(map.hasImage('salon-icon')); return; }
+        triedLocalSalon = true;
+        try{ map.loadImage('/map_icons/salon.png', function(err, image){
+          if(err || !image){ resolve(false); return; }
+          try{ map.addImage('salon-icon', image, { pixelRatio: 2 }); resolve(true); }catch(_){ resolve(false); }
+        }); }catch(_){ resolve(false); }
+      });
+    }
+
     async function ensureUnifiedSalonImages(){ try{ if(!map) return; 
         
         // FIX: Retry if style not loaded yet (crucial for iOS)
@@ -341,37 +355,25 @@
             return;
         }
 
-        if(!unifiedBitmap){ unifiedBitmap=await loadFAIconBitmap(); }
-        var defs=[ ['salon-unified-open','#06C167'], ['salon-unified-closing','#F59E0B'], ['salon-unified-opening','#3B82F6'], ['salon-unified-closed','#9CA3AF'], ['salon-unified-default','#9CA3AF'] ];
-        
-        var pr = 2; 
-
-        for(var i=0;i<defs.length;i++){ var name=defs[i][0], col=defs[i][1]; if(!map.hasImage(name)){ var c=null; if(unifiedBitmap){ c=drawSalonFARingIconWithDot(unifiedBitmap, col); } else { c=makeSalonImageWithDot(col); } var img=toImageData(c); if(img){ map.addImage(name, img, { pixelRatio: pr }); } } }
-        imagesReady = defs.every(function(d){ return map.hasImage(d[0]); });
+        var localOk = await ensureLocalSalonIcon();
+        if(!localOk){
+          if(!unifiedBitmap){ unifiedBitmap=await loadFAIconBitmap(); }
+          var c = unifiedBitmap ? drawSalonFARingIconWithDot(unifiedBitmap, '#06C167') : makeSalonImageWithDot('#06C167');
+          var img = toImageData(c);
+          if(img && !map.hasImage('salon-icon')){ map.addImage('salon-icon', img, { pixelRatio: 2 }); }
+        }
+        imagesReady = map.hasImage('salon-icon');
     }catch(_){} }
     
-    // UPDATED: Added Retry Logic
+    // UPDATED: Simplified to rely on local icon
     function ensureSalonImages(){
       if(!map) return;
       try{
-        // FIX: Retry if style not loaded yet
         if(!(map.isStyleLoaded && map.isStyleLoaded())) {
             setTimeout(ensureSalonImages, 200);
             return;
         }
-
-        var defs=[ ['salon-open','#06C167'], ['salon-closing','#F59E0B'], ['salon-opening','#3B82F6'], ['salon-closed','#9CA3AF'], ['salon-default','#9CA3AF'] ];
-        var ready=true;
-        var pr = 2;
-
-        for(var i=0;i<defs.length;i++){
-          var name=defs[i][0], col=defs[i][1];
-          if(!map.hasImage(name)){
-            var img = toImageData(makeSalonImageWithDot(col));
-            if(img){ map.addImage(name, img, { pixelRatio: pr }); ready=false; }
-          }
-        }
-        imagesReady = ready || (map.hasImage('salon-open') && map.hasImage('salon-closing') && map.hasImage('salon-opening') && map.hasImage('salon-closed') && map.hasImage('salon-default'));
+        imagesReady = map.hasImage('salon-icon');
         if(imagesReady) upgradeSalonLayer();
       }catch(_){}
     }
@@ -389,11 +391,23 @@
 
         var pr = 2;
 
-        try{ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); } } else { var up2 = toImageData(makeUserImage()); if(up2){ map.updateImage('user-pin', up2); } } }catch(_){ }
+        var addedLocal = false;
+        try{
+          if(!triedLocalUser){
+            triedLocalUser = true;
+            map.loadImage('/map_icons/user.png', function(err, image){
+              if(!err && image){ try{ if(!map.hasImage('user-pin')){ map.addImage('user-pin', image, { pixelRatio: pr }); } else { map.updateImage('user-pin', image); } addedLocal = true; }catch(_){ } }
+            });
+          }
+        }catch(_){ }
+
+        if(!addedLocal){
+          try{ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); } } else { var up2 = toImageData(makeUserImage()); if(up2){ map.updateImage('user-pin', up2); } } }catch(_){ }
+        }
         var pt = { type:'Feature', geometry:{ type:'Point', coordinates:[userLocation.lng, userLocation.lat] } };
         if(!map.getSource('user-point')){ map.addSource('user-point', { type:'geojson', data: pt }); }
         if(!map.getLayer('user-halo')){ map.addLayer({ id:'user-halo', type:'circle', source:'user-point', paint:{ 'circle-color':'rgba(26,115,232,0.25)', 'circle-radius': 24, 'circle-blur': 0.8 }, layout:{ 'visibility':'visible' } }); }
-        if(!map.getLayer('user-pin-symbol')){ map.addLayer({ id:'user-pin-symbol', type:'symbol', source:'user-point', layout:{ 'icon-image':'user-pin', 'icon-size': 1.15, 'icon-allow-overlap': true, 'icon-anchor':'center' } }); }
+        if(!map.getLayer('user-pin-symbol')){ map.addLayer({ id:'user-pin-symbol', type:'symbol', source:'user-point', layout:{ 'icon-image':'user-pin', 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1.1], 'icon-allow-overlap': true, 'icon-anchor':'center' } }); }
         try{ map.getSource('user-point').setData(pt); }catch(_){}
       }catch(_){}
     }
@@ -554,7 +568,7 @@
         await ensureUnifiedSalonImages();
         ensureFallbackCirclesLayer();
         if(!map.getSource('salons')){ map.addSource('salons', { type:'geojson', data:{ type:'FeatureCollection', features:[] } }); }
-        if(!map.getLayer('salons-symbols')){ map.addLayer({ id:'salons-symbols', type:'symbol', source:'salons', layout:{ 'icon-image': ['match',['get','status'],'open','salon-unified-open','closing_soon','salon-unified-closing','opening_soon','salon-unified-opening','closed','salon-unified-closed','salon-unified-default'], 'icon-size': 1.25, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-anchor': 'center', 'visibility': imagesReady ? 'visible' : 'none' }, paint:{ } }); }
+        if(!map.getLayer('salons-symbols')){ map.addLayer({ id:'salons-symbols', type:'symbol', source:'salons', layout:{ 'icon-image': 'salon-icon', 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1.1], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-anchor': 'center', 'visibility': imagesReady ? 'visible' : 'none' }, paint:{ } }); }
         // If images not ready, show circles until icons are loaded
         if(!imagesReady){ try{ map.setLayoutProperty('salons-circles','visibility','visible'); }catch(_){} try{ map.setLayoutProperty('salons-symbols','visibility','none'); }catch(_){} }
         if(map.getLayer('salons-circles')){ try{ map.setLayoutProperty('salons-circles','visibility','none'); }catch(_){ } }
@@ -624,11 +638,10 @@
       
       // UPDATED: Fixed pixelRatio to 2 constant
       try{ map.on('styleimagemissing', async function(e){ try{ var id=e.id||''; 
-        
-        // FIX: Always use pixelRatio 2 for 64px images to look sharp (32px) on all devices
         var pr = 2; 
-
-        if(id==='user-pin'){ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); ensureUserLayers(); } } return; } if(id.indexOf('salon-unified-')===0){ await ensureUnifiedSalonImages(); toggleSalonLayerVisibility(); return; } var col='#9CA3AF'; if(id==='salon-open') col='#06C167'; else if(id==='salon-closing') col='#F59E0B'; else if(id==='salon-opening') col='#3B82F6'; else if(id==='salon-closed') col='#9CA3AF'; else if(id==='salon-default') col='#9CA3AF'; if(id.indexOf('salon-')===0 && !map.hasImage(id)){ var si = toImageData(makeSalonImage(col)); if(si){ map.addImage(id, si, { pixelRatio: pr }); toggleSalonLayerVisibility(); } } }catch(_){} }); }catch(_){ }
+        if(id==='user-pin'){ if(!map.hasImage('user-pin')){ var up = toImageData(makeUserImage()); if(up){ map.addImage('user-pin', up, { pixelRatio: pr }); ensureUserLayers(); } } return; }
+        if(id==='salon-icon'){ await ensureUnifiedSalonImages(); toggleSalonLayerVisibility(); return; }
+      }catch(_){} }); }catch(_){ }
       
       setTimeout(function(){ try{ map.resize(); }catch(_){} }, 500);
       if(cam){ restoredCamera=true; }
@@ -690,7 +703,7 @@
         var pr = 2;
 
         try{ if(!map.hasImage('user-pin')){ var up2 = toImageData(makeUserImage()); if(up2){ map.addImage('user-pin', up2, { pixelRatio: pr }); } } else { var up3 = toImageData(makeUserImage()); if(up3){ map.updateImage('user-pin', up3); } } }catch(_){}
-        if(!map.getLayer('user-pin-symbol')){ map.addLayer({ id:'user-pin-symbol', type:'symbol', source:'user-point', layout:{ 'icon-image':'user-pin', 'icon-size': 1, 'icon-allow-overlap': true, 'icon-anchor':'center' } }); }
+        if(!map.getLayer('user-pin-symbol')){ map.addLayer({ id:'user-pin-symbol', type:'symbol', source:'user-point', layout:{ 'icon-image':'user-pin', 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.7, 14, 1.1], 'icon-allow-overlap': true, 'icon-anchor':'center' } }); }
         try{ map.getSource('user-point').setData({ type:'Feature', geometry:{ type:'Point', coordinates:[lng, lat] } }); }catch(_){}
       }catch(_){ }
       if(center && !hasCenteredOnUser && !suspendAutoCenter){ try{ map.setCenter([lng, lat]); map.setZoom(16); hasCenteredOnUser=true; if(typeof accuracy==='number'){ bestAccuracy=accuracy; } lastCentered=[lat,lng]; }catch(_){} }

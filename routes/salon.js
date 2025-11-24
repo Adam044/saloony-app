@@ -369,10 +369,11 @@ module.exports = function register(app, deps) {
       return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
     }
     try {
+      const reasonSafe = (reason && String(reason).trim()) || 'حجب يدوي';
       const result = await dbGet(
         `INSERT INTO schedule_modifications (salon_id, mod_type, mod_date, mod_day_index, start_time, end_time, closure_type, reason, staff_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [salonId, mod_type || null, mod_date || null, mod_day_index || null, start_time || null, end_time || null, closure_type || null, reason || null, staff_id || null]
+        [salonId, mod_type || null, mod_date || null, mod_day_index || null, start_time || null, end_time || null, closure_type || null, reasonSafe, staff_id || null]
       );
       res.json({ success: true, modificationId: result.id });
     } catch {

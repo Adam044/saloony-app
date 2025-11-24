@@ -172,8 +172,31 @@
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>
-        
+
         <div class="p-6">
+            <div class="mb-6">
+                <div class="relative bg-black rounded-xl overflow-hidden shadow-2xl">
+                    <video id="ios-instructions-video" class="w-full h-auto" style="max-height: 70vh;" controls playsinline webkit-playsinline preload="metadata" muted poster="/images/ios_instructions.png">
+                        <source src="videos/ios_instructions.mp4" type="video/mp4">
+                        <source src="/videos/ios_instructions.mp4" type="video/mp4">
+                        <p class="text-center text-white p-8">
+                            متصفحك لا يدعم تشغيل الفيديو.
+                            <a href="/videos/ios_instructions.mp4" class="text-[#06C167] underline">اضغط هنا لتحميل الفيديو</a>
+                        </p>
+                    </video>
+                    <button id="ios-video-overlay" class="absolute inset-0 z-10 flex items-center justify-center bg-black/70">
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="w-28 h-28 rounded-2xl bg-white shadow-2xl ring-4 ring-white/10 overflow-hidden flex items-center justify-center">
+                                <img src="/images/icons/apple-touch-icon-180x180.png" alt="Saloony App Icon" class="w-full h-full object-cover">
+                            </div>
+                            <span class="inline-flex items-center gap-2 bg-white text-[#1E293B] px-5 py-2 rounded-full font-bold shadow">
+                                <i class="fa-solid fa-play"></i>
+                                مشاهدة الفيديو
+                            </span>
+                        </div>
+                    </button>
+                </div>
+            </div>
             <div class="grid sm:grid-cols-3 gap-4 mb-6">
                 <div class="flex flex-col items-center text-center p-4 rounded-lg bg-gray-50">
                     <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#1E293B] text-white text-sm font-bold mb-3">1</span>
@@ -394,6 +417,13 @@
             installBtn.classList.remove('opacity-60', 'cursor-not-allowed');
             if (androidInstallHint) androidInstallHint.textContent = 'جاهز للتثبيت — اضغط زر تثبيت';
         }
+        try {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            if (isAndroid && !isStandalone) {
+                setTimeout(() => { window.AppMode?.promptInstall(); }, 500);
+            }
+        } catch (_) {}
     });
 
     // iOS browser detection for Safari guidance
@@ -467,6 +497,11 @@
         });
     }
 
+    // Installation success feedback
+    window.addEventListener('appinstalled', () => {
+        showInstallToast('تم تثبيت التطبيق بنجاح!');
+    });
+
     // Hero CTAs
     if (continueBrowserBtn) {
         continueBrowserBtn.addEventListener('click', () => {
@@ -489,14 +524,19 @@
     const iosInstructionsBtn = document.getElementById('iosInstructionsBtn');
     const iosModal = document.getElementById('iosModal');
     const closeModal = document.getElementById('closeModal');
+    const iosVideo = document.getElementById('ios-instructions-video');
+    const iosOverlay = document.getElementById('ios-video-overlay');
 
     if (iosInstructionsBtn && iosModal && closeModal) {
         iosInstructionsBtn.addEventListener('click', () => {
             iosModal.classList.remove('hidden');
+            if (iosOverlay) iosOverlay.classList.remove('hidden');
+            if (iosVideo) { iosVideo.pause(); iosVideo.currentTime = 0; }
         });
 
         closeModal.addEventListener('click', () => {
             iosModal.classList.add('hidden');
+            if (iosVideo) iosVideo.pause();
         });
 
         // Close modal when clicking outside
@@ -510,7 +550,15 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !iosModal.classList.contains('hidden')) {
                 iosModal.classList.add('hidden');
+                if (iosVideo) iosVideo.pause();
             }
+        });
+    }
+
+    if (iosOverlay && iosVideo) {
+        iosOverlay.addEventListener('click', async () => {
+            iosOverlay.classList.add('hidden');
+            try { await iosVideo.play(); } catch (e) {}
         });
     }
 </script>
