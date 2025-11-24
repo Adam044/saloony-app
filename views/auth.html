@@ -185,6 +185,16 @@
         </form>
     </div>
 
+    <div id="account-choice-modal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-11/12 max-w-md p-4">
+            <div class="mb-3 text-center font-bold text-primary-dark">اختر نوع الحساب لتسجيل الدخول</div>
+            <div id="account-choice-buttons" class="grid grid-cols-1 gap-2"></div>
+            <div class="mt-3 text-center">
+                <button id="account-choice-cancel" class="px-3 py-2 rounded-lg border">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Signup Form Container -->
     <div id="signup-form-container" class="hidden form-content-transition">
         <h2 class="text-2xl font-bold text-primary-dark mb-6 text-center">انضم إلينا في رحلتك!</h2>
@@ -529,8 +539,9 @@ class AuthManager {
         }
 
         // Phone format validation for login
-        const isEmail = identifier.includes('@');
-        if (!isEmail) {
+            const isEmail = identifier.includes('@');
+        const isDigitsOnly = /^\d+$/.test(identifier);
+        if (!isEmail && isDigitsOnly) {
             const phonePattern = /^0[0-9]{9}$/;
             if (!phonePattern.test(identifier)) {
                 this.showToast('رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام بالضبط', 'error');
@@ -543,8 +554,8 @@ class AuthManager {
         try {
             const loginData = { identifier, password };
             if (isEmail) { loginData.email = identifier; }
-            else { loginData.phone = identifier; }
-
+            else if (/^0[0-9]{9}$/.test(identifier)) { loginData.phone = identifier; }
+            
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -570,12 +581,63 @@ class AuthManager {
                     }
                 }
             } else {
-                this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
+                if (result && result.require_selection && Array.isArray(result.accounts)) {
+                    this.showAccountChoiceModal(result.accounts, identifier, password);
+                } else {
+                    this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
+                }
                 this.showLoadingSpinner(false, 'login');
             }
         } catch (error) {
             this.showToast('حدث خطأ في الاتصال بالخادم. يرجى المحاولة مرة أخرى.', 'error');
             this.showLoadingSpinner(false, 'login');
+        }
+    }
+
+    showAccountChoiceModal(accounts, identifier, password) {
+        const modal = document.getElementById('account-choice-modal');
+        const buttons = document.getElementById('account-choice-buttons');
+        buttons.innerHTML = '';
+        const map = { user: 'مستخدم', employee: 'موظف', salon: 'صالون', admin: 'مدير' };
+        accounts.forEach(acc => {
+            const btn = document.createElement('button');
+            btn.className = 'px-3 py-2 rounded-lg bg-green-600 text-white';
+            btn.textContent = `الدخول كـ ${map[acc.user_type] || acc.user_type}`;
+            btn.addEventListener('click', () => this.performLoginWithType(identifier, password, acc.user_type));
+            buttons.appendChild(btn);
+        });
+        document.getElementById('account-choice-cancel').onclick = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    async performLoginWithType(identifier, password, desiredType) {
+        try {
+            const data = { identifier, password };
+            if (identifier.includes('@')) data.email = identifier; else data.phone = identifier;
+            data.desired_type = desiredType;
+            const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const result = await res.json();
+            if (res.ok) {
+                if (result.userType === 'admin') {
+                    localStorage.setItem('adminToken', result.token);
+                    window.location.href = '/admin/admin_dashboard.html';
+                } else {
+                    localStorage.setItem('salonni_token', result.token);
+                    localStorage.setItem('salonni_user', JSON.stringify(result.user));
+                    if (result.user.user_type === 'salon') window.location.href = '/home_salon.html';
+                    else if (result.user.user_type === 'user') window.location.href = '/home_user.html';
+                    else if (result.user.user_type === 'employee') window.location.href = '/employee_dashboard.html';
+                }
+            } else {
+                this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
+            }
+        } catch (_) {
+            this.showToast('حدث خطأ في الاتصال بالخادم.', 'error');
+        } finally {
+            const modal = document.getElementById('account-choice-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
     }
 

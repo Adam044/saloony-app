@@ -490,6 +490,14 @@ module.exports = function register(app, deps) {
       if (pin.length !== 6) {
         return res.status(400).json({ success: false, message: 'PIN must be exactly 6 digits.' });
       }
+      // Require at least one manager before adding any employee
+      if (role_type === 'staff') {
+        const adminCountRow = await db.get("SELECT COUNT(*) AS count FROM staff_roles WHERE salon_id = $1 AND role_type = 'admin' AND is_active = TRUE", [salonId]);
+        const adminCount = (adminCountRow && (adminCountRow.count || adminCountRow.COUNT)) ? Number(adminCountRow.count || adminCountRow.COUNT) : 0;
+        if (adminCount === 0) {
+          return res.status(400).json({ success: false, message: 'لا يمكن إضافة موظف قبل إضافة مدير واحد على الأقل لهذا الصالون.' });
+        }
+      }
       const staff = await db.get('SELECT id FROM staff WHERE id = $1 AND salon_id = $2', [staff_id, salonId]);
       if (!staff) {
         return res.status(404).json({ success: false, message: 'Staff member not found or does not belong to this salon.' });
@@ -509,7 +517,7 @@ module.exports = function register(app, deps) {
             `, [salonId, staff_id])) {
           const match = await bcrypt.compare(pin.toString(), role.pin_hash);
           if (match) {
-            return res.status(400).json({ success: false, message: `هذا الرقم السري مستخدم بالفعل من قبل ${role.staff_name}. يرجى اختيار رقم سري مختلف.` });
+            return res.status(400).json({ success: false, message: `لا يمكن استخدام نفس الرقم السري لأكثر من موظف. هذا الرقم مستخدم بالفعل من قبل ${role.staff_name}. يرجى اختيار رقم سري مختلف.` });
           }
         }
       }

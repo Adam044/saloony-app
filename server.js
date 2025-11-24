@@ -130,6 +130,7 @@ async function initializeDb() {
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             email TEXT UNIQUE,
+            username TEXT UNIQUE,
             phone TEXT,
             gender TEXT,
             city TEXT,
@@ -138,6 +139,16 @@ async function initializeDb() {
             user_type TEXT DEFAULT 'user',
             language_preference VARCHAR(10) DEFAULT 'auto'
         )`);
+        try { await db.run(`UPDATE users SET email = NULL WHERE email = ''`); } catch (_) {}
+        try {
+            const colsRes = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`, ['users', 'public']);
+            const cols = new Set((colsRes || []).map(r => r.column_name));
+            if (!cols.has('username')) {
+                await db.run(`ALTER TABLE users ADD COLUMN username TEXT UNIQUE`);
+            }
+        } catch (e) {
+            try { const pragma = await db.query(`PRAGMA table_info(users)`); const cols = new Set((pragma || []).map(r => r.name)); if (!cols.has('username')) { await db.run(`ALTER TABLE users ADD COLUMN username TEXT UNIQUE`); } } catch (_) {}
+        }
 
         // Create salons table - Linked to users by user_id, no redundant email/password
         await db.run(`CREATE TABLE IF NOT EXISTS salons (
@@ -170,8 +181,8 @@ async function initializeDb() {
         )`);
 
         try {
-            const svcPragma = await db.query(`PRAGMA table_info(services)`);
-            const svcCols = new Set((svcPragma || []).map(r => r.name));
+            const svcColsRes = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`, ['services', 'public']);
+            const svcCols = new Set((svcColsRes || []).map(r => r.column_name));
             if (!svcCols.has('home_page_icon')) {
                 await db.run(`ALTER TABLE services ADD COLUMN home_page_icon TEXT`);
             }
@@ -179,8 +190,7 @@ async function initializeDb() {
                 await db.run(`ALTER TABLE services ADD COLUMN is_active BOOLEAN DEFAULT TRUE`);
             }
         } catch (e) {
-            try { await db.run(`ALTER TABLE services ADD COLUMN IF NOT EXISTS home_page_icon TEXT`); } catch (_) {}
-            try { await db.run(`ALTER TABLE services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`); } catch (_) {}
+            try { const svcPragma = await db.query(`PRAGMA table_info(services)`); const svcCols = new Set((svcPragma || []).map(r => r.name)); if (!svcCols.has('home_page_icon')) { await db.run(`ALTER TABLE services ADD COLUMN home_page_icon TEXT`); } if (!svcCols.has('is_active')) { await db.run(`ALTER TABLE services ADD COLUMN is_active BOOLEAN DEFAULT TRUE`); } } catch (_) {}
         }
 
         await db.run(`CREATE TABLE IF NOT EXISTS reviews (
@@ -1429,7 +1439,8 @@ const loginSchema = z.object({
     identifier: z.string().trim().min(3).optional(),
     email: z.string().email().optional(),
     phone: z.string().trim().regex(/^0\d{9}$/).optional(),
-    password: z.string().min(6)
+    password: z.string().min(6),
+    desired_type: z.enum(['user','employee','salon','admin']).optional()
 }).refine((d) => !!(d.identifier || d.email || d.phone), {
     message: 'Email or phone is required',
     path: ['identifier']
@@ -2061,9 +2072,10 @@ app.post('/api/auth/login', async (req, res) => {
 
         const input = (identifier || email || phone || '').trim();
         const isEmail = input.includes('@');
+        const looksLikePhone = /^0\d{9}$/.test(input);
         
-        // Validate phone format if not email
-        if (!isEmail && input && !validatePhoneFormat(input)) {
+        // Validate phone format only when the identifier is digits-only (i.e., user typed a phone)
+        if (!isEmail && /^\d+$/.test(input) && !validatePhoneFormat(input)) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'رقم الهاتف يجب أن يبدأ بـ 0 ويكون 10 أرقام', 
@@ -2075,12 +2087,29 @@ app.post('/api/auth/login', async (req, res) => {
         let userResult;
         if (isEmail) {
             userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE email = $1', [input]);
-        } else {
+        } else if (looksLikePhone) {
             const normalizedIdentifier = normalizePhoneNumber(input);
             userResult = await db.query(
                 "SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = $1",
                 [normalizedIdentifier]
             );
+        } else {
+            userResult = await db.query('SELECT id, name, email, city, gender, phone, user_type, password, strikes FROM users WHERE LOWER(username) = LOWER($1)', [input]);
+        }
+        if (!isEmail && Array.isArray(userResult) && userResult.length > 1) {
+            const desired = parsed.data.desired_type || '';
+            if (!desired) {
+                return res.status(409).json({
+                    success: false,
+                    require_selection: true,
+                    accounts: userResult.map(r => ({ user_type: r.user_type, name: r.name }))
+                });
+            }
+            const filtered = userResult.filter(r => r.user_type === desired);
+            if (!filtered.length) {
+                return res.status(404).json({ success: false, message: 'لا يوجد حساب مطابق للاختيار.' });
+            }
+            userResult = filtered;
         }
         
         if (!userResult || userResult.length === 0) {

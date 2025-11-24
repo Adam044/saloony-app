@@ -1,5 +1,6 @@
 module.exports = function register(app, deps) {
   const { db, requireAdmin, requireDebugEnabled } = deps;
+  const bcrypt = require('bcrypt');
 
   app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
@@ -34,7 +35,7 @@ module.exports = function register(app, deps) {
 
   app.get('/api/admin/employees', requireAdmin, async (req, res) => {
     try {
-      const rows = await db.query('SELECT id, name FROM users WHERE user_type = $1 ORDER BY id DESC', ['employee']);
+      const rows = await db.query('SELECT id, name, username, email, phone, city FROM users WHERE user_type = $1 ORDER BY id DESC', ['employee']);
       res.json({ success: true, employees: rows });
     } catch (e) {
       res.status(500).json({ success: false });
@@ -43,24 +44,48 @@ module.exports = function register(app, deps) {
 
   app.post('/api/admin/employees', requireAdmin, async (req, res) => {
     try {
-      const { name, email, phone, city, password } = req.body || {};
+      const { name, email, phone, city, password, username } = req.body || {};
+      const emailToInsert = (email && String(email).trim()) ? String(email).trim() : null;
+      const phoneToInsert = (phone && String(phone).trim()) ? String(phone).trim() : null;
+      const nameToInsert = (name && String(name).trim()) ? String(name).trim() : null;
+      if (!nameToInsert) {
+        return res.status(400).json({ success: false, message: 'الاسم مطلوب.' });
+      }
+      const hashedPassword = await bcrypt.hash(String(password || ''), 12);
+      let usernameToInsert = (username && String(username).trim()) ? String(username).trim() : null;
+      if (!usernameToInsert) {
+        // Auto-generate unique employee username code
+        for (let i = 0; i < 5; i++) {
+          const code = `emp-${Math.random().toString(36).slice(2, 8)}`;
+          const exists = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [code]);
+          if (!exists) { usernameToInsert = code; break; }
+        }
+        if (!usernameToInsert) usernameToInsert = `emp-${Date.now().toString().slice(-6)}`;
+      }
       const inserted = await db.query(
-        `INSERT INTO users (name, email, phone, city, password, user_type)
-         VALUES ($1, $2, $3, $4, $5, 'employee') RETURNING id`,
-        [name, email, phone, city, password]
+        `INSERT INTO users (name, email, username, phone, city, password, user_type)
+         VALUES ($1, $2, $3, $4, $5, $6, 'employee') RETURNING id, username`,
+        [nameToInsert, emailToInsert, usernameToInsert, phoneToInsert, city || null, hashedPassword]
       );
-      res.json({ success: true, id: inserted[0]?.id });
+      res.json({ success: true, id: inserted[0]?.id, username: inserted[0]?.username });
     } catch (e) {
-      res.status(500).json({ success: false });
+      if (e && e.code === '23505') {
+        const msg = /username/i.test(String(e.detail||'')) ? 'اسم المستخدم مستخدم بالفعل. يرجى اختيار اسم مختلف.' : 'البريد الإلكتروني مسجل بالفعل. يرجى اختيار بريد مختلف أو تركه فارغاً.';
+        return res.status(400).json({ success: false, message: msg });
+      }
+      res.status(500).json({ success: false, message: 'خطأ في إنشاء الموظف.' });
     }
   });
 
   app.post('/api/admin/employees/:id/reset_password', requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const { password } = req.body || {};
-      await db.run('UPDATE users SET password = $1 WHERE id = $2', [password, id]);
-      res.json({ success: true });
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      let temp = 'Emp';
+      for (let i = 0; i < 7; i++) temp += chars[Math.floor(Math.random() * chars.length)];
+      const hashed = await bcrypt.hash(temp, 12);
+      await db.run('UPDATE users SET password = $1 WHERE id = $2', [hashed, id]);
+      res.json({ success: true, temp_password: temp });
     } catch (e) {
       res.status(500).json({ success: false });
     }

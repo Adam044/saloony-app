@@ -3143,6 +3143,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isEnabled = rolesToggle.checked;
         rolesDisabledMessage.classList.toggle('hidden', isEnabled);
         rolesEnabledContent.classList.toggle('hidden', !isEnabled);
+
+        // Enforce manager-first rule in role type selector
+        const hasAdmin = currentStaffRoles.some(r => r.role_type === 'admin' && r.is_active !== false);
+        const staffOption = document.querySelector('#role-type-select option[value="staff"]');
+        if (staffOption) {
+            staffOption.disabled = !hasAdmin;
+            if (!hasAdmin) { roleTypeSelect.value = 'admin'; }
+        }
     };
 
     // Populate staff select dropdown
@@ -3271,6 +3279,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             showMessage(messageBox, 'كلمة المرور الرقمية يجب أن تكون 6 أرقام بالضبط.', false);
             return;
         }
+
+        // Block adding employee if no manager exists
+        const hasAdmin = currentStaffRoles.some(r => r.role_type === 'admin' && r.is_active !== false);
+        if (roleType === 'staff' && !hasAdmin) {
+            showMessage(messageBox, 'لا يمكن إضافة موظف قبل إضافة مدير واحد على الأقل.', false);
+            return;
+        }
         
         try {
             const btn = e.submitter;
@@ -3313,7 +3328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showPinScreen();
                 }, 1500);
             } else {
-                showMessage(null, data.message || 'فشل في إضافة الدور.', false);
+                showMessage(messageBox, data.message || 'فشل في إضافة الدور.', false);
             }
         } catch (error) {
             console.error('Error adding staff role:', error);

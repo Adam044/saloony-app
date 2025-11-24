@@ -146,6 +146,10 @@
       var p = '';
       try { p = window.location.pathname || ''; } catch (_) {}
       if (p === '/auth.html' || (p && p.endsWith('/auth.html'))) return;
+      var form = e.target && e.target.tagName === 'FORM' ? e.target : null;
+      if (!form) return;
+      var explicit = form.getAttribute('data-global-loading') === 'true';
+      if (!explicit) return;
       showLoading();
       document.body.classList.add('page-fade-out');
     }, true);
