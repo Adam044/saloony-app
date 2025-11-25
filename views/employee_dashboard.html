@@ -195,7 +195,7 @@
     <div class="card kpi-card modern">
       <div class="label">زيارات اليوم</div>
       <div class="flex justify-end">
-        <div id="ring-visits" class="ring" style="--pct:0%"><span id="ring-visits-val" class="ring-val">0/15</span></div>
+        <div id="ring-visits" class="ring" style="--pct:0%"><span id="ring-visits-val" class="ring-val">0/10</span></div>
       </div>
     </div>
     <div class="card kpi-card modern">
@@ -487,8 +487,8 @@
 
   <script>
     // Employee Visits (range) rendering
-    function renderEmployeeVisits() {
-      const token = ensureEmployeeOrRedirect(); if (!token) return;
+    async function renderEmployeeVisits() {
+      const token = await ensureEmployeeOrRedirect(); if (!token) return;
       const vf = document.getElementById('emp-visits-from'); const vt = document.getElementById('emp-visits-to');
       if (!vf || !vt) return;
       const from = vf.value; const to = vt.value;
@@ -657,23 +657,27 @@
       }, intervalMs);
     }
 
-    function ensureEmployeeOrRedirect() {
+    async function ensureEmployeeOrRedirect() {
       const userStr = localStorage.getItem('salonni_user');
-      const token = localStorage.getItem('salonni_token');
-      if (!userStr || !token) { location.href = '/auth.html'; return null; }
+      let token = localStorage.getItem('salonni_token');
+      if (!userStr) { showMessage('انتهت الجلسة، الرجاء تسجيل الدخول مجدداً', 'error'); return null; }
       const user = JSON.parse(userStr);
-      const payload = parseJwt(token);
-      if (!user || user.user_type !== 'employee' || !payload || payload.role !== 'employee') {
-        // Redirect based on type if known
+      const payload = token && parseJwt(token);
+      if (!user || user.user_type !== 'employee') {
         if (user && user.user_type === 'salon') location.href = '/home_salon.html';
         else if (user && user.user_type === 'user') location.href = '/home_user.html';
         else location.href = '/auth.html';
         return null;
       }
+      if (!token || !payload || tokenSecondsLeft(token) <= 60) {
+        const nt = await attemptRefresh();
+        if (nt) { token = nt; }
+        else { showMessage('انتهت الجلسة، الرجاء تسجيل الدخول مجدداً', 'error'); return null; }
+      }
       return token;
     }
 
-    const defaultGoals = { signups: 2, visits: 15 };
+    const defaultGoals = { signups: 2, visits: 10 };
 
   function openVisitModal() {
     const backdrop = document.getElementById('visit-modal');
@@ -735,7 +739,7 @@
     }
 
     async function saveVisit() {
-      const token = ensureEmployeeOrRedirect();
+      const token = await ensureEmployeeOrRedirect();
       if (!token) return;
       const vt = document.getElementById('visit-type');
       const type = vt ? vt.value : 'first';
@@ -787,7 +791,7 @@
     }
 
     async function loadEmployeeSalonsList() {
-      const token = ensureEmployeeOrRedirect();
+      const token = await ensureEmployeeOrRedirect();
       if (!token) return;
       const sel = document.getElementById('visit-salon-existing');
       if (!sel) return;
@@ -851,7 +855,7 @@
     
 
     async function loadToday() {
-      const token = ensureEmployeeOrRedirect();
+      const token = await ensureEmployeeOrRedirect();
       if (!token) return;
       try {
         const res = await fetch('/api/employee/analytics/today', { headers: { 'Authorization': `Bearer ${token}` } });
@@ -924,6 +928,8 @@
             const vlbl = document.getElementById('ring-visits-val'); if (vlbl) vlbl.textContent = `${visits.length}/${visitsTarget}`;
           }
           const todayKey2 = new Date().toISOString().slice(0,10);
+          if (pctVisits >= 50 && !localStorage.getItem(`dg_visits_half_${todayKey2}`)) { localStorage.setItem(`dg_visits_half_${todayKey2}`,'1'); confettiBurst(); showMessage('ممتاز! وصلت إلى نصف هدف الزيارات اليوم', 'success'); }
+          if (pctVisits >= 75 && !localStorage.getItem(`dg_visits_75_${todayKey2}`)) { localStorage.setItem(`dg_visits_75_${todayKey2}`,'1'); confettiBurst(); showMessage('رائع! وصلت إلى 75% من هدف الزيارات اليوم', 'success'); }
           if (pctVisits >= 100 && !localStorage.getItem(`dg_visits_${todayKey2}`)) { localStorage.setItem(`dg_visits_${todayKey2}`,'1'); confettiBurst(); showMessage('رائع! أنجزت هدف الزيارات اليوم', 'success'); }
           
         }
@@ -931,7 +937,7 @@
     }
 
     async function loadAnalytics() {
-      const token = ensureEmployeeOrRedirect();
+      const token = await ensureEmployeeOrRedirect();
       if (!token) return;
       try {
         const today = new Date(); const iso = (d) => d.toISOString().slice(0,10);
@@ -1230,8 +1236,8 @@
       const payload = token && parseJwt(token);
       if (!token || !payload || tokenSecondsLeft(token) <= 60) {
         const nt = await attemptRefresh();
-        if (!nt) { location.href = '/auth.html'; return; }
-        token = nt;
+        if (!nt) { showMessage('انتهت الجلسة، الرجاء تسجيل الدخول مجدداً', 'error'); }
+        else { token = nt; }
       }
       scheduleTokenRefresh();
       try { const u = JSON.parse(localStorage.getItem('salonni_user') || '{}'); document.getElementById('emp-name').textContent = u.name || ''; } catch (_) {}
