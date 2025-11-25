@@ -1013,6 +1013,7 @@ async function backfillSubscriptionsFromSalons() {
                         'monthly_200': 'monthly_200',
                         'per_chair': 'monthly_60',
                         'monthly_60': 'monthly_60',
+                        'monthly_70': 'monthly_60',
                         'per_booking': 'per_booking',
                         'visibility_only_monthly_99': 'visibility_only',
                         'visibility_only_offer_199': 'visibility_only'
@@ -3635,7 +3636,7 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                     description = 'اشتراك شهري للصالحون: 200 شيكل';
                 } else if (normalizedPlan === 'monthly_60') {
                     const chairs = normalizedChairs || 1;
-                    paymentType = 'monthly_60';
+                    paymentType = 'monthly_70';
                     amount = 70 * chairs; // rounded price per chair
                     validUntil.setMonth(validUntil.getMonth() + 1);
                     description = `اشتراك شهري لكل كرسي: 70 شيكل × ${chairs} = ${amount} شيكل`;

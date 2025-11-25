@@ -66,7 +66,7 @@ module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin })
           amount = 200;
           description = 'تجديد شهري: 200 شيكل';
         } else if (pkg === 'monthly_60') {
-          paymentType = 'monthly_60';
+          paymentType = 'monthly_70';
           const c = Number(chairs) > 0 ? Number(chairs) : 1;
           amount = 70 * c;
           description = `تجديد شهري لكل كرسي: 70 × ${c} = ${amount} شيكل`;

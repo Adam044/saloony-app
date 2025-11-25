@@ -2022,8 +2022,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             method: 'POST',
                             body: formData
                         });
+                        const ct = uploadResp.headers.get('content-type') || '';
+                        if (!uploadResp.ok) {
+                            const text = await uploadResp.text();
+                            throw new Error(`فشل رفع الصورة: ${text.slice(0, 120)}`);
+                        }
+                        if (!ct.includes('application/json')) {
+                            const text = await uploadResp.text();
+                            throw new Error(`استجابة غير صالحة من خادم الرفع: ${text.slice(0, 120)}`);
+                        }
                         const uploadJson = await uploadResp.json();
-                        if (!uploadResp.ok || !uploadJson.success) {
+                        if (!uploadJson.success) {
                             throw new Error(uploadJson.message || 'فشل رفع الصورة');
                         }
                         imageUrl = uploadJson.image_url;
@@ -2049,6 +2058,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(infoData),
                 });
+                const ctInfo = response.headers.get('content-type') || '';
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+                }
+                if (!ctInfo.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(`استجابة غير صالحة من الخادم: ${text.slice(0, 120)}`);
+                }
                 const data = await response.json();
                 if (data.success) {
                     await loadSalonInfo();
@@ -4336,6 +4354,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(infoData),
             });
+            const ctInfo = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+            }
+            if (!ctInfo.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`استجابة غير صالحة من الخادم: ${text.slice(0, 120)}`);
+            }
             const data = await response.json();
             if (data.success) {
                 // Reload info to update local state (currentSalon)
@@ -5167,8 +5194,17 @@ function openSalonServicesExplorer(prefCategory = 'all') {
                 method: 'POST',
                 body: formData
               });
+              const ct = uploadResp.headers.get('content-type') || '';
+              if (!uploadResp.ok) {
+                const text = await uploadResp.text();
+                throw new Error(`فشل رفع الصورة: ${text.slice(0, 120)}`);
+              }
+              if (!ct.includes('application/json')) {
+                const text = await uploadResp.text();
+                throw new Error(`استجابة غير صالحة من خادم الرفع: ${text.slice(0, 120)}`);
+              }
               const uploadJson = await uploadResp.json();
-              if (!uploadResp.ok || !uploadJson.success) {
+              if (!uploadJson.success) {
                 throw new Error(uploadJson.message || 'فشل رفع الصورة');
               }
               salonData.image_url = uploadJson.image_url;
@@ -5184,9 +5220,16 @@ function openSalonServicesExplorer(prefCategory = 'all') {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(salonData)
           });
-          
+          const ct = response.headers.get('content-type') || '';
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+          }
+          if (!ct.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(`استجابة غير صالحة من الخادم: ${text.slice(0, 120)}`);
+          }
           const data = await response.json();
-          
           if (response.ok) {
             // Update stored user data with all the new information
             const updatedUser = {

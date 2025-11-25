@@ -528,10 +528,11 @@
         case 'monthly_subscription':
         case 'monthly_200': return 'اشتراك شهري 200 شيكل';
         case 'per_chair':
-        case 'monthly_60': return 'اشتراك شهري لكل كرسي';
+        case 'monthly_60':
+        case 'monthly_70': return 'اشتراك شهري لكل كرسي';
         case 'per_booking': return 'الدفع لكل حجز';
         case 'visibility_only_monthly_99': return 'بدون حجوزات 99 شيكل شهرياً';
-        case 'visibility_only_offer_199': return 'عرض بدون حجوزات 199 شيكل / 3 أشهر';
+        case 'visibility_only_offer_199': return 'عرض بدون حجوزات 200 شيكل / شهرين';
         default: return 'نوع غير معروف';
       }
     }
@@ -551,6 +552,9 @@
             let type = paymentTypeLabel(p.payment_type || '—');
             if ((p.payment_type || '') === 'monthly_60') {
               const chairs = Math.round((p.amount || 0) / 60);
+              type = `${type} (${formatNumber(chairs)})`;
+            } else if ((p.payment_type || '') === 'monthly_70') {
+              const chairs = Math.round((p.amount || 0) / 70);
               type = `${type} (${formatNumber(chairs)})`;
             }
             const amount = formatCurrency(p.amount || 0);

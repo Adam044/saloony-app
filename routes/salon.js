@@ -115,6 +115,82 @@ module.exports = function register(app, deps) {
     }
   });
 
+  app.post('/api/salon/info/:salon_id', async (req, res) => {
+    const salonId = req.params.salon_id;
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+      return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+    }
+    try {
+      const current = await dbGet(
+        'SELECT salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url FROM salons WHERE id = $1',
+        [salonId]
+      );
+      if (!current) return res.status(404).json({ success: false, message: 'Salon not found.' });
+
+      const {
+        salon_name,
+        owner_name,
+        salon_phone,
+        owner_phone,
+        address,
+        city,
+        gender_focus,
+        image_url,
+      } = req.body || {};
+      const pick = (val, existing) => {
+        if (val === undefined || val === null) return existing;
+        if (typeof val === 'string') {
+          const t = val.trim();
+          if (!t) return existing;
+          return t;
+        }
+        return val;
+      };
+      const nextSalonName = pick(salon_name, current.salon_name);
+      const nextOwnerName = pick(owner_name, current.owner_name);
+      const nextSalonPhone = pick(salon_phone, current.salon_phone);
+      const nextOwnerPhone = pick(owner_phone, current.owner_phone);
+      const nextAddress = pick(address, current.address);
+      const nextCity = pick(city, current.city);
+      const nextGenderFocusRaw = pick(gender_focus, current.gender_focus);
+      const nextGenderFocus = ['men','women'].includes(String(nextGenderFocusRaw).toLowerCase())
+        ? String(nextGenderFocusRaw).toLowerCase()
+        : current.gender_focus;
+      const nextImageUrlRaw = pick(image_url, current.image_url);
+      const safeImageUrl = typeof nextImageUrlRaw === 'string'
+        ? nextImageUrlRaw.trim().replace(/^`|`$/g, '')
+        : nextImageUrlRaw;
+
+      await dbRun(
+        `UPDATE salons
+         SET salon_name = $1,
+             owner_name = $2,
+             salon_phone = $3,
+             owner_phone = $4,
+             address = $5,
+             city = $6,
+             gender_focus = $7,
+             image_url = $8
+         WHERE id = $9`,
+        [
+          nextSalonName,
+          nextOwnerName,
+          nextSalonPhone,
+          nextOwnerPhone,
+          nextAddress,
+          nextCity,
+          nextGenderFocus,
+          safeImageUrl,
+          salonId,
+        ]
+      );
+
+      return res.json({ success: true, message: 'Salon info updated successfully.', image_url: safeImageUrl || current.image_url });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'Database error during salon update.' });
+    }
+  });
+
   app.get('/api/salon/location/:salon_id', async (req, res) => {
     try {
       const salonId = parseInt(req.params.salon_id);
