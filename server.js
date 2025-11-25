@@ -3625,9 +3625,9 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                 description = 'عرض خاص للصالونات الجديدة - 200 شيكل لمدة شهرين';
             } else if (invoiceOption === 'offer' && normalizedPlan === 'visibility_only') {
                 paymentType = 'visibility_only_offer_199';
-                amount = 199;
-                validUntil.setMonth(validUntil.getMonth() + 2);
-                description = 'خطة بدون حجوزات: عرض خاص شهرين مقابل 199 شيكل';
+                amount = 200;
+                validUntil.setMonth(validUntil.getMonth() + 3);
+                description = 'خطة بدون حجوزات: عرض خاص 3 أشهر مقابل 200 شيكل';
             } else if (invoiceOption === 'renewal') {
                 if (normalizedPlan === 'monthly_200') {
                     paymentType = 'monthly_200';

@@ -39,7 +39,7 @@ module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin })
         if (key === 'monthly_200') return 30;
         if (key === 'monthly_60') return 30;
         if (key === 'visibility_only_monthly_99') return 30;
-        if (key === 'visibility_only_offer_199') return 60;
+        if (key === 'visibility_only_offer_199') return 90;
         return 30;
       };
       const add = pkg === 'per_booking' ? null : plusDays(pkg);
@@ -76,8 +76,8 @@ module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin })
           description = 'خطة بدون حجوزات: 100 شيكل شهرياً';
         } else if (pkg === 'visibility_only_offer_199') {
           paymentType = 'visibility_only_offer_199';
-          amount = 199;
-          description = 'خطة بدون حجوزات: عرض 199 شيكل / شهرين';
+          amount = 200;
+          description = 'خطة بدون حجوزات: عرض 200 شيكل / 3 أشهر';
         } else if (pkg === 'per_booking') {
           paymentType = null;
         }
