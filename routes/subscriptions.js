@@ -39,7 +39,7 @@ module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin })
         if (key === 'monthly_200') return 30;
         if (key === 'monthly_60') return 30;
         if (key === 'visibility_only_monthly_99') return 30;
-        if (key === 'visibility_only_offer_199') return 90;
+        if (key === 'visibility_only_offer_199') return 60;
         return 30;
       };
       const add = pkg === 'per_booking' ? null : plusDays(pkg);
@@ -68,8 +68,8 @@ module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin })
         } else if (pkg === 'monthly_60') {
           paymentType = 'monthly_60';
           const c = Number(chairs) > 0 ? Number(chairs) : 1;
-          amount = 60 * c;
-          description = `تجديد شهري لكل كرسي: 60 × ${c} = ${amount} شيكل`;
+          amount = 70 * c;
+          description = `تجديد شهري لكل كرسي: 70 × ${c} = ${amount} شيكل`;
         } else if (pkg === 'visibility_only_monthly_99') {
           paymentType = 'visibility_only_monthly_99';
           amount = 100;
@@ -77,7 +77,7 @@ module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin })
         } else if (pkg === 'visibility_only_offer_199') {
           paymentType = 'visibility_only_offer_199';
           amount = 199;
-          description = 'خطة بدون حجوزات: عرض 199 شيكل / 3 أشهر';
+          description = 'خطة بدون حجوزات: عرض 199 شيكل / شهرين';
         } else if (pkg === 'per_booking') {
           paymentType = null;
         }

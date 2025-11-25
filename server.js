@@ -3625,8 +3625,8 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
             } else if (invoiceOption === 'offer' && normalizedPlan === 'visibility_only') {
                 paymentType = 'visibility_only_offer_199';
                 amount = 199;
-                validUntil.setMonth(validUntil.getMonth() + 3);
-                description = 'خطة بدون حجوزات: عرض خاص 3 أشهر مقابل 199 شيكل';
+                validUntil.setMonth(validUntil.getMonth() + 2);
+                description = 'خطة بدون حجوزات: عرض خاص شهرين مقابل 199 شيكل';
             } else if (invoiceOption === 'renewal') {
                 if (normalizedPlan === 'monthly_200') {
                     paymentType = 'monthly_200';
@@ -3636,9 +3636,9 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                 } else if (normalizedPlan === 'monthly_60') {
                     const chairs = normalizedChairs || 1;
                     paymentType = 'monthly_60';
-                    amount = 60 * chairs; // rounded price per chair
+                    amount = 70 * chairs; // rounded price per chair
                     validUntil.setMonth(validUntil.getMonth() + 1);
-                    description = `اشتراك شهري لكل كرسي: 60 شيكل × ${chairs} = ${amount} شيكل`;
+                    description = `اشتراك شهري لكل كرسي: 70 شيكل × ${chairs} = ${amount} شيكل`;
                 } else if (normalizedPlan === '2months_offer') {
                     // If plan is offer but invoiceOption is renewal, treat as monthly_200 renewal
                     paymentType = 'monthly_200';

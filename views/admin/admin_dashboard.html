@@ -232,10 +232,10 @@
                             <option value="">كل الباقات</option>
                             <option value="2months_offer">عرض شهرين</option>
                             <option value="monthly_200">200ils</option>
-                            <option value="monthly_60">60ils</option>
+                            <option value="monthly_60">70ils</option>
                             <option value="per_booking">لكل حجز</option>
                             <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
-                            <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر</option>
+                            <option value="visibility_only_offer_199">عرض بدون حجوزات 200/شهرين</option>
                         </select>
                     </div>
                     <div>
@@ -286,10 +286,10 @@
                             <option value="">كل الباقات</option>
                             <option value="2months_offer">عرض شهرين</option>
                             <option value="monthly_200">200ils</option>
-                            <option value="monthly_60">60ils</option>
+                            <option value="monthly_60">70ils</option>
                             <option value="per_booking">لكل حجز</option>
                             <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
-                            <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر</option>
+                            <option value="visibility_only_offer_199">عرض بدون حجوزات 200/شهرين</option>
                         </select>
                     </div>
                     <div>
@@ -520,7 +520,7 @@
                 </label>
                 <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
                     <input type="radio" name="booking-option" id="opt-monthly-60" value="monthly_60" class="h-4 w-4 text-secondary">
-                    <span class="font-semibold">لكل كرسي (60)</span>
+                    <span class="font-semibold">لكل كرسي (70)</span>
                 </label>
                 <label class="flex items-center cursor-pointer gap-3 p-2 rounded-lg hover:bg-gray-50">
                     <input type="radio" name="booking-option" id="opt-per-booking" value="per_booking" class="h-4 w-4 text-secondary">
@@ -1003,10 +1003,10 @@ function mapPaymentTypeToPlan(paymentType) {
         const pkg = latestSub?.package || null;
         if (!core) return '<span class="text-gray-500">---</span>';
         if (core === 'visibility_only') {
-            return pkg === 'visibility_only_offer_199' ? '<span class="sub-badge">عرض 199ils / 3 أشهر</span>' : '<span class="sub-badge">99ils بدون حجوزات</span>';
+            return pkg === 'visibility_only_offer_199' ? '<span class="sub-badge">عرض 200ils / شهرين</span>' : '<span class="sub-badge">99ils بدون حجوزات</span>';
         }
         if (core === 'booking') {
-            if (pkg === 'monthly_60') return '<span class="sub-badge">60ils</span>';
+            if (pkg === 'monthly_60') return '<span class="sub-badge">70ils</span>';
             if (pkg === 'monthly_200') return '<span class="sub-badge">200ils</span>';
             if (pkg === '2months_offer') return '<span class="sub-badge">عرض شهرين</span>';
             if (pkg === 'per_booking') return '<span class="sub-badge">لكل حجز</span>';
@@ -1376,7 +1376,7 @@ function mapPaymentTypeToPlan(paymentType) {
                     <option value="">كل الباقات (${totalPkgs})</option>
                     <option value="2months_offer">عرض شهرين (${packageCounts['2months_offer'] || 0})</option>
                     <option value="monthly_200">200ils (${packageCounts['monthly_200'] || 0})</option>
-                    <option value="monthly_60">60ils (${packageCounts['monthly_60'] || 0})</option>
+                    <option value="monthly_60">70ils (${packageCounts['monthly_60'] || 0})</option>
                     <option value="per_booking">لكل حجز (${packageCounts['per_booking'] || 0})</option>
                     <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري (${packageCounts['visibility_only_monthly_99'] || 0})</option>
                     <option value="visibility_only_offer_199">عرض بدون حجوزات 199/3 أشهر (${packageCounts['visibility_only_offer_199'] || 0})</option>
@@ -2023,10 +2023,10 @@ function mapPaymentTypeToPlan(paymentType) {
         if (latestSub && latestSub.plan) {
             if (latestSub.plan === 'booking') {
                 const m = latestSub.package;
-                currentPlan = m === 'monthly_60' ? '60ils' : (m === 'monthly_200' ? '200ils' : (m === '2months_offer' ? 'عرض شهرين' : 'لكل حجز'));
+                currentPlan = m === 'monthly_60' ? '70ils' : (m === 'monthly_200' ? '200ils' : (m === '2months_offer' ? 'عرض شهرين' : 'لكل حجز'));
             } else if (latestSub.plan === 'visibility_only') {
                 const m = latestSub.package;
-                currentPlan = m === 'visibility_only_offer_199' ? 'عرض 199ils / 3 أشهر' : '99ils بدون حجوزات';
+                currentPlan = m === 'visibility_only_offer_199' ? 'عرض 200ils / شهرين' : '99ils بدون حجوزات';
             }
         }
         if (planEl) planEl.textContent = currentPlan;
@@ -2448,10 +2448,10 @@ function mapPaymentTypeToPlan(paymentType) {
             'monthly_subscription': 'اشتراك شهري',
             'annual_subscription': 'اشتراك سنوي',
             'monthly_200': 'اشتراك شهري 200 شيكل',
-            'monthly_60': 'اشتراك شهري لكل كرسي (60 شيكل)',
+            'monthly_60': 'اشتراك شهري لكل كرسي (70 شيكل)',
             'per_booking': 'لكل حجز',
             'visibility_only_monthly_99': 'بدون حجوزات 99 شيكل شهرياً',
-            'visibility_only_offer_199': 'عرض بدون حجوزات 199 شيكل / 3 أشهر'
+            'visibility_only_offer_199': 'عرض بدون حجوزات 200 شيكل / شهرين'
         };
         document.getElementById('payment-type').textContent = paymentTypeMap[payment.payment_type] || payment.payment_type;
         
@@ -2761,10 +2761,10 @@ document.addEventListener('DOMContentLoaded', function() {
             'monthly_subscription': 'اشتراك شهري',
             'annual_subscription': 'اشتراك سنوي',
             'monthly_200': 'اشتراك شهري 200 شيكل',
-            'monthly_60': 'اشتراك شهري لكل كرسي (60 شيكل)',
+            'monthly_60': 'اشتراك شهري لكل كرسي (70 شيكل)',
             'per_booking': 'لكل حجز',
             'visibility_only_monthly_99': 'بدون حجوزات 99 شيكل شهرياً',
-            'visibility_only_offer_199': 'عرض بدون حجوزات 199 شيكل / 3 أشهر'
+            'visibility_only_offer_199': 'عرض بدون حجوزات 200 شيكل / شهرين'
         };
         document.getElementById('clean-payment-type').textContent = paymentTypeMap[payment.payment_type] || payment.payment_type;
         
