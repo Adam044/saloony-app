@@ -9,6 +9,8 @@ module.exports = function register(app, deps) {
       const womenSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['women']);
       const menSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['men']);
       const activeSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['accepted']);
+      const pendingSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['pending']);
+      const totalAppointmentsResult = await db.query('SELECT COUNT(*) as count FROM appointments');
       res.json({
         success: true,
         totals: {
@@ -16,7 +18,9 @@ module.exports = function register(app, deps) {
           salons: totalSalonsResult[0]?.count,
           womenSalons: womenSalonsResult[0]?.count,
           menSalons: menSalonsResult[0]?.count,
-          activeSalons: activeSalonsResult[0]?.count
+          activeSalons: activeSalonsResult[0]?.count,
+          pendingSalons: pendingSalonsResult[0]?.count,
+          totalAppointments: totalAppointmentsResult[0]?.count
         }
       });
     } catch (e) {

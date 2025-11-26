@@ -145,15 +145,7 @@
       <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-300" style="border-top-color:#1E293B"></div>
     </div>
 
-    <!-- Shared Top Navigation -->
-        <nav class="top-nav">
-        <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
-        <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
-        <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
-        <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
-        <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
-        <a id="nav-employees" class="nav-link" href="/admin/saloony_employees.html"><i class="fas fa-id-badge"></i><span>الموظفون</span></a>
-    </nav>
+    
 
     <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
         <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
@@ -170,44 +162,6 @@
                 </div>
             </div>
 
-            <!-- Activation & Plans -->
-            <div id="activation-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">التفعيل والخطط</h2>
-                <div class="mb-4 bg-white p-4 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div class="relative md:col-span-2">
-                        <input id="act-search" type="text" placeholder="ابحث باسم الصالون..." class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                        <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    </div>
-                    <div>
-                        <select id="act-plan" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل الخطط</option>
-                            <option value="booking">خطط الحجوزات</option>
-                            <option value="visibility_only">بدون حجوزات</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="act-city" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل المدن</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid lg:grid-cols-2 gap-6">
-                    <div class="bg-white rounded-xl shadow p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xl font-bold text-primary-dark">قيد التفعيل</h3>
-                            <button id="act-refresh" class="text-gray-500 hover:text-gray-700 text-sm"><i class="fas fa-sync-alt ml-1"></i> تحديث</button>
-                        </div>
-                        <div id="act-pending-list" class="space-y-3"><p class="text-center text-gray-500 p-6">لا توجد صالونات قيد التفعيل</p></div>
-                    </div>
-                    <div class="bg-white rounded-xl shadow p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xl font-bold text-primary-dark">نشطة (للتجديد)</h3>
-                            <button id="act-refresh2" class="text-gray-500 hover:text-gray-700 text-sm"><i class="fas fa-sync-alt ml-1"></i> تحديث</button>
-                        </div>
-                        <div id="act-active-list" class="space-y-3"><p class="text-center text-gray-500 p-6">لا توجد صالونات نشطة</p></div>
-                    </div>
-                </div>
-            </div>
 
 
             <!-- 3. All Salons -->
@@ -264,57 +218,15 @@
                 </div>
             </div>
             
-            <!-- 3.5 Pending Salons -->
-            <div id="pending-salons-view" class="view-content hidden">
-                <h2 class="text-3xl font-extrabold text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">الصالونات قيد الانتظار</h2>
-                <!-- Filters: name, core plan, package, status, city, date sort (Pending) -->
-                <div class="mb-4 bg-white p-4 rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div class="relative">
-                        <input id="salon-name-search-pending" type="text" placeholder="البحث باسم الصالون..." 
-                               class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                        <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    </div>
-                    <div>
-                        <select id="salon-plan-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل الخطط</option>
-                            <option value="booking">مع حجوزات</option>
-                            <option value="visibility_only">بدون حجوزات</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="salon-package-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل الباقات</option>
-                            <option value="2months_offer">عرض شهرين</option>
-                            <option value="monthly_200">200ils</option>
-                            <option value="monthly_60">70ils</option>
-                            <option value="per_booking">لكل حجز</option>
-                            <option value="visibility_only_monthly_99">بدون حجوزات 99/شهري</option>
-                            <option value="visibility_only_offer_199">عرض بدون حجوزات 200/3 أشهر</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="salon-status-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل الحالات</option>
-                            <option value="accepted">نشط</option>
-                            <option value="rejected">غير نشط</option>
-                            <option value="pending">قيد الانتظار</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="salon-city-filter-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">كل المدن</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="salon-date-sort-pending" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-light focus:border-primary-dark">
-                            <option value="">ترتيب افتراضي</option>
-                            <option value="newest">الأحدث أولاً</option>
-                            <option value="oldest">الأقدم أولاً</option>
-                        </select>
-                    </div>
+
+            <!-- Employee Insights -->
+            <div id="employee-insights-view" class="view-content hidden">
+                <h2 class="text-3xl font-extrabولد text-primary-dark mb-6 border-b-4 border-secondary/50 pb-2 mt-8">زيارات الموظفين</h2>
+                <div id="employee-insights-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <p class="col-span-full text-center text-gray-500">جاري تحميل ملخص الزيارات...</p>
                 </div>
-                <div id="pending-salons-list" class="table-wrapper">
-                    <p class="text-center text-gray-500 p-8">جاري تحميل الصالونات قيد الانتظار...</p>
+                <div id="employee-insights-list" class="table-wrapper">
+                    <p class="text-center text-gray-500 p-8">جاري تحميل تفاصيل الزيارات...</p>
                 </div>
             </div>
             
@@ -468,8 +380,8 @@
             <span class="text-xs font-medium mt-1">الخدمات</span>
         </button>
         <button id="nav-payments" class="nav-item flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-view="payments-view">
-            <i class="fas fa-receipt text-xl"></i>
-            <span class="text-xs font-medium mt-1">المدفوعات</span>
+            <i class="fas fa-file-invoice text-xl"></i>
+            <span class="text-xs font-medium mt-1">الفواتير</span>
         </button>
     </nav>
 </div>
@@ -907,6 +819,13 @@
         
         setTimeout(() => { element.classList.add('hidden'); }, 5000);
     };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const h = (location.hash || '').replace('#','');
+            if (h && views[h]) { switchView(h); }
+        } catch(_) {}
+    });
     const messageBox = document.getElementById('message-box');
 
     // Utility function to format date
@@ -1017,8 +936,7 @@ function mapPaymentTypeToPlan(paymentType) {
     // --- View Switching ---
     const views = {
         'dashboard-view': document.getElementById('dashboard-view'),
-        'activation-view': document.getElementById('activation-view'),
-        'pending-salons-view': document.getElementById('pending-salons-view'),
+        'employee-insights-view': document.getElementById('employee-insights-view'),
         'all-salons-view': document.getElementById('all-salons-view'),
         'bookings-view': document.getElementById('bookings-view'),
         'all-users-view': document.getElementById('all-users-view'),
@@ -1050,8 +968,8 @@ function mapPaymentTypeToPlan(paymentType) {
 
         if (viewId === 'dashboard-view') {
             await loadAdminStats();
-        } else if (viewId === 'activation-view') {
-            await loadActivationView();
+        } else if (viewId === 'employee-insights-view') {
+            await loadEmployeeInsights();
         } else if (viewId === 'all-salons-view') {
             await loadSalons('all');
         } else if (viewId === 'bookings-view') {
@@ -1063,117 +981,62 @@ function mapPaymentTypeToPlan(paymentType) {
         }
     };
 
-    async function loadActivationView() {
-        const containerPending = document.getElementById('act-pending-list');
-        const containerActive = document.getElementById('act-active-list');
-        const selCity = document.getElementById('act-city');
-        const planGroup = document.getElementById('act-plan')?.value || '';
-        const searchTerm = (document.getElementById('act-search')?.value || '').trim().toLowerCase();
-        showDashboardLoading();
+    async function loadEmployeeInsights() {
+        const grid = document.getElementById('employee-insights-grid');
+        const list = document.getElementById('employee-insights-list');
         try {
-            const res = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-            if (!res.ok) throw new Error('فشل تحميل الصالونات');
+            const token = localStorage.getItem('adminToken');
+            const res = await fetch('/api/admin/employees', { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
-            const allSalons = Array.isArray(data) ? data : (Array.isArray(data.salons) ? data.salons : []);
-            const cities = {};
-            allSalons.forEach(s => { const c = (s.city || 'غير محدد'); cities[c] = (cities[c]||0)+1; });
-            if (selCity && !selCity.dataset.init) {
-                selCity.innerHTML = `<option value="">كل المدن</option>${Object.keys(cities).sort((a,b)=>a.localeCompare(b)).map(c=>`<option value="${c}">${c} (${cities[c]})</option>`).join('')}`;
-                selCity.dataset.init = '1';
+            const employees = Array.isArray(data) ? data : (Array.isArray(data.employees) ? data.employees : []);
+            let totals = { visitsToday: 0, activatedToday: 0, interestedToday: 0, notInterestedToday: 0 };
+            const rows = [];
+            for (const emp of employees) {
+                try {
+                    const sRes = await fetch(`/api/admin/employees/${emp.id}/analytics/summary`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const sData = await sRes.json();
+                    const t = sData.today || {};
+                    const visits = Number(t.activated||0) + Number(t.signed_up||0) + Number(t.interested||0) + Number(t.not_interested||0) + Number(t.unknown||0);
+                    totals.visitsToday += visits;
+                    totals.activatedToday += Number(t.activated||0);
+                    totals.interestedToday += Number(t.interested||0);
+                    totals.notInterestedToday += Number(t.not_interested||0);
+                    rows.push({ name: emp.name || '—', visits, activated: Number(t.activated||0), interested: Number(t.interested||0), notInterested: Number(t.not_interested||0) });
+                } catch (_) {}
             }
-            const mapPaymentTypeToPlan = (pt) => {
-                switch(pt){
-                    case 'offer_200ils': return '2months_offer';
-                    case 'monthly_subscription': return 'monthly_200';
-                    case 'monthly_200': return 'monthly_200';
-                    case 'per_chair': return 'monthly_60';
-                    case 'per_booking': return 'per_booking';
-                    case 'visibility_only_monthly_99': return 'visibility_only';
-                    case 'visibility_only_offer_199': return 'visibility_only';
-                    default: return undefined;
-                }
-            };
-            const latestPaymentBySalon = {};
-            try {
-                const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-                const pData = pRes.ok ? await pRes.json() : [];
-                const payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : (Array.isArray(pData.items) ? pData.items : []));
-                payments.forEach(p => {
-                    const id = p.salon_id; if (!id) return; const prev = latestPaymentBySalon[id];
-                    if (!prev || new Date(p.created_at) > new Date(prev.created_at)) latestPaymentBySalon[id] = p;
-                });
-            } catch(_) {}
-            let latestSubBySalon = {};
-            try {
-                const sRes = await fetch('/api/admin/subscriptions', { headers: { 'Authorization': `Bearer ${adminToken}` } });
-                const sData = sRes.ok ? await sRes.json() : [];
-                const subs = Array.isArray(sData) ? sData : (Array.isArray(sData.subscriptions) ? sData.subscriptions : []);
-                subs.forEach(sub => {
-                    const id = sub.salon_id; if (!id) return; const prev = latestSubBySalon[id];
-                    if (!prev || new Date(sub.start_date || 0) > new Date(prev.start_date || 0)) latestSubBySalon[id] = sub;
-                });
-                window.allAdminSubscriptions = subs;
-            } catch(_) {}
-            const derivePlan = (s) => {
-                const latest = latestSubBySalon[s.id];
-                return latest?.plan || null;
-            };
-            const matchesFilters = (s) => {
-                const cityOk = !document.getElementById('act-city')?.value || (s.city || 'غير محدد') === document.getElementById('act-city').value;
-                const nameOk = !searchTerm || (String(s.salon_name||'').toLowerCase().includes(searchTerm));
-                const p = derivePlan(s);
-                const planOk = !planGroup || (planGroup === 'visibility_only' ? p === 'visibility_only' : (p !== 'visibility_only'));
-                return cityOk && nameOk && planOk;
-            };
-            const pending = allSalons.filter(s => s.status === 'pending').filter(matchesFilters);
-            const active = allSalons.filter(s => s.status === 'accepted').filter(matchesFilters);
-            const planBadge = (p) => {
-                if (p === 'visibility_only') return '<span class="sub-badge">بدون حجوزات</span>';
-                if (p === 'booking') return '<span class="sub-badge">مع حجوزات</span>';
-                return '<span class="text-gray-400">—</span>';
-            };
-            const renderCard = (s, type) => {
-                const p = derivePlan(s);
-                const actionBtn = type === 'pending'
-                    ? `<button class="btn btn-primary" data-act="activate" data-id="${s.id}"><i class="fas fa-check"></i><span>تفعيل</span></button>`
-                    : `<button class="btn btn-primary" data-act="renew" data-id="${s.id}"><i class="fas fa-receipt"></i><span>تجديد</span></button>`;
-                return `<div class="flex items-center justify-between border border-gray-200 rounded-xl p-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"><i class="fas fa-store text-gray-600"></i></div>
-                        <div>
-                            <div class="font-bold text-primary-dark">${(s.salon_name||'—').replace(/</g,'&lt;')}</div>
-                            <div class="text-sm text-gray-500">${(s.city||'غير محدد').replace(/</g,'&lt;')}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        ${planBadge(p)}
-                        ${actionBtn}
-                    </div>
-                </div>`;
-            };
-            containerPending.innerHTML = pending.length ? pending.map(s => renderCard(s,'pending')).join('') : '<p class="text-center text-gray-500 p-6">لا توجد صالونات قيد التفعيل</p>';
-            containerActive.innerHTML = active.length ? active.map(s => renderCard(s,'active')).join('') : '<p class="text-center text-gray-500 p-6">لا توجد صالونات نشطة</p>';
-            containerPending.querySelectorAll('[data-act="activate"]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const id = parseInt(btn.getAttribute('data-id')); const s = pending.find(x => x.id === id);
-                    if (s) showApprovalModal(s);
-                });
-            });
-            containerActive.querySelectorAll('[data-act="renew"]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const id = parseInt(btn.getAttribute('data-id')); const s = active.find(x => x.id === id);
-                    if (s) { try { sessionStorage.setItem('renewals:selectedSalonId', String(id)); } catch(_) {} window.location.href = '/admin/renewals.html'; }
-                });
-            });
-            document.getElementById('act-refresh')?.addEventListener('click', loadActivationView);
-            document.getElementById('act-refresh2')?.addEventListener('click', loadActivationView);
-            document.getElementById('act-search')?.addEventListener('input', () => loadActivationView());
-            document.getElementById('act-plan')?.addEventListener('change', () => loadActivationView());
-            document.getElementById('act-city')?.addEventListener('change', () => loadActivationView());
-        } catch (e) {
-            containerPending.innerHTML = '<p class="text-center text-red-500 p-6">فشل تحميل الصالونات</p>';
-            containerActive.innerHTML = '<p class="text-center text-red-500 p-6">فشل تحميل الصالونات</p>';
-        } finally { hideDashboardLoading(); }
+            grid.innerHTML = `
+                <div class="stat-card"><div><div class="text-sm text-gray-500">زيارات اليوم</div><div class="text-2xl font-extrabold">${totals.visitsToday}</div></div></div>
+                <div class="stat-card"><div><div class="text-sm text-gray-500">تفعيلات اليوم</div><div class="text-2xl font-extrabold">${totals.activatedToday}</div></div></div>
+                <div class="stat-card"><div><div class="text-sm text-gray-500">مهتمون اليوم</div><div class="text-2xl font-extrabold">${totals.interestedToday}</div></div></div>
+            `;
+            list.innerHTML = `
+                <table class="min-w-full divide-y divide-gray-200 bg-white rounded-xl shadow-lg">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الموظف</th>
+                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">زيارات اليوم</th>
+                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تفعيلات</th>
+                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مهتمون</th>
+                      <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">غير مهتم</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-200">
+                    ${rows.map(r => `
+                      <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-primary-dark">${r.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${r.visits}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${r.activated}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${r.interested}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${r.notInterested}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+            `;
+        } catch (_) {
+            grid.innerHTML = '<p class="col-span-full text-center text-red-500">فشل تحميل الملخص</p>';
+            list.innerHTML = '<p class="text-center text-red-500 p-8">فشل تحميل التفاصيل</p>';
+        }
     }
     
     // --- Data Loading Functions ---
@@ -1224,19 +1087,47 @@ function mapPaymentTypeToPlan(paymentType) {
             } catch (_) {
                 revTotal = `${stats.totalRevenue || 0} ₪`;
             }
+            let visitsTotalsAll = { visits: 0, activated: 0, interested: 0, notInterested: 0 };
+            try {
+                const eRes = await fetch('/api/admin/employees', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                const eData = await eRes.json();
+                const employees = Array.isArray(eData) ? eData : (Array.isArray(eData.employees) ? eData.employees : []);
+                const summaries = await Promise.all((employees || []).map(async (emp) => {
+                    try {
+                        const s = await fetch(`/api/admin/employees/${emp.id}/analytics/summary`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                        return s.ok ? await s.json() : null;
+                    } catch (_) { return null; }
+                }));
+                summaries.forEach(sd => {
+                    if (!sd || !sd.all) return;
+                    const t = sd.all;
+                    const v = Number(t.activated||0) + Number(t.signed_up||0) + Number(t.interested||0) + Number(t.not_interested||0) + Number(t.unknown||0);
+                    visitsTotalsAll.visits += v;
+                    visitsTotalsAll.activated += Number(t.activated||0);
+                    visitsTotalsAll.interested += Number(t.interested||0);
+                    visitsTotalsAll.notInterested += Number(t.not_interested||0);
+                });
+            } catch (_) {}
             
             // Define stat cards
-            const statCards = [
+            const coreCards = [
                 { title: 'إجمالي المستخدمين', count: totals.users || 0, icon: 'fa-users', color: 'text-blue-500' },
                 { title: 'إجمالي الصالونات', count: totals.salons || 0, icon: 'fa-store-alt', color: 'text-primary-dark' },
                 { title: 'الصالونات النشطة', count: totals.activeSalons || 0, icon: 'fa-check-circle', color: 'text-green-500' },
                 { title: 'صالونات قيد الانتظار', count: totals.pendingSalons || 0, icon: 'fa-user-clock', color: 'text-red-500' },
-                { title: 'المواعيد الكلية', count: stats.totalAppointments || 0, icon: 'fa-calendar-check', color: 'text-secondary' },
-                revToday ? { title: 'إيراد اليوم', count: revToday, icon: 'fa-bolt', color: 'text-amber-500' } : null,
+                { title: 'المواعيد الكلية', count: totals.totalAppointments || 0, icon: 'fa-calendar-check', color: 'text-secondary' },
+            ];
+            const visitsCards = [
+                { title: 'إجمالي الزيارات', count: visitsTotalsAll.visits || 0, icon: 'fa-walking', color: 'text-secondary' },
+                { title: 'إجمالي التفعيلات (زيارات)', count: visitsTotalsAll.activated || 0, icon: 'fa-check', color: 'text-green-600' },
+                { title: 'إجمالي المهتمين (زيارات)', count: visitsTotalsAll.interested || 0, icon: 'fa-heart', color: 'text-amber-600' },
+                { title: 'إجمالي غير المهتمين (زيارات)', count: visitsTotalsAll.notInterested || 0, icon: 'fa-times-circle', color: 'text-red-600' },
+            ];
+            const revenueCards = [
                 revTotal ? { title: 'إجمالي الإيرادات', count: revTotal, icon: 'fa-money-bill-wave', color: 'text-green-600' } : null,
             ].filter(Boolean);
-            
-            grid.innerHTML = statCards.map(card => `
+
+            const renderCards = (arr) => arr.map(card => `
                 <div class="stat-card">
                     <div class="space-y-1">
                         <p class="text-gray-500 text-sm">${card.title}</p>
@@ -1247,6 +1138,16 @@ function mapPaymentTypeToPlan(paymentType) {
                     </div>
                 </div>
             `).join('');
+
+            grid.innerHTML = `
+                ${renderCards(coreCards)}
+                <div class="col-span-full border-t-4 border-secondary/40 my-4"></div>
+                <div class="col-span-full flex items-center gap-2 mb-2"><i class="fas fa-user-friends text-secondary"></i><span class="text-sm font-bold text-primary-dark">الزيارات</span></div>
+                ${renderCards(visitsCards)}
+                <div class="col-span-full border-t-4 border-secondary/40 my-4"></div>
+                <div class="col-span-full flex items-center gap-2 mb-2"><i class="fas fa-money-bill-wave text-green-600"></i><span class="text-sm font-bold text-primary-dark">الإيرادات</span></div>
+                ${renderCards(revenueCards)}
+            `;
 
             // Update pending badge in navigation
             const badge = document.getElementById('nav-pending-badge');

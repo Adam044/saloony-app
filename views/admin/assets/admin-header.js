@@ -4,7 +4,12 @@
   function ensureAuth() {
     try {
       const token = localStorage.getItem('adminToken');
-      if (!token) location.replace('/auth.html');
+      const secondsLeft = tokenSecondsLeft(token);
+      if (!token || secondsLeft <= 60) {
+        attemptRefresh().then((newToken) => {
+          if (!newToken) location.replace('/auth.html');
+        }).catch(() => location.replace('/auth.html'));
+      }
     } catch (_) {}
   }
 
@@ -24,11 +29,9 @@
 
     const navHTML = `
       <nav class="top-nav">
-        <a class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
+        <a class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-tachometer-alt"></i><span>الرئيسية</span></a>
         <a class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
         <a class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
-        <a class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
-        <a class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
         <a class="nav-link" href="/admin/saloony_employees.html"><i class="fas fa-id-badge"></i><span>الموظفون</span></a>
       </nav>`;
 
@@ -48,9 +51,13 @@
     headerEl.parentNode.insertBefore(navWrapper.firstElementChild, headerEl.nextSibling);
 
     const path = location.pathname;
+    const hash = location.hash || '';
     document.querySelectorAll('nav.top-nav a[href]').forEach(a => {
-      const href = a.getAttribute('href');
-      if (href && (href === path || href.endsWith(path.split('/').pop() || ''))) a.classList.add('nav-active');
+      const href = a.getAttribute('href') || '';
+      const url = new URL(href, location.origin);
+      const samePath = url.pathname === path;
+      const hashMatch = hash && url.hash === hash;
+      if ((samePath && !url.hash) || hashMatch) a.classList.add('nav-active');
     });
 
     const logoutBtn = document.getElementById('admin-logout');
@@ -73,5 +80,49 @@
   ready(() => {
     ensureAuth();
     mountHeader();
+    scheduleTokenRefresh();
   });
+  function parseJwt(token) {
+    try {
+      const base64Url = (token || '').split('.')[1];
+      const base64 = (base64Url || '').replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (_) { return null; }
+  }
+  function tokenSecondsLeft(token) {
+    const payload = parseJwt(token || '');
+    if (!payload || !payload.exp) return 0;
+    return Math.floor(payload.exp - (Date.now() / 1000));
+  }
+  async function attemptRefresh() {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({})
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.access_token) {
+        localStorage.setItem('adminToken', data.access_token);
+        return data.access_token;
+      }
+      return null;
+    } catch (_) { return null; }
+  }
+  function scheduleTokenRefresh() {
+    const intervalMs = 60000;
+    setInterval(async () => {
+      try {
+        const t = localStorage.getItem('adminToken');
+        if (!t) return;
+        const left = tokenSecondsLeft(t);
+        if (left <= 120) { await attemptRefresh(); }
+      } catch (_) {}
+    }, intervalMs);
+  }
 })();
