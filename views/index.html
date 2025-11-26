@@ -118,6 +118,11 @@
         <span id="installToastMsg">التثبيت غير متاح حاليًا — استخدم قائمة المتصفح "تثبيت التطبيق"</span>
     </div>
 </div>
+<div id="installTroubleshooter" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div class="bg-[#1E293B] text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+        <span id="installTroubleshooterMsg">إذا لم يظهر زر التثبيت، استخدم Chrome واختر "تثبيت التطبيق" من القائمة (⋮)</span>
+    </div>
+</div>
 <!-- Installation Instructions Section -->
 <section id="installation" class="bg-gradient-to-br from-gray-50 to-gray-100 py-16">
     <div class="max-w-4xl mx-auto px-6">
@@ -150,11 +155,11 @@
                         <p class="text-sm text-gray-600">Chrome أو Firefox</p>
                     </div>
                 </div>
-                <p class="text-gray-700 mb-4">اضغط <strong>"تثبيت"</strong> أو اختر <strong>"تثبيت التطبيق"</strong> من القائمة</p>
+                <p class="text-gray-700 mb-4">اضغط <strong>"تثبيت"</strong> أو اختر <strong>"تثبيت التطبيق"</strong> من قائمة Chrome (⋮). لا تقم بتحميل ملفات APK — التطبيق يعمل كتطبيق ويب آمن.</p>
                 <button id="installBtn" class="w-full bg-[#06C167] text-white py-3 rounded-lg font-semibold hover:bg-[#05AE5D] transition flex items-center justify-center">
                     تثبيت
                 </button>
-                <p id="androidInstallHint" class="text-xs text-gray-500 mt-2">إذا لم يظهر التثبيت، افتح قائمة المتصفح واختر "تثبيت التطبيق"</p>
+                <p id="androidInstallHint" class="text-xs text-gray-500 mt-2">إذا لم يظهر التثبيت، افتح قائمة Chrome (⋮) واختر "تثبيت التطبيق". في حال ظهور Play Protect، فأنت تحاول تثبيت ملف APK — استخدم التثبيت من المتصفح.</p>
             </div>
         </div>
     </div>
@@ -393,6 +398,8 @@
     const androidInstallHint = document.getElementById('androidInstallHint');
     const installToast = document.getElementById('installToast');
     const installToastMsg = document.getElementById('installToastMsg');
+    const installTroubleshooter = document.getElementById('installTroubleshooter');
+    const installTroubleshooterMsg = document.getElementById('installTroubleshooterMsg');
     let canInstall = false;
     function showInstallToast(message) {
         if (!installToast || !installToastMsg) return;
@@ -424,6 +431,7 @@
                 setTimeout(() => { window.AppMode?.promptInstall(); }, 500);
             }
         } catch (_) {}
+        if (installTroubleshooter) installTroubleshooter.classList.add('hidden');
     });
 
     // iOS browser detection for Safari guidance
@@ -486,6 +494,13 @@
                 e.preventDefault();
                 if (androidInstallHint) androidInstallHint.textContent = 'إذا لم يظهر التثبيت، افتح قائمة المتصفح واختر "تثبيت التطبيق"';
                 showInstallToast('لا يمكن التثبيت الآن — افتح قائمة المتصفح واختر "تثبيت التطبيق"');
+                const ua = navigator.userAgent || '';
+                const isAndroid = /Android/i.test(ua);
+                const isChrome = /Chrome\//i.test(ua) && !/Edg\//i.test(ua) && !/SamsungBrowser/i.test(ua);
+                if (isAndroid && !isChrome && installTroubleshooter && installTroubleshooterMsg) {
+                    installTroubleshooterMsg.textContent = 'لا يمكن التثبيت تلقائيًا في هذا المتصفح. استخدم Chrome ثم من القائمة (⋮) اختر "تثبيت التطبيق". لا تقم بتثبيت ملفات APK.';
+                    installTroubleshooter.classList.remove('hidden');
+                }
                 return;
             }
             try { window.AppMode?.setUserModeChoice('app'); } catch (e) {}
@@ -496,6 +511,16 @@
             setTimeout(() => { installBtn.textContent = originalText; }, 2000);
         });
     }
+
+    setTimeout(() => {
+        const ua = navigator.userAgent || '';
+        const isAndroid = /Android/i.test(ua);
+        const isChrome = /Chrome\//i.test(ua) && !/Edg\//i.test(ua) && !/SamsungBrowser/i.test(ua);
+        if (isAndroid && !canInstall && installTroubleshooter && installTroubleshooterMsg) {
+            installTroubleshooterMsg.textContent = isChrome ? 'إذا لم يظهر زر التثبيت، افتح القائمة (⋮) واختر "تثبيت التطبيق".' : 'استخدم Chrome ثم من القائمة (⋮) اختر "تثبيت التطبيق". لا تقم بتثبيت ملفات APK.';
+            installTroubleshooter.classList.remove('hidden');
+        }
+    }, 1500);
 
     // Installation success feedback
     window.addEventListener('appinstalled', () => {

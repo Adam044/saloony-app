@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Saloony",
   "short_name": "Saloony",
   "description": "احجز موعدك بسهولة مع أفضل الصالونات",
@@ -7,6 +8,7 @@
   "start_url": "/splash.html",
   "scope": "/",
   "display": "standalone",
+  "prefer_related_applications": false,
   "background_color": "#152026",
   "theme_color": "#152026",
   "icons": [
