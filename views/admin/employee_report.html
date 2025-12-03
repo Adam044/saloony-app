@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>تقرير الموظف - الإدارة</title>
+  <title>Employee Report - Admin</title>
   <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -34,39 +34,39 @@
     <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
     <div class="max-w-6xl mx-auto space-y-6">
       <section class="section-card">
-        <div class="text-2xl font-extrabold text-primary-dark">تقرير الموظف: <span id="emp-name">—</span></div>
+        <div class="text-2xl font-extrabold text-primary-dark">Employee Report: <span id="emp-name">—</span></div>
       </section>
 
       
 
       <section id="sec-today" class="section-card">
-        <div class="text-xl font-extrabold text-primary-dark mb-3">اليوم</div>
+        <div class="text-xl font-extrabold text-primary-dark mb-3">Today</div>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="stat-card">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-sm text-gray-500">تفعيلات اليوم</div>
+                <div class="text-sm text-gray-500">Activations Today</div>
                 <div class="text-2xl font-extrabold" id="kpi-acts-today">0</div>
-                <div class="muted">هدف 2</div>
+                <div class="muted">Goal 2</div>
               </div>
               <div class="ring" id="ring-acts-today" style="--pct:0%"><span class="ring-val">0%</span></div>
             </div>
           </div>
           <div class="stat-card">
             <div>
-              <div class="text-sm text-gray-500">🟡 مسجّل</div>
+              <div class="text-sm text-gray-500">🟡 Signed up</div>
               <div class="text-2xl font-extrabold" id="kpi-int-registered">0</div>
             </div>
           </div>
           <div class="stat-card">
             <div>
-              <div class="text-sm text-gray-500">🕓 مهتم – لم يقرر بعد</div>
+              <div class="text-sm text-gray-500">🕓 Interested – undecided</div>
               <div class="text-2xl font-extrabold" id="kpi-int-needs">0</div>
             </div>
           </div>
           <div class="stat-card">
             <div>
-              <div class="text-sm text-gray-500">غير مهتمون اليوم</div>
+              <div class="text-sm text-gray-500">Not interested today</div>
               <div class="text-2xl font-extrabold" id="kpi-no-today">0</div>
             </div>
           </div>
@@ -75,9 +75,9 @@
           <div class="stat-card">
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-sm text-gray-500">زيارات اليوم</div>
+                <div class="text-sm text-gray-500">Visits Today</div>
                 <div class="text-2xl font-extrabold" id="kpi-visits-today">0</div>
-                <div class="muted">هدف 15</div>
+                <div class="muted">Goal 15</div>
               </div>
               <div class="ring" id="ring-visits-today" style="--pct:0%"><span class="ring-val">0%</span></div>
             </div>
@@ -88,13 +88,13 @@
       
 
       <section id="sec-calendar" class="section-card" style="display:none">
-        <div class="text-xl font-extrabold text-primary-dark mb-3">التقويم</div>
+        <div class="text-xl font-extrabold text-primary-dark mb-3">Calendar</div>
         <div class="filters" style="grid-template-columns: 160px 160px 180px; margin-top: 12px;">
           <select id="details-year" class="input"></select>
           <select id="details-month" class="input"></select>
           <select id="calendar-mode" class="input">
-            <option value="activated">التفعيلات</option>
-            <option value="visits">الزيارات</option>
+            <option value="activated">Activations</option>
+            <option value="visits">Visits</option>
           </select>
         </div>
         <div id="calendar-grid" class="table-wrapper" style="margin-top: 12px;"></div>
@@ -102,10 +102,10 @@
 
       <section id="sec-analytics" class="section-card" style="display:none">
         <div class="flex justify-between items-center mb-2">
-          <div class="text-xl font-extrabold text-primary-dark">التحليلات</div>
+          <div class="text-xl font-extrabold text-primary-dark">Analytics</div>
           <div class="flex items-center gap-2">
-            <button id="apply-month" class="btn"><i class="fas fa-calendar-alt"></i><span>هذا الشهر</span></button>
-            <button id="apply-today" class="btn"><i class="fas fa-sun"></i><span>اليوم</span></button>
+            <button id="apply-month" class="btn"><i class="fas fa-calendar-alt"></i><span>This month</span></button>
+            <button id="apply-today" class="btn"><i class="fas fa-sun"></i><span>Today</span></button>
           </div>
         </div>
         <div class="filters" style="grid-template-columns: 160px 160px;">
@@ -113,39 +113,39 @@
           <input id="date-to" type="date" class="input">
         </div>
         <div id="range-kpis" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-3" style="margin-top:12px">
-          <div class="stat-card"><div><div class="text-sm text-gray-500">الزيارات</div><div class="text-2xl font-extrabold" id="range-visits-count">0</div></div></div>
-          <div class="stat-card"><div><div class="text-sm text-gray-500">تفعيلات</div><div class="text-2xl font-extrabold" id="range-acts">0</div></div></div>
-          <div class="stat-card"><div><div class="text-sm text-gray-500">🟡 مسجّل</div><div class="text-2xl font-extrabold" id="range-int-registered">0</div></div></div>
-          <div class="stat-card"><div><div class="text-sm text-gray-500">🕓 مهتم – لم يقرر بعد</div><div class="text-2xl font-extrabold" id="range-int-needs">0</div></div></div>
-          <div class="stat-card"><div><div class="text-sm text-gray-500">غير مهتمون</div><div class="text-2xl font-extrabold" id="range-no">0</div></div></div>
-          <div class="stat-card"><div><div class="text-sm text-gray-500">إيراد النطاق</div><div class="text-2xl font-extrabold" id="range-rev">₪0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">Visits</div><div class="text-2xl font-extrabold" id="range-visits-count">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">Activations</div><div class="text-2xl font-extrabold" id="range-acts">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">🟡 Signed up</div><div class="text-2xl font-extrabold" id="range-int-registered">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">🕓 Interested – undecided</div><div class="text-2xl font-extrabold" id="range-int-needs">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">Not interested</div><div class="text-2xl font-extrabold" id="range-no">0</div></div></div>
+          <div class="stat-card"><div><div class="text-sm text-gray-500">Revenue (range)</div><div class="text-2xl font-extrabold" id="range-rev">₪0</div></div></div>
         </div>
         <div id="range-visits" class="table-wrapper p-3" style="display:none"></div>
       </section>
 
       <section id="sec-visits" class="section-card" style="display:none">
-        <div class="text-xl font-extrabold text-primary-dark mb-3">الزيارات</div>
+        <div class="text-xl font-extrabold text-primary-dark mb-3">Visits</div>
         <div class="filters" style="grid-template-columns: 1fr 160px 160px 120px 120px;">
-          <input id="visits-search" class="input" placeholder="ابحث باسم الصالون">
+          <input id="visits-search" class="input" placeholder="Search by salon name">
           <input id="visits-from" type="date" class="input">
           <input id="visits-to" type="date" class="input">
-          <input id="visits-il-min" type="number" min="0" max="10" class="input" placeholder="أدنى اهتمام">
-          <input id="visits-il-max" type="number" min="0" max="10" class="input" placeholder="أعلى اهتمام">
+          <input id="visits-il-min" type="number" min="0" max="10" class="input" placeholder="Min interest">
+          <input id="visits-il-max" type="number" min="0" max="10" class="input" placeholder="Max interest">
         </div>
         <div class="filters" style="grid-template-columns: 160px 1fr; margin-top:8px">
           <select id="visits-status" class="input">
-            <option value="">كل الحالات</option>
-            <option value="activated">🟢 مفعّل (مدفوع)</option>
-            <option value="signed_up">🟡 مسجّل</option>
-            <option value="interested">🕓 مهتم – لم يقرر بعد</option>
-            <option value="not_interested">🔴 غير مهتم حالياً</option>
+            <option value="">All statuses</option>
+            <option value="activated">🟢 Activated (paid)</option>
+            <option value="signed_up">🟡 Signed up</option>
+            <option value="interested">🕓 Interested – undecided</option>
+            <option value="not_interested">🔴 Not interested</option>
           </select>
           <label class="flex items-center gap-2">
             <input id="visits-has-comments" type="checkbox">
-            <span class="muted">فقط زيارات مع ملاحظات</span>
+            <span class="muted">Only visits with comments</span>
           </label>
         </div>
-        <div id="visits-list" class="table-wrapper p-3" style="margin-top:8px"><p class="muted text-center">لا توجد زيارات بعد</p></div>
+        <div id="visits-list" class="table-wrapper p-3" style="margin-top:8px"><p class="muted text-center">No visits yet</p></div>
       </section>
     </div>
   </main>
@@ -153,39 +153,39 @@
   <div id="visit-details-modal" class="hidden fixed inset-0 bg-black/40 z-[100000]">
     <div class="max-w-md mx-auto mt-24 bg-white rounded-2xl shadow-2xl p-4">
       <div class="flex justify-between items-center mb-2">
-        <div class="text-lg font-extrabold text-primary-dark">تفاصيل الزيارة</div>
-        <button id="visit-modal-close" class="btn"><i class="fas fa-times"></i><span>إغلاق</span></button>
+        <div class="text-lg font-extrabold text-primary-dark">Visit Details</div>
+        <button id="visit-modal-close" class="btn"><i class="fas fa-times"></i><span>Close</span></button>
       </div>
       <div class="space-y-3 text-sm">
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-store"></i><span>الصالون</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-store"></i><span>Salon</span></div>
           <span id="md-salon" class="font-semibold">—</span>
         </div>
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-calendar-day"></i><span>التاريخ</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-calendar-day"></i><span>Date</span></div>
           <span id="md-time" class="font-semibold">—</span>
         </div>
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-tag"></i><span>الحالة</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-tag"></i><span>Status</span></div>
           <span id="md-status" class="font-semibold">—</span>
         </div>
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-heart"></i><span>مستوى الاهتمام</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-heart"></i><span>Interest level</span></div>
           <span id="md-interest" class="font-semibold">—</span>
         </div>
         <div>
-          <div class="inline-flex items-center gap-2 text-gray-500 mb-1"><i class="fas fa-comment-dots"></i><span>ملاحظات</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500 mb-1"><i class="fas fa-comment-dots"></i><span>Comments</span></div>
           <div id="md-comments" class="text-gray-700 whitespace-pre-wrap break-words"></div>
         </div>
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-map-signs"></i><span>العنوان</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-map-signs"></i><span>Address</span></div>
           <span id="md-address" class="font-semibold">—</span>
         </div>
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-location-dot"></i><span>الموقع</span></div>
+          <div class="inline-flex items-center gap-2 text-gray-500"><i class="fas fa-location-dot"></i><span>Location</span></div>
           <div class="inline-flex items-center gap-2">
             <span id="md-location-name" class="font-semibold">—</span>
-            <button id="md-open-map" class="btn"><i class="fas fa-directions"></i><span>افتح الخريطة</span></button>
+            <button id="md-open-map" class="btn"><i class="fas fa-directions"></i><span>Open map</span></button>
           </div>
         </div>
       </div>
@@ -205,19 +205,19 @@
               padding-bottom: env(safe-area-inset-bottom) !important;">
     <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-secondary bg-secondary/10 nav-active" data-tab="sec-today">
       <i class="fas fa-sun text-xl"></i>
-      <span class="text-xs font-bold mt-1">اليوم</span>
+      <span class="text-xs font-bold mt-1">Today</span>
     </button>
     <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-tab="sec-calendar">
       <i class="fas fa-calendar-alt text-xl"></i>
-      <span class="text-xs font-medium mt-1">التقويم</span>
+      <span class="text-xs font-medium mt-1">Calendar</span>
     </button>
     <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-tab="sec-analytics">
       <i class="fas fa-chart-pie text-xl"></i>
-      <span class="text-xs font-medium mt-1">التحليلات</span>
+      <span class="text-xs font-medium mt-1">Analytics</span>
     </button>
     <button class="nav-local flex flex-col items-center p-3 rounded-xl transition-all duration-300 text-gray-500 hover:text-secondary hover:bg-secondary/10" data-tab="sec-visits">
       <i class="fas fa-store text-xl"></i>
-      <span class="text-xs font-medium mt-1">الزيارات</span>
+      <span class="text-xs font-medium mt-1">Visits</span>
     </button>
   </nav>
 

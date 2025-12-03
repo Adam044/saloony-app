@@ -29,18 +29,12 @@
       <strong>إدارة الموظفين</strong>
     </div>
     <div class="actions">
+      <a href="/admin/admin_dashboard.html" class="btn btn-outline"><i class="fas fa-arrow-left"></i><span>رجوع</span></a>
       <button id="logout-btn" class="btn btn-outline"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></button>
     </div>
   </header>
 
-  <nav class="top-nav">
-    <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
-    <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
-    <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
-    <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
-    <a id="nav-employees" class="nav-link" href="/admin/saloony_employees.html"><i class="fas fa-id-badge"></i><span>الموظفون</span></a>
-    <a id="nav-insights" class="nav-link" href="/admin/admin_dashboard.html#employee-insights-view"><i class="fas fa-chart-line"></i><span>الزيارات</span></a>
-  </nav>
+  
 
   <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
     <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-6xl mx-auto" role="alert"></div>
@@ -123,36 +117,37 @@
           container.innerHTML = '<p class="text-center text-gray-500 p-8">لا يوجد موظفون بعد</p>';
           return;
         }
-        const html = `
-          <table class="w-full text-sm border">
-            <thead>
-              <tr class="bg-gray-50">
-                <th class="p-2 border">الاسم</th>
-                <th class="p-2 border">اسم المستخدم</th>
-                <th class="p-2 border">البريد</th>
-                <th class="p-2 border">الهاتف</th>
-                <th class="p-2 border">المدينة</th>
-                <th class="p-2 border">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map(r => `
-                <tr>
-                  <td class="p-2 border">${r.name || ''}</td>
-                  <td class="p-2 border">${r.username || ''}</td>
-                  <td class="p-2 border">${r.email || ''}</td>
-                  <td class="p-2 border">${r.phone || ''}</td>
-                  <td class="p-2 border">${r.city || ''}</td>
-                  <td class="p-2 border">
-                    <button class="btn btn-outline text-xs" onclick="resetEmployeePassword(${r.id})"><i class="fas fa-key"></i> توليد كلمة مرور</button>
-                    <a class="btn btn-outline text-xs" href="/admin/employee_report.html?id=${r.id}&name=${encodeURIComponent(r.name || '')}"><i class="fas fa-chart-line"></i> عرض التقرير</a>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `;
-        container.innerHTML = html;
+                const html = `
+                  <table class="w-full text-sm border">
+                    <thead>
+                      <tr class="bg-gray-50">
+                        <th class="p-2 border">الاسم</th>
+                        <th class="p-2 border">اسم المستخدم</th>
+                        <th class="p-2 border">البريد</th>
+                        <th class="p-2 border">الهاتف</th>
+                        <th class="p-2 border">المدينة</th>
+                        <th class="p-2 border">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rows.map(r => `
+                        <tr>
+                          <td class="p-2 border">${r.name || ''}</td>
+                          <td class="p-2 border">${r.username || ''}</td>
+                          <td class="p-2 border">${r.email || ''}</td>
+                          <td class="p-2 border">${r.phone || ''}</td>
+                          <td class="p-2 border">${r.city || ''}</td>
+                          <td class="p-2 border">
+                            <button class="btn btn-outline text-xs" onclick="resetEmployeePassword(${r.id})"><i class="fas fa-key"></i> توليد كلمة مرور</button>
+                            <button class="btn btn-outline text-xs" style="color:#dc2626" onclick="deleteEmployee(${r.id})"><i class="fas fa-trash"></i> حذف</button>
+                            <a class="btn btn-outline text-xs" href="/admin/employee_report.html?id=${r.id}&name=${encodeURIComponent(r.name || '')}"><i class="fas fa-chart-line"></i> عرض التقرير</a>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                `;
+                container.innerHTML = html;
       } catch (e) {
         document.getElementById('employees-list').innerHTML = '<p class="text-center text-red-600 p-8">حدث خطأ</p>';
       }
@@ -238,6 +233,24 @@
           banner.classList.remove('hidden');
         } else {
           showMessage(data.message || 'فشل إعادة تعيين كلمة المرور', 'error');
+        }
+      } catch (_) {
+        showMessage('خطأ في الاتصال بالخادم', 'error');
+      }
+    }
+
+    async function deleteEmployee(id) {
+      try {
+        const ok = window.confirm('هل أنت متأكد من حذف هذا الموظف؟');
+        if (!ok) return;
+        const adminToken = localStorage.getItem('adminToken');
+        const res = await fetch(`/api/admin/employees/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showMessage('تم حذف الموظف بنجاح', 'success');
+          fetchEmployees();
+        } else {
+          showMessage(data.message || 'فشل حذف الموظف', 'error');
         }
       } catch (_) {
         showMessage('خطأ في الاتصال بالخادم', 'error');

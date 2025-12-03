@@ -95,6 +95,20 @@ module.exports = function register(app, deps) {
     }
   });
 
+  app.delete('/api/admin/employees/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const row = await db.get('SELECT id FROM users WHERE id = $1 AND user_type = $2', [id, 'employee']);
+      if (!row) {
+        return res.status(404).json({ success: false, message: 'الموظف غير موجود.' });
+      }
+      await db.run('DELETE FROM users WHERE id = $1', [id]);
+      return res.json({ success: true });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'فشل حذف الموظف.' });
+    }
+  });
+
   app.get('/api/admin/salons', requireAdmin, async (req, res) => {
     try {
       const rows = await db.query('SELECT * FROM salons ORDER BY created_at DESC');

@@ -260,9 +260,9 @@ module.exports = function register(app, deps) {
     }
     try {
       const row = await dbGet(
-        `SELECT s.id AS salonId, s.salon_name, s.address, s.city, s.image_url, s.salon_phone, s.owner_phone, s.plan,
+        `SELECT s.id AS salonId, s.salon_name, s.address, s.city, s.image_url, s.salon_phone, s.owner_phone,
                 COALESCE(AVG(r.rating), 0) AS avg_rating, COUNT(r.id) AS review_count
-         FROM salons s LEFT JOIN reviews r ON s.id = r.salon_id WHERE s.id = $1 GROUP BY s.id, s.salon_phone, s.owner_phone, s.plan`,
+         FROM salons s LEFT JOIN reviews r ON s.id = r.salon_id WHERE s.id = $1 GROUP BY s.id, s.salon_phone, s.owner_phone`,
         [salonId]
       );
       if (!row) return res.status(404).json({ success: false, message: 'Salon not found.' });

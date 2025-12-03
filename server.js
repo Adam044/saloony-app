@@ -164,8 +164,6 @@ async function initializeDb() {
             image_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'pending',
-            plan VARCHAR(30),
-            plan_chairs INTEGER DEFAULT 1,
             special BOOLEAN DEFAULT FALSE,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
@@ -386,7 +384,6 @@ async function initializeDb() {
         await db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
             id SERIAL PRIMARY KEY,
             salon_id INTEGER NOT NULL,
-            plan VARCHAR(30),
             package VARCHAR(40),
             start_date DATE NOT NULL,
             end_date DATE,
@@ -395,7 +392,6 @@ async function initializeDb() {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
         )`);
-        await db.run(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS plan VARCHAR(30)`);
         await db.run(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS package VARCHAR(40)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_subscriptions_salon ON subscriptions(salon_id)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_subscriptions_end ON subscriptions(end_date)`);
@@ -607,15 +603,7 @@ async function alignSchema() {
                 await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
             }
 
-            // 3.1) Ensure plan columns exist
-            if (!columnSet.has('plan')) {
-                console.log('AlignSchema: Adding plan column to salons (PostgreSQL)...');
-                await db.run(`ALTER TABLE salons ADD COLUMN plan VARCHAR(30)`);
-            }
-            if (!columnSet.has('plan_chairs')) {
-                console.log('AlignSchema: Adding plan_chairs column to salons (PostgreSQL)...');
-                await db.run(`ALTER TABLE salons ADD COLUMN plan_chairs INTEGER DEFAULT 1`);
-            }
+            // Removed plan columns; unified pricing eliminates plan variants
 
             // 5) Ensure created_at column exists with default, and backfill if possible
             if (!columnSet.has('created_at')) {
@@ -794,8 +782,6 @@ async function alignSchema() {
                         image_url TEXT,
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         status TEXT DEFAULT 'pending',
-                        plan TEXT,
-                        plan_chairs INTEGER DEFAULT 1,
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     )`);
                     console.log('AlignSchema: SQLite salons schema recreated successfully.');
@@ -805,15 +791,7 @@ async function alignSchema() {
                     if (!hasStatus) {
                         await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
                     }
-                    // Add plan columns if missing
-                    if (!columnSet.has('plan')) {
-                        console.log('AlignSchema: Adding plan to salons (SQLite)...');
-                        await db.run(`ALTER TABLE salons ADD COLUMN plan TEXT`);
-                    }
-                    if (!columnSet.has('plan_chairs')) {
-                        console.log('AlignSchema: Adding plan_chairs to salons (SQLite)...');
-                        await db.run(`ALTER TABLE salons ADD COLUMN plan_chairs INTEGER DEFAULT 1`);
-                    }
+                    // Removed plan columns; unified pricing eliminates plan variants
                     // Add created_at column if missing
                     if (!columnSet.has('created_at')) {
                         console.log('AlignSchema: Adding created_at to salons (SQLite)...');
@@ -995,12 +973,11 @@ async function alignSchema() {
 
 async function backfillSubscriptionsFromSalons() {
     try {
-        const salons = await db.query('SELECT id, status, plan, plan_chairs, created_at FROM salons');
+        const salons = await db.query('SELECT id, status, created_at FROM salons');
         for (const s of salons) {
             const existing = await db.query('SELECT id FROM subscriptions WHERE salon_id = $1 LIMIT 1', [s.id]);
             if (existing && existing.length) continue;
-            let planType = s.plan || null;
-            let chairs = s.plan_chairs || null;
+            let planType = null;
             let startDate = null;
             let endDate = null;
             try {
@@ -1023,15 +1000,17 @@ async function backfillSubscriptionsFromSalons() {
                     endDate = p.valid_until || endDate;
                 }
             } catch (_) {}
-            if (!planType) continue;
+            if (!planType) {
+                // Without legacy plan, only backfill when payment exists
+                if (!startDate || !endDate) continue;
+            }
             if (!startDate) startDate = s.created_at || new Date().toISOString();
             const status = s.status === 'accepted' ? 'active' : 'inactive';
-            const derivedPlan = planType === 'visibility_only' ? 'visibility_only' : 'booking';
-            const derivedPackage = planType;
+            const derivedPackage = planType || 'monthly_100';
             await db.query(
-                `INSERT INTO subscriptions (salon_id, plan, package, start_date, end_date, status)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [s.id, derivedPlan, derivedPackage, startDate, endDate, status]
+                `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [s.id, derivedPackage, startDate, endDate, status]
             );
         }
     } catch (_) {}
@@ -1646,6 +1625,11 @@ app.get('/ai-chat.html', (req, res) => {
 // Pretty route for Admin Dashboard
 app.get('/admin_dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'admin', 'admin_dashboard.html'));
+});
+
+// Admin Salon page route
+app.get('/admin_salon', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'admin', 'admin_salon.html'));
 });
 
 // Base /admin route redirects to the admin dashboard HTML under /views/admin
@@ -3365,13 +3349,12 @@ const fetchSalonsWithAvailability = async (city, gender) => {
                 s.image_url, 
                 s.gender_focus,
                 s.special,
-                s.plan,
                 COALESCE(AVG(r.rating), 0) AS avg_rating,
                 COUNT(r.id) AS review_count
             FROM salons s
             LEFT JOIN reviews r ON s.id = r.salon_id
             WHERE s.gender_focus = $1 AND s.status = 'accepted'
-            GROUP BY s.id, s.special, s.plan
+            GROUP BY s.id, s.special
             ORDER BY s.special DESC, COALESCE(AVG(r.rating), 0) DESC
         `;
         const result = await db.query(sql, [gender]);
@@ -3583,8 +3566,7 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
         const {
             status,
             invoiceOption, // 'none' | 'offer' | 'renewal'
-            planType,      // '2months_offer' | 'monthly_200' | 'monthly_60' | 'per_booking'
-            planChairs     // integer when monthly_60
+            planType,      // unified: 'monthly_100'
         } = req.body || {};
 
         // Validate status
@@ -3592,22 +3574,11 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
             return res.status(400).json({ error: 'Invalid status. Must be pending, accepted, or rejected.' });
         }
 
-        // Normalize plan fields
-        const allowedPlans = new Set(['2months_offer', 'monthly_200', 'monthly_60', 'per_booking', 'visibility_only']);
-        const normalizedPlan = allowedPlans.has(planType) ? planType : null;
-        const normalizedChairs = normalizedPlan === 'monthly_60' ? Math.max(1, parseInt(planChairs || '1', 10)) : null;
-
-        // Update salon status + plan data
-        if (normalizedPlan) {
-            await db.query('UPDATE salons SET status = $1, plan = $2, plan_chairs = $3 WHERE id = $4', [
-                status,
-                normalizedPlan,
-                normalizedChairs || 1,
-                salon_id
-            ]);
-        } else {
-            await db.query('UPDATE salons SET status = $1 WHERE id = $2', [status, salon_id]);
-        }
+        // Update salon status only (plan removed)
+        await db.query('UPDATE salons SET status = $1 WHERE id = $2', [
+            status,
+            salon_id
+        ]);
 
         // Create payment/invoice if requested and salon accepted
         if (status === 'accepted' && invoiceOption && invoiceOption !== 'none') {
@@ -3618,43 +3589,11 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
             let amount = 0;
             let description = '';
 
-            if (invoiceOption === 'offer' && normalizedPlan === '2months_offer') {
-                paymentType = 'offer_200ils';
-                amount = 200; // rounded price
-                validUntil.setMonth(validUntil.getMonth() + 2);
-                description = 'عرض خاص للصالونات الجديدة - 200 شيكل لمدة شهرين';
-            } else if (invoiceOption === 'offer' && normalizedPlan === 'visibility_only') {
-                paymentType = 'visibility_only_offer_199';
-                amount = 200;
-                validUntil.setMonth(validUntil.getMonth() + 3);
-                description = 'خطة بدون حجوزات: عرض خاص 3 أشهر مقابل 200 شيكل';
-            } else if (invoiceOption === 'renewal') {
-                if (normalizedPlan === 'monthly_200') {
-                    paymentType = 'monthly_200';
-                    amount = 200;
-                    validUntil.setMonth(validUntil.getMonth() + 1);
-                    description = 'اشتراك شهري للصالحون: 200 شيكل';
-                } else if (normalizedPlan === 'monthly_60') {
-                    const chairs = normalizedChairs || 1;
-                    paymentType = 'monthly_70';
-                    amount = 70 * chairs; // rounded price per chair
-                    validUntil.setMonth(validUntil.getMonth() + 1);
-                    description = `اشتراك شهري لكل كرسي: 70 شيكل × ${chairs} = ${amount} شيكل`;
-                } else if (normalizedPlan === '2months_offer') {
-                    // If plan is offer but invoiceOption is renewal, treat as monthly_200 renewal
-                    paymentType = 'monthly_200';
-                    amount = 200;
-                    validUntil.setMonth(validUntil.getMonth() + 1);
-                    description = 'تجديد شهري: 200 شيكل';
-                } else if (normalizedPlan === 'visibility_only') {
-                    paymentType = 'visibility_only_monthly_99';
-                    amount = 100;
-                    validUntil.setMonth(validUntil.getMonth() + 1);
-                    description = 'خطة بدون حجوزات: اشتراك شهري 100 شيكل';
-                } else {
-                    // per_booking doesn't produce upfront invoice on renewal
-                    paymentType = null;
-                }
+            if (invoiceOption === 'renewal' || invoiceOption === 'offer') {
+                paymentType = 'monthly_100';
+                amount = 100;
+                validUntil.setMonth(validUntil.getMonth() + 1);
+                description = 'اشتراك شهري موحد: 100 شيكل';
             }
 
             if (paymentType) {
@@ -3670,7 +3609,7 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                         amount,
                         'ILS',
                         'مكتملة',
-                        'cash',
+                        'bank_transfer',
                         description,
                         validFrom.toISOString(),
                         validUntil.toISOString(),
@@ -3678,15 +3617,13 @@ app.post('/api/admin/salon/status/:salon_id', requireAdmin, async (req, res) => 
                         'Admin updated salon status with invoice'
                     ]
                 );
-                const corePlan = normalizedPlan === 'visibility_only' ? 'visibility_only' : 'booking';
                 await db.query(
                     `INSERT INTO subscriptions (
-                        salon_id, plan, package, start_date, end_date, status
-                    ) VALUES ($1, $2, $3, $4, $5, $6)`,
+                        salon_id, package, start_date, end_date, status
+                    ) VALUES ($1, $2, $3, $4, $5)`,
                     [
                         salon_id,
-                        corePlan,
-                        normalizedPlan,
+                        'monthly_100',
                         validFrom.toISOString(),
                         validUntil.toISOString(),
                         'active'

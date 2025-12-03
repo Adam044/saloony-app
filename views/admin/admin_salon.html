@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salon Admin</title>
+  <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+    body { font-family: 'Tajawal', sans-serif; background-color: #F8FAFC; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius: 14px; padding: 16px; }
+    .badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+    .badge-active { background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; }
+    .badge-inactive { background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; }
+    .pill { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; background:#f1f5f9; color:#0f172a; }
+    .action-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius: 12px; font-weight: 700; border: 2px solid #0f172a; color:#0f172a; background:transparent; }
+    .action-btn:hover { background:#0f172a; color:#fff; }
+    .btn-green { border-color:#065f46; color:#065f46; }
+    .btn-green:hover { background:#065f46; color:#fff; }
+    .btn-red { border-color:#991b1b; color:#991b1b; }
+    .btn-red:hover { background:#991b1b; color:#fff; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: #fff; width: 95%; max-width: 520px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal-header { padding: 16px; border-bottom: 1px solid #e5e7eb; font-weight: 800; color:#0f172a; }
+    .modal-body { padding: 16px; }
+    .modal-footer { padding: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px; }
+    .chip { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; font-weight:700; font-size:12px; background:#f1f5f9; color:#0f172a; border:1px solid #e5e7eb; }
+    .chip a { color: inherit; text-decoration: none; }
+    .chip i { color:#0f172a; }
+  </style>
+</head>
+<body>
+  <script>
+    (function(){ const token=localStorage.getItem('adminToken'); if(!token) window.location.replace('/auth.html'); })();
+    const adminToken = localStorage.getItem('adminToken');
+    const params = new URLSearchParams(window.location.search);
+    const salonId = Number(params.get('s') || params.get('id')) || null;
+  </script>
+
+  <header class="bg-[#1E293B] shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
+    <div class="flex items-center pl-8 pr-4">
+      <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="h-10 w-auto object-contain object-center">
+    </div>
+    <h1 class="text-xl font-bold text-white">Salon Admin</h1>
+    <a href="/admin_dashboard" class="text-white/80 hover:text-white transition p-2 rounded-lg hover:bg-white/10">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+  </header>
+
+  <main class="flex-grow p-4 md:p-8" style="padding-top: calc(60px + env(safe-area-inset-top))">
+    <div id="message-box" class="hidden p-3 mb-4 text-center rounded-xl font-medium max-w-4xl mx-auto" role="alert"></div>
+    <div class="max-w-4xl mx-auto space-y-6">
+      <div class="card">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-lg font-bold text-[#0f172a]" id="salon-name">—</div>
+            <div class="text-sm text-gray-600" id="salon-owner">—</div>
+            <div class="text-sm text-gray-600" id="salon-city">—</div>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="text-sm text-gray-600">Status:</span>
+              <span id="status-badge" class="badge"><i class="fas fa-circle"></i><span>—</span></span>
+            </div>
+            <div id="info-chips" class="mt-3 flex flex-wrap gap-6"></div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <a id="whatsapp-link" href="#" target="_blank" class="action-btn btn-green"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></a>
+            <button id="toggle-active" class="action-btn"><i class="fas fa-toggle-on"></i><span>Toggle Status</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="card">
+          <div class="font-bold text-[#0f172a] mb-2">Next Payment</div>
+          <div id="next-summary" class="flex items-center gap-3 flex-wrap"></div>
+          <div class="mt-4 flex justify-end">
+            <button id="primary-action" class="action-btn btn-green"><i class="fas fa-money-check-alt"></i><span>Action</span></button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="font-bold text-[#0f172a] mb-2">Invoices</div>
+          <div id="invoices" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="confirm-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">Confirm Action</div>
+      <div class="modal-body"><p id="confirm-text" class="text-[#0f172a]"></p></div>
+      <div class="modal-footer">
+        <button id="confirm-cancel" class="action-btn"><i class="fas fa-times"></i><span>Cancel</span></button>
+        <button id="confirm-ok" class="action-btn btn-green"><i class="fas fa-check"></i><span>Confirm</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const showMsg = (msg, ok=true) => {
+      const box = document.getElementById('message-box');
+      const base = 'p-3 mb-4 text-center rounded-xl font-medium max-w-4xl mx-auto';
+      box.className = `${base} ${ok ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`;
+      box.textContent = msg; box.classList.remove('hidden'); setTimeout(()=> box.classList.add('hidden'), 3000);
+    };
+    const fmtDate = (d) => { try { return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});}catch{ return '—'; }};
+    const daysUntil = (d) => { try{ const x=new Date(d); const now=new Date(); return Math.ceil((x-now)/(1000*60*60*24)); }catch{ return null; } };
+    const cleanPhone = (p) => (String(p||'').replace(/\D+/g,''));
+
+    async function loadData(){
+      if(!salonId){ showMsg('معرف الصالون غير موجود', false); return; }
+      let salon=null; let subs=[]; let pays=[]; let info=null; let appts=[];
+      try{ const sRes=await fetch('/api/admin/salons',{ headers:{ 'Authorization': `Bearer ${adminToken}` }}); const sData=await sRes.json(); const arr=Array.isArray(sData)?sData:(Array.isArray(sData.salons)?sData.salons:[]); salon=arr.find(x=>x.id===salonId)||null; }catch{}
+      try{ const iRes=await fetch(`/api/salon/info/${salonId}`,{ headers:{ 'Authorization': `Bearer ${adminToken}` }}); const iData=await iRes.json(); info=(iData&&iData.info)||null; }catch{}
+      try{ const subRes=await fetch('/api/admin/subscriptions',{ headers:{ 'Authorization': `Bearer ${adminToken}` }}); const subData=await subRes.json(); subs=Array.isArray(subData)?subData:(Array.isArray(subData.subscriptions)?subData.subscriptions:[]); }catch{}
+      try{ const pRes=await fetch('/api/admin/payments',{ headers:{ 'Authorization': `Bearer ${adminToken}` }}); const pData=await pRes.json(); pays=Array.isArray(pData)?pData:(Array.isArray(pData.payments)?pData.payments:(Array.isArray(pData.items)?pData.items:[])); }catch{}
+      try{ const aRes=await fetch('/api/admin/appointments',{ headers:{ 'Authorization': `Bearer ${adminToken}` }}); const aData=await aRes.json(); appts=Array.isArray(aData)?aData:(Array.isArray(aData.appointments)?aData.appointments:[]); }catch{}
+      if(!salon){ showMsg('لم يتم العثور على الصالون', false); return; }
+
+      document.getElementById('salon-name').textContent = salon.salon_name || '—';
+      document.getElementById('salon-owner').textContent = salon.owner_name || '—';
+      document.getElementById('salon-city').textContent = salon.city || '—';
+      const badge = document.getElementById('status-badge');
+      if(salon.status==='accepted'){ badge.className='badge badge-active'; badge.innerHTML='<i class="fas fa-circle"></i><span>نشط</span>'; }
+      else { badge.className='badge badge-inactive'; badge.innerHTML='<i class="fas fa-circle"></i><span>غير نشط</span>'; }
+
+      const wa = document.getElementById('whatsapp-link'); const phone = cleanPhone(salon.owner_phone||salon.phone||''); if(phone){ wa.href = `https://wa.me/${phone}`; wa.target = '_blank'; } else { wa.href='#'; }
+
+      const infoChips = document.getElementById('info-chips');
+      const salonPhone = salon.salon_phone || info?.salon_phone || null;
+      const ownerPhone = salon.owner_phone || info?.owner_phone || null;
+      const email = info?.email || null;
+      const address = [salon.address || info?.address || '', salon.city || info?.city || ''].filter(Boolean).join('، ');
+      const bookingsCount = Array.isArray(appts) ? appts.filter(a => (a.salon_id||a.salonId) === salonId).length : 0;
+      const phoneChip = salonPhone ? `<span class="chip"><i class="fas fa-phone"></i><a href="tel:${salonPhone}">${salonPhone}</a></span>` : '';
+      const ownerChip = ownerPhone ? `<span class="chip"><i class="fas fa-user"></i><a href="tel:${ownerPhone}">${ownerPhone}</a></span>` : '';
+      const emailChip = email ? `<span class="chip"><i class="fas fa-envelope"></i><a href="mailto:${email}">${email}</a></span>` : '';
+      const addrChip = address ? `<span class="chip"><i class="fas fa-map-marker-alt"></i>${address}</span>` : '';
+      const bookingsChip = `<span class="chip"><i class="fas fa-calendar-check"></i>Bookings: ${bookingsCount}</span>`;
+      infoChips.innerHTML = [phoneChip, ownerChip, emailChip, addrChip, bookingsChip].filter(Boolean).join('');
+
+      const latestSub = subs.filter(x=>x.salon_id===salonId).sort((a,b)=> new Date(b.start_date||0) - new Date(a.start_date||0))[0] || null;
+      const end = latestSub && latestSub.end_date ? new Date(latestSub.end_date) : null;
+      const days = end ? Math.ceil((end - new Date())/(1000*60*60*24)) : null;
+      const nextSummary = document.getElementById('next-summary');
+      const datePill = `<span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 text-gray-800 font-bold"><i class='fas fa-calendar text-secondary'></i>${end ? fmtDate(end) : '—'}</span>`;
+      const daysPill = `<span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl ${days==null? 'bg-gray-100 text-gray-700' : (days<0? 'bg-red-600 text-white' : (days<=3? 'bg-amber-500 text-white' : 'bg-green-600 text-white'))} font-extrabold"><i class='fas fa-hourglass-half'></i>${days!=null ? Math.abs(days) : '—'} day${days===1?'':'s'}${days!=null && days<0 ? ' overdue' : ''}</span>`;
+      const statusBadge = days == null ? '' : (days < 0
+        ? `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200"><i class='fas fa-exclamation-triangle'></i> Overdue</span>`
+        : (days <= 3
+          ? `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200"><i class='fas fa-clock'></i> Soon</span>`
+          : `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200"><i class='fas fa-check-circle'></i> Active</span>`));
+      nextSummary.innerHTML = `${datePill}${daysPill}${statusBadge}`;
+
+      const inv = document.getElementById('invoices');
+      const list = pays.filter(p=> (p.salon_id||p.salonId) === salonId).sort((a,b)=> new Date(b.created_at) - new Date(a.created_at));
+      inv.innerHTML = list.length ? list.map(p=>{
+        const d = fmtDate(p.created_at); const amt = `${p.amount} ${p.currency}`; const num = p.invoice_number || '—';
+        return `<div class='flex items-center justify-between bg-[#f9fafb] border border-[#e5e7eb] rounded-xl p-3'><div class='text-sm text-gray-700'>${num}</div><div class='pill'>${amt}</div><div class='text-sm text-gray-600'>${d}</div></div>`;
+      }).join('') : '<p class="text-gray-500">No invoices.</p>';
+
+      document.getElementById('toggle-active').onclick = () => openConfirm(async () => {
+        const target = salon.status==='accepted' ? 'rejected' : 'accepted';
+        const res = await fetch(`/api/admin/salon/status/${salonId}`, { method:'POST', headers:{ 'Content-Type':'application/json','Authorization':`Bearer ${adminToken}` }, body: JSON.stringify({ status: target, invoiceOption:'none' }) });
+        if(!res.ok) throw new Error('Failed to change status'); showMsg(target==='accepted'?'Salon activated':'Salon deactivated', true); loadData();
+      }, salon.status==='accepted' ? 'Deactivate this salon?' : 'Activate this salon?');
+
+      const primaryBtn = document.getElementById('primary-action');
+      const hasPayments = list.length > 0;
+      primaryBtn.innerHTML = hasPayments
+        ? `<i class="fas fa-money-check-alt"></i><span>Add Payment & Renew Month</span>`
+        : `<i class="fas fa-toggle-on"></i><span>Activate & Create Invoice</span>`;
+      primaryBtn.onclick = () => openConfirm(async () => {
+        const res = await fetch(`/api/admin/subscriptions/${salonId}`, { method:'POST', headers:{ 'Content-Type':'application/json','Authorization':`Bearer ${adminToken}` }, body: JSON.stringify({ package:'monthly_100' }) });
+        if(!res.ok) throw new Error('Action failed');
+        showMsg(hasPayments ? 'Payment recorded and month renewed' : 'Salon activated and first invoice created', true);
+        loadData();
+      }, hasPayments ? 'Confirm: Bank transfer received, renew one month?' : 'Confirm: Activate salon and create first month invoice (₪100) via bank transfer');
+    }
+
+    function openConfirm(onOk, text){
+      const m=document.getElementById('confirm-modal'); const t=document.getElementById('confirm-text'); const ok=document.getElementById('confirm-ok'); const cancel=document.getElementById('confirm-cancel');
+      t.textContent = text || 'Confirm action'; m.style.display='flex';
+      const cleanup = () => { ok.onclick=null; cancel.onclick=null; m.style.display='none'; };
+      ok.onclick = async () => { try{ await onOk(); } catch(e){ showMsg(e?.message||'Error', false);} finally{ cleanup(); } };
+      cancel.onclick = cleanup;
+    }
+
+    document.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>

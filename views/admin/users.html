@@ -39,7 +39,10 @@
 </head>
 <body>
   <header class="bg-primary-dark shadow-lg p-2 flex justify-between items-center w-full z-20 fixed top-0" style="padding-top: env(safe-area-inset-top)">
-    <div class="flex items-center pl-8 pr-4">
+    <div class="flex items-center pl-4 gap-2">
+      <a href="/admin/admin_dashboard.html" class="text-white/80 hover:text-white transition duration-150 p-2 rounded-lg hover:bg-white/10" aria-label="Back">
+        <i class="fas fa-arrow-left text-lg"></i>
+      </a>
       <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/1E293B/ffffff?text=ADM';" alt="Saloony Admin" class="h-10 w-auto object-contain object-center">
     </div>
     <h1 class="text-xl font-bold text-white">لوحة تحكم الإدارة</h1>
@@ -48,14 +51,7 @@
     </button>
   </header>
 
-  <!-- Shared Top Navigation -->
-  <nav class="top-nav">
-    <a id="nav-dashboard" class="nav-link" href="/admin/admin_dashboard.html"><i class="fas fa-gauge"></i><span>لوحة الإدارة</span></a>
-    <a id="nav-users" class="nav-link" href="/admin/users.html"><i class="fas fa-users"></i><span>المستخدمون</span></a>
-    <a id="nav-progress" class="nav-link" href="/admin/progress.html"><i class="fas fa-chart-line"></i><span>التقدم</span></a>
-    <a id="nav-analytics" class="nav-link" href="/admin/ai_analytics.html"><i class="fas fa-robot"></i><span>تحليلات الذكاء</span></a>
-    <a id="nav-renewals" class="nav-link" href="/admin/renewals.html"><i class="fas fa-receipt"></i><span>التجديدات</span></a>
-  </nav>
+  
   <main class="page-container">
     <div class="table-wrapper" id="users-container">
       <p style="text-align:center; color:#6b7280; padding: 24px;">جاري تحميل المستخدمين...</p>
