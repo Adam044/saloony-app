@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <script src="/offline-detect.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Saloony - Employees</title>
+  <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
+  <script defer src="/admin_saloony/assets/admin-core.js"></script>
+</head>
+<body class="page-transition page-fade-in">
+  <!-- Admin Header/Layout injected by admin-header.js -->
+
+  <div id="admin-layout-wrapper">
+    <div class="page-container">
+      <div id="message-box" class="hidden p-4 mb-6 text-center rounded-xl font-bold shadow-sm transition-all duration-300" role="alert"></div>
+      <div id="latest-password-banner" class="hidden mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-sm font-bold shadow-sm"></div>
+      
+      <div class="space-y-6">
+        <section class="card flex items-center justify-between">
+          <div>
+            <h2 class="card-title">Employees</h2>
+            <p class="text-muted text-sm mt-1">Manage employee accounts and permissions</p>
+          </div>
+          <button id="add-employee-btn" class="btn btn-primary" onclick="openAddEmployeeModal()">
+            <i class="fas fa-user-plus"></i><span>Add Employee</span>
+          </button>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2 class="card-title">Employees List</h2>
+          </div>
+          <div id="employees-list" class="table-wrapper">
+            <p class="text-center text-muted p-8">Loading employees...</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Employee Modal -->
+  <div id="add-employee-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="card-title">Add Employee</h3>
+        <button onclick="closeAddEmployeeModal()" class="text-muted hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">Name</label>
+            <input id="modal-name" type="text" placeholder="Full Name">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">Email</label>
+            <input id="modal-email" type="email" placeholder="email@example.com (Optional)">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">Phone Number</label>
+            <input id="modal-phone" type="tel" placeholder="05xxxxxxxx">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">City</label>
+            <select id="modal-city">
+              <option value="">Select City</option>
+            </select>
+          </div>
+          <div class="col-span-1 md:col-span-2">
+            <label class="block text-sm font-bold text-slate-700 mb-1">Username</label>
+            <input id="modal-username" type="text" placeholder="Username or Employee Code (Optional)">
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+          <button onclick="closeAddEmployeeModal()" class="btn btn-secondary">Cancel</button>
+          <button id="add-employee-save" onclick="saveAddEmployee()" class="btn btn-primary"><i class="fas fa-check"></i> Save</button>
+        </div>
+        <p id="generated-password-hint" class="text-xs text-muted mt-2 hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Modal -->
+  <div id="employee-report-modal" class="modal-backdrop">
+    <div class="modal" style="max-width: 800px;">
+      <div class="modal-header">
+        <strong id="employee-report-title" class="card-title">Employee Report</strong>
+        <button onclick="closeEmployeeReport()" class="text-muted hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="p-6" id="employee-report-body">
+        <div class="text-center text-muted p-6">Loading report...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Animation helpers
+    function openModal(id) {
+      const backdrop = document.getElementById(id);
+      const modal = backdrop.querySelector('.modal');
+      backdrop.style.display = 'flex';
+      // Force reflow
+      backdrop.offsetHeight;
+      modal.classList.add('active');
+    }
+    function closeModal(id) {
+      const backdrop = document.getElementById(id);
+      const modal = backdrop.querySelector('.modal');
+      modal.classList.remove('active');
+      setTimeout(() => {
+        backdrop.style.display = 'none';
+      }, 200);
+    }
+
+    // Override open/close functions to use animation
+    window.openAddEmployeeModal = () => openModal('add-employee-modal');
+    window.closeAddEmployeeModal = () => closeModal('add-employee-modal');
+    window.openEmployeeReport = (id, name) => {
+      const title = document.getElementById('employee-report-title');
+      const body = document.getElementById('employee-report-body');
+      title.textContent = `Employee Report: ${name}`;
+      body.innerHTML = '<div class="text-center text-muted p-6">Loading report...</div>';
+      openModal('employee-report-modal');
+      loadEmployeeReport(id);
+    };
+    window.closeEmployeeReport = () => closeModal('employee-report-modal');
+
+    function showMessage(text, type='info') {
+      const box = document.getElementById('message-box');
+      box.textContent = text;
+      box.className = 'p-4 mb-6 text-center rounded-xl font-bold shadow-sm transition-all duration-300 max-w-3xl mx-auto';
+      if (type === 'success') box.classList.add('bg-emerald-100','text-emerald-800', 'border', 'border-emerald-200');
+      else if (type === 'error') box.classList.add('bg-red-100','text-red-800', 'border', 'border-red-200');
+      else box.classList.add('bg-blue-100','text-blue-800', 'border', 'border-blue-200');
+      box.classList.remove('hidden');
+      setTimeout(() => box.classList.add('hidden'), 3000);
+    }
+
+    async function fetchEmployees() {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        const res = await fetch('/api/admin/employees', { headers: { 'Authorization': `Bearer ${adminToken}` }});
+        const data = await res.json();
+        const container = document.getElementById('employees-list');
+        if (!res.ok || !data.success) {
+          container.innerHTML = '<p class="text-center text-red-500 p-8 font-bold">Failed to load employees</p>';
+          return;
+        }
+        const rows = data.employees || [];
+        if (rows.length === 0) {
+          container.innerHTML = '<p class="text-center text-muted p-8">No employees found</p>';
+          return;
+        }
+        const html = `
+          <table class="w-full text-left">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>City</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td class="font-bold">${r.name || ''}</td>
+                  <td>${r.username || '<span class="text-muted">-</span>'}</td>
+                  <td>${r.email || '<span class="text-muted">-</span>'}</td>
+                  <td>${r.phone || '<span class="text-muted">-</span>'}</td>
+                  <td>${r.city || '<span class="text-muted">-</span>'}</td>
+                  <td>
+                    <div class="flex gap-2 justify-end">
+                      <button class="btn btn-secondary text-xs py-1 px-2" onclick="resetEmployeePassword(${r.id})" title="Generate Password"><i class="fas fa-key"></i></button>
+                      <button class="btn btn-secondary text-xs py-1 px-2 text-red-500 hover:bg-red-50 hover:border-red-200" onclick="deleteEmployee(${r.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                      <button class="btn btn-secondary text-xs py-1 px-2 text-blue-500 hover:bg-blue-50 hover:border-blue-200" onclick="window.openEmployeeReport(${r.id}, '${(r.name || '').replace(/'/g, "\\'")}')" title="Report"><i class="fas fa-chart-line"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        container.innerHTML = html;
+      } catch (e) {
+        document.getElementById('employees-list').innerHTML = '<p class="text-center text-red-500 p-8 font-bold">System error occurred</p>';
+      }
+    }
+
+    function generatePassword() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      let pwd = 'Emp';
+      for (let i = 0; i < 7; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+      return pwd;
+    }
+
+    // Modal functions (open/close) are already defined above with window. prefix
+    
+    async function loadCitiesDropdown() {
+      try {
+        const res = await fetch('/api/cities');
+        const data = await res.json();
+        const cities = Array.isArray(data) ? data : (data.cities || []);
+        const sel = document.getElementById('modal-city');
+        sel.innerHTML = '<option value="">Select City</option>' + (cities.map(c => `<option value="${c}">${c}</option>`).join(''));
+      } catch (_) {
+        // Fallback list if API fails
+        const fallback = ['Rabat','Casablanca','Tangier','Fes','Marrakech','Salé','Skhirat','Temara'];
+        const sel = document.getElementById('modal-city');
+        sel.innerHTML = '<option value="">Select City</option>' + (fallback.map(c => `<option value="${c}">${c}</option>`).join(''));
+      }
+    }
+    async function saveAddEmployee() {
+      const name = document.getElementById('modal-name').value.trim();
+      const email = document.getElementById('modal-email').value.trim();
+      const phone = document.getElementById('modal-phone').value.trim();
+      const city = document.getElementById('modal-city').value.trim();
+      const username = document.getElementById('modal-username').value.trim();
+      if (!name) { showMessage('Please enter the name', 'error'); return; }
+      const password = generatePassword();
+      const adminToken = localStorage.getItem('adminToken');
+      try {
+        const res = await fetch('/api/admin/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ name, email, phone, city, password, username })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showMessage('Employee created successfully', 'success');
+          const banner = document.getElementById('latest-password-banner');
+          banner.textContent = `Username: ${data.username} — Temporary Password: ${password}`;
+          banner.classList.remove('hidden');
+          closeAddEmployeeModal();
+          fetchEmployees();
+        } else {
+          showMessage(data.message || 'Failed to create employee', 'error');
+        }
+      } catch (_) {
+        showMessage('Server connection error', 'error');
+      }
+    }
+
+    async function resetEmployeePassword(id) {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        const res = await fetch(`/api/admin/employees/${id}/reset_password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showMessage('New password set successfully', 'success');
+          const banner = document.getElementById('latest-password-banner');
+          banner.textContent = `New Temporary Password: ${data.temp_password}`;
+          banner.classList.remove('hidden');
+        } else {
+          showMessage(data.message || 'Failed to reset password', 'error');
+        }
+      } catch (_) {
+        showMessage('Server connection error', 'error');
+      }
+    }
+
+    async function deleteEmployee(id) {
+      try {
+        const ok = window.confirm('Are you sure you want to delete this employee?');
+        if (!ok) return;
+        const adminToken = localStorage.getItem('adminToken');
+        const res = await fetch(`/api/admin/employees/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${adminToken}` } });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showMessage('Employee deleted successfully', 'success');
+          fetchEmployees();
+        } else {
+          showMessage(data.message || 'Failed to delete employee', 'error');
+        }
+      } catch (_) {
+        showMessage('Server connection error', 'error');
+      }
+    }
+
+    async function loadEmployeeReport(id) {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        const [summaryRes, todayRes] = await Promise.all([
+          fetch(`/api/admin/employees/${id}/analytics/summary`, { headers: { 'Authorization': `Bearer ${adminToken}` }}),
+          fetch(`/api/admin/employees/${id}/analytics/today`, { headers: { 'Authorization': `Bearer ${adminToken}` }})
+        ]);
+        const summary = await summaryRes.json();
+        const today = await todayRes.json();
+        if (!summaryRes.ok || !summary.success) { document.getElementById('employee-report-body').innerHTML = '<div class="text-center text-red-600 p-6">Failed to load summary</div>'; return; }
+        if (!todayRes.ok || !today.success) { document.getElementById('employee-report-body').innerHTML = '<div class="text-center text-red-600 p-6">Failed to load today\'s visits</div>'; return; }
+        const a = summary.all || { activated:0, interested:0, not_interested:0 };
+        const t = summary.today || { activated:0, interested:0, not_interested:0 };
+        const rev = summary.revenue || { today:0, all:0 };
+        const visits = today.visits || [];
+        const pctAll = Math.min(100, Math.round((Number(a.activated||0) / 100) * 100));
+        const pctToday = Math.min(100, Math.round((Number(t.activated||0) / Math.max(1, 10)) * 100));
+        const html = `
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="card flex items-center justify-between p-4">
+              <div>
+                <div class="text-sm text-muted font-bold">Total Activations</div>
+                <div class="text-2xl font-extrabold text-slate-800">${Number(a.activated||0).toLocaleString('en-US')}</div>
+              </div>
+              <div class="ring-chart" style="--pct:${pctAll}%"><span class="ring-val">${pctAll}%</span></div>
+            </div>
+            <div class="card flex items-center justify-between p-4">
+              <div>
+                <div class="text-sm text-muted font-bold">Today's Activations</div>
+                <div class="text-2xl font-extrabold text-slate-800">${Number(t.activated||0).toLocaleString('en-US')}</div>
+              </div>
+              <div class="ring-chart" style="--pct:${pctToday}%"><span class="ring-val">${pctToday}%</span></div>
+            </div>
+            <div class="card flex items-center justify-between p-4">
+              <div>
+                <div class="text-sm text-muted font-bold">Total Revenue</div>
+                <div class="text-2xl font-extrabold text-emerald-600">₪${Number(rev.all||0).toLocaleString('en-US')}</div>
+              </div>
+              <div class="bg-emerald-100 text-emerald-600 p-3 rounded-full"><i class="fas fa-coins text-xl"></i></div>
+            </div>
+          </div>
+          <div class="card">
+            <h4 class="card-title mb-4 text-sm">Recent Activities - Today's Visits (${visits.length})</h4>
+            <div class="space-y-2">
+              ${visits.length === 0 ? '<p class="text-center text-muted p-6">No visits today</p>' : visits.map(v => {
+                const timeOnly = new Date(v.visited_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const status = (v.status||'').toLowerCase();
+                const badge = status.includes('activated') || status.includes('paid')
+                  ? '<span class="badge badge-success">Activated</span>'
+                  : status.includes('interested') ? '<span class="badge badge-warning">Interested</span>' : '<span class="badge badge-neutral">Not Interested</span>';
+                return `
+                  <div class="flex justify-between items-center border-b border-slate-100 last:border-0 py-3">
+                    <div class="font-bold text-slate-700">${(v.salon_name||'—').replace(/</g,'&lt;')}</div>
+                    <div class="flex items-center gap-3 text-sm">${badge}<span class="text-muted font-mono">${timeOnly}</span></div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+        document.getElementById('employee-report-body').innerHTML = html;
+      } catch (_) {
+        document.getElementById('employee-report-body').innerHTML = '<div class="text-center text-red-600 p-6">An error occurred</div>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Buttons with explicit IDs
+      const btnAdd = document.getElementById('add-employee-btn');
+      if(btnAdd) btnAdd.addEventListener('click', openAddEmployeeModal);
+      
+      const btnSave = document.getElementById('add-employee-save');
+      if(btnSave) btnSave.addEventListener('click', saveAddEmployee);
+
+      // Initial loads
+      loadCitiesDropdown();
+      fetchEmployees();
+    });
+  </script>
+</body>
+</html>

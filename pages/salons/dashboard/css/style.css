@@ -1,0 +1,369 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+
+/* --- Modern Dashboard Variables (Consistent with Saloony Theme) --- */
+:root {
+    --primary: #06C167;
+    --primary-dark: #1E293B; /* Slate 900 - Darker/Richer */
+    --primary-light: #34D399;
+    --secondary: #06C167; /* Consistent Green */
+    --accent: #F59E0B;
+    
+    --bg-body: #F8FAFC; /* Slate 50 */
+    --bg-card: #FFFFFF;
+    --bg-input: #F1F5F9; /* Slate 100 */
+    
+    --text-main: #0F172A; /* Slate 900 */
+    --text-muted: #64748B; /* Slate 500 */
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-soft: 0 20px 40px -5px rgba(6, 193, 103, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+}
+
+body { 
+    font-family: 'Tajawal', sans-serif; 
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    padding-bottom: 20px;
+    position: relative;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* --- Layout & Utilities --- */
+.container-max {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+/* --- Glassmorphism & Cards --- */
+.glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8); /* Slate 200 */
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-lg);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+    box-shadow: var(--shadow-soft);
+}
+
+.modern-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid #F1F5F9;
+}
+
+/* --- Navigation (Bottom Bar - DEPRECATED for Sidebar Layout) --- */
+/* nav.fixed-bottom, .bottom-nav { ... } */
+
+.nav-item {
+    /* Base styles for nav items, layout handled by Tailwind */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.nav-active {
+    /* Active state handled by Tailwind classes in HTML mostly, but keeping this for JS toggle if needed */
+    /* We will apply specific classes in JS or rely on the class being present for styling */
+}
+
+
+/* --- Buttons --- */
+.btn-action { 
+    background: linear-gradient(135deg, #06C167 0%, #059669 100%);
+    color: white; 
+    transition: all 0.3s ease; 
+    font-weight: 700; 
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 12px rgba(6, 193, 103, 0.25);
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-action:hover { 
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(6, 193, 103, 0.35);
+}
+
+.btn-action:active {
+    transform: translateY(0);
+}
+
+.btn-secondary-soft {
+    background-color: rgba(6, 193, 103, 0.1);
+    color: var(--primary);
+    font-weight: 600;
+    transition: all 0.2s;
+    border-radius: var(--radius-md);
+}
+
+.btn-secondary-soft:hover {
+    background-color: rgba(6, 193, 103, 0.2);
+}
+
+/* --- Form Elements --- */
+input[type="text"], 
+input[type="number"], 
+input[type="email"], 
+input[type="tel"], 
+input[type="password"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+    background-color: var(--bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    font-family: 'Tajawal', sans-serif;
+    outline: none;
+    width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+    background-color: #fff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(6, 193, 103, 0.15);
+}
+
+/* --- Header & Branding --- */
+.dashboard-header {
+    background: var(--primary-dark);
+    /* Subtle pattern or gradient */
+    background-image: linear-gradient(to bottom right, #1E293B, #0F172A);
+    color: white;
+    padding: 1.25rem;
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+/* --- Tabs --- */
+.tab-appointments {
+    border-radius: var(--radius-xl);
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.tab-appointments.active {
+    background: var(--primary-dark);
+    color: white;
+    box-shadow: 0 4px 10px rgba(30, 41, 59, 0.3);
+}
+
+/* --- Empty States --- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    border: 2px dashed #CBD5E1;
+    border-radius: var(--radius-lg);
+    background-color: #F8FAFC;
+    margin-top: 1.5rem;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #94A3B8;
+    margin-bottom: 1rem;
+    background: #E2E8F0;
+    padding: 1.5rem;
+    border-radius: 50%;
+}
+
+.empty-state p {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* --- Animations & Transitions --- */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.view-content {
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Status Badges --- */
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.badge-success { background: rgba(6, 193, 103, 0.15); color: #059669; }
+.badge-warning { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.badge-danger { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+.badge-neutral { background: #F1F5F9; color: #64748B; }
+
+/* --- Specific Overrides/Fixes --- */
+#roles-toggle:checked + div {
+    background-color: var(--primary) !important;
+}
+
+.day-selected {
+    background-color: #EF4444;
+    color: white;
+    border-color: #EF4444;
+}
+
+/* Hide scrollbar */
+.scrollbar-hidden::-webkit-scrollbar { display: none; }
+.scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* PIN Screen Styles (Preserved) */
+#pin-auth-screen {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.pin-dot { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.pin-dot.filled { box-shadow: 0 0 0 2px rgba(6, 193, 103, 0.3); transform: scale(1.1); }
+.pin-btn { transition: all 0.1s; }
+.pin-btn:active { transform: scale(0.95); background-color: rgba(255,255,255,0.1); }
+
+/* Additions for Services Explorer Modal */
+.animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* --- Timeline & Scheduler Improvements --- */
+.scheduler-grid-bg {
+    background-color: #fff;
+    /* Main hour lines (solid light gray) */
+    background-image: 
+        linear-gradient(to bottom, #f1f5f9 1px, transparent 1px),
+        /* 30-min dashed lines */
+        linear-gradient(to right, #f1f5f9 50%, transparent 50%); /* Base pattern for dashes? No, simple linear gradient for horiz lines */
+    
+    /* Let's try a simpler approach for the background grid */
+    background-image: 
+        linear-gradient(to bottom, #e2e8f0 1px, transparent 1px), /* Hour line */
+        linear-gradient(to bottom, transparent 49px, #f1f5f9 50px, transparent 51px); /* Half hour line (assuming 100px height) */
+        
+    background-size: 100% 100px; /* Repeat every 100px (1 hour) */
+    background-attachment: local;
+}
+
+.timeline-slot-hover {
+    position: absolute;
+    left: 4px; 
+    right: 4px;
+    height: 50px; /* 30 mins defaults, JS will adjust */
+    background-color: rgba(6, 193, 103, 0.08); /* Very Light green tint */
+    border: 2px dashed rgba(6, 193, 103, 0.4);
+    border-radius: 8px;
+    pointer-events: none; /* Let clicks pass through to column */
+    display: none; /* Hidden by default */
+    z-index: 5;
+    transition: top 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(6, 193, 103, 0.1);
+}
+
+.timeline-slot-hover::after {
+    content: '+ حجز جديد';
+    position: absolute;
+    right: 50%;
+    top: 50%;
+    transform: translate(50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--primary);
+    background: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.appt-card-modern {
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    border-right: 4px solid transparent; /* Status indicator */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.appt-card-modern:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px) scale-[1.01];
+    z-index: 50 !important;
+}
+
+/* Status variants for modern cards */
+.appt-card-scheduled {
+    background: #EFF6FF; /* Blue 50 */
+    border-right-color: #3B82F6; /* Blue 500 */
+    color: #1E40AF; /* Blue 800 */
+    border-left: 1px solid #DBEAFE;
+    border-top: 1px solid #DBEAFE;
+    border-bottom: 1px solid #DBEAFE;
+}
+
+.appt-card-completed {
+    background: #ECFDF5; /* Green 50 */
+    border-right-color: #10B981; /* Green 500 */
+    color: #065F46; /* Green 800 */
+    border-left: 1px solid #D1FAE5;
+    border-top: 1px solid #D1FAE5;
+    border-bottom: 1px solid #D1FAE5;
+}
+
+.appt-card-cancelled {
+    background: #FEF2F2; /* Red 50 */
+    border-right-color: #EF4444; /* Red 500 */
+    color: #991B1B; /* Red 800 */
+    border-left: 1px solid #FEE2E2;
+    border-top: 1px solid #FEE2E2;
+    border-bottom: 1px solid #FEE2E2;
+    opacity: 0.8;
+}
+
+.block-card-pattern {
+    background-color: #F8FAFC;
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(203, 213, 225, 0.2), /* Slate 300 */
+        rgba(203, 213, 225, 0.2) 10px,
+        transparent 10px,
+        transparent 20px
+    );
+    border: 1px solid #E2E8F0;
+    color: #64748B;
+}
+
+.break-card-pattern {
+    background-color: #FFFBEB; /* Amber 50 */
+    border: 1px solid #FDE68A;
+    color: #B45309;
+}

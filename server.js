@@ -9,14 +9,13 @@ const rateLimit = require('express-rate-limit'); // Rate limiting
 const crypto = require('crypto'); // Used for generating simple tokens/salts
 const bcrypt = require('bcrypt'); // Secure password hashing
 const compression = require('compression'); // Enable gzip compression for responses
-const db = require('./database'); // Import our database module
+const db = require('./assets/database'); // Import our database module
 const nodemailer = require('nodemailer'); // Email sending for Contact Us
 const webPush = require('web-push'); // Web Push notifications
 const multer = require('multer'); // File upload handling
 const fs = require('fs'); // File system for saving uploads
 const sharp = require('sharp'); // Image optimization
 const { createClient } = require('@supabase/supabase-js'); // Supabase client
-const { aiAssistant } = require('./ai-chat-assistant'); // AI Chat Assistant Module
 const jwt = require('jsonwebtoken'); // JWT issuance and verification
 const { z } = require('zod'); // Schema validation
 require('dotenv').config(); // Load environment variables (.env)
@@ -53,506 +52,26 @@ if (!JWT_SECRET) {
         console.error('FATAL: Missing JWT_SECRET in environment. Refusing to start in production.');
         process.exit(1);
     } else {
-        // Generate a temporary secret for local development to avoid hardcoding
-        JWT_SECRET = crypto.randomBytes(32).toString('hex');
-        console.warn('WARNING: No JWT_SECRET set. Generated a temporary dev secret. Set JWT_SECRET in your .env for stability.');
+        // Use a fixed secret for local development to preserve sessions across restarts
+        JWT_SECRET = 'dev-secret-fixed-for-saloony-development-12345'; 
+        console.warn('WARNING: No JWT_SECRET set. Using fixed dev secret. Set JWT_SECRET in your .env for production security.');
     }
 }
 const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
 const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
 
-// --- Core Data: Cities ---
+// --- Core Data & Helpers (Imported) ---
+const { CITIES } = require('./config/constants');
+const { hashPassword, verifyPassword, validatePhoneFormat, normalizePhoneNumber } = require('./utils/helpers');
 
-const CITIES = [
-    // Major Cities (Original)
-    'القدس', 'رام الله', 'الخليل', 'نابلس', 'بيت لحم', 'غزة',
-    'جنين', 'طولكرم', 'قلقيلية', 'أريحا', 'رفح', 'خان يونس',
-    'دير البلح', 'الناصرة', 'حيفا', 'عكا', 'طبريا', 'صفد',
-    'عبسان الكبيرة', 'أبو ديس', 'بني نعيم', 'بني سهيلا', 'بيت حانون',
-    'بيت جالا', 'بيت لاهيا', 'بيت ساحور', 'بيت أمر', 'بيتونيا',
-    'البيرة', 'الظاهرية', 'دورا', 'مدينة غزة', 'حلحول', 'إذنا',
-    'جباليا', 'قباطية', 'سعير', 'سلفيت', 'السموع', 'صوريف',
-    'طوباس', 'يعبد', 'اليمون', 'يطا', 'الزوايدة'
-];
-
-// Helper function to hash passwords securely using bcrypt
-async function hashPassword(password) {
-    const saltRounds = 12; // Higher salt rounds for better security
-    return await bcrypt.hash(password, saltRounds);
-}
-
-// Helper function to verify passwords
-async function verifyPassword(password, hashedPassword) {
-    return await bcrypt.compare(password, hashedPassword);
-}
-
-// Validate phone number format (must start with 0 and be exactly 10 digits)
-function validatePhoneFormat(phone) {
-    if (!phone) return true; // Allow empty for optional fields
-    const phonePattern = /^0[0-9]{9}$/;
-    return phonePattern.test(phone);
-}
-
-// Normalize phone numbers to a canonical form for duplicate checks and login.
-// Strategy:
-// - Remove all non-digits
-// - Strip leading international prefixes and country codes (00, +970, +972)
-// - Strip trunk leading zero
-// - Compare by last 10 digits (operator+subscriber), which unifies formats like:
-//   0594444403, +970594444403, +972594444403, 594444403
-function normalizePhoneNumber(input) {
-    if (!input) return '';
-    let digits = String(input).replace(/\D/g, '');
-    // Remove international call prefix like '00'
-    if (digits.startsWith('00')) digits = digits.replace(/^00+/, '');
-    // Remove common country codes used in our region
-    if (digits.startsWith('970')) digits = digits.slice(3);
-    else if (digits.startsWith('972')) digits = digits.slice(3);
-    // Remove local trunk prefix '0'
-    if (digits.startsWith('0')) digits = digits.slice(1);
-    // Unify to last 10 digits
-    if (digits.length > 10) digits = digits.slice(-10);
-    return digits;
-}
+const { initializeDb } = require('./db/tables'); // Import centralized schema initialization
 
 // Helper functions using our database module
 const dbAll = (sql, params = []) => db.query(sql, params);
 const dbGet = (sql, params = []) => db.get(sql, params);
 const dbRun = (sql, params = []) => db.run(sql, params);
 
-// Initialize database schema and insert master data
-async function initializeDb() {
-    console.log("Initializing database schema...");
-    
-    try {
-        // Create users table - single source of authentication
-        await db.run(`CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE,
-            username TEXT UNIQUE,
-            phone TEXT,
-            gender TEXT,
-            city TEXT,
-            password TEXT NOT NULL,
-            strikes INTEGER DEFAULT 0,
-            user_type TEXT DEFAULT 'user',
-            language_preference VARCHAR(10) DEFAULT 'auto'
-        )`);
-        try { await db.run(`UPDATE users SET email = NULL WHERE email = ''`); } catch (_) {}
-        try {
-            const colsRes = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`, ['users', 'public']);
-            const cols = new Set((colsRes || []).map(r => r.column_name));
-            if (!cols.has('username')) {
-                await db.run(`ALTER TABLE users ADD COLUMN username TEXT UNIQUE`);
-            }
-        } catch (e) {
-            try { const pragma = await db.query(`PRAGMA table_info(users)`); const cols = new Set((pragma || []).map(r => r.name)); if (!cols.has('username')) { await db.run(`ALTER TABLE users ADD COLUMN username TEXT UNIQUE`); } } catch (_) {}
-        }
-
-        // Create salons table - Linked to users by user_id, no redundant email/password
-        await db.run(`CREATE TABLE IF NOT EXISTS salons (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER UNIQUE NOT NULL, 
-            salon_name TEXT NOT NULL,
-            owner_name TEXT NOT NULL,
-            salon_phone TEXT NOT NULL,
-            owner_phone TEXT NOT NULL,
-            address TEXT NOT NULL,
-            city TEXT NOT NULL,
-            gender_focus TEXT NOT NULL,
-            image_url TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'pending',
-            special BOOLEAN DEFAULT FALSE,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )`);
-        
-        await db.run(`CREATE TABLE IF NOT EXISTS services (
-            id SERIAL PRIMARY KEY,
-            name_ar TEXT NOT NULL,
-            icon TEXT NOT NULL,
-            gender TEXT NOT NULL,
-            service_type TEXT NOT NULL DEFAULT 'main',
-            is_active BOOLEAN DEFAULT TRUE,
-            UNIQUE(name_ar, gender)
-        )`);
-
-        try {
-            const svcColsRes = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = $2`, ['services', 'public']);
-            const svcCols = new Set((svcColsRes || []).map(r => r.column_name));
-            if (!svcCols.has('home_page_icon')) {
-                await db.run(`ALTER TABLE services ADD COLUMN home_page_icon TEXT`);
-            }
-            if (!svcCols.has('is_active')) {
-                await db.run(`ALTER TABLE services ADD COLUMN is_active BOOLEAN DEFAULT TRUE`);
-            }
-        } catch (e) {
-            try { const svcPragma = await db.query(`PRAGMA table_info(services)`); const svcCols = new Set((svcPragma || []).map(r => r.name)); if (!svcCols.has('home_page_icon')) { await db.run(`ALTER TABLE services ADD COLUMN home_page_icon TEXT`); } if (!svcCols.has('is_active')) { await db.run(`ALTER TABLE services ADD COLUMN is_active BOOLEAN DEFAULT TRUE`); } } catch (_) {}
-        }
-
-        await db.run(`CREATE TABLE IF NOT EXISTS reviews (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            rating INTEGER NOT NULL,
-            comment TEXT,
-            date_posted TEXT NOT NULL,
-            UNIQUE (salon_id, user_id),
-            FOREIGN KEY (salon_id) REFERENCES salons(id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )`);
-
-        // Employee daily sessions (start-of-day marker)
-        await db.run(`CREATE TABLE IF NOT EXISTS employee_sessions (
-            id SERIAL PRIMARY KEY,
-            employee_id INTEGER NOT NULL,
-            date DATE NOT NULL DEFAULT CURRENT_DATE,
-            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(employee_id, date),
-            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
-        )`);
-
-        // Employee visits logged during field work
-        await db.run(`CREATE TABLE IF NOT EXISTS employee_visits (
-            id SERIAL PRIMARY KEY,
-            employee_id INTEGER NOT NULL,
-            salon_name TEXT NOT NULL,
-            status TEXT NOT NULL,
-            interest_level INTEGER,
-            comments TEXT,
-            address TEXT,
-            plan_core VARCHAR(20),
-            plan_option VARCHAR(30),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS salon_services (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            service_id INTEGER NOT NULL,
-            price DECIMAL(10,2) NOT NULL,
-            duration INTEGER NOT NULL,
-            UNIQUE (salon_id, service_id),
-            FOREIGN KEY (salon_id) REFERENCES salons(id),
-            FOREIGN KEY (service_id) REFERENCES services(id)
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS staff (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            FOREIGN KEY (salon_id) REFERENCES salons(id)
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS schedules (
-            salon_id INTEGER PRIMARY KEY,
-            opening_time TEXT NOT NULL,
-            closing_time TEXT NOT NULL,
-            closed_days TEXT,
-            FOREIGN KEY (salon_id) REFERENCES salons(id)
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS breaks (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            staff_id INTEGER,
-            reason TEXT,
-            start_time TEXT NOT NULL,
-            end_time TEXT NOT NULL,
-            FOREIGN KEY (salon_id) REFERENCES salons(id),
-            FOREIGN KEY (staff_id) REFERENCES staff(id)
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS appointments (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            staff_id INTEGER,
-            service_id INTEGER NOT NULL,
-            start_time TEXT NOT NULL,
-            end_time TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'Scheduled',
-            date_booked TEXT NOT NULL,
-            price DECIMAL(10,2) NOT NULL,
-            FOREIGN KEY (salon_id) REFERENCES salons(id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (staff_id) REFERENCES staff(id),
-            FOREIGN KEY (service_id) REFERENCES services(id)
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS appointment_services (
-            id SERIAL PRIMARY KEY,
-            appointment_id INTEGER NOT NULL,
-            service_id INTEGER NOT NULL,
-            price DECIMAL(10,2) NOT NULL,
-            FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
-            FOREIGN KEY (service_id) REFERENCES services(id),
-            UNIQUE(appointment_id, service_id)
-        )`); 
-
-        // Storage: optimized images linked to salons
-        await db.run(`CREATE TABLE IF NOT EXISTS salon_images (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            image_path TEXT NOT NULL,
-            width INTEGER,
-            height INTEGER,
-            size_bytes INTEGER,
-            mime_type TEXT,
-            is_primary BOOLEAN DEFAULT false,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-        
-        // Push subscriptions table
-        await db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            salon_id INTEGER,
-            endpoint TEXT NOT NULL,
-            p256dh TEXT NOT NULL,
-            auth TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_active TIMESTAMP,
-            UNIQUE(endpoint),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-
-        // Reminders sent log to avoid duplicate sends
-        await db.run(`CREATE TABLE IF NOT EXISTS reminders_sent (
-            id SERIAL PRIMARY KEY,
-            appointment_id INTEGER NOT NULL,
-            reminder_type TEXT NOT NULL, -- e.g., 'upcoming_1h', 'upcoming_24h'
-            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(appointment_id, reminder_type),
-            FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
-        )`);
-        
-        await db.run(`CREATE TABLE IF NOT EXISTS favorites (
-            user_id INTEGER NOT NULL,
-            salon_id INTEGER NOT NULL,
-            PRIMARY KEY (user_id, salon_id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (salon_id) REFERENCES salons(id)
-        )`);
-
-        
-
-        await db.run(`CREATE TABLE IF NOT EXISTS schedule_modifications (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            mod_type TEXT NOT NULL,
-            mod_date TEXT,
-            mod_day_index INTEGER,
-            start_time TEXT,
-            end_time TEXT,
-            reason TEXT NOT NULL,
-            staff_id INTEGER,
-            closure_type TEXT,
-            FOREIGN KEY (salon_id) REFERENCES salons(id),
-            FOREIGN KEY (staff_id) REFERENCES staff(id)
-        )`);
-
-        // Create payments table for tracking salon payments and offers
-        await db.run(`CREATE TABLE IF NOT EXISTS payments (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            payment_type VARCHAR(50) NOT NULL,
-            amount DECIMAL(10,2) NOT NULL,
-            currency VARCHAR(3) DEFAULT 'ILS',
-            payment_status VARCHAR(20) DEFAULT 'completed',
-            payment_method VARCHAR(50),
-            description TEXT,
-            valid_from DATE,
-            valid_until DATE,
-            invoice_number VARCHAR(50) UNIQUE,
-            admin_notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-
-        // Create indexes for payments table
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_salon_id ON payments(salon_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(payment_status)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at)`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS subscriptions (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            package VARCHAR(40),
-            start_date DATE NOT NULL,
-            end_date DATE,
-            status VARCHAR(20) DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-        await db.run(`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS package VARCHAR(40)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_subscriptions_salon ON subscriptions(salon_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_subscriptions_end ON subscriptions(end_date)`);
-        try { await db.run(`ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_payment_id_fkey`); } catch (_) {}
-        try { await db.run(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS payment_id`); } catch (_) {}
-        try { await db.run(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS plan_type`); } catch (_) {}
-        try { await db.run(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS plan_chairs`); } catch (_) {}
-
-        // Create salon_locations table (one location per salon for now)
-        await db.run(`CREATE TABLE IF NOT EXISTS salon_locations (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL UNIQUE,
-            address TEXT,
-            city TEXT,
-            latitude DECIMAL(9,6),
-            longitude DECIMAL(9,6),
-            place_id TEXT,
-            formatted_address TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_locations_salon_id ON salon_locations(salon_id)`);
-
-        // Create role system tables for salon staff management
-        await db.run(`CREATE TABLE IF NOT EXISTS salon_roles (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL UNIQUE,
-            roles_enabled BOOLEAN DEFAULT FALSE,
-            session_duration_hours INTEGER DEFAULT 24,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS staff_roles (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            staff_id INTEGER NOT NULL,
-            role_type VARCHAR(20) NOT NULL CHECK (role_type IN ('admin', 'staff')),
-            pin_hash VARCHAR(255) NOT NULL,
-            biometric_enabled BOOLEAN DEFAULT FALSE,
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE,
-            FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE,
-            UNIQUE(salon_id, staff_id)
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS role_sessions (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            staff_role_id INTEGER NOT NULL,
-            session_token VARCHAR(255) NOT NULL UNIQUE,
-            expires_at TIMESTAMP NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE,
-            FOREIGN KEY (staff_role_id) REFERENCES staff_roles(id) ON DELETE CASCADE
-        )`);
-
-        // Create indexes for role system tables
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_roles_salon_id ON salon_roles(salon_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_staff_roles_salon_id ON staff_roles(salon_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_staff_roles_staff_id ON staff_roles(staff_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_role_sessions_token ON role_sessions(session_token)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_role_sessions_expires ON role_sessions(expires_at)`);
-
-        // Create AI chat messages table for analytics and conversation history
-        await db.run(`CREATE TABLE IF NOT EXISTS ai_chat_messages (
-            id SERIAL PRIMARY KEY,
-            user_id VARCHAR(50),
-            user_message TEXT NOT NULL,
-            ai_response TEXT NOT NULL,
-            language_detected VARCHAR(10) DEFAULT 'auto',
-            session_id TEXT,
-            response_time_ms INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-        )`);
-
-        // Create AI Analytics Tables (Optimized for Performance)
-        await db.run(`CREATE TABLE IF NOT EXISTS ai_token_usage (
-            id SERIAL PRIMARY KEY,
-            user_id VARCHAR(50),
-            model VARCHAR(20) DEFAULT 'deepseek-chat',
-            input_tokens SMALLINT DEFAULT 0,
-            output_tokens SMALLINT DEFAULT 0,
-            total_tokens SMALLINT DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS conversation_analytics (
-            id SERIAL PRIMARY KEY,
-            user_id VARCHAR(50),
-            message_length SMALLINT,
-            response_length SMALLINT,
-            language CHAR(2) DEFAULT 'ar',
-            response_time SMALLINT DEFAULT 0,
-            salon_context_used BOOLEAN DEFAULT FALSE,
-            recommendations_shown SMALLINT DEFAULT 0,
-            error_occurred BOOLEAN DEFAULT FALSE,
-            session_id VARCHAR(100),
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS user_preferences (
-            id SERIAL PRIMARY KEY,
-            user_id VARCHAR(50),
-            category VARCHAR(30),
-            preference VARCHAR(50),
-            context TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, category, preference)
-        )`);
-
-        // Create indexes for AI chat messages table
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_id ON ai_chat_messages(user_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_created_at ON ai_chat_messages(created_at)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_session_id ON ai_chat_messages(session_id)`);
-
-        // Create indexes for AI analytics tables (separate statements for PostgreSQL)
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_token_usage_user_date ON ai_token_usage(user_id, created_at)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_conversation_analytics_date ON conversation_analytics(timestamp)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_conversation_analytics_user ON conversation_analytics(user_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_user_preferences_user_cat ON user_preferences(user_id, category)`);
-
-        // Create social_links table (one entry per platform per salon)
-        await db.run(`CREATE TABLE IF NOT EXISTS social_links (
-            id SERIAL PRIMARY KEY,
-            salon_id INTEGER NOT NULL,
-            platform VARCHAR(20) NOT NULL CHECK (platform IN ('facebook','instagram','tiktok','other')),
-            url TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(salon_id, platform),
-            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
-        )`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_social_links_salon ON social_links(salon_id)`);
-
-        await db.run(`CREATE TABLE IF NOT EXISTS password_reset_codes (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            code_hash TEXT NOT NULL,
-            expires_at TIMESTAMP NOT NULL,
-            attempts_left INTEGER NOT NULL DEFAULT 5,
-            used_at TIMESTAMP,
-            generated_by_admin_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_prc_user ON password_reset_codes(user_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_prc_expires ON password_reset_codes(expires_at)`);
-
-        console.log("✅ Database schema created successfully (including optimized AI Analytics tables).");
-        
-    } catch (error) {
-        console.error("Error initializing database:", error);
-        throw error;
-    }
-}
+// Legacy startServer function removed (schema init moved to db/tables.js)
 
 // Align existing database schema (especially for production/PostgreSQL)
 // Ensures salons table has expected columns and constraints used by the server code
@@ -628,6 +147,18 @@ async function alignSchema() {
                     console.warn('AlignSchema: Backfill for salons.created_at warning:', e.message);
                     await db.run(`UPDATE salons SET created_at = NOW() WHERE created_at IS NULL`);
                 }
+            }
+
+            // 6) Ensure roles_enabled column exists
+            if (!columnSet.has('roles_enabled')) {
+                console.log('AlignSchema: Adding roles_enabled column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN roles_enabled BOOLEAN DEFAULT FALSE`);
+            }
+
+            // 6) Ensure roles_enabled column exists
+            if (!columnSet.has('roles_enabled')) {
+                console.log('AlignSchema: Adding roles_enabled column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN roles_enabled BOOLEAN DEFAULT FALSE`);
             }
 
             // 4) Relax NOT NULL on users.gender to allow NULL for salon-linked users
@@ -1133,6 +664,7 @@ app.use(helmet({
                 'chrome-extension:',
                 'data:',
                 'blob:',
+                'https://*.googleusercontent.com',
                 'https:',
                 'https://tile.openstreetmap.org',
                 'https://demotiles.maplibre.org',
@@ -1193,7 +725,7 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false
 });
-app.use(['/api/auth', '/api/ai-chat'], authLimiter);
+app.use(['/api/auth'], authLimiter);
 
 // Map config for frontend
 app.get('/api/map/config', (req, res) => {
@@ -1337,16 +869,17 @@ const registerSalonRoutes = require('./routes/salon');
 const registerEmployeeRoutes = require('./routes/employee');
 const registerDiscoveryRoutes = require('./routes/discovery');
 const registerPushRoutes = require('./routes/push');
-const registerAiRoutes = require('./routes/ai');
 const registerSubscriptionsRoutes = require('./routes/subscriptions');
+const registerProductsRoutes = require('./routes/products');
 
 registerReviewsRoutes(app, { dbAll, dbGet, dbRun, requireAuth });
 registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled });
 registerSubscriptionsRoutes(app, { db, requireAdmin });
 registerSalonRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, bcrypt, crypto });
+registerProductsRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, upload, sharp, supabase, crypto });
 registerEmployeeRoutes(app, { db, requireRole, sendPushToAdmins });
 registerPushRoutes(app, { dbAll, dbGet, dbRun, webPush, sendPushToTargets, VAPID_PUBLIC_KEY });
-registerAiRoutes(app, { aiAssistant, dbGet });
+
 
 app.use((req, res, next) => {
     const start = Date.now();
@@ -1457,7 +990,7 @@ registerAppointmentsRoutes(app, { dbAll, dbGet, dbRun, requireAuth, bookingSchem
 
 // AI Analytics Dashboard Route
 app.get('/ai-analytics', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'admin', 'ai_analytics.html'));
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'ai_analytics.html'));
 });
 
 // AI Analytics API Route
@@ -1551,16 +1084,18 @@ setInterval(cleanExpiredSessions, 60 * 60 * 1000);
 
 // Serve root-level static assets (e.g., offline-detect.js, manifest) first
 // This ensures requests like /offline-detect.js are served with correct MIME type
-app.use(express.static(__dirname, { etag: true }));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), { etag: true }));
+app.use(express.static(path.join(__dirname, 'assets'), { etag: true }));
+app.use(express.static(path.join(__dirname, 'pages'), { etag: true }));
+app.use('/pages', express.static(path.join(__dirname, 'pages'), { etag: true }));
 
-// Serve static files (views, Images)
-// Serve static assets with mild caching for images; keep HTML no-cache via discovery route headers
-app.use('/', express.static(path.join(__dirname, 'views'), { etag: true }));
-app.use('/images', express.static(path.join(__dirname, 'Images'), { maxAge: '1d', etag: true }));
+// Serve static files (images, sounds, videos) from assets bundle
+// These assets are still used by the new platform for icons/media
+app.use('/images', express.static(path.join(__dirname, 'assets', 'images'), { maxAge: '1d', etag: true }));
 // Serve notification sounds
-app.use('/sounds', express.static(path.join(__dirname, 'Sounds'), { maxAge: '7d', etag: true }));
+app.use('/sounds', express.static(path.join(__dirname, 'assets', 'sounds'), { maxAge: '7d', etag: true }));
 // Serve videos with proper MIME type handling
-app.use('/videos', express.static(path.join(__dirname, 'videos'), { 
+app.use('/videos', express.static(path.join(__dirname, 'assets', 'videos'), { 
     maxAge: '1d', 
     etag: true,
     setHeaders: (res, path) => {
@@ -1571,76 +1106,156 @@ app.use('/videos', express.static(path.join(__dirname, 'videos'), {
 }));
 
 // Serve map icons
-app.use('/map_icons', express.static(path.join(__dirname, 'map_icons'), { maxAge: '7d', etag: true }));
+app.use('/map_icons', express.static(path.join(__dirname, 'assets', 'map_icons'), { maxAge: '7d', etag: true }));
 
-// Test route for video
-app.get('/test-video', (req, res) => {
-    const videoPath = path.join(__dirname, 'videos', 'app.mp4');
-    console.log('Video path:', videoPath);
-    console.log('File exists:', require('fs').existsSync(videoPath));
-    res.sendFile(videoPath);
-});
+
 
 // Root route should serve index for browser launches
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'index.html'));
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'index.html'));
 });
 
-// Lightweight health ping for outage detection (network-only via SW)
-app.get('/api/ping', (req, res) => {
-    try {
-        res.setHeader('Cache-Control', 'no-store');
-        res.status(200).json({ ok: true, t: Date.now() });
-    } catch (e) {
-        res.status(500).json({ ok: false });
-    }
+app.get('/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'index.html'));
 });
 
-// Employee presentation route
-app.get('/presentation', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'employee_presentation.html'));
+app.get('/registred_salons.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'registred_salons.html'));
 });
 
-// Serve dedicated salon page (route-capable)
-app.get('/salon/:salon_id', (req, res) => {
-    // Always serve the salon shell page; client JS loads content by salon_id
-    res.sendFile(path.join(__dirname, 'views', 'salon.html'));
+    // Lightweight health ping for outage detection (network-only via SW)
+    app.get('/api/ping', (req, res) => {
+        try {
+            res.json({ status: 'ok', timestamp: Date.now() });
+        } catch (e) {
+            res.status(500).end();
+        }
+    });
+    
+    // Get registered salons for showcase page
+    app.get('/api/salons/registered', async (req, res) => {
+        try {
+            // Fetch top 9 salons, preferably those with images and ratings
+            // This is a showcase, so we want the "best" looking ones
+            // Assuming we want active salons
+            
+            // Note: In a real scenario, we might have an 'is_featured' flag or similar.
+            // For now, we'll pick salons that have a name and image, ordered by rating or recency.
+            
+            let query = `
+                SELECT 
+                    s.id, 
+                    s.salon_name, 
+                    s.city, 
+                    s.image_url, 
+                    (SELECT COUNT(*) FROM reviews WHERE salon_id = s.id) as review_count,
+                    (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE salon_id = s.id) as rating,
+                    NULL as description,
+                    NULL as tagline,
+                    s.created_at
+                FROM salons s
+                WHERE s.salon_name IS NOT NULL 
+                AND s.salon_name != ''
+                ORDER BY s.created_at DESC
+                LIMIT 50
+            `;
+            
+            const salons = await db.query(query);
+            
+            // Format for frontend
+            const formattedSalons = (Array.isArray(salons) ? salons : []).map(salon => ({
+                id: salon.id,
+                name: salon.salon_name,
+                city: salon.city || 'غير محدد',
+                image: salon.image_url || '/images/salon.png',
+                rating: salon.rating ? parseFloat(salon.rating).toFixed(1) : 'جديد',
+                reviewCount: salon.review_count || 0,
+                description: salon.description || salon.tagline || 'يقدم خدمات تجميل مميزة.',
+                joinedYear: salon.created_at ? new Date(salon.created_at).getFullYear() : '2024'
+            }));
+            
+            res.json({ success: true, salons: formattedSalons });
+        } catch (error) {
+            console.error('Error fetching registered salons:', error);
+            res.status(500).json({ success: false, message: 'Database error' });
+        }
+    });
+
+
+// Serve salon public page (client-facing digital page)
+app.get(['/salon.html', '/salon', '/salon/:salon_id'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'salons', 'salon.html'));
 });
 
-// Serve salon share landing page
-app.get('/salon-share', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'salon-share.html'));
+// Serve salon share page
+app.get(['/salon-share', '/salon-share.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'salons', 'salon-share.html'));
 });
 
-// Pricing page route
-app.get('/pricing', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'pricing.html'));
+app.get('/contact.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'contact.html'));
 });
 
-// AI Chat page route
-app.get('/ai-chat.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'ai-chat.html'));
+app.get('/auth.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'auth.html'));
 });
 
-// Pretty route for Admin Dashboard
-app.get('/admin_dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'admin', 'admin_dashboard.html'));
+app.get('/offline.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'offline.html'));
+});
+
+// Admin Dashboard Routes (New Structure)
+app.get(['/admin/dashboard', '/admin_dashboard'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'dashboard', 'index.html'));
+});
+
+app.get('/admin/users', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'dashboard', 'users.html'));
+});
+
+app.get('/admin/salons', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'dashboard', 'salons.html'));
+});
+
+app.get('/admin/progress', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'dashboard', 'progress.html'));
+});
+
+app.get('/admin/create-salon', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'dashboard', 'create_salon.html'));
+});
+
+app.get('/admin/manage_salon', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'dashboard', 'manage_salon.html'));
+});
+
+// Employee Management Routes
+app.get('/admin/employees', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'employees', 'index.html'));
+});
+
+app.get('/admin/employee-dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'employees', 'dashboard.html'));
+});
+
+app.get('/admin/employee-report', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'admin_saloony', 'employees', 'report.html'));
 });
 
 // Admin Salon page route
 app.get('/admin_salon', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'admin', 'admin_salon.html'));
+    res.sendFile(path.join(__dirname, 'pages', 'salons', 'dashboard', 'index.html'));
 });
 
 // Base /admin route redirects to the admin dashboard HTML under /views/admin
 app.get('/admin', (req, res) => {
-    res.redirect('/admin/admin_dashboard.html');
+    res.redirect('/admin_dashboard');
 });
 
 // Legacy payments page now lives inside the Admin Dashboard
 // Keep a redirect to avoid 404s from old links
 app.get('/admin/payments.html', (req, res) => {
-    res.redirect('/admin/admin_dashboard.html');
+    res.redirect('/admin_dashboard');
 });
 
 // ===============================
@@ -1842,6 +1457,26 @@ app.post('/api/auth/register', async (req, res) => {
     try {
         let { user_type, name, email, password, phone, city, gender, owner_name, owner_phone, address, gender_focus, image_url } = req.body;
         
+        // Security Check: Restrict salon creation to Admins only
+        if (user_type === 'salon') {
+            const authHeader = req.headers.authorization || '';
+            const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+            let isAdmin = false;
+            if (token) {
+                try {
+                    const payload = jwt.verify(token, JWT_SECRET);
+                    if (payload.role === 'admin') isAdmin = true;
+                } catch (e) { }
+            }
+            if (!isAdmin) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'غير مصرح لك بإنشاء حساب صالون.',
+                    message_en: 'Unauthorized: Only admins can create salon accounts.'
+                });
+            }
+        }
+        
         console.log('=== REGISTER REQUEST ===');
         console.log('User type:', user_type);
         console.log('Email:', email);
@@ -1965,30 +1600,28 @@ app.post('/api/auth/register', async (req, res) => {
                                 const uploadResults = await uploadImageToSupabase(bufferIn, salonId, 'salon_signup_image.jpg');
                                 
                                 if (uploadResults && uploadResults.length > 0) {
-                                    // Store optimized image metadata in salon_images table
-                                    for (const result of uploadResults) {
-                                        await dbGet(
-                                            `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
-                                             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-                                            [
-                                                salonId, 
-                                                result.url, 
-                                                result.size === 'medium' ? 512 : 512,
-                                                result.size === 'medium' ? 512 : 512,
-                                                result.bytes, 
-                                                result.format === 'webp' ? 'image/webp' : 'image/jpeg',
-                                                result.size === 'medium' && result.format === 'webp' // Primary image is medium WebP
-                                            ]
-                                        );
-                                    }
+                                    // Pick the best image for logo (WebP preferred)
+                                const logoImage = uploadResults.find(r => r.format === 'webp') || uploadResults[0];
+
+                                // Store optimized image metadata in salon_images table as 'logo'
+                                if (logoImage) {
+                                    await dbGet(
+                                        `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, image_type)
+                                         VALUES ($1, $2, $3, $4, $5, $6, 'logo') RETURNING id`,
+                                        [
+                                            salonId, 
+                                            logoImage.url, 
+                                            512, // Approximate/Target size
+                                            512,
+                                            logoImage.bytes, 
+                                            logoImage.format === 'webp' ? 'image/webp' : 'image/jpeg'
+                                        ]
+                                    );
                                     
-                                    // Update salons.image_url with the primary image URL
-                                    const primaryImage = uploadResults.find(r => r.size === 'medium' && r.format === 'webp') || 
-                                                       uploadResults.find(r => r.size === 'medium' && r.format === 'jpeg') ||
-                                                       uploadResults[0];
-                                    
-                                    await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [primaryImage.url, salonId]);
-                                    console.log(`✅ Salon ${salonId} image uploaded to Supabase Storage successfully`);
+                                    // Update salons.image_url AND logo_url with the logo image URL
+                                    await dbRun('UPDATE salons SET image_url = $1, logo_url = $1 WHERE id = $2', [logoImage.url, salonId]);
+                                    console.log(`✅ Salon ${salonId} logo uploaded to Supabase Storage successfully`);
+                                }
                                 } else {
                                     console.warn(`⚠️ Failed to upload image for salon ${salonId}, skipping image storage`);
                                 }
@@ -2000,9 +1633,14 @@ app.post('/api/auth/register', async (req, res) => {
                     }
                     
                     console.log(`New Salon registered with ID: ${salonId}, linked to User ID: ${userId}`);
+                    
+                    // Generate Token for immediate login
+                    const accessToken = signAccessToken(userId, 'salon');
+
                     return res.json({ 
                         success: true, 
                         message: 'تم إنشاء حساب الصالون بنجاح.', 
+                        token: accessToken,
                         user: { 
                             userId: userId, 
                             salonId: salonId, // IMPORTANT: Return salonId for business ops
@@ -2025,9 +1663,14 @@ app.post('/api/auth/register', async (req, res) => {
             } else {
                 // Regular user successful registration
                 console.log(`New User registered with ID: ${userId}`);
+                
+                // Generate Token for immediate login
+                const accessToken = signAccessToken(userId, 'user');
+
                 return res.json({ 
                     success: true, 
                     message: 'تم إنشاء حساب المستخدم بنجاح.', 
+                    token: accessToken,
                     user: { 
                         userId: userId, 
                         user_type: 'user', 
@@ -2139,7 +1782,7 @@ app.post('/api/auth/login', async (req, res) => {
         redirectUrl = '/admin/admin_dashboard.html';
         } else if (userType === 'user') {
             userObject.gender = userRow.gender;
-            redirectUrl = '/home_user.html';
+            redirectUrl = '/';
         } else if (userType === 'salon') {
             // Fetch linked salon details
             const salonResult = await db.query('SELECT id, salon_name, owner_name, salon_phone, owner_phone, address, gender_focus, image_url, status FROM salons WHERE user_id = $1', [userRow.id]);
@@ -2165,7 +1808,7 @@ app.post('/api/auth/login', async (req, res) => {
                 status: salonData.status
             };
             
-            redirectUrl = '/home_salon.html';
+            redirectUrl = '/admin_salon';
         } else if (userType === 'employee') {
             redirectUrl = '/employee_dashboard.html';
         } else {
@@ -2475,11 +2118,91 @@ async function uploadImageToSupabase(buffer, salonId, originalFilename) {
     }
 }
 
+// Role Management Routes
+app.get('/api/salon/roles/:salonId/status', async (req, res) => {
+    try {
+        const { salonId } = req.params;
+        const result = await dbGet('SELECT roles_enabled FROM salons WHERE id = $1', [salonId]);
+        res.json({ enabled: !!(result && result.roles_enabled) });
+    } catch (error) {
+        console.error('Error checking role status:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/salon/roles/:salonId/toggle', async (req, res) => {
+    try {
+        const { salonId } = req.params;
+        const { enabled } = req.body;
+        await dbRun('UPDATE salons SET roles_enabled = $1 WHERE id = $2', [enabled, salonId]);
+        res.json({ success: true, enabled });
+    } catch (error) {
+        console.error('Error toggling roles:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/salon/roles/:salonId', async (req, res) => {
+    try {
+        const { salonId } = req.params;
+        const roles = await dbAll(`
+            SELECT r.*, s.name as staff_name 
+            FROM roles r 
+            LEFT JOIN staff s ON r.staff_id = s.id 
+            WHERE r.salon_id = $1
+            ORDER BY r.created_at DESC
+        `, [salonId]);
+        res.json(roles);
+    } catch (error) {
+        console.error('Error fetching roles:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/salon/roles', async (req, res) => {
+    try {
+        const { salon_id, staff_id, role_type, pin_code } = req.body;
+        
+        // Basic validation
+        if (!salon_id || !role_type || !pin_code) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Check for existing PIN in this salon (optional but good practice)
+        const existing = await dbGet('SELECT id FROM roles WHERE salon_id = $1 AND pin_code = $2', [salon_id, pin_code]);
+        if (existing) {
+            return res.status(400).json({ error: 'PIN code already in use' });
+        }
+
+        await dbRun(
+            'INSERT INTO roles (salon_id, staff_id, role_type, pin_code) VALUES ($1, $2, $3, $4)',
+            [salon_id, staff_id || null, role_type, pin_code]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error creating role:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/salon/roles/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await dbRun('DELETE FROM roles WHERE id = $1', [id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting role:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // API for image upload (multipart/form-data) - OPTIMIZED VERSION
 app.post('/api/upload', upload.single('image'), async (req, res) => {
     try {
         const salonIdRaw = req.query.salon_id || req.body.salon_id;
+        const imageType = req.body.type === 'background' ? 'background' : 'logo'; // Default to logo
         const salonId = parseInt(salonIdRaw);
+        
         if (!salonId || isNaN(salonId)) {
             return res.status(400).json({ success: false, message: 'Salon ID مطلوب.' });
         }
@@ -2488,76 +2211,53 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
         }
 
         // Upload optimized images to Supabase Storage
+        // This uploads both WebP and JPEG versions. We'll use the WebP version as the primary one.
         const uploadResults = await uploadImageToSupabase(req.file.buffer, salonId, req.file.originalname);
         
         if (!uploadResults || uploadResults.length === 0) {
             throw new Error('فشل في رفع الصور إلى التخزين السحابي');
         }
 
-        // Delete existing images for this salon (both from database and Supabase)
-        const existingImages = await dbAll('SELECT image_path FROM salon_images WHERE salon_id = $1', [salonId]);
+        // Select the best format (Medium WebP)
+        const bestImage = uploadResults.find(r => r.size === 'medium' && r.format === 'webp') || uploadResults[0];
+
+        // 1. Check for existing image of this type
+        const existingImage = await dbGet('SELECT supabase_path FROM salon_images WHERE salon_id = $1 AND image_type = $2', [salonId, imageType]);
         
-        // Delete from Supabase Storage
-        if (existingImages && existingImages.length > 0) {
-            for (const img of existingImages) {
-                const pathParts = img.image_path.split('/');
-                const fileName = pathParts[pathParts.length - 1];
-                if (fileName) {
-                    await supabase.storage
-                        .from('salon-images')
-                        .remove([`salon-images/${fileName}`]);
-                }
+        // 2. Delete from Supabase Storage if exists
+        if (existingImage && existingImage.supabase_path) {
+            try {
+                await supabase.storage
+                    .from('salon-images')
+                    .remove([existingImage.supabase_path]);
+            } catch (e) {
+                console.warn('Failed to delete old image from storage:', e);
             }
         }
         
-        // Delete from database
-        await dbRun('DELETE FROM salon_images WHERE salon_id = $1', [salonId]);
+        // 3. Delete old row from database (to enforce unique constraint manually/safely)
+        await dbRun('DELETE FROM salon_images WHERE salon_id = $1 AND image_type = $2', [salonId, imageType]);
         
-        // Store new image metadata in salon_images table
-        const imageRecords = [];
-        for (const result of uploadResults) {
-            const inserted = await dbGet(
-                `INSERT INTO salon_images (salon_id, image_path, width, height, size_bytes, mime_type, is_primary)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-                [
-                    salonId, 
-                    result.url, 
-                    result.size === 'medium' ? 512 : 512,
-                    result.size === 'medium' ? 512 : 512,
-                    result.bytes, 
-                    result.format === 'webp' ? 'image/webp' : 'image/jpeg',
-                    result.size === 'medium' && result.format === 'webp' // Primary image is medium WebP
-                ]
-            );
-            imageRecords.push({ ...result, id: inserted?.id });
+        // 4. Insert new row
+        await dbRun(
+            `INSERT INTO salon_images (salon_id, image_path, image_type, supabase_path)
+             VALUES ($1, $2, $3, $4)`,
+            [salonId, bestImage.url, imageType, bestImage.path]
+        );
+
+        // 5. Update salons table denormalized columns
+        if (imageType === 'logo') {
+            await dbRun('UPDATE salons SET logo_url = $1 WHERE id = $2', [bestImage.url, salonId]);
+        } else {
+            // background/main image
+            await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [bestImage.url, salonId]);
         }
 
-        // Update salons.image_url with the primary image (medium WebP with JPEG fallback)
-        const primaryImage = uploadResults.find(r => r.size === 'medium' && r.format === 'webp') || 
-                           uploadResults.find(r => r.size === 'medium' && r.format === 'jpeg') ||
-                           uploadResults[0];
-        
-        await dbRun('UPDATE salons SET image_url = $1 WHERE id = $2', [primaryImage.url, salonId]);
-
-        // Return optimized response with all image versions
+        // Return optimized response
         res.json({ 
             success: true, 
-            image_url: primaryImage.url,
-            images: {
-                webp: {
-                    thumb: uploadResults.find(r => r.size === 'thumb' && r.format === 'webp')?.url,
-                    medium: uploadResults.find(r => r.size === 'medium' && r.format === 'webp')?.url,
-                    full: uploadResults.find(r => r.size === 'full' && r.format === 'webp')?.url
-                },
-                jpeg: {
-                    thumb: uploadResults.find(r => r.size === 'thumb' && r.format === 'jpeg')?.url,
-                    medium: uploadResults.find(r => r.size === 'medium' && r.format === 'jpeg')?.url,
-                    full: uploadResults.find(r => r.size === 'full' && r.format === 'jpeg')?.url
-                }
-            },
-            total_size_saved: uploadResults.reduce((sum, r) => sum + r.bytes, 0),
-            formats_available: ['webp', 'jpeg'],
-            sizes_available: ['thumb', 'medium', 'full']
+            image_url: bestImage.url,
+            type: imageType
         });
     } catch (error) {
         console.error('Upload error:', error);
@@ -2592,6 +2292,25 @@ async function requireSalonAdminRole(req, res, next) {
         if (!salonId || !session_token) {
             return res.status(401).json({ success: false, message: 'Salon ID and session token required.' });
         }
+
+        // 1. Try to verify as JWT (Owner/Admin)
+        try {
+            // Check if it looks like a JWT (3 parts separated by dots)
+            if (session_token.split('.').length === 3) {
+                const payload = jwt.verify(session_token, JWT_SECRET);
+                // If System Admin, allow
+                if (payload.role === 'admin') return next();
+                
+                // If Salon Owner, verify ownership
+                if (payload.role === 'salon') {
+                    const salon = await db.get('SELECT id FROM salons WHERE id = $1 AND user_id = $2', [salonId, payload.sub]);
+                    if (salon) return next();
+                }
+            }
+        } catch (jwtErr) {
+            // Not a valid JWT or verification failed, proceed to check as Role Session
+        }
+
         const session = await db.get(`
             SELECT rs.*, sr.role_type
             FROM role_sessions rs
@@ -2657,10 +2376,15 @@ async function requireSalonAdminRole(req, res, next) {
 app.get('/api/services/master/:gender', async (req, res) => {
     try {
         const gender = req.params.gender;
-        // FIX: Use $1 placeholder
-        const sql = "SELECT id, name_ar, icon, home_page_icon, service_type FROM services WHERE gender = $1 AND COALESCE(is_active, TRUE) = TRUE";
+        let sql = "SELECT id, name_ar, icon, home_page_icon, service_type, gender FROM services WHERE COALESCE(is_active, TRUE) = TRUE";
+        const params = [];
+
+        if (gender && gender !== 'all') {
+            sql += " AND gender = $1";
+            params.push(gender);
+        }
         
-        const rows = await dbAll(sql, [gender]);
+        const rows = await dbAll(sql, params);
         res.json({ success: true, services: rows });
     } catch (err) {
         console.error("Master services fetch error:", err.message);
@@ -3512,9 +3236,8 @@ async function ensurePerfIndexes() {
         await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_services_service ON salon_services(service_id)`);
         // Index reviews by salon_id for rating aggregates
         await db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_salon ON reviews(salon_id)`);
-        // Index salon_images for quick lookup and primary selection
+        // Index salon_images for quick lookup
         await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_images_salon ON salon_images(salon_id)`);
-        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_images_primary ON salon_images(salon_id, is_primary)`);
     } catch (e) {
         console.warn('ensurePerfIndexes warning:', e.message);
     }
@@ -3833,14 +3556,6 @@ try {
     };
 
     // Helper function to broadcast to all admins
-    global.broadcastToAdmins = (event, data) => {
-        if (io) {
-            io.to('admins').emit(event, data);
-            console.log(`Broadcasted ${event} to admins`);
-        }
-    };
-
-    // Helper function to broadcast to all admin sockets
     global.broadcastToAdmins = (event, data) => {
         if (io) {
             io.to('admins').emit(event, data);

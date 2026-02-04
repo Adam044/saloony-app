@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Manage Salon - Saloony Admin</title>
+    <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
+    <script defer src="/admin_saloony/assets/admin-core.js"></script>
+</head>
+<body class="bg-slate-50">
+    <div id="loading-overlay" class="fixed inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-[60]">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-300" style="border-top-color:#1E293B"></div>
+    </div>
+
+    <div class="p-6 max-w-7xl mx-auto space-y-6">
+        <!-- Header Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-2xl shadow-inner overflow-hidden">
+                    <img id="salon-logo" src="" alt="" class="w-full h-full object-cover hidden">
+                    <i id="salon-icon" class="fas fa-store"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-800" id="salon-name">Loading...</h1>
+                    <div class="flex items-center gap-3 mt-1 text-sm">
+                        <span id="salon-status-badge" class="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-bold text-xs">...</span>
+                        <span class="text-slate-400 font-mono" id="salon-id-display"></span>
+                        <div class="flex items-center text-amber-400 text-xs font-bold gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                            <i class="fas fa-star"></i>
+                            <span id="salon-rating">0.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3 w-full md:w-auto items-center">
+                <a id="public-link" href="#" target="_blank" class="hidden md:inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm">
+                    <i class="fas fa-external-link-alt"></i> <span>Salon Page</span>
+                </a>
+                
+                <!-- Status Toggle -->
+                <div class="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm h-[46px]">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="salon-status-toggle" class="sr-only peer" onchange="toggleSalonStatus()">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <span class="ms-3 text-sm font-bold text-slate-700 select-none" id="salon-status-text">Inactive</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Right Column: Info -->
+            <div class="space-y-6">
+                <!-- Owner Info -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-user-tie text-emerald-500"></i> Owner Information
+                    </h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                            <span class="text-slate-500">Name</span>
+                            <span class="font-bold text-slate-800" id="owner-name">—</span>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                            <span class="text-slate-500">Phone</span>
+                            <a href="#" id="owner-phone" class="font-bold text-slate-800 hover:text-emerald-600 transition" dir="ltr">—</a>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
+                            <span class="text-slate-500">Salon Phone</span>
+                            <a href="#" id="salon-phone" class="font-bold text-slate-800 hover:text-emerald-600 transition" dir="ltr">—</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Info -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-map-location-dot text-emerald-500"></i> Location
+                    </h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="p-3 bg-gray-50 rounded-xl text-slate-600 leading-relaxed" id="salon-address">
+                            —
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-slate-500">City:</span>
+                            <span class="font-bold text-slate-800" id="salon-city">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Left Column: Financials & Stats -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Subscription Blocks Section (New) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-calendar-check text-emerald-500"></i> Subscription Management
+                        </h3>
+                        <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-1 border border-slate-100">
+                            <button onclick="changeYear(-1)" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm text-slate-500 transition"><i class="fas fa-chevron-left"></i></button>
+                            <span id="current-year" class="font-bold text-slate-700 px-3 font-mono">2025</span>
+                            <button onclick="changeYear(1)" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm text-slate-500 transition"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="months-grid">
+                        <p class="col-span-full text-center py-8 text-slate-400">Loading calendar...</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-6 mt-6 pt-6 border-t border-gray-50 text-xs font-medium text-slate-500 justify-center">
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div> Paid (100 ILS)</div>
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></div> 50% Offer</div>
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div> Gift</div>
+                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-200 shadow-sm"></div> Unpaid</div>
+                    </div>
+                </div>
+
+                <!-- Invoices History Section -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-history text-slate-400"></i> Payment History
+                        </h3>
+                    </div>
+                    
+                    <div class="overflow-x-auto rounded-xl border border-gray-100">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th class="px-4 py-3">Date</th>
+                                    <th class="px-4 py-3">Invoice #</th>
+                                    <th class="px-4 py-3 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-table-body" class="divide-y divide-gray-100 bg-white">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-8 text-center text-slate-400">Loading invoices...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Stats/Charts Placeholder -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="text-slate-500 text-xs font-bold mb-1">Total Bookings</div>
+                        <div class="text-2xl font-extrabold text-slate-800" id="total-bookings">—</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="text-slate-500 text-xs font-bold mb-1">Total Views</div>
+                        <div class="text-2xl font-extrabold text-slate-800" id="total-views">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-transform duration-200">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 text-center mb-2" id="confirm-title">Confirm Action</h3>
+            <p class="text-slate-500 text-center mb-6 text-sm" id="confirm-message">Are you sure you want to proceed?</p>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeConfirmModal()" class="py-2.5 px-4 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
+                <button id="confirm-btn-action" class="py-2.5 px-4 rounded-xl text-white font-bold bg-red-500 hover:bg-red-600 transition shadow-lg shadow-red-500/30">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const salonId = urlParams.get('id');
+        const adminToken = localStorage.getItem('adminToken');
+
+        if (!adminToken) window.location.replace('/auth.html');
+        if (!salonId) {
+            alert('Salon ID not found');
+            window.location.href = '/admin_saloony/dashboard/salons.html';
+        }
+
+        // DOM Elements
+        const els = {
+            name: document.getElementById('salon-name'),
+            statusBadge: document.getElementById('salon-status-badge'),
+            statusToggle: document.getElementById('salon-status-toggle'),
+            statusText: document.getElementById('salon-status-text'),
+            idDisplay: document.getElementById('salon-id-display'),
+            rating: document.getElementById('salon-rating'),
+            logo: document.getElementById('salon-logo'),
+            icon: document.getElementById('salon-icon'),
+            ownerName: document.getElementById('owner-name'),
+            ownerPhone: document.getElementById('owner-phone'),
+            salonPhone: document.getElementById('salon-phone'),
+            address: document.getElementById('salon-address'),
+            city: document.getElementById('salon-city'),
+            invoicesTable: document.getElementById('invoices-table-body'),
+            publicLink: document.getElementById('public-link'),
+            loading: document.getElementById('loading-overlay'),
+            bookingsCount: document.getElementById('total-bookings'),
+            viewsCount: document.getElementById('total-views')
+        };
+
+        // --- Functions ---
+
+        let currentYear = new Date().getFullYear();
+        let salonSubscriptions = [];
+
+        async function fetchSalonData() {
+            try {
+                // 1. Get Basic Info
+                const res = await fetch('/api/admin/salons', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                const data = await res.json();
+                const salons = Array.isArray(data) ? data : (data.salons || []);
+                const salon = salons.find(s => s.id == salonId);
+
+                if (!salon) throw new Error('الصالون غير موجود');
+                renderHeader(salon);
+                
+                // 2. Get Details
+                const detailsRes = await fetch(`/api/salon/details/${salonId}`);
+                const detailsData = await detailsRes.json();
+                if (detailsData.success) {
+                    renderDetails(detailsData.row || detailsData);
+                }
+                
+                // 3. Get Financials & Subscriptions
+                await Promise.all([
+                    fetchInvoices(),
+                    fetchSubscriptions()
+                ]);
+
+                // 4. Get Stats
+                const visitsRes = await fetch(`/api/salon/visits/${salonId}`);
+                const visitsData = await visitsRes.json();
+                if (visitsData.success) els.viewsCount.textContent = visitsData.count;
+
+            } catch (error) {
+                console.error(error);
+                els.name.textContent = 'خطأ في تحميل البيانات';
+            } finally {
+                els.loading.classList.add('hidden');
+            }
+        }
+
+        async function fetchSubscriptions() {
+            try {
+                // Add timestamp to prevent caching
+                const res = await fetch(`/api/salon/subscriptions/${salonId}?t=${Date.now()}`);
+                const data = await res.json();
+                if (data.success) {
+                    salonSubscriptions = data.subscriptions || [];
+                    renderCalendar();
+                }
+            } catch (e) {
+                console.error('Failed to fetch subscriptions', e);
+            }
+        }
+
+        function changeYear(delta) {
+            currentYear += delta;
+            renderCalendar();
+        }
+
+        // --- Custom Confirmation Logic ---
+        function showConfirm(title, message, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            
+            const btn = document.getElementById('confirm-btn-action');
+            // Remove old listeners to prevent stacking
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.onclick = () => {
+                onConfirm();
+                closeConfirmModal();
+            };
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+        // -------------------------------
+
+        function renderCalendar() {
+            document.getElementById('current-year').textContent = currentYear;
+            const grid = document.getElementById('months-grid');
+            grid.innerHTML = '';
+
+            const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+
+            const now = new Date();
+            const currentMonthIndex = now.getMonth();
+            const thisYear = now.getFullYear();
+
+            // Check if free offer is already used (globally for this salon)
+            const offerUsed = salonSubscriptions.some(s => s.package === 'offer' || (s.amount === 0 && s.status !== 'cancelled'));
+
+            months.forEach((monthName, index) => {
+                // Determine the middle of the month to check coverage
+                // Using UTC construction to compare with API dates (which are usually YYYY-MM-DD)
+                // Actually, let's use string comparison for safety against timezones
+                const mStr = String(index + 1).padStart(2, '0');
+                const checkDate = `${currentYear}-${mStr}-15`; // Middle of the month
+
+                // Find matching subscription
+                const sub = salonSubscriptions.find(s => {
+                    // API dates are typically YYYY-MM-DD strings
+                    const start = s.start_date.slice(0, 10);
+                    const end = s.end_date ? s.end_date.slice(0, 10) : '2099-12-31';
+                    
+                    return checkDate >= start && checkDate <= end;
+                });
+
+                const isPast = (currentYear < thisYear) || (currentYear === thisYear && index < currentMonthIndex);
+                
+                let statusClass = 'bg-slate-50 hover:bg-slate-100 border-2 border-transparent hover:border-emerald-200 cursor-pointer'; // Default
+                let icon = '';
+                let label = '';
+                let subId = null;
+
+                if (sub) {
+                    if (sub.package === 'offer' || sub.amount === 0) {
+                        statusClass = 'bg-purple-50 border-2 border-purple-200 text-purple-700';
+                        icon = '<i class="fas fa-gift text-purple-500"></i>';
+                        label = 'Gift';
+                    } else if (sub.package === 'half_offer') {
+                        statusClass = 'bg-blue-50 border-2 border-blue-200 text-blue-700';
+                        icon = '<i class="fas fa-percentage text-blue-500"></i>';
+                        label = '50% Off';
+                    } else {
+                        statusClass = 'bg-emerald-50 border-2 border-emerald-200 text-emerald-700';
+                        icon = '<i class="fas fa-check-circle text-emerald-500"></i>';
+                        label = 'Paid';
+                    }
+                    subId = sub.id;
+                }
+
+                const div = document.createElement('div');
+                div.className = `relative p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer ${statusClass}`;
+                
+                // Content
+                div.innerHTML = `
+                    <div class="text-sm font-bold ${!sub ? 'text-slate-600' : ''}">${monthName}</div>
+                    ${sub ? `
+                    <div class="flex items-center gap-1.5 text-xs font-medium opacity-80">
+                        ${icon} <span>${label}</span>
+                    </div>` : ''}
+                `;
+
+                // Interaction
+                div.onclick = () => openSubscriptionModal(index, monthName, offerUsed, sub);
+
+                grid.appendChild(div);
+            });
+        }
+
+        // --- Subscription Modal ---
+        let selectedMonthIndex = null;
+        let currentSubId = null;
+
+        function openSubscriptionModal(monthIndex, monthName, offerUsed, existingSub) {
+            selectedMonthIndex = monthIndex;
+            currentSubId = existingSub ? existingSub.id : null;
+            
+            // Create modal if not exists
+            let modal = document.getElementById('sub-modal');
+            if (!modal) {
+                document.body.insertAdjacentHTML('beforeend', `
+                    <div id="sub-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+                        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-all scale-100">
+                            <h3 class="text-lg font-bold text-slate-800 mb-1" id="sub-modal-title">Activate Subscription</h3>
+                            <p class="text-slate-500 text-sm mb-6" id="sub-modal-desc">Select an option for this month.</p>
+                            
+                            <div id="sub-modal-create" class="space-y-3">
+                                <button onclick="confirmSubscription('monthly_100')" class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-emerald-100 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300 transition group text-left">
+                                    <div>
+                                        <div class="font-bold text-emerald-800">Paid Subscription</div>
+                                        <div class="text-xs text-emerald-600">Generate Invoice (100 ILS)</div>
+                                    </div>
+                                    <i class="fas fa-check-circle text-2xl text-emerald-400 group-hover:text-emerald-600 transition"></i>
+                                </button>
+
+                                <button onclick="confirmSubscription('half_offer')" class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-blue-100 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition group text-left">
+                                    <div>
+                                        <div class="font-bold text-blue-800">50% Offer</div>
+                                        <div class="text-xs text-blue-600">Union Member (50 ILS)</div>
+                                    </div>
+                                    <i class="fas fa-percentage text-2xl text-blue-400 group-hover:text-blue-600 transition"></i>
+                                </button>
+
+                                <button id="btn-offer" onclick="confirmSubscription('offer')" class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-purple-100 bg-purple-50 hover:bg-purple-100 hover:border-purple-300 transition group text-left">
+                                    <div>
+                                        <div class="font-bold text-purple-800">Gift</div>
+                                        <div class="text-xs text-purple-600">One-time offer</div>
+                                    </div>
+                                    <i class="fas fa-gift text-2xl text-purple-400 group-hover:text-purple-600 transition"></i>
+                                </button>
+                            </div>
+
+                            <div id="sub-modal-manage" class="hidden space-y-3">
+                                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center mb-4">
+                                    <div class="text-sm text-slate-500">Current Status</div>
+                                    <div class="font-bold text-slate-800 text-lg" id="sub-details-status">Active</div>
+                                </div>
+                                <button onclick="deleteSubscription()" class="w-full py-3 text-red-500 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition border border-red-100">
+                                    <i class="fas fa-trash-alt mr-2"></i> Delete Subscription
+                                </button>
+                            </div>
+
+                            <button onclick="closeSubModal()" class="mt-6 w-full py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">Cancel</button>
+                        </div>
+                    </div>
+                `);
+                modal = document.getElementById('sub-modal');
+            }
+
+            const createContainer = document.getElementById('sub-modal-create');
+            const manageContainer = document.getElementById('sub-modal-manage');
+            const title = document.getElementById('sub-modal-title');
+            const desc = document.getElementById('sub-modal-desc');
+
+            if (existingSub) {
+                // Manage Mode
+                title.textContent = `Manage ${monthName}`;
+                desc.textContent = "Subscription details";
+                createContainer.classList.add('hidden');
+                manageContainer.classList.remove('hidden');
+                
+                let statusText = 'Paid';
+                if (existingSub.package === 'offer' || existingSub.amount === 0) statusText = 'Gift';
+                else if (existingSub.package === 'half_offer') statusText = '50% Offer';
+                
+                document.getElementById('sub-details-status').textContent = statusText;
+
+            } else {
+                // Create Mode
+                title.textContent = `${monthName} ${currentYear}`;
+                desc.textContent = "Select an option for this month.";
+                createContainer.classList.remove('hidden');
+                manageContainer.classList.add('hidden');
+
+                // Update UI based on offer usage
+                const offerBtn = document.getElementById('btn-offer');
+                if (offerUsed) {
+                    offerBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                    offerBtn.onclick = null;
+                    offerBtn.title = "Offer already used by this salon";
+                } else {
+                    offerBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                    offerBtn.onclick = () => confirmSubscription('offer');
+                    offerBtn.title = "";
+                }
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeSubModal() {
+            document.getElementById('sub-modal').classList.add('hidden');
+        }
+
+        async function confirmSubscription(type) {
+            if (selectedMonthIndex === null) return;
+            
+            // Construct YYYY-MM-DD strings explicitly to avoid timezone shifts
+            const m = String(selectedMonthIndex + 1).padStart(2, '0');
+            const startDate = `${currentYear}-${m}-01`;
+            
+            // Calculate end date (last day of month)
+            const lastDay = new Date(currentYear, selectedMonthIndex + 1, 0).getDate();
+            const endDate = `${currentYear}-${m}-${lastDay}`;
+            
+            let amount = 100;
+            if (type === 'offer') amount = 0;
+            else if (type === 'half_offer') amount = 50;
+
+            const payload = {
+                type: type,
+                startDate: startDate,
+                endDate: endDate,
+                amount: amount
+            };
+
+            try {
+                const res = await fetch(`/api/admin/subscriptions/${salonId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    closeSubModal();
+                    fetchSubscriptions(); // Refresh grid
+                    fetchInvoices();      // Refresh invoices table
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to create subscription'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error');
+            }
+        }
+
+        async function fetchInvoices() {
+            try {
+                const res = await fetch(`/api/salon/payments/${salonId}`);
+                const data = await res.json();
+                const payments = data.payments || [];
+                
+                if (payments.length === 0) {
+                    els.invoicesTable.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-slate-400 text-sm">No invoices found</td></tr>`;
+                    return;
+                }
+
+                els.invoicesTable.innerHTML = payments.map(p => `
+                    <tr class="hover:bg-gray-50 transition group">
+                        <td class="px-4 py-3 text-slate-500 font-mono">${new Date(p.created_at).toISOString().slice(0,10)}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-slate-500 font-bold">#${p.invoice_number || '-'}</td>
+                        <td class="px-4 py-3 font-bold text-slate-800 text-right flex items-center justify-end gap-3">
+                            <span>${p.amount} ${p.currency}</span>
+                            <button onclick="deleteInvoice(${p.id})" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition p-1" title="Delete Invoice">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (e) {
+                els.invoicesTable.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-red-400 text-sm">Failed to load invoices</td></tr>`;
+            }
+        }
+
+        async function toggleSalonStatus() {
+            const isChecked = els.statusToggle.checked;
+            const newStatus = isChecked ? 'accepted' : 'rejected'; 
+            
+            // Optimistic UI
+            els.statusText.textContent = isChecked ? 'Active' : 'Inactive';
+            els.statusText.className = `ms-3 text-sm font-bold select-none ${isChecked ? 'text-emerald-600' : 'text-slate-500'}`;
+            
+            // Disable toggle while processing
+            els.statusToggle.disabled = true;
+
+            try {
+                const res = await fetch(`/api/admin/salon/status/${salonId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    const statusHtml = isChecked 
+                        ? '<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold"><i class="fas fa-check-circle"></i> Active</span>'
+                        : '<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-xs font-bold"><i class="fas fa-ban"></i> Inactive</span>';
+                    els.statusBadge.innerHTML = statusHtml;
+                } else {
+                    // Revert
+                    els.statusToggle.checked = !isChecked;
+                    els.statusText.textContent = !isChecked ? 'Active' : 'Inactive';
+                    els.statusText.className = `ms-3 text-sm font-bold select-none ${!isChecked ? 'text-emerald-600' : 'text-slate-500'}`;
+                    alert('Failed to update status: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error(e);
+                els.statusToggle.checked = !isChecked;
+                els.statusText.textContent = !isChecked ? 'Active' : 'Inactive';
+                els.statusText.className = `ms-3 text-sm font-bold select-none ${!isChecked ? 'text-emerald-600' : 'text-slate-500'}`;
+                alert('Connection error');
+            } finally {
+                els.statusToggle.disabled = false;
+            }
+        }
+
+        function renderHeader(salon) {
+            els.name.textContent = salon.salon_name;
+            els.idDisplay.textContent = `#${salon.id}`;
+            els.publicLink.href = `/salon.html?id=${salon.id}`;
+            els.publicLink.classList.remove('hidden');
+            
+            // Status Badge
+            let statusHtml = '';
+            if (salon.status === 'accepted') statusHtml = '<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold"><i class="fas fa-check-circle"></i> Active</span>';
+            else if (salon.status === 'rejected') statusHtml = '<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-xs font-bold"><i class="fas fa-ban"></i> Inactive</span>';
+            else statusHtml = '<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold"><i class="fas fa-clock"></i> Pending</span>';
+            els.statusBadge.innerHTML = statusHtml;
+
+            // Set Toggle State
+            const isActive = salon.status === 'accepted';
+            els.statusToggle.checked = isActive;
+            els.statusText.textContent = isActive ? 'Active' : 'Inactive';
+            els.statusText.className = `ms-3 text-sm font-bold select-none ${isActive ? 'text-emerald-600' : 'text-slate-500'}`;
+
+            // Basic info from list
+            els.city.textContent = salon.city || '—';
+            
+            // Owner info
+            if (salon.owner_name) els.ownerName.textContent = salon.owner_name;
+            if (salon.owner_phone) {
+                els.ownerPhone.textContent = salon.owner_phone;
+                els.ownerPhone.href = `tel:${salon.owner_phone}`;
+            }
+            if (salon.salon_phone) {
+                els.salonPhone.textContent = salon.salon_phone;
+                els.salonPhone.href = `tel:${salon.salon_phone}`;
+            }
+
+            // Location info
+            if (salon.address) els.address.textContent = salon.address;
+        }
+
+        function renderDetails(details) {
+            if (details.image_url) {
+                els.logo.src = details.image_url;
+                els.logo.classList.remove('hidden');
+                els.icon.classList.add('hidden');
+            }
+            if (details.avg_rating) els.rating.textContent = Number(details.avg_rating).toFixed(1);
+            if (details.address) els.address.textContent = details.address;
+            if (details.salon_phone) {
+                els.salonPhone.textContent = details.salon_phone;
+                els.salonPhone.href = `tel:${details.salon_phone}`;
+            }
+        }
+
+        async function deleteSubscription() {
+            if (!currentSubId) {
+                console.error('No currentSubId set');
+                return;
+            }
+
+            showConfirm(
+                'Delete Subscription', 
+                'Are you sure you want to delete this subscription? This will NOT delete the associated invoice automatically.',
+                async () => {
+                    try {
+                        const res = await fetch(`/api/admin/subscriptions/${currentSubId}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${adminToken}` }
+                        });
+                        
+                        if (!res.ok) {
+                            const text = await res.text();
+                            console.error('Delete failed:', res.status, text);
+                            alert(`Error: Server returned ${res.status}. Check console for details.`);
+                            return;
+                        }
+
+                        const data = await res.json();
+                        if (data.success) {
+                            closeSubModal();
+                            // Force delay to allow DB commit (though awaiting fetch usually enough)
+                            setTimeout(() => fetchSubscriptions(), 100);
+                        } else {
+                            alert('Error: ' + (data.error || 'Failed to delete'));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Connection error or invalid response');
+                    }
+                }
+            );
+        }
+
+        async function deleteInvoice(id) {
+            showConfirm(
+                'Delete Invoice',
+                'Are you sure you want to delete this invoice?',
+                async () => {
+                    try {
+                        const res = await fetch(`/api/admin/payments/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${adminToken}` }
+                        });
+
+                        if (!res.ok) {
+                            const text = await res.text();
+                            console.error('Delete failed:', res.status, text);
+                            alert(`Error: Server returned ${res.status}. Check console for details.`);
+                            return;
+                        }
+                        
+                        const data = await res.json();
+                        if (data.success) {
+                            closeInvoiceModal(); // Assuming we might want to close if opened via modal, or just refresh
+                            fetchInvoices();
+                        } else {
+                            alert('Error: ' + (data.error || 'Failed to delete'));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Connection error or invalid response');
+                    }
+                }
+            );
+        }
+
+        // Init
+        fetchSalonData();
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لوحة تحكم الصالون | صالوني</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/pages/salons/dashboard/css/style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#1E293B', light: '#334155', dark: '#0f172a' },
+                        secondary: { DEFAULT: '#06C167', light: '#34d399', dark: '#059669' },
+                        accent: { DEFAULT: '#F59E0B', light: '#fbbf24', dark: '#d97706' }
+                    },
+                    fontFamily: { sans: ['Tajawal', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Main Content */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+        }
+        
+        /* Nav Active State Overrides */
+        .nav-item.nav-active {
+            background-color: #06C167 !important; /* Secondary color */
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(6, 193, 103, 0.3);
+        }
+        .nav-item.nav-active i {
+            color: white !important;
+        }
+        .nav-item.nav-active div {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen overflow-hidden flex select-none">
+
+    <!-- Global Loading Spinner -->
+    <div id="global-loading" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="relative w-24 h-24">
+            <div class="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-secondary rounded-full border-t-transparent animate-spin"></div>
+            <img src="/images/Saloony_logo.png" class="absolute inset-0 w-12 h-12 m-auto object-contain animate-pulse" alt="Logo">
+        </div>
+        <p class="mt-4 text-gray-500 font-medium animate-pulse">جاري تحميل لوحة التحكم...</p>
+    </div>
+
+    <!-- PIN Authentication Screen -->
+    <div id="pin-auth-screen" class="fixed inset-0 bg-gradient-to-br from-primary-dark via-slate-800 to-primary-dark z-50 flex items-center justify-center hidden">
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-20 left-20 w-32 h-32 bg-secondary rounded-full blur-3xl animate-pulse"></div>
+            <div class="absolute bottom-20 right-20 w-40 h-40 bg-blue-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+        
+        <div class="bg-white/95 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl border border-white/20 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 rounded-3xl"></div>
+            <div class="relative z-10">
+                <div class="text-center mb-8">
+                    <div class="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-2 border-blue-200">
+                        <i class="fas fa-fingerprint text-blue-800 text-4xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-primary-dark mb-2">مرحباً بك</h2>
+                    <p id="auth-subtitle" class="text-gray-600">استخدم بصمتك أو أدخل كلمة المرور</p>
+                </div>
+
+                <div id="pin-section">
+                    <div class="flex justify-center gap-3 mb-8" dir="ltr">
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                        <div class="pin-dot w-5 h-5 rounded-full border-2 border-gray-300 transition-all duration-300 hover:border-secondary"></div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 mb-6" dir="ltr">
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="1">1</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="2">2</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="3">3</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="4">4</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="5">5</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="6">6</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="7">7</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="8">8</button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="9">9</button>
+                        <button class="h-16 bg-transparent"></button>
+                        <button class="pin-btn h-16 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-secondary/10 hover:to-secondary/20 rounded-2xl text-2xl font-bold text-primary-dark transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-gray-200" data-digit="0">0</button>
+                        <button id="pin-backspace" class="h-16 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-2xl text-xl text-red-600 transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg border border-red-200">
+                            <i class="fas fa-backspace"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="pin-error" class="text-center text-red-500 text-sm mb-4 hidden bg-red-50 p-3 rounded-lg border border-red-200">
+                    <i class="fas fa-exclamation-circle ml-1"></i>
+                    كلمة المرور غير صحيحة. حاول مرة أخرى.
+                </div>
+
+                <div id="pin-loading" class="text-center text-secondary text-sm hidden">
+                    <div class="flex items-center justify-center gap-2">
+                        <div class="w-4 h-4 bg-secondary rounded-full animate-bounce"></div>
+                        <div class="w-4 h-4 bg-secondary rounded-full animate-bounce delay-100"></div>
+                        <div class="w-4 h-4 bg-secondary rounded-full animate-bounce delay-200"></div>
+                    </div>
+                    <p class="mt-2">جاري التحقق...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar (Desktop) & Mobile Drawer -->
+    <aside id="sidebar" class="fixed inset-y-0 right-0 w-64 bg-slate-900 text-white z-40 transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl flex flex-col">
+        <!-- Sidebar Header -->
+        <div class="h-20 flex items-center justify-center border-b border-slate-800 bg-slate-950/50">
+            <div class="flex items-center gap-3">
+                <img src="/images/Saloony_logo.png" class="w-10 h-10 object-contain brightness-0 invert" alt="Saloony">
+                <span class="text-xl font-bold tracking-wide">صالوني</span>
+            </div>
+            <!-- Mobile Close Button -->
+            <button id="close-sidebar-btn" class="md:hidden absolute left-4 text-slate-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="flex-1 overflow-y-auto py-6 px-3 space-y-2 custom-scrollbar">
+            <button id="nav-appointments" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white nav-active" data-view="appointments-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <span class="font-bold">المواعيد</span>
+            </button>
+
+            <button id="nav-management" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white" data-view="management-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <span class="font-bold">الإدارة والجدول</span>
+            </button>
+
+            <button id="nav-services" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white" data-view="services-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-cut"></i>
+                </div>
+                <span class="font-bold">الخدمات</span>
+            </button>
+
+            <button id="nav-salon" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white" data-view="salon-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-store"></i>
+                </div>
+                <span class="font-bold">ملف الصالون</span>
+            </button>
+
+            <button id="nav-products" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white" data-view="products-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <span class="font-bold">المنتجات</span>
+            </button>
+
+            <button id="nav-reviews" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white" data-view="reviews-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-star"></i>
+                </div>
+                <span class="font-bold">المراجعات</span>
+            </button>
+
+            <button id="nav-invoices" class="nav-item group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-white" data-view="invoices-view">
+                <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors text-slate-400">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <span class="font-bold">الفواتير</span>
+            </button>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950/30">
+            <button id="logout-btn" class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-800 hover:bg-red-600/20 text-slate-300 hover:text-red-500 transition-all font-bold group">
+                <i class="fas fa-sign-out-alt group-hover:rotate-180 transition-transform duration-300"></i>
+                <span>تسجيل الخروج</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Overlay for Mobile Sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden glass-card border-none rounded-none backdrop-blur-sm transition-opacity"></div>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-50">
+        
+        <!-- Top Header (Desktop & Mobile) -->
+        <header class="h-20 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-6 z-20 shrink-0">
+            <div class="flex items-center gap-4">
+                <button id="mobile-menu-btn" class="md:hidden w-10 h-10 rounded-xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h1 class="text-xl font-bold text-slate-800 hidden md:block">لوحة التحكم</h1>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Install Banner (Compact) -->
+                <div id="header-install-banner" class="hidden md:flex items-center gap-3 bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-100 text-xs font-bold mr-4">
+                    <i class="fas fa-download"></i>
+                    <span>ثبّت التطبيق</span>
+                    <button id="header-install-now-btn" class="underline hover:text-emerald-600">تثبيت</button>
+                    <button id="dismiss-header-banner-btn" class="hover:text-emerald-600"><i class="fas fa-times"></i></button>
+                </div>
+
+                <button id="share-salon-btn" class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition-colors relative" title="مشاركة الرابط">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                
+                <div class="h-8 w-[1px] bg-gray-200 mx-1"></div>
+                
+                <!-- Salon Profile Link (Replaces User Avatar) -->
+                <a id="header-salon-link" href="#" target="_blank" class="flex items-center gap-3 hover:bg-slate-50 p-1.5 rounded-xl transition-all group cursor-pointer border border-transparent hover:border-slate-100" title="عرض صفحة الصالون العامة">
+                    <div class="text-left hidden sm:block">
+                        <div class="text-sm font-bold text-slate-800 group-hover:text-secondary transition-colors line-clamp-1 max-w-[150px]" id="header-salon-name">...</div>
+                        <div class="text-[10px] text-slate-400 flex items-center justify-end gap-1 group-hover:text-secondary/80">
+                            <i class="fas fa-external-link-alt"></i>
+                            <span>صفحة الصالون</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-slate-100 shadow-sm group-hover:border-secondary transition-colors relative flex items-center justify-center">
+                        <img id="header-salon-logo" src="" alt="Salon" class="w-full h-full object-cover hidden">
+                        <i id="header-salon-fallback" class="fas fa-store text-slate-300 text-lg"></i>
+                    </div>
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative md:mr-64 transition-all duration-300" id="main-content-scroll">
+            
+            <!-- Toast Container -->
+            <div id="toast-container" class="fixed left-4 bottom-4 z-50 space-y-2 flex flex-col items-start pointer-events-none"></div>
+
+            <div class="max-w-6xl mx-auto space-y-6">
+                
+                <!-- Appointments View -->
+                <div id="appointments-view" class="view-content">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">إدارة المواعيد</h2>
+                            <p class="text-slate-500 text-sm">تابع حجوزاتك وحالاتها لحظة بلحظة</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="open-block-slot-btn" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-2 rounded-xl font-bold transition-colors flex items-center gap-2">
+                                <i class="fas fa-calendar-times"></i>
+                                <span class="hidden sm:inline">حجب وقت</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="glass-card p-1.5 flex space-x-2 space-x-reverse overflow-x-auto mb-6">
+                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap active" data-filter="today">اليوم</button>
+                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap text-gray-500 hover:bg-gray-50" data-filter="upcoming">القادمة</button>
+                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap text-gray-500 hover:bg-gray-50" data-filter="completed">المكتملة</button>
+                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap text-gray-500 hover:bg-gray-50" data-filter="cancelled">الملغاة</button>
+                        <span id="appointments-count" class="hidden">0</span>
+                    </div>
+
+                    <!-- Timeline View (For Today) -->
+                    <div id="timeline-view" class="hidden glass-card overflow-hidden flex flex-col h-[600px] border border-gray-100 shadow-sm relative bg-white">
+                        <div class="flex items-center justify-center h-full text-gray-400">
+                             <i class="fas fa-spinner fa-spin mr-2"></i> جاري تحميل الجدول...
+                        </div>
+                    </div>
+
+                    <!-- List View (For Other Tabs) -->
+                    <div id="appointments-list-container" class="space-y-4 min-h-[200px]">
+                        <p class="text-gray-500 text-center py-10">جاري تحميل المواعيد...</p>
+                    </div>
+                </div>
+
+                <!-- Management View -->
+                <div id="management-view" class="view-content hidden">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold text-slate-800">إدارة الصالون</h2>
+                        <p class="text-slate-500 text-sm">إدارة فريق العمل، الأدوار، وجدول العمل</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Staff Column -->
+                        <div class="space-y-6">
+                            <section class="glass-card p-6">
+                                <h3 class="text-lg font-bold text-primary-dark mb-4 flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fas fa-users"></i></div>
+                                    فريق العمل
+                                </h3>
+                                <form id="add-staff-form" class="flex gap-3 mb-4">
+                                    <input type="text" id="staff-name-input" placeholder="اسم الموظف..." required class="flex-grow">
+                                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 rounded-xl transition-colors">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </form>
+                                <div id="staff-list-container" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                    <p class="text-gray-400 text-sm text-center py-4">لا يوجد موظفين</p>
+                                </div>
+                            </section>
+
+                            <section class="glass-card p-6" id="roles-section">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-bold text-primary-dark flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center"><i class="fas fa-user-shield"></i></div>
+                                        الصلاحيات
+                                    </h3>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="roles-toggle" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+                                    </label>
+                                </div>
+
+                                <div id="roles-disabled-message" class="text-center py-6 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                    <i class="fas fa-lock text-2xl mb-2 opacity-50"></i>
+                                    <p class="text-xs">نظام الأدوار غير مفعل</p>
+                                </div>
+
+                                <div id="roles-enabled-content" class="hidden">
+                                    <button id="show-add-role-btn" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:border-secondary hover:text-secondary transition-all mb-4">
+                                        <i class="fas fa-plus ml-1"></i> إضافة دور جديد
+                                    </button>
+                                    
+                                    <div id="add-role-form-container" class="hidden bg-gray-50 p-4 rounded-xl mb-4">
+                                        <form id="add-role-form" class="space-y-3">
+                                            <select id="role-staff-select" required class="bg-white"></select>
+                                            <select id="role-type-select" required class="bg-white">
+                                                <option value="admin">مدير (وصول كامل)</option>
+                                                <option value="staff">موظف (مواعيد فقط)</option>
+                                            </select>
+                                            <input type="password" id="role-pin-input" required minlength="6" maxlength="6" placeholder="PIN (6 أرقام)" class="text-center tracking-widest bg-white">
+                                            <div class="flex gap-2">
+                                                <button type="submit" class="flex-1 bg-secondary text-white py-2 rounded-lg font-bold text-sm">حفظ</button>
+                                                <button type="button" id="cancel-add-role-btn" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold text-sm">إلغاء</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div id="roles-list-container" class="space-y-2"></div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Schedule Column -->
+                        <div class="space-y-6">
+                            <section class="glass-card p-6">
+                                <h3 class="text-lg font-bold text-primary-dark mb-4 flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fas fa-clock"></i></div>
+                                    أوقات العمل
+                                </h3>
+                                
+                                <form id="salon-schedule-form" class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-500 mb-1">فتح</label>
+                                            <input type="time" id="opening-time" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-500 mb-1">إغلاق</label>
+                                            <input type="time" id="closing-time" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="hours-display" class="hidden text-xs text-center text-blue-600 bg-blue-50 py-1 rounded-lg">
+                                        ساعات العمل: <span id="hours-count">0</span> ساعة
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 mb-2">أيام العطلة</label>
+                                        <div id="closed-days-container" class="flex flex-wrap gap-2 text-xs">
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="0" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">الأحد</span></label>
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="1" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">الاثنين</span></label>
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="2" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">الثلاثاء</span></label>
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="3" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">الأربعاء</span></label>
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="4" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">الخميس</span></label>
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="5" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">الجمعة</span></label>
+                                            <label class="cursor-pointer select-none"><input type="checkbox" name="closed_days" value="6" class="hidden peer"><span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 peer-checked:bg-rose-100 peer-checked:text-rose-600 border border-transparent transition-all">السبت</span></label>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="w-full py-2 bg-slate-800 text-white rounded-lg font-bold text-sm hover:bg-slate-700 transition-colors">حفظ الأوقات</button>
+                                </form>
+                            </section>
+
+                            <!-- Breaks Section -->
+                             <section class="glass-card p-6">
+                                <h4 class="text-sm font-bold text-gray-700 mb-3">استراحات روتينية</h4>
+                                <form id="add-break-form" class="space-y-3 mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input type="time" id="break-start-time" required class="text-xs">
+                                        <input type="time" id="break-end-time" required class="text-xs">
+                                    </div>
+                                    <input type="text" id="break-reason" placeholder="سبب (فطور)" class="text-xs">
+                                    <select id="break-staff-select" class="text-xs bg-white"><option value="all">الكل</option></select>
+                                    <button type="submit" class="w-full py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold">إضافة</button>
+                                </form>
+                                <div id="breaks-list-container" class="space-y-2">
+                                    <p class="text-gray-400 text-xs text-center">لا توجد استراحات</p>
+                                </div>
+                            </section>
+
+                            <!-- Modifications Section -->
+                            <section class="glass-card p-6 border-t-4 border-rose-500">
+                                <h3 class="text-lg font-bold text-rose-700 mb-4">إجازات وتعديلات طارئة</h3>
+                                <form id="add-modification-form" class="space-y-3 mb-4">
+                                     <div class="flex space-x-4 space-x-reverse text-xs">
+                                        <label class="flex items-center"><input type="radio" name="mod_type" value="once" checked class="ml-1 mod-type-radio"> مرة واحدة</label>
+                                        <label class="flex items-center"><input type="radio" name="mod_type" value="recurring" class="ml-1 mod-type-radio"> متكرر</label>
+                                    </div>
+                                    
+                                    <div id="mod-once-fields"><input type="date" id="mod-date-input" class="text-sm"></div>
+                                    <div id="mod-recurring-fields" class="hidden">
+                                        <select id="mod-day-index" class="text-sm bg-white">
+                                            <option value="0">الأحد</option><option value="1">الاثنين</option><option value="2">الثلاثاء</option>
+                                            <option value="3">الأربعاء</option><option value="4">الخميس</option><option value="5">الجمعة</option><option value="6">السبت</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <label class="flex items-center text-xs font-bold"><input type="checkbox" id="mod-is-closed" class="ml-2"> إغلاق كامل اليوم</label>
+                                    
+                                    <div id="mod-time-fields" class="grid grid-cols-2 gap-2">
+                                        <input type="time" id="mod-start-time" class="text-sm">
+                                        <input type="time" id="mod-end-time" class="text-sm">
+                                    </div>
+                                    
+                                    <select id="mod-staff-select" class="text-sm bg-white"><option value="all">الكل</option></select>
+                                    <input type="text" id="mod-reason-input" placeholder="السبب" required class="text-sm">
+                                    
+                                    <button type="submit" id="btn-add-modification" class="w-full py-2 bg-rose-600 text-white rounded-lg font-bold text-sm hover:bg-rose-700">إضافة</button>
+                                </form>
+                                <div id="modifications-list-container" class="space-y-2">
+                                    <p class="text-gray-400 text-xs text-center">لا توجد تعديلات</p>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Salon Overview View -->
+                <div id="salon-view" class="view-content hidden">
+                    <!-- Header -->
+                    <section class="glass-card overflow-hidden mb-6 relative group">
+                        <div id="disp-salon-cover" class="h-48 bg-gradient-to-r from-slate-800 to-slate-900 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        <div class="px-6 pb-6 relative">
+                            <div class="flex flex-col md:flex-row gap-6 items-end -mt-16">
+                                <div class="w-32 h-32 rounded-2xl bg-white p-1 shadow-2xl relative z-10 group/logo">
+                                    <img id="disp-profile-img" src="/images/Saloony_logo.png" class="w-full h-full rounded-xl object-cover" alt="Logo">
+                                    <!-- Upload Overlay (Optional if you implement upload logic) -->
+                                </div>
+                                <div class="flex-1 pb-2">
+                                    <div class="flex flex-col md:flex-row justify-between items-end gap-4">
+                                        <div>
+                                            <h2 id="disp-salon-name" class="text-3xl font-extrabold text-white mb-2 drop-shadow-md">اسم الصالون</h2>
+                                            <div class="flex items-center gap-3 text-white/90">
+                                                <span id="disp-gender-focus" class="px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-sm font-bold border border-white/30">...</span>
+                                                <span id="disp-city" class="flex items-center gap-1 text-sm"><i class="fas fa-map-marker-alt text-secondary"></i> ...</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-2 mb-2">
+                                            <button id="btn-edit-info" class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-xl text-sm font-bold border border-white/20 transition-all shadow-lg"><i class="fas fa-pen ml-2"></i>تعديل</button>
+                                            <a id="btn-view-page" href="#" target="_blank" class="bg-secondary hover:bg-secondary-dark text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-secondary/20"><i class="fas fa-external-link-alt ml-2"></i>عرض</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Analytics Grid -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="glass-card p-4 flex items-center gap-4 relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 w-20 h-full bg-gradient-to-l from-blue-50 to-transparent opacity-50"></div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform"><i class="fas fa-eye"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-500 font-bold mb-1">الزيارات</div>
+                                <div class="text-2xl font-extrabold text-slate-800" id="analytics-visits">0</div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 flex items-center gap-4 relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 w-20 h-full bg-gradient-to-l from-purple-50 to-transparent opacity-50"></div>
+                            <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform"><i class="fas fa-users"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-500 font-bold mb-1">الموظفين</div>
+                                <div class="text-2xl font-extrabold text-slate-800" id="analytics-staff">0</div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 flex items-center gap-4 relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 w-20 h-full bg-gradient-to-l from-emerald-50 to-transparent opacity-50"></div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform"><i class="fas fa-calendar-check"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-500 font-bold mb-1">حجوزات اليوم</div>
+                                <div class="text-2xl font-extrabold text-slate-800" id="analytics-bookings-today">0</div>
+                            </div>
+                        </div>
+                        <div class="glass-card p-4 flex items-center gap-4 relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 w-20 h-full bg-gradient-to-l from-orange-50 to-transparent opacity-50"></div>
+                            <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform"><i class="fas fa-chart-line"></i></div>
+                            <div>
+                                <div class="text-xs text-gray-500 font-bold mb-1">إجمالي الحجوزات</div>
+                                <div class="text-2xl font-extrabold text-slate-800" id="analytics-bookings-total">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Location & Details Column -->
+                        <div class="space-y-6">
+                             <section class="glass-card p-6 h-full">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-map-marked-alt text-blue-500"></i> الموقع
+                                </h3>
+                                <div id="location-summary" class="hidden mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                     <p class="location-address text-sm text-blue-800 font-medium">...</p>
+                                </div>
+                                <p id="location-empty-msg" class="text-sm text-gray-400 mb-4 text-center py-4 bg-gray-50 rounded-xl border border-dashed">لم يتم تحديد الموقع</p>
+                                <button id="view-location-btn" class="w-full py-2 border border-blue-200 text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-colors text-sm">
+                                    إدارة الموقع على الخريطة
+                                </button>
+                            </section>
+                        </div>
+
+                        <div class="space-y-6">
+                            <section class="glass-card p-6 h-full">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i class="fas fa-info-circle text-gray-500"></i> تفاصيل أخرى
+                                </h3>
+                                <div class="space-y-3">
+                                     <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <div class="text-xs text-gray-500 mb-1">المالك</div>
+                                        <div class="text-sm font-bold text-slate-800" id="disp-owner-name">...</div>
+                                    </div>
+                                     <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                        <div class="text-xs text-gray-500 mb-1">الهاتف</div>
+                                        <div class="text-sm font-bold text-slate-800 dir-ltr text-right" id="disp-salon-phone">...</div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services View -->
+                <div id="services-view" class="view-content hidden">
+                    <section class="glass-card p-6 min-h-[500px]">
+                        <div class="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-green-50 text-secondary flex items-center justify-center"><i class="fas fa-cut"></i></div>
+                                    إدارة الخدمات
+                                </h2>
+                                <p class="text-slate-500 text-sm mt-1 mr-14">أضف وعدل قائمة خدمات الصالون والأسعار</p>
+                            </div>
+                            <button id="add-service-btn" class="bg-secondary hover:bg-secondary-dark text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-secondary/20 flex items-center gap-2 transform hover:-translate-y-1">
+                                <i class="fas fa-plus"></i> <span>إضافة خدمة</span>
+                            </button>
+                        </div>
+                        <div id="services-list-container" class="space-y-3"></div>
+                    </section>
+                </div>
+
+                <!-- Products View -->
+                <div id="products-view" class="view-content hidden">
+                    <section class="glass-card p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-pink-50 text-pink-500 flex items-center justify-center"><i class="fas fa-box-open"></i></div>
+                                المنتجات
+                            </h2>
+                            <button id="add-product-btn" class="bg-secondary hover:bg-secondary-dark text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-secondary/20 flex items-center gap-2">
+                                <i class="fas fa-plus"></i>
+                                <span>إضافة منتج</span>
+                            </button>
+                        </div>
+
+                        <!-- Categories Filter -->
+                        <div class="mb-6 overflow-x-auto">
+                            <div id="product-categories-filter" class="flex gap-2 pb-2">
+                                <button class="category-filter-btn active px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-bold transition-all whitespace-nowrap" data-id="all">الكل</button>
+                                <!-- Categories will be injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Products Grid -->
+                        <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <!-- Products will be injected here -->
+                             <div id="products-loading" class="col-span-full py-12 flex flex-col items-center justify-center text-gray-400">
+                                <i class="fas fa-circle-notch fa-spin text-3xl mb-3 text-secondary"></i>
+                                <p>جاري تحميل المنتجات...</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Reviews View -->
+                <div id="reviews-view" class="view-content hidden">
+                    <section class="glass-card p-6">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-yellow-50 text-yellow-500 flex items-center justify-center"><i class="fas fa-star"></i></div>
+                            المراجعات والتقييمات
+                        </h2>
+                        <div id="reviews-list" class="space-y-4"></div>
+                    </section>
+                </div>
+
+                <!-- Invoices View -->
+                <div id="invoices-view" class="view-content hidden">
+                    <section class="glass-card p-6">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fas fa-file-invoice-dollar"></i></div>
+                            الفواتير والمدفوعات
+                        </h2>
+                        <div id="invoices-list" class="space-y-4"></div>
+                    </section>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals (Preserved Structure) -->
+    
+    <!-- Share Modal -->
+    <div id="share-modal" class="fixed inset-0 z-[100] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="share-modal-backdrop"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white/90 backdrop-blur-xl rounded-3xl w-full max-w-md shadow-2xl border border-white/20 transform scale-95 opacity-0 transition-all duration-300" id="share-modal-content">
+                <div class="flex items-center justify-between p-6 border-b border-gray-100/50">
+                    <h3 class="text-xl font-bold text-primary-dark">مشاركة رابط الصالون</h3>
+                    <button id="close-share-modal" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6 space-y-6">
+                    <div class="flex flex-col items-center justify-center space-y-4">
+                        <div class="relative group">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-secondary to-blue-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                            <div class="relative bg-white p-4 rounded-xl shadow-lg border border-gray-100">
+                                <img id="share-qr-image" src="" alt="Salon QR Code" class="w-48 h-48 object-contain">
+                                <div id="qr-loading-spinner" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-xl">
+                                    <div class="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="download-qr-btn" class="flex items-center gap-2 text-sm font-bold text-secondary hover:text-secondary-dark transition-colors px-4 py-2 rounded-lg hover:bg-secondary/5">
+                            <i class="fas fa-download"></i> حفظ رمز QR
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-bold text-gray-500">رابط الصفحة الشخصية</label>
+                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-2 transition-colors focus-within:border-secondary focus-within:ring-2 focus-within:ring-secondary/10">
+                            <input type="text" id="share-link-input" readonly class="flex-grow bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 dir-ltr text-left" value="">
+                            <button id="copy-link-btn" class="bg-primary-dark hover:bg-primary text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-lg shadow-primary/20"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 pt-2">
+                        <button class="share-social-btn flex flex-col items-center gap-2 group" data-platform="tiktok">
+                            <div class="w-12 h-12 rounded-2xl bg-black/5 text-black flex items-center justify-center text-xl group-hover:bg-black group-hover:text-white transition-all duration-300 shadow-sm"><i class="fab fa-tiktok"></i></div>
+                            <span class="text-xs font-bold text-gray-500 group-hover:text-gray-800">تيك توك</span>
+                        </button>
+                        <button class="share-social-btn flex flex-col items-center gap-2 group" data-platform="facebook">
+                            <div class="w-12 h-12 rounded-2xl bg-[#1877F2]/10 text-[#1877F2] flex items-center justify-center text-xl group-hover:bg-[#1877F2] group-hover:text-white transition-all duration-300 shadow-sm"><i class="fab fa-facebook-f"></i></div>
+                            <span class="text-xs font-bold text-gray-500 group-hover:text-gray-800">فيسبوك</span>
+                        </button>
+                        <button class="share-social-btn flex flex-col items-center gap-2 group" data-platform="instagram">
+                            <div class="w-12 h-12 rounded-2xl bg-[#E1306C]/10 text-[#E1306C] flex items-center justify-center text-xl group-hover:bg-[#E1306C] group-hover:text-white transition-all duration-300 shadow-sm"><i class="fab fa-instagram"></i></div>
+                            <span class="text-xs font-bold text-gray-500 group-hover:text-gray-800">إنستغرام</span>
+                        </button>
+                        <button class="share-social-btn flex flex-col items-center gap-2 group" data-platform="whatsapp">
+                            <div class="w-12 h-12 rounded-2xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center text-xl group-hover:bg-[#25D366] group-hover:text-white transition-all duration-300 shadow-sm"><i class="fab fa-whatsapp"></i></div>
+                            <span class="text-xs font-bold text-gray-500 group-hover:text-gray-800">واتساب</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Block Slot Modal -->
+    <div id="block-slot-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center hidden flex">
+         <div class="glass-card w-11/12 max-w-md p-6 rounded-2xl">
+             <div class="text-center font-bold text-primary-dark mb-4 text-lg">حجب وقت مؤقت</div>
+             <div class="grid gap-4">
+                 <input type="date" id="block-date" class="w-full p-2 border rounded-lg">
+                 <div class="grid grid-cols-2 gap-3">
+                     <input type="time" id="block-start" class="w-full p-2 border rounded-lg">
+                     <input type="time" id="block-end" class="w-full p-2 border rounded-lg">
+                 </div>
+                 <select id="block-staff-select" class="w-full p-2 border rounded-lg bg-white"></select>
+                 <input type="text" id="block-reason" placeholder="السبب" class="w-full p-2 border rounded-lg">
+                 <div class="flex gap-3 mt-2">
+                     <button id="block-cancel-btn" class="flex-1 py-2.5 rounded-xl border font-bold text-gray-600 hover:bg-gray-50">إلغاء</button>
+                     <button id="block-submit-btn" class="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-bold shadow-md hover:bg-red-700">حجب</button>
+                 </div>
+             </div>
+         </div>
+    </div>
+
+    <!-- Appointment Details Modal -->
+    <div id="appointment-details-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center hidden flex">
+         <div class="glass-card w-11/12 max-w-md overflow-hidden rounded-2xl flex flex-col max-h-[90vh]">
+             <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
+                 <h3 class="font-bold text-lg flex items-center gap-2"><i class="fas fa-calendar-check"></i> تفاصيل الموعد</h3>
+                 <button id="close-appt-modal-btn" class="text-white/80 hover:text-white transition-colors"><i class="fas fa-times text-xl"></i></button>
+             </div>
+             <div id="appt-modal-content" class="p-6 overflow-y-auto custom-scrollbar space-y-4">
+                 <!-- Dynamic Content -->
+             </div>
+             <div class="p-4 border-t border-gray-100 bg-gray-50 flex gap-3 justify-end" id="appt-modal-actions">
+                 <!-- Dynamic Actions -->
+             </div>
+         </div>
+    </div>
+    
+    <div id="blocked-times-modal" class="hidden"></div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-6 transform transition-all scale-100">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">تأكيد الإجراء</h3>
+                <p id="confirm-modal-message" class="text-gray-600 mb-6">هل أنت متأكد من هذا الإجراء؟</p>
+                <div class="flex gap-3">
+                    <button id="confirm-modal-yes" class="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg">نعم، متابعة</button>
+                    <button id="confirm-modal-no" class="flex-1 py-2.5 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="social-links-modal" class="hidden"></div>
+
+    <!-- Location Modal -->
+    <div id="location-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex-col items-center justify-center p-4">
+        <div class="glass-card w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-primary-dark text-white p-4 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-lg"><i class="fas fa-map-marked-alt ml-2"></i> تحديد موقع الصالون</h3>
+                <button id="close-location-modal" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-white/80">
+                <div class="relative w-full h-[300px] rounded-xl overflow-hidden border border-gray-300 bg-gray-100 mb-4">
+                    <div id="loc-map" class="w-full h-full z-10"></div>
+                    <div id="loc-map-skeleton" class="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center z-20" style="display: none;">
+                         <span class="text-gray-400 font-bold">جاري تحميل الخريطة...</span>
+                    </div>
+                    <button id="use-my-location-btn" class="absolute bottom-4 left-4 z-30 bg-white text-gray-800 p-3 rounded-full shadow-lg hover:bg-gray-100 transition-transform active:scale-95" title="موقعي الحالي">
+                        <i class="fas fa-crosshairs text-xl text-blue-600"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-gray-500 text-center mb-2">قم بتحريك الدبوس لتحديد موقع الصالون بدقة</p>
+            </div>
+
+            <div class="p-4 border-t bg-gray-50/80 shrink-0">
+                <button id="save-location-btn" class="w-full py-3 bg-secondary text-white font-bold rounded-xl shadow-md hover:bg-secondary-dark transition-all active:scale-95">
+                    <i class="fas fa-check ml-2"></i> حفظ الموقع
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Permission Modal -->
+    <div id="notify-permission-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-6 text-center transform transition-all scale-100">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-bell text-2xl text-blue-600 animate-bounce"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">تفعيل التنبيهات</h3>
+            <p class="text-gray-600 mb-6">قم بتفعيل التنبيهات لتصلك إشعارات فورية بالحجوزات الجديدة والتحديثات المهمة.</p>
+            <div class="flex flex-col gap-3">
+                <button id="notify-permission-enable" class="w-full py-3 bg-secondary text-white font-bold rounded-xl hover:bg-secondary-dark transition shadow-lg shadow-secondary/30">تفعيل التنبيهات</button>
+                <button id="notify-permission-later" class="w-full py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">ليس الآن</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Modal -->
+    <div id="invoice-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md overflow-hidden transform transition-all scale-100">
+            <div class="bg-primary-dark p-6 text-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-secondary to-blue-500"></div>
+                <button onclick="document.getElementById('invoice-modal-overlay').classList.add('hidden')" class="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"><i class="fas fa-times text-xl"></i></button>
+                <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/20">
+                    <i class="fas fa-file-invoice-dollar text-3xl text-secondary"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-1">تفاصيل الفاتورة</h3>
+                <p id="invoice-modal-number" class="text-white/70 text-sm font-mono tracking-wider">#INV-0000</p>
+            </div>
+            
+            <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto custom-scrollbar bg-white/40">
+                <div id="invoice-status-container" class="flex items-center justify-center p-4 rounded-xl glass-card border-none">
+                    <div class="flex items-center gap-3">
+                        <i id="invoice-status-icon" class="fas fa-circle-notch fa-spin text-2xl text-gray-400"></i>
+                        <span id="invoice-status-text" class="font-bold text-lg text-gray-600">جاري التحميل...</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-card p-3 rounded-xl">
+                        <span class="block text-xs text-gray-500 mb-1">تاريخ الفاتورة</span>
+                        <span id="invoice-date" class="block font-bold text-gray-800 text-sm">--/--/----</span>
+                    </div>
+                    <div class="glass-card p-3 rounded-xl">
+                        <span class="block text-xs text-gray-500 mb-1">المبلغ الإجمالي</span>
+                        <span id="invoice-amount" class="block font-bold text-primary-dark text-lg">0.00</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-start justify-between border-b border-gray-100/50 pb-2">
+                        <span class="text-gray-500 text-sm">نوع الفاتورة</span>
+                        <span id="invoice-type" class="font-bold text-gray-800 text-sm text-left max-w-[60%]">---</span>
+                    </div>
+                    <div id="invoice-method-container" class="flex items-start justify-between border-b border-gray-100/50 pb-2 hidden">
+                        <span class="text-gray-500 text-sm">طريقة الدفع</span>
+                        <span id="invoice-method" class="font-bold text-gray-800 text-sm">---</span>
+                    </div>
+                    <div id="invoice-valid-container" class="flex items-start justify-between border-b border-gray-100/50 pb-2 hidden">
+                        <span class="text-gray-500 text-sm">صالح لغاية</span>
+                        <span id="invoice-valid-until" class="font-bold text-gray-800 text-sm">---</span>
+                    </div>
+                </div>
+
+                <div id="invoice-description-container" class="hidden">
+                    <span class="block text-xs text-gray-500 mb-1">الوصف</span>
+                    <p id="invoice-description" class="text-sm text-gray-700 glass-card p-3 rounded-lg"></p>
+                </div>
+                <div id="invoice-notes-container" class="hidden">
+                    <span class="block text-xs text-gray-500 mb-1">ملاحظات إدارية</span>
+                    <p id="invoice-notes" class="text-sm text-orange-800 bg-orange-500/10 p-3 rounded-lg border border-orange-500/20"></p>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100/50 text-center">
+                    <span class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">رمز QR للفاتورة</span>
+                    <div id="invoice-qr-code" class="flex justify-center p-2 bg-white rounded-xl inline-block shadow-sm"></div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white/60 border-t border-gray-100/50 text-center backdrop-blur-md">
+                <button onclick="document.getElementById('invoice-modal-overlay').classList.add('hidden')" class="w-full py-3 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition shadow-sm">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="bg-white/50 p-4 border-b sticky top-0 z-10 flex justify-between items-center backdrop-blur-md">
+                <h3 class="font-bold text-lg text-primary-dark">تعديل بيانات الصالون</h3>
+                <button id="close-edit-profile-btn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="edit-profile-form" class="p-6 space-y-4">
+                <!-- Cover Image Upload -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">صورة الغلاف</label>
+                    <div class="relative w-full h-32 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 group hover:border-secondary transition-colors">
+                        <img id="edit-preview-cover" src="" class="w-full h-full object-cover hidden">
+                        <div id="edit-cover-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                            <i class="fas fa-image text-2xl mb-1"></i>
+                            <span class="text-xs">اضغط لتغيير الغلاف</span>
+                        </div>
+                        <label for="edit-profile-cover-input" class="absolute inset-0 cursor-pointer bg-black/0 group-hover:bg-black/10 transition-colors"></label>
+                        <input type="file" id="edit-profile-cover-input" accept="image/*" class="hidden">
+                    </div>
+                </div>
+
+                <!-- Logo Upload -->
+                <div class="flex flex-col items-center mb-6 -mt-12 relative z-10">
+                    <div class="relative w-24 h-24 mb-3">
+                        <img id="edit-preview-logo" src="" class="w-full h-full rounded-full object-cover border-4 border-white shadow-md bg-white">
+                        <label for="edit-profile-logo-input" class="absolute bottom-0 right-0 bg-secondary text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer hover:bg-secondary-dark shadow-md transition-transform active:scale-95">
+                            <i class="fas fa-camera text-sm"></i>
+                        </label>
+                    </div>
+                    <input type="file" id="edit-profile-logo-input" accept="image/*" class="hidden">
+                    <span class="text-xs text-gray-500 font-bold">شعار الصالون</span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">اسم الصالون</label>
+                    <input type="text" id="edit-salon-name" required class="bg-white/60 focus:bg-white">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">المدينة</label>
+                        <select id="edit-city-select" class="bg-white/60 focus:bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">الفئة</label>
+                        <select id="edit-gender-select" class="bg-white/60 focus:bg-white">
+                            <option value="men">رجال</option>
+                            <option value="women">نساء</option>
+                            <option value="mix">مختلط</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">هاتف الصالون</label>
+                    <input type="tel" id="edit-salon-phone" class="bg-white/60 focus:bg-white dir-ltr text-right">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">العنوان</label>
+                    <input type="text" id="edit-address" class="bg-white/60 focus:bg-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">نبذة عن الصالون (About Us)</label>
+                    <textarea id="edit-about" rows="4" class="bg-white/60 focus:bg-white w-full rounded-xl border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-3" placeholder="اكتب نبذة مختصرة عن الصالون، خدماتك، وفريق العمل..."></textarea>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100">
+                    <p class="text-xs text-orange-600 font-bold mb-3"><i class="fas fa-lock ml-1"></i> حقول غير قابلة للتعديل (لأسباب أمنية)</p>
+                    <div class="grid grid-cols-1 gap-3">
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">البريد الإلكتروني</label>
+                            <input type="email" id="edit-email-readonly" disabled class="bg-gray-50/50 text-gray-500 cursor-not-allowed">
+                            <i class="fas fa-lock absolute left-3 top-9 text-gray-400 text-xs"></i>
+                        </div>
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">هاتف المالك (للدخول)</label>
+                            <input type="tel" id="edit-owner-phone-readonly" disabled class="bg-gray-50/50 text-gray-500 cursor-not-allowed dir-ltr text-right">
+                            <i class="fas fa-lock absolute left-3 top-9 text-gray-400 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="btn-action w-full py-3 shadow-lg hover:bg-primary transition-all active:scale-95">حفظ التغييرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="bg-white/50 p-4 border-b sticky top-0 z-10 flex justify-between items-center backdrop-blur-md">
+                <h3 id="product-modal-title" class="font-bold text-lg text-primary-dark">إضافة منتج جديد</h3>
+                <button id="close-product-modal-btn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="product-form" class="p-6 space-y-4">
+                <input type="hidden" id="product-id">
+                
+                <!-- Product Image Upload -->
+                <div class="flex flex-col items-center mb-6">
+                    <div class="relative w-32 h-32 mb-3 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 group hover:border-secondary transition-colors">
+                        <img id="product-preview-img" src="" class="w-full h-full object-cover hidden">
+                        <div id="product-img-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                            <i class="fas fa-cloud-upload-alt text-3xl mb-1"></i>
+                            <span class="text-xs text-center px-2">صورة المنتج</span>
+                        </div>
+                        <label for="product-image-input" class="absolute inset-0 cursor-pointer bg-black/0 group-hover:bg-black/5 transition-colors"></label>
+                        <input type="file" id="product-image-input" accept="image/*" class="hidden">
+                    </div>
+                </div>
+
+                <!-- Product Name -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">اسم المنتج</label>
+                    <input type="text" id="product-name" required class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-2 focus:ring-secondary/20 focus:border-secondary block p-3 transition-all placeholder-gray-400" placeholder="مثال: شامبو مغذي للشعر">
+                </div>
+
+                <!-- Price & Currency -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">السعر</label>
+                        <input type="number" id="product-price" required min="0" step="0.01" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-2 focus:ring-secondary/20 focus:border-secondary block p-3 transition-all" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">العملة</label>
+                        <select id="product-currency" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-2 focus:ring-secondary/20 focus:border-secondary block p-3 transition-all">
+                            <option value="ILS">شيكل (ILS)</option>
+                            <option value="USD">دولار (USD)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Category Dropdown -->
+                <div class="relative" id="product-category-container">
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">الفئة</label>
+                    <button type="button" id="product-category-btn" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-2 focus:ring-secondary/20 focus:border-secondary p-3 text-right flex items-center justify-between transition-all group hover:bg-white">
+                        <span id="product-category-selected-text" class="flex items-center gap-2 text-gray-500">
+                            <span>اختر الفئة...</span>
+                        </span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform group-hover:text-secondary" id="product-category-chevron"></i>
+                    </button>
+                    <input type="hidden" id="product-category" name="category">
+                    
+                    <div id="product-category-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl shadow-slate-200/50 z-20 max-h-60 overflow-y-auto transform origin-top transition-all">
+                        <!-- Options will be injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">الوصف</label>
+                    <textarea id="product-description" rows="3" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-2 focus:ring-secondary/20 focus:border-secondary block p-3 transition-all placeholder-gray-400" placeholder="أضف وصفاً مختصراً للمنتج..."></textarea>
+                </div>
+                
+                <!-- Active Status -->
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-white transition-colors" onclick="document.getElementById('product-active').click()">
+                    <div class="relative flex items-center">
+                        <input type="checkbox" id="product-active" checked class="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border border-slate-300 transition-all checked:border-secondary checked:bg-secondary hover:border-secondary/50 focus:ring-2 focus:ring-secondary/20">
+                        <i class="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] text-white opacity-0 transition-opacity peer-checked:opacity-100 pointer-events-none"></i>
+                    </div>
+                    <label for="product-active" class="text-sm font-medium text-gray-700 cursor-pointer select-none">المنتج متاح للبيع</label>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-6 mt-2">
+                    <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-secondary to-secondary-dark text-white font-bold rounded-xl shadow-lg shadow-secondary/30 hover:shadow-secondary/50 hover:-translate-y-0.5 transition-all active:scale-95 active:translate-y-0 flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i>
+                        <span>حفظ المنتج</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Category Modal (Removed) -->
+
+    <!-- Scripts -->
+    <script src="/app-mode.js"></script>
+    <script type="module" src="/pages/salons/dashboard/js/main.js"></script>
+    <script>
+        // Mobile Sidebar Toggle Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const navItems = document.querySelectorAll('.nav-item');
+
+            const toggleSidebar = () => {
+                sidebar.classList.toggle('translate-x-full');
+                overlay.classList.toggle('hidden');
+                document.body.classList.toggle('overflow-hidden');
+            };
+
+            if(mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleSidebar);
+            if(closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
+            if(overlay) overlay.addEventListener('click', toggleSidebar);
+
+            // Close sidebar on nav click (mobile)
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth < 768) {
+                        toggleSidebar();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

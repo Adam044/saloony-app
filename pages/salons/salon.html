@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحميل...</title>
+    <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #FAFAFA; }
+        
+        /* Custom Scrollbar */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        .service-card { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease; }
+        .service-card:active { transform: scale(0.98); }
+        
+        .loading-spinner {
+            border-top-color: #111;
+            border-right-color: transparent;
+            border-bottom-color: #111;
+            border-left-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Snap Scrolling */
+        .snap-x-mandatory { scroll-snap-type: x mandatory; }
+        .snap-center { scroll-snap-align: center; }
+
+        /* Animations */
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .animate-zoom-in { animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="pb-24 md:pb-0 selection:bg-black selection:text-white">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white z-[100] flex items-center justify-center transition-opacity duration-500">
+        <div class="text-center">
+            <div class="loading-spinner w-10 h-10 mx-auto mb-4 border-2"></div>
+            <p class="text-gray-400 font-medium tracking-wide text-xs uppercase">جاري التحميل</p>
+        </div>
+    </div>
+
+    <!-- Navigation (Minimalist) -->
+    <nav class="fixed top-0 left-0 right-0 z-[90] p-4 transition-all duration-300" id="navbar">
+        <div class="container mx-auto max-w-4xl flex justify-end items-center">
+            <!-- User Action Button -->
+            <button id="user-action-btn" class="w-12 h-12 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center transition-all duration-300 focus:outline-none hover:bg-white hover:scale-105 z-[90]">
+                <i class="fa-regular fa-user text-xl text-gray-800"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Fullscreen Menu Removed -->
+
+    <!-- Hero Section -->
+    <header class="relative h-[50vh] min-h-[350px] w-full overflow-hidden bg-gray-900">
+        <img id="salon-hero-image" src="" alt="Salon Cover" class="w-full h-full object-cover opacity-80 scale-105 transition-transform duration-[20s] hover:scale-100 hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/10"></div>
+    </header>
+
+    <!-- Profile Card Section -->
+    <div class="relative z-20 -mt-24 px-4 mb-6">
+        <div class="container mx-auto max-w-3xl bg-white/95 backdrop-blur-xl rounded-[2rem] p-6 pb-8 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/50 text-center relative overflow-visible animate-fade-in">
+            
+            <!-- Logo Floating -->
+            <div class="relative -mt-16 mb-4 inline-block">
+                <div class="w-24 h-24 md:w-28 md:h-28 bg-white rounded-full p-1.5 shadow-lg mx-auto">
+                    <div class="w-full h-full rounded-full overflow-hidden bg-gray-50 flex items-center justify-center relative">
+                        <img id="salon-logo" src="" class="w-full h-full object-cover hidden" alt="Logo">
+                        <i id="salon-logo-placeholder" class="fas fa-store text-2xl text-gray-300"></i>
+                    </div>
+                </div>
+                <!-- Optional Verified Badge -->
+                <div class="absolute bottom-1 right-1 bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-[10px] border-2 border-white shadow-sm">
+                    <i class="fas fa-check"></i>
+                </div>
+            </div>
+
+            <h1 id="salon-name" class="text-3xl md:text-4xl font-black text-gray-900 mb-2 tracking-tight"></h1>
+            <p id="salon-tagline" class="text-gray-500 text-sm md:text-base font-medium max-w-lg mx-auto leading-relaxed mb-5"></p>
+            
+            <!-- Badges -->
+            <div class="flex flex-wrap items-center justify-center gap-2 text-sm">
+                <div class="flex items-center bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 text-gray-700">
+                    <i class="fas fa-star text-yellow-400 ml-1.5 text-xs"></i>
+                    <span id="salon-rating" class="font-bold"></span>
+                    <span id="salon-reviews-count" class="text-gray-400 mr-1 text-xs"></span>
+                </div>
+                <div class="flex items-center bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 text-gray-700">
+                    <i class="fas fa-map-marker-alt text-gray-400 ml-1.5 text-xs"></i>
+                    <span id="salon-city"></span>
+                </div>
+                <div id="status-badge" class="flex items-center bg-green-50 px-3 py-1.5 rounded-xl border border-green-100 text-green-700 hidden">
+                    <span class="w-2 h-2 rounded-full bg-green-500 ml-2 animate-pulse"></span>
+                    <span class="text-xs font-bold">مفتوح الآن</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto max-w-4xl px-4 relative z-10 space-y-10">
+        
+        <!-- Quick Actions Grid -->
+        <div class="grid grid-cols-3 gap-3">
+            <a href="#location" class="glass-panel p-4 rounded-2xl text-center group hover:bg-white transition-all cursor-pointer">
+                <div class="w-10 h-10 mx-auto bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-location-arrow"></i>
+                </div>
+                <span class="text-xs font-bold text-gray-600">الموقع</span>
+            </a>
+            <button id="call-btn-action" class="glass-panel p-4 rounded-2xl text-center group hover:bg-white transition-all">
+                <div class="w-10 h-10 mx-auto bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-phone"></i>
+                </div>
+                <span class="text-xs font-bold text-gray-600">اتصال</span>
+            </button>
+            <button id="working-hours-btn" class="glass-panel p-4 rounded-2xl text-center group hover:bg-white transition-all w-full cursor-pointer">
+                <div class="w-10 h-10 mx-auto bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                    <i class="far fa-clock"></i>
+                </div>
+                <span class="text-xs font-bold text-gray-600 block" id="working-hours-short">--:--</span>
+            </button>
+        </div>
+
+        <!-- Services Section (Horizontal Scroll) -->
+        <section class="py-4">
+            <div class="flex justify-between items-end mb-6 px-1">
+                <div>
+                    <h2 class="text-2xl font-black text-gray-900 mb-1">خدماتنا المميزة</h2>
+                    <p class="text-sm text-gray-500">تصفح القائمة واختر ما يناسبك</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="scroll-right" class="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hidden md:flex">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button id="scroll-left" class="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hidden md:flex">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="relative -mx-4 px-4 md:mx-0 md:px-0">
+                <div id="services-grid" class="flex overflow-x-auto gap-4 pb-8 pt-2 px-1 snap-x-mandatory hide-scrollbar scroll-smooth">
+                    <!-- Services Injected Here -->
+                    <div class="w-full text-center py-12">
+                        <div class="loading-spinner w-6 h-6 mx-auto border-2 border-gray-300"></div>
+                    </div>
+                </div>
+                <!-- Fade effect for mobile -->
+                <div class="absolute left-0 top-0 bottom-8 w-16 bg-gradient-to-r from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+                <div class="absolute right-0 top-0 bottom-8 w-4 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+            </div>
+        </section>
+
+        <!-- About / Description -->
+        <section class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden">
+            <div class="relative z-10">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">عن الصالون</h3>
+                <p id="salon-description" class="text-gray-600 leading-relaxed text-sm md:text-base">
+                    مرحباً بكم في صالوننا. نحن نقدم أفضل خدمات العناية والجمال بأيدي أمهر الخبراء. نسعى دائماً لرضاكم وتقديم تجربة فريدة ومميزة.
+                </p>
+                <div class="mt-6 flex flex-wrap gap-2" id="features-badges">
+                    <!-- Feature Badges injected -->
+                </div>
+            </div>
+            <div class="absolute top-0 left-0 w-32 h-32 bg-yellow-50 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        </section>
+
+        <!-- Reviews Section -->
+        <section>
+            <div class="flex justify-between items-end mb-6 px-1">
+                <h2 class="text-2xl font-black text-gray-900">آراء العملاء</h2>
+                <button id="add-review-btn" class="text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-xl transition-all">
+                    <i class="fas fa-plus ml-1"></i> أضف تقييم
+                </button>
+            </div>
+            <div id="reviews-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Reviews Injected Here -->
+            </div>
+        </section>
+
+        <!-- Location & Contact -->
+        <section id="location" class="mb-12">
+            <div class="bg-gray-900 rounded-3xl p-8 text-center text-white relative overflow-hidden shadow-xl">
+                <div class="relative z-10">
+                    <h3 class="text-2xl font-bold mb-2">تفضل بزيارتنا</h3>
+                    <p id="salon-address-full" class="text-gray-400 mb-8 max-w-md mx-auto"></p>
+                    
+                    <button id="get-directions-btn" class="bg-white text-gray-900 px-8 py-3 rounded-full font-bold hover:bg-gray-100 transition-all inline-flex items-center gap-2">
+                        <i class="fas fa-location-dot"></i> فتح الخريطة
+                    </button>
+
+                    <div class="mt-10 border-t border-white/10 pt-8">
+                        <p class="text-sm text-gray-500 mb-4 uppercase tracking-widest font-bold">تواصل معنا</p>
+                        <div id="social-links-share" class="flex justify-center gap-4"></div>
+                    </div>
+                </div>
+                <!-- Background Pattern -->
+                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#444 1px, transparent 1px); background-size: 20px 20px;"></div>
+            </div>
+        </section>
+
+        <footer class="text-center text-gray-400 text-xs py-8 border-t border-gray-200 mt-12">
+            <p>&copy; <span id="current-year"></span> <span id="footer-salon-name"></span>. جميع الحقوق محفوظة.</p>
+            <p class="mt-2 opacity-50">Powered by Saloony Digital</p>
+        </footer>
+
+    </main>
+
+    <!-- Sticky Bottom Bar (Mobile) -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 p-4 md:hidden z-50 flex justify-between items-center shadow-[0_-5px_20px_-5px_rgba(0,0,0,0.1)]">
+        <div>
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">جاهز للتغيير؟</p>
+            <p class="text-sm font-black text-gray-900">احجز موعدك الآن</p>
+        </div>
+        <button id="mobile-reserve-btn" class="bg-black text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-black/20 hover:scale-105 transition-all active:scale-95">
+            حجز موعد
+        </button>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="review-modal" class="fixed inset-0 bg-black/80 z-[70] hidden flex items-center justify-center backdrop-blur-md transition-all duration-300">
+        <div class="bg-white w-full md:w-[500px] md:rounded-3xl rounded-t-[2rem] shadow-2xl p-6 relative animate-zoom-in mx-4">
+            <button onclick="closeReviewModal()" class="absolute top-4 left-4 w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <h3 class="text-xl font-black text-gray-900 mb-6 text-center">أضف تقييمك</h3>
+            
+            <form id="review-form" class="space-y-6">
+                <!-- Rating Stars -->
+                <div class="flex flex-col items-center gap-2">
+                    <div class="flex gap-2 text-3xl text-gray-300" id="star-rating-input">
+                        <button type="button" class="star-btn hover:text-yellow-400 transition-colors" data-value="1"><i class="fas fa-star"></i></button>
+                        <button type="button" class="star-btn hover:text-yellow-400 transition-colors" data-value="2"><i class="fas fa-star"></i></button>
+                        <button type="button" class="star-btn hover:text-yellow-400 transition-colors" data-value="3"><i class="fas fa-star"></i></button>
+                        <button type="button" class="star-btn hover:text-yellow-400 transition-colors" data-value="4"><i class="fas fa-star"></i></button>
+                        <button type="button" class="star-btn hover:text-yellow-400 transition-colors" data-value="5"><i class="fas fa-star"></i></button>
+                    </div>
+                    <p class="text-sm text-gray-500" id="rating-text">اختر التقييم</p>
+                    <input type="hidden" id="review-rating" name="rating" required>
+                </div>
+
+                <!-- Comment -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">تعليقك (اختياري)</label>
+                    <textarea id="review-comment" rows="4" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 focus:bg-white focus:border-black outline-none transition-all resize-none" placeholder="شاركينا تجربتك..."></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition-all shadow-lg shadow-black/20">
+                    نشر التقييم
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Prompt Modal -->
+    <div id="login-prompt-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center backdrop-blur-md transition-all duration-300">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 relative animate-zoom-in mx-4 text-center">
+            <button onclick="closeLoginPromptModal()" class="absolute top-4 left-4 w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-800">
+                <i class="fa-solid fa-user-lock text-2xl"></i>
+            </div>
+
+            <h3 class="text-xl font-black text-gray-900 mb-2">تسجيل الدخول مطلوب</h3>
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">يرجى تسجيل الدخول للوصول إلى حسابك ومتابعة حجوزاتك.</p>
+            
+            <a href="/pages/saloony/auth.html" id="login-redirect-btn" class="block w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-900 transition-all shadow-lg shadow-black/20">
+                تسجيل الدخول
+            </a>
+        </div>
+    </div>
+
+    <!-- Salon Restriction Modal -->
+    <div id="salon-restriction-modal" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center backdrop-blur-md transition-all duration-300">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 relative animate-zoom-in mx-4 text-center">
+            <button onclick="closeSalonRestrictionModal()" class="absolute top-4 left-4 w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <i class="fa-solid fa-store-slash text-2xl"></i>
+            </div>
+
+            <h3 class="text-xl font-black text-gray-900 mb-2">حساب صالون</h3>
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">هذه الميزة مخصصة للمستخدمين فقط للوصول إلى حساباتهم الشخصية.</p>
+            
+            <button onclick="closeSalonRestrictionModal()" class="w-full bg-gray-100 text-gray-900 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">
+                حسناً
+            </button>
+        </div>
+    </div>
+
+    <!-- Booking Modal (Modern Stepper) -->
+    <div id="booking-modal" class="fixed inset-0 bg-black/90 z-[100] hidden flex items-center justify-center backdrop-blur-xl transition-all duration-500">
+        <div class="bg-white w-full h-full md:h-auto md:max-h-[85vh] md:w-[600px] md:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden relative">
+            
+            <!-- Header with Progress -->
+            <div class="px-8 pt-8 pb-4 bg-white z-20">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-2xl font-black text-gray-900 tracking-tight">حجز موعد</h3>
+                        <p class="text-sm text-gray-500 font-medium mt-1" id="step-title">اختيار الخدمة</p>
+                    </div>
+                    <button onclick="closeBookingModal()" class="w-12 h-12 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-800 transition-all hover:rotate-90">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="h-1.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                        <div id="progress-step-1" class="h-full w-0 bg-black transition-all duration-500"></div>
+                    </div>
+                    <div class="h-1.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                        <div id="progress-step-2" class="h-full w-0 bg-black transition-all duration-500"></div>
+                    </div>
+                    <div class="h-1.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                        <div id="progress-step-3" class="h-full w-0 bg-black transition-all duration-500"></div>
+                    </div>
+                    <div class="h-1.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                        <div id="progress-step-4" class="h-full w-0 bg-black transition-all duration-500"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Steps Content -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8 relative">
+                
+                <!-- Step 1: Service Selection / Review -->
+                <div id="step-content-1" class="step-content transition-all duration-500">
+                    
+                    <!-- View A: Selection List (When selecting services) -->
+                    <div id="step1-selection" class="hidden space-y-3">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-bold text-gray-900 text-center flex-1">اختر الخدمات</h4>
+                            <span id="selected-services-count" class="bg-black text-white text-xs px-2 py-1 rounded-full hidden">0</span>
+                        </div>
+                        <div id="step1-services-list" class="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+                            <!-- Services injected here -->
+                        </div>
+                    </div>
+
+                    <!-- View B: Review (When services selected) -->
+                    <div id="step1-review" class="hidden">
+                        <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 mb-6 relative group">
+                            <button onclick="clearServiceSelection()" class="absolute top-4 left-4 w-8 h-8 bg-white rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm z-10" title="تعديل الخدمات">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            
+                            <div class="space-y-4" id="step1-selected-services-container">
+                                <!-- Selected services injected here -->
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t border-gray-200 flex justify-between items-center">
+                                <span class="text-gray-500 text-sm font-medium">الإجمالي</span>
+                                <div class="text-right">
+                                    <span id="step1-total-price" class="block text-xl font-black text-gray-900">0 ₪</span>
+                                    <span id="step1-total-duration" class="text-xs text-gray-500 font-bold bg-white px-2 py-1 rounded-lg border border-gray-100 inline-block mt-1">0 دقيقة</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-center text-gray-400 text-sm">اضغط متابعة لاختيار الخبير.</p>
+                    </div>
+                </div>
+
+                <!-- Step 2: Staff Selection -->
+                <div id="step-content-2" class="step-content hidden transition-all duration-500">
+                    <h4 class="text-lg font-bold text-gray-900 mb-4">اختر خبير التجميل</h4>
+                    <div class="grid grid-cols-2 gap-3" id="step2-staff-grid">
+                        <!-- Staff injected here -->
+                    </div>
+                </div>
+
+                <!-- Step 3: Date & Time -->
+                <div id="step-content-3" class="step-content hidden transition-all duration-500">
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-gray-900 mb-3">التاريخ</label>
+                        <input type="date" id="booking-date" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-900 focus:bg-white focus:border-black outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-900 mb-3">الوقت المتاح</label>
+                        <div id="slots-container" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+                        <div id="slots-loading" class="hidden text-center py-8">
+                             <div class="loading-spinner w-6 h-6 mx-auto border-2 border-gray-300"></div>
+                        </div>
+                         <div id="no-slots-message" class="hidden text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-gray-500 text-sm">
+                            لا توجد مواعيد متاحة
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Confirmation -->
+                <div id="step-content-4" class="step-content hidden transition-all duration-500">
+                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 space-y-4">
+                        <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                            <span class="text-gray-500 text-sm">الخدمة</span>
+                            <span id="summary-service" class="font-bold text-gray-900"></span>
+                        </div>
+                        <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                            <span class="text-gray-500 text-sm">الخبير</span>
+                            <span id="summary-staff" class="font-bold text-gray-900"></span>
+                        </div>
+                        <div class="flex justify-between items-center pb-4 border-b border-gray-200">
+                            <span class="text-gray-500 text-sm">التاريخ والوقت</span>
+                            <span id="summary-datetime" class="font-bold text-gray-900"></span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2">
+                            <span class="text-gray-900 font-bold">الإجمالي</span>
+                            <span id="summary-price" class="text-xl font-black text-purple-600"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success View -->
+                <div id="step-success" class="hidden flex flex-col items-center justify-center h-full text-center space-y-6 animate-zoom-in py-10">
+                    <div class="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center text-green-500 text-4xl mb-2 shadow-sm">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-black text-gray-900 mb-2">تم الحجز بنجاح!</h3>
+                        <p class="text-gray-500">شكراً لك، سيتم تحويلك إلى صفحة المواعيد...</p>
+                    </div>
+                    <div class="loading-spinner w-8 h-8 border-2 border-gray-200 border-t-black"></div>
+                </div>
+
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-6 border-t border-gray-100 bg-white z-20">
+                <div class="flex gap-3">
+                    <button id="prev-step-btn" class="hidden px-6 py-4 rounded-xl bg-gray-100 text-gray-900 font-bold hover:bg-gray-200 transition-all">
+                        <i class="fas fa-arrow-right ml-2"></i> السابق
+                    </button>
+                    <button id="next-step-btn" class="flex-1 bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition-all shadow-lg shadow-black/20 flex items-center justify-center gap-2">
+                        <span>متابعة</span>
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button id="confirm-booking-btn" class="hidden flex-1 bg-purple-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 flex items-center justify-center gap-2">
+                        <span>تأكيد الحجز</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hours Modal -->
+    <div id="hours-modal" class="fixed inset-0 bg-black/60 z-[80] hidden flex items-center justify-center backdrop-blur-sm transition-all" onclick="if(event.target === this) this.classList.add('hidden')">
+        <div class="bg-white w-full max-w-md mx-4 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-zoom-in">
+            <!-- Header -->
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 bg-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                        <i class="far fa-clock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">ساعات العمل</h3>
+                        <p class="text-xs text-gray-500">أوقات الدوام الرسمي</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('hours-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Body -->
+            <div class="p-5 overflow-y-auto max-h-[60vh] custom-scrollbar">
+                <div id="hours-list" class="space-y-1">
+                    <!-- Hours injected here -->
+                    <div class="text-center py-8">
+                        <div class="loading-spinner w-6 h-6 mx-auto border-2 border-gray-300"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                <p class="text-xs text-gray-400">قد تختلف الساعات في العطل الرسمية</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="login-modal" class="fixed inset-0 z-[70] hidden" role="dialog">
+        <div class="fixed inset-0 bg-black/60 transition-opacity backdrop-blur-sm" onclick="closeLoginModal()"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center">
+                <div class="relative transform overflow-hidden rounded-3xl bg-white text-right shadow-2xl transition-all w-full max-w-sm p-8">
+                    <div class="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-6 text-white text-2xl">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-center text-gray-900 mb-2">تسجيل الدخول</h3>
+                    <p class="text-sm text-center text-gray-500 mb-8">يرجى تسجيل الدخول لمتابعة عملية الحجز</p>
+                    <div class="space-y-3">
+                        <button type="button" class="w-full rounded-xl bg-black px-4 py-3.5 text-sm font-bold text-white shadow-lg hover:bg-gray-800 transition-all" onclick="redirectToAuth()">تسجيل الدخول</button>
+                        <button type="button" class="w-full rounded-xl bg-gray-100 px-4 py-3.5 text-sm font-bold text-gray-900 hover:bg-gray-200 transition-all" onclick="closeLoginModal()">إلغاء</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Variables ---
+        const urlParams = new URLSearchParams(window.location.search);
+        let salonId = urlParams.get('id') || urlParams.get('salon_id');
+
+        if (!salonId) {
+            try {
+                const path = window.location.pathname || '';
+                const parts = path.split('/').filter(Boolean);
+                if (parts[0] === 'salon' && parts[1]) salonId = parts[1];
+            } catch (_) {}
+        }
+
+        // --- Booking Variables ---
+        let selectedDate = null;
+        let selectedStaffId = 0;
+        let selectedTime = null;
+        let salonSchedule = null;
+        let salonStaff = [];
+        let salonServicesCache = [];
+
+        // --- DOM Elements ---
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const servicesGrid = document.getElementById('services-grid');
+
+        // --- Helper Functions ---
+        const timeToMinutes = (str) => { const [h, m] = str.split(':').map(Number); return h * 60 + m; };
+        const minutesToTime = (mins) => { const h = Math.floor(mins / 60); const m = mins % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; };
+        const formatReviewDate = (str) => new Date(str).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // --- Auth & Navigation ---
+        function checkAuth() {
+            const token = localStorage.getItem('saloony_token');
+            if (!token) {
+                document.getElementById('login-modal').classList.remove('hidden');
+                return false;
+            }
+            return true;
+        }
+        function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
+        function redirectToAuth() { window.location.href = '/pages/saloony/auth.html?redirect=' + encodeURIComponent(window.location.href); }
+
+        // --- Visit Recording ---
+        async function recordVisit() {
+            if (!salonId) return;
+            try {
+                // Check if visit already recorded this session
+                const visitedKey = `visited_salon_${salonId}`;
+                if (sessionStorage.getItem(visitedKey)) return;
+
+                await fetch(`/api/salon/visit/${salonId}`, { method: 'POST' });
+                sessionStorage.setItem(visitedKey, 'true');
+            } catch (e) {
+                console.error('Error recording visit:', e);
+            }
+        }
+
+        // --- Data Loading ---
+        async function loadSalonData() {
+            if (!salonId) { alert('Salon ID missing'); return; }
+            
+            // Record visit in background
+            recordVisit();
+
+            try {
+                const res = await fetch(`/api/salon/info/${salonId}`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                
+                if (data.success && data.salon) {
+                    window.currentSalon = data.salon; // Store globally
+                    renderSalonInfo(data.salon);
+
+                    // Owner Restrictions - Hide Review Button
+                    try {
+                        const user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                        if (user && user.id === data.salon.user_id) {
+                            const reviewBtn = document.getElementById('add-review-btn');
+                            if (reviewBtn) reviewBtn.style.display = 'none';
+                        }
+                    } catch (e) {}
+
+                    await fetchSalonSchedule(); // Fetch schedule early
+                    updateTodayHoursDisplay(); // Update hours button
+                    await loadServices();
+                    await loadReviews();
+                } else {
+                    throw new Error(data.message || 'Failed to load salon data');
+                }
+            } catch (e) {
+                console.error(e);
+                document.body.innerHTML = '<div class="h-screen flex items-center justify-center text-gray-500">فشل تحميل بيانات الصالون</div>';
+            } finally {
+                loadingOverlay.classList.add('opacity-0');
+                setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            }
+        }
+
+        function renderSalonInfo(salon) {
+            document.title = salon.salon_name;
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+            document.getElementById('footer-salon-name').textContent = salon.salon_name;
+            
+            // Text Content
+            document.getElementById('salon-name').textContent = salon.salon_name;
+            document.getElementById('salon-tagline').textContent = salon.tagline || `مرحباً بكم في ${salon.salon_name}`;
+            document.getElementById('salon-description').textContent = salon.about || salon.description || salon.tagline || 'نقدم لكم أرقى الخدمات بأفضل المعايير.';
+            document.getElementById('salon-city').textContent = salon.city || 'غير محدد';
+            
+            // Make city badge clickable to scroll to map
+            const cityBadge = document.getElementById('salon-city').parentElement;
+            cityBadge.classList.add('cursor-pointer', 'hover:bg-gray-100', 'transition-colors');
+            cityBadge.onclick = () => {
+                const locSection = document.getElementById('location');
+                if (locSection) locSection.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            document.getElementById('salon-rating').textContent = (salon.rating || 5).toFixed(1);
+            document.getElementById('salon-reviews-count').textContent = `(${salon.reviews_count || 0})`;
+            // document.getElementById('working-hours-short').textContent = '09:00 - 22:00'; // Removed hardcoded value
+
+            const address = salon.address ? `${salon.city}، ${salon.address}` : salon.city;
+            document.getElementById('salon-address-full').textContent = address;
+
+            // Images
+            const heroImg = document.getElementById('salon-hero-image');
+            const logoImg = document.getElementById('salon-logo');
+            
+            if (salon.image_url) {
+                heroImg.src = salon.image_url;
+                heroImg.classList.remove('hidden');
+            } else {
+                heroImg.src = 'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?q=80&w=2070&auto=format&fit=crop';
+                heroImg.classList.remove('hidden');
+            }
+
+            const logoSrc = salon.logo_url || salon.logo || salon.image_url;
+            if (logoSrc) {
+                logoImg.src = logoSrc;
+                logoImg.classList.remove('hidden');
+                document.getElementById('salon-logo-placeholder').classList.add('hidden');
+            }
+
+            // Actions
+            const phone = salon.salon_phone || salon.owner_phone;
+            if (phone) {
+                document.getElementById('call-btn-action').onclick = () => window.location.href = `tel:${phone}`;
+            }
+
+            document.getElementById('get-directions-btn').onclick = () => {
+                if (salon.latitude && salon.longitude) {
+                     window.open(`https://www.google.com/maps/search/?api=1&query=${salon.latitude},${salon.longitude}`, '_blank');
+                } else {
+                    const query = salon.address ? `${salon.salon_name} ${salon.address}` : `${salon.salon_name} ${salon.city || ''}`;
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+                }
+            };
+
+            // Social
+            const socialContainer = document.getElementById('social-links-share');
+            const links = [];
+            if (salon.facebook || salon.facebook_url) links.push({ icon: 'fab fa-facebook-f', url: salon.facebook || salon.facebook_url });
+            if (salon.instagram || salon.instagram_url) links.push({ icon: 'fab fa-instagram', url: salon.instagram || salon.instagram_url });
+            
+            if (links.length) {
+                socialContainer.innerHTML = links.map(l => `
+                    <a href="${l.url}" target="_blank" class="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all">
+                        <i class="${l.icon}"></i>
+                    </a>
+                `).join('');
+            } else {
+                socialContainer.innerHTML = '<span class="text-xs text-gray-500">لا توجد حسابات</span>';
+            }
+
+            // Share logic is handled in DOMContentLoaded event listener below
+        }
+
+        async function loadServices() {
+            try {
+                const res = await fetch(`/api/salon/services/${salonId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && data.services) {
+                    salonServicesCache = data.services;
+                    renderServices(data.services);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderServices(services) {
+            servicesGrid.innerHTML = '';
+            
+            // Padding
+            servicesGrid.appendChild(document.createElement('div')).className = 'w-2 shrink-0';
+
+            services.forEach(service => {
+                const el = document.createElement('div');
+                el.className = 'service-card shrink-0 w-48 md:w-56 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 snap-center flex flex-col justify-between relative overflow-hidden group h-auto min-h-[200px] cursor-pointer hover:border-black transition-all';
+                el.onclick = () => handleBooking(service.id);
+                
+                el.innerHTML = `
+                    <div class="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full group-hover:bg-gray-100 transition-colors duration-500"></div>
+                    
+                    <div class="relative z-10 mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-800 text-xl mb-3 shadow-sm group-hover:scale-110 transition-transform">
+                            ${service.icon ? 
+                                ((service.icon.includes('.') || service.icon.includes('/')) ? 
+                                    `<img src="${service.icon}" class="w-full h-full object-cover rounded-xl" onerror="this.outerHTML='<i class=\'fas fa-cut text-2xl text-purple-600\'></i>'">` :
+                                    `<i class="fas ${service.icon} text-2xl text-purple-600"></i>`
+                                ) : 
+                                `<i class="fas fa-cut text-2xl text-purple-600"></i>`
+                            }
+                        </div>
+                        <h4 class="font-bold text-base text-gray-900 leading-tight">${service.name_ar}</h4>
+                    </div>
+                    
+                    <div class="relative z-10 pt-3 border-t border-gray-50 mt-auto">
+                        <div class="flex justify-between items-end mb-3">
+                            <div>
+                                <span class="block text-[10px] text-gray-400 mb-0.5">السعر</span>
+                                <span class="font-black text-base text-gray-900">${service.price} <span class="text-[10px] font-normal">₪</span></span>
+                            </div>
+                            <div class="text-left">
+                                <span class="block text-[10px] text-gray-400 mb-0.5">المدة</span>
+                                <span class="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded-lg">${service.duration} د</span>
+                            </div>
+                        </div>
+                        <button onclick="event.stopPropagation(); handleBooking(${service.id})" class="w-full py-2 bg-black text-white text-sm font-bold rounded-xl opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 shadow-lg shadow-black/20 hover:bg-gray-800">
+                            حجز الآن
+                        </button>
+                    </div>
+                `;
+                servicesGrid.appendChild(el);
+            });
+
+            // Padding
+            servicesGrid.appendChild(document.createElement('div')).className = 'w-2 shrink-0';
+        }
+
+        async function loadReviews() {
+            try {
+                const res = await fetch(`/api/reviews/salon/${salonId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success && data.reviews) renderReviews(data.reviews);
+            } catch (e) { console.error(e); }
+        }
+
+        function renderReviews(reviews) {
+            const container = document.getElementById('reviews-container');
+            container.innerHTML = '';
+            
+            if (reviews.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12 bg-white rounded-3xl border border-dashed border-gray-200">
+                        <i class="far fa-comment-dots text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500 font-medium">لا توجد تقييمات بعد</p>
+                    </div>
+                `;
+                return;
+            }
+
+            reviews.slice(0, 4).forEach(review => {
+                const el = document.createElement('div');
+                el.className = 'bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col';
+                
+                const stars = Array(5).fill(0).map((_, i) => 
+                    `<i class="fas fa-star text-xs ${i < review.rating ? 'text-yellow-400' : 'text-gray-200'}"></i>`
+                ).join('');
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">
+                            ${(review.user_name || 'U').charAt(0)}
+                        </div>
+                        <div>
+                            <h5 class="font-bold text-sm text-gray-900">${review.user_name || 'عميل'}</h5>
+                            <div class="flex gap-0.5 mt-0.5">${stars}</div>
+                        </div>
+                        <span class="mr-auto text-xs text-gray-400">${formatReviewDate(review.date_posted)}</span>
+                    </div>
+                    <p class="text-gray-600 text-sm leading-relaxed">${review.comment || ''}</p>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // --- Review & Add Logic ---
+        let selectedRating = 0;
+
+        document.getElementById('add-review-btn').addEventListener('click', () => {
+            if (!checkAuth()) return; // checkAuth handles modal showing
+            openReviewModal();
+        });
+
+        window.openReviewModal = function() {
+            document.getElementById('review-modal').classList.remove('hidden');
+            resetReviewForm();
+        };
+
+        window.closeReviewModal = function() {
+            document.getElementById('review-modal').classList.add('hidden');
+        };
+
+        function resetReviewForm() {
+            selectedRating = 0;
+            document.getElementById('review-rating').value = '';
+            document.getElementById('review-comment').value = '';
+            updateStars(0);
+        }
+
+        // Star Rating Logic
+        document.querySelectorAll('.star-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = parseInt(btn.dataset.value);
+                selectedRating = val;
+                document.getElementById('review-rating').value = val;
+                updateStars(val);
+            });
+            
+            btn.addEventListener('mouseenter', () => {
+                updateStarsVisual(parseInt(btn.dataset.value));
+            });
+            
+            btn.addEventListener('mouseleave', () => {
+                updateStarsVisual(selectedRating);
+            });
+        });
+
+        function updateStars(val) {
+            updateStarsVisual(val);
+            const texts = ['اختر التقييم', 'سيء', 'مقبول', 'جيد', 'جيد جداً', 'ممتاز'];
+            document.getElementById('rating-text').textContent = texts[val] || 'اختر التقييم';
+        }
+
+        function updateStarsVisual(val) {
+            document.querySelectorAll('.star-btn').forEach(btn => {
+                const btnVal = parseInt(btn.dataset.value);
+                if (btnVal <= val) {
+                    btn.classList.add('text-yellow-400');
+                    btn.classList.remove('text-gray-300');
+                } else {
+                    btn.classList.remove('text-yellow-400');
+                    btn.classList.add('text-gray-300');
+                }
+            });
+        }
+
+        document.getElementById('review-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedRating) {
+                alert('يرجى اختيار التقييم');
+                return;
+            }
+            
+            const comment = document.getElementById('review-comment').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<div class="loading-spinner w-5 h-5 mx-auto border-2 border-white"></div>';
+            
+            try {
+                const token = localStorage.getItem('saloony_token');
+                const res = await fetch('/api/reviews/submit', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        salon_id: parseInt(salonId),
+                        rating: selectedRating,
+                        comment: comment
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('شكراً لتقييمك!');
+                    closeReviewModal();
+                    loadReviews(); // Reload reviews
+                } else {
+                    alert(data.message || 'فشل إرسال التقييم');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('حدث خطأ');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+
+        // --- Booking Logic (Modern Stepper) ---
+        let currentStep = 1;
+        const totalSteps = 4;
+
+        let selectedServices = []; // Replaces single currentService
+
+        window.handleBooking = async function(serviceId = null) {
+            if (!checkAuth()) return;
+            
+            // Owner Check - Block Booking
+            if (window.currentSalon) {
+                try {
+                    const user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                    if (user && user.id === window.currentSalon.user_id) {
+                        alert('عذراً، لا يمكنك حجز موعد في صالونك الخاص.');
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            selectedServices = []; // Reset selected services
+            if (serviceId) {
+                const s = salonServicesCache.find(s => s.id == serviceId);
+                if (s) selectedServices.push(s);
+            }
+
+            // Reset State
+            currentStep = 1;
+            selectedStaffId = 0; // Default to 'Any'
+            selectedTime = null;
+            document.getElementById('step-success').classList.add('hidden');
+            document.getElementById('step-content-4').classList.remove('hidden');
+            
+            // Reset Buttons visibility
+            document.getElementById('prev-step-btn').classList.remove('hidden');
+            document.getElementById('confirm-booking-btn').classList.remove('hidden');
+            document.getElementById('confirm-booking-btn').disabled = false;
+
+            const today = new Date().toISOString().split('T')[0];
+            selectedDate = today;
+            document.getElementById('booking-date').min = today;
+            document.getElementById('booking-date').value = today;
+
+            // Open Modal
+            document.getElementById('booking-modal').classList.remove('hidden');
+            
+            updateStepUI();
+
+            // Load Data Background
+            await fetchSalonSchedule();
+            await fetchSalonStaff();
+            renderStaff();
+            loadSlots(); // Pre-load slots for today
+        };
+
+        window.clearServiceSelection = () => {
+            selectedServices = [];
+            updateStepUI();
+        };
+
+        window.toggleServiceSelection = (id) => {
+            const service = salonServicesCache.find(s => s.id == id);
+            if (!service) return;
+
+            const index = selectedServices.findIndex(s => s.id == id);
+            if (index > -1) {
+                selectedServices.splice(index, 1);
+            } else {
+                selectedServices.push(service);
+            }
+            updateStepUI();
+        };
+
+        function renderServiceSelectionList() {
+            const container = document.getElementById('step1-services-list');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            salonServicesCache.forEach(service => {
+                const isSelected = selectedServices.some(s => s.id === service.id);
+                const el = document.createElement('div');
+                el.className = `flex items-center justify-between p-4 rounded-2xl transition-all cursor-pointer group mb-3 ${
+                    isSelected ? 'bg-black text-white shadow-lg shadow-black/20' : 'bg-gray-50 hover:bg-gray-100 text-gray-900'
+                }`;
+                el.onclick = () => toggleServiceSelection(service.id);
+                
+                // Icon Logic
+                let iconHtml = '<i class="fas fa-cut"></i>';
+                if (service.icon) {
+                    if (service.icon.includes('.') || service.icon.includes('/')) {
+                        iconHtml = `<img src="${service.icon}" class="w-full h-full object-cover rounded-lg" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-cut\\'></i>'">`;
+                    } else {
+                        iconHtml = `<i class="fas ${service.icon}"></i>`;
+                    }
+                }
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-white text-gray-600 shadow-sm'
+                        }">
+                            ${iconHtml}
+                        </div>
+                        <div>
+                            <h5 class="font-bold text-base leading-tight mb-1">${service.name_ar}</h5>
+                            <span class="text-xs ${isSelected ? 'text-white/70' : 'text-gray-500'} font-medium">${service.duration} دقيقة</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="font-black text-base">${service.price} ₪</span>
+                        <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? 'bg-white border-white text-black' : 'border-gray-300 text-transparent'
+                        }">
+                            <i class="fas fa-check text-xs"></i>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+            
+            // Show/Hide continue button if services are selected
+            const nextBtn = document.getElementById('next-step-btn');
+            const countBadge = document.getElementById('selected-services-count');
+            
+            if (selectedServices.length > 0) {
+                nextBtn.classList.remove('hidden');
+                countBadge.textContent = selectedServices.length;
+                countBadge.classList.remove('hidden');
+            } else {
+                nextBtn.classList.add('hidden');
+                countBadge.classList.add('hidden');
+            }
+        }
+
+        window.closeBookingModal = () => document.getElementById('booking-modal').classList.add('hidden');
+
+        // Navigation Handlers
+        document.getElementById('next-step-btn').addEventListener('click', () => {
+            if (validateStep(currentStep)) {
+                currentStep++;
+                if (currentStep > totalSteps) currentStep = totalSteps;
+                updateStepUI();
+            }
+        });
+
+        document.getElementById('prev-step-btn').addEventListener('click', () => {
+            currentStep--;
+            if (currentStep < 1) currentStep = 1;
+            updateStepUI();
+        });
+
+        function validateStep(step) {
+            if (step === 2) {
+                // Staff is always valid if we default to 0 (Any)
+                // But if we wanted to force selection, we'd check selectedStaffId
+                return true;
+            }
+            if (step === 3) {
+                if (!selectedDate) { alert('الرجاء اختيار التاريخ'); return false; }
+                if (!selectedTime) { alert('الرجاء اختيار الوقت'); return false; }
+                return true;
+            }
+            return true;
+        }
+
+        function updateStepUI() {
+            // Update Step Titles
+            const titles = ['اختيار الخدمة', 'خبير التجميل', 'التوقيت', 'تأكيد الحجز'];
+            document.getElementById('step-title').textContent = titles[currentStep - 1];
+
+            // Toggle Contents
+            for (let i = 1; i <= totalSteps; i++) {
+                const el = document.getElementById(`step-content-${i}`);
+                if (i === currentStep) {
+                    el.classList.remove('hidden');
+                    
+                    // Step 1 Logic
+                    if (currentStep === 1) {
+                         // Logic for toggling between selection list and review
+                         // If we have selected services AND we were not just adding more (which we don't track explicitly, but we can infer user intent or just show review if not empty)
+                         // Actually, better UX: Always show selection list, but if items selected, show "Continue" button.
+                         // But to keep the requested "Review" step before staff:
+                         
+                         // If we opened with a specific service (pre-selected) -> show review
+                         // If we opened empty -> show list
+                         
+                         // Let's rely on UI state:
+                         if (selectedServices.length > 0 && document.getElementById('step1-selection').classList.contains('hidden')) {
+                             document.getElementById('step1-review').classList.remove('hidden');
+                             document.getElementById('step1-selection').classList.add('hidden');
+                             
+                             // Populate Review
+                             const container = document.getElementById('step1-selected-services-container');
+                             container.innerHTML = '';
+                             let totalPrice = 0;
+                             let totalDuration = 0;
+
+                             selectedServices.forEach(s => {
+                                totalPrice += s.price;
+                                totalDuration += s.duration;
+                                
+                                // Icon Logic
+                                let iconHtml = '<i class="fas fa-cut text-xs"></i>';
+                                if (s.icon) {
+                                    if (s.icon.includes('.') || s.icon.includes('/')) {
+                                        iconHtml = `<img src="${s.icon}" class="w-full h-full object-cover rounded-md" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-cut text-xs\\'></i>'">`;
+                                    } else {
+                                        iconHtml = `<i class="fas ${s.icon} text-xs"></i>`;
+                                    }
+                                }
+
+                                const div = document.createElement('div');
+                                div.className = 'flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 mb-2';
+                                div.innerHTML = `
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center text-gray-500">
+                                            ${iconHtml}
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-900">${s.name_ar}</span>
+                                    </div>
+                                    <span class="text-sm font-bold">${s.price} ₪</span>
+                                `;
+                                container.appendChild(div);
+                             });
+
+                             document.getElementById('step1-total-price').textContent = `${totalPrice} ₪`;
+                             document.getElementById('step1-total-duration').innerHTML = `<i class="far fa-clock ml-1"></i> ${totalDuration} دقيقة`;
+                             
+                             document.getElementById('next-step-btn').classList.remove('hidden');
+
+                         } else {
+                             document.getElementById('step1-review').classList.add('hidden');
+                             document.getElementById('step1-selection').classList.remove('hidden');
+                             renderServiceSelectionList();
+                         }
+                    } else if (currentStep === 4) {
+                        updateSummary();
+                    }
+
+                    // Small delay to allow display:block to apply before opacity transition
+                    setTimeout(() => el.classList.remove('opacity-0', 'translate-y-4'), 10);
+                } else {
+                    el.classList.add('hidden', 'opacity-0', 'translate-y-4');
+                }
+            }
+
+            // Update Progress Bars
+            for (let i = 1; i <= totalSteps; i++) {
+                const bar = document.getElementById(`progress-step-${i}`);
+                if (i <= currentStep) {
+                    bar.style.width = '100%';
+                    bar.parentElement.classList.remove('bg-gray-100');
+                    bar.parentElement.classList.add('bg-black/10');
+                } else {
+                    bar.style.width = '0%';
+                    bar.parentElement.classList.add('bg-gray-100');
+                    bar.parentElement.classList.remove('bg-black/10');
+                }
+            }
+
+            // Update Buttons
+            const prevBtn = document.getElementById('prev-step-btn');
+            const nextBtn = document.getElementById('next-step-btn');
+            const confirmBtn = document.getElementById('confirm-booking-btn');
+
+            if (currentStep === 1) {
+                prevBtn.classList.add('hidden');
+                
+                // If in review mode, show Next
+                // If in selection mode, show Next only if items selected
+                if (!document.getElementById('step1-review').classList.contains('hidden')) {
+                     nextBtn.classList.remove('hidden');
+                } else if (selectedServices.length > 0) {
+                     nextBtn.classList.remove('hidden');
+                } else {
+                     nextBtn.classList.add('hidden');
+                }
+                
+                confirmBtn.classList.add('hidden');
+            } else if (currentStep === totalSteps) {
+                prevBtn.classList.remove('hidden');
+                nextBtn.classList.add('hidden');
+                confirmBtn.classList.remove('hidden');
+                updateSummary();
+            } else {
+                prevBtn.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+                confirmBtn.classList.add('hidden');
+            }
+        }
+
+        function updateSummary() {
+            // Service Summary
+            const serviceNames = selectedServices.map(s => s.name_ar).join('، ');
+            document.getElementById('summary-service').textContent = serviceNames || 'لم يتم اختيار خدمة';
+            
+            const staffName = selectedStaffId === 0 ? 'أي مختص' : (salonStaff.find(s => s.id == selectedStaffId)?.name || 'غير محدد');
+            document.getElementById('summary-staff').textContent = staffName;
+            
+            const dateObj = new Date(selectedDate);
+            const dayName = dateObj.toLocaleDateString('ar-EG', { weekday: 'long' });
+            const dateNum = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            document.getElementById('summary-datetime').textContent = `${dayName} | ${dateNum} | ${selectedTime}`;
+            
+            const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
+            document.getElementById('summary-price').textContent = `${totalPrice} ₪`;
+        }
+
+        async function fetchSalonSchedule() {
+            if (salonSchedule) return;
+            try {
+                const res = await fetch(`/api/salon/schedule/${salonId}`);
+                const data = await res.json();
+                if (data.success) salonSchedule = data;
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchSalonStaff() {
+            if (salonStaff.length > 0) return;
+            try {
+                const res = await fetch(`/api/salon/staff/${salonId}`);
+                const data = await res.json();
+                if (data.success) salonStaff = data.staff || [];
+            } catch (e) { console.error(e); }
+        }
+
+        function renderStaff() {
+            const container = document.getElementById('step2-staff-grid');
+            container.innerHTML = `
+                <label class="cursor-pointer relative group">
+                    <input type="radio" name="staff_selection" value="0" class="peer hidden" checked onchange="handleStaffChange(0)">
+                    <div class="border-2 border-gray-100 rounded-2xl p-4 text-center transition-all peer-checked:border-black peer-checked:bg-gray-50 bg-white h-full hover:border-gray-200">
+                        <div class="w-14 h-14 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center text-gray-500 text-xl">
+                             <i class="fas fa-users"></i>
+                        </div>
+                        <div class="font-bold text-gray-900">أي مختص</div>
+                        <div class="text-xs text-gray-400 mt-1">الأسرع توفراً</div>
+                        <div class="absolute top-3 right-3 text-black opacity-0 peer-checked:opacity-100 transition-opacity">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                </label>
+            `;
+            salonStaff.forEach(staff => {
+                container.innerHTML += `
+                    <label class="cursor-pointer relative group">
+                        <input type="radio" name="staff_selection" value="${staff.id}" class="peer hidden" onchange="handleStaffChange(${staff.id})">
+                        <div class="border-2 border-gray-100 rounded-2xl p-4 text-center transition-all peer-checked:border-black peer-checked:bg-gray-50 bg-white h-full hover:border-gray-200">
+                            <div class="w-14 h-14 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center overflow-hidden">
+                                 ${staff.image_url ? `<img src="${staff.image_url}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-500 text-xl">${staff.name.charAt(0)}</span>`}
+                            </div>
+                            <div class="font-bold text-gray-900 truncate">${staff.name}</div>
+                            <div class="text-xs text-gray-400 mt-1">${staff.role || 'خبير'}</div>
+                            <div class="absolute top-3 right-3 text-black opacity-0 peer-checked:opacity-100 transition-opacity">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                    </label>
+                `;
+            });
+        }
+
+        window.handleStaffChange = (id) => { 
+            selectedStaffId = id; 
+            loadSlots(); 
+            // Optional: Auto advance or just let them click Next
+        };
+
+        document.getElementById('booking-date').addEventListener('change', (e) => {
+            selectedDate = e.target.value;
+            loadSlots();
+        });
+
+        async function loadSlots() {
+            const container = document.getElementById('slots-container');
+            const loading = document.getElementById('slots-loading');
+            const noSlots = document.getElementById('no-slots-message');
+            
+            container.innerHTML = '';
+            loading.classList.remove('hidden');
+            noSlots.classList.add('hidden');
+            selectedTime = null;
+
+            if (!salonSchedule || !selectedDate || selectedServices.length === 0) {
+                loading.classList.add('hidden');
+                return;
+            }
+
+            // Check if day is closed
+            const dayIndex = new Date(selectedDate).getDay();
+            if (salonSchedule.schedule.closed_days && salonSchedule.schedule.closed_days.includes(dayIndex)) {
+                loading.classList.add('hidden');
+                noSlots.classList.remove('hidden');
+                noSlots.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-store-slash text-2xl text-red-500"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-900 mb-2">الصالون مغلق</h4>
+                        <p class="text-gray-500 text-sm">هذا اليوم هو يوم عطلة للصالون، يرجى اختيار يوم آخر.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const apptRes = await fetch(`/api/salon/${salonId}/appointments/${selectedDate}`);
+                const apptData = await apptRes.json();
+                const appointments = apptData.success ? apptData.appointments : [];
+
+                let startMins = 9 * 60;
+                let endMins = 22 * 60;
+                
+                if (salonSchedule.schedule) {
+                    startMins = timeToMinutes(salonSchedule.schedule.opening_time || '09:00');
+                    endMins = timeToMinutes(salonSchedule.schedule.closing_time || '22:00');
+                }
+
+                const now = new Date();
+                if (selectedDate === now.toISOString().split('T')[0]) {
+                    const currentMins = now.getHours() * 60 + now.getMinutes();
+                    if (currentMins > startMins) startMins = Math.ceil((currentMins + 30) / 30) * 30;
+                }
+
+                // Check for blocked time periods (interval closures)
+                // This is a simplified check. Backend does full validation.
+                
+                const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
+
+                const availableSlots = [];
+                for (let time = startMins; time + totalDuration <= endMins; time += 30) {
+                    const slotStart = time;
+                    const slotEnd = time + totalDuration;
+                    let isSlotFree = true;
+                    
+                    if (selectedStaffId !== 0) {
+                        const isBusy = appointments.some(a => {
+                            if (a.staff_id != selectedStaffId) return false;
+                            const aStart = timeToMinutes(a.start_time.split('T')[1].substring(0,5));
+                            const aEnd = timeToMinutes(a.end_time.split('T')[1].substring(0,5));
+                            return (slotStart < aEnd && slotEnd > aStart);
+                        });
+                        if (isBusy) isSlotFree = false;
+                    } else {
+                        // Any staff logic: check if ANY staff is free for this duration
+                        // Simple check: count available staff at this slot
+                        // This is a client-side approximation. Server validation is final.
+                        // We need to know total staff count vs busy staff count
+                        
+                        // Filter appointments that overlap with this slot
+                        const busyStaffIds = new Set();
+                        appointments.forEach(a => {
+                            const aStart = timeToMinutes(a.start_time.split('T')[1].substring(0,5));
+                            const aEnd = timeToMinutes(a.end_time.split('T')[1].substring(0,5));
+                            if (slotStart < aEnd && slotEnd > aStart) {
+                                if (a.staff_id) busyStaffIds.add(a.staff_id);
+                            }
+                        });
+                        
+                        // If number of busy staff < total staff, then slot is free
+                        if (salonStaff.length > 0 && busyStaffIds.size >= salonStaff.length) {
+                             isSlotFree = false;
+                        }
+                    }
+
+                    if (isSlotFree) availableSlots.push(minutesToTime(time));
+                }
+
+                if (availableSlots.length === 0) {
+                    noSlots.classList.remove('hidden');
+                    noSlots.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-8 text-center">
+                            <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                <i class="far fa-clock text-2xl text-gray-400"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-2">لا توجد مواعيد متاحة</h4>
+                            <p class="text-gray-500 text-sm">جميع المواعيد محجوزة في هذا اليوم، يرجى اختيار يوم آخر.</p>
+                        </div>
+                    `;
+                } else {
+                    availableSlots.forEach(time => {
+                        const btn = document.createElement('button');
+                        btn.className = 'slot-btn w-full bg-white border border-gray-200 rounded-xl py-3 text-sm font-bold text-gray-700 hover:border-black hover:bg-gray-50 transition-all shadow-sm';
+                        btn.textContent = time;
+                        btn.onclick = () => selectTime(time, btn);
+                        container.appendChild(btn);
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+                noSlots.textContent = 'خطأ في تحميل المواعيد';
+                noSlots.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function selectTime(time, btn) {
+            document.querySelectorAll('.slot-btn').forEach(b => {
+                b.classList.remove('bg-black', 'text-white', 'border-black');
+                b.classList.add('bg-white', 'text-gray-700', 'border-gray-200');
+            });
+            btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-200');
+            btn.classList.add('bg-black', 'text-white', 'border-black');
+            selectedTime = time;
+        }
+
+        document.getElementById('confirm-booking-btn').addEventListener('click', async () => {
+            if (!selectedTime || !selectedDate || selectedServices.length === 0) return;
+            const btn = document.getElementById('confirm-booking-btn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner w-5 h-5 border-2 border-white"></div>';
+
+            try {
+                const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
+                
+                const payload = {
+                    salon_id: parseInt(salonId),
+                    services: selectedServices.map(s => ({ id: s.id, price: s.price })),
+                    staff_id: selectedStaffId,
+                    start_time: `${selectedDate}T${selectedTime}:00`,
+                    end_time: calculateEndTime(selectedDate, selectedTime, totalDuration)
+                };
+
+                let res = await fetch('/api/appointment/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('saloony_token')}` },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.status === 401) {
+                    const refreshed = await attemptRefresh();
+                    if (refreshed) {
+                        res = await fetch('/api/appointment/book', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('saloony_token')}` },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+                    
+                    if (res.status === 401) {
+                        localStorage.removeItem('saloony_token');
+                        localStorage.removeItem('saloony_refresh_token');
+                        document.getElementById('login-modal').classList.remove('hidden');
+                        return;
+                    }
+                }
+
+                const data = await res.json();
+
+                if (data.success) {
+                    // Show Success View
+                    document.getElementById('step-content-4').classList.add('hidden');
+                    document.getElementById('step-success').classList.remove('hidden');
+                    
+                    // Hide Footer Buttons
+                    document.getElementById('prev-step-btn').classList.add('hidden');
+                    document.getElementById('confirm-booking-btn').classList.add('hidden');
+                    document.getElementById('step-title').textContent = 'تم الحجز';
+
+                    // Redirect
+                    setTimeout(() => {
+                        window.location.href = '../saloony/user_account.html';
+                    }, 2000);
+                } else {
+                    alert(data.message || 'فشل الحجز');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        function calculateEndTime(date, time, duration) {
+            const [hours, minutes] = time.split(':').map(Number);
+            
+            const startDate = new Date(`${date}T${time}:00`);
+            const endDate = new Date(startDate.getTime() + duration * 60000);
+            
+            // Format HH:mm
+            const endHours = String(endDate.getHours()).padStart(2, '0');
+            const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
+            
+            return `${date}T${endHours}:${endMinutes}:00`;
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSalonData();
+
+            // Smooth Scroll for Anchors (e.g. Location button)
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            });
+
+            // Init Hours
+            document.getElementById('working-hours-btn').onclick = openHoursModal;
+            
+            // Mobile CTA Scroll
+            const mobileBtn = document.getElementById('mobile-reserve-btn');
+            if (mobileBtn) {
+                mobileBtn.onclick = () => handleBooking();
+            }
+            
+            // Scroll Buttons
+            const scrollContainer = document.getElementById('services-grid');
+            const leftBtn = document.getElementById('scroll-left');
+            const rightBtn = document.getElementById('scroll-right');
+            
+            if (leftBtn && rightBtn && scrollContainer) {
+                // RTL Logic: leftBtn (Left Arrow) moves View LEFT (Next), rightBtn (Right Arrow) moves View RIGHT (Prev)
+                leftBtn.onclick = () => scrollContainer.scrollBy({ left: -300, behavior: 'smooth' });
+                rightBtn.onclick = () => scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
+            }
+        });
+
+        // --- Hours Logic ---
+        async function openHoursModal() {
+            document.getElementById('hours-modal').classList.remove('hidden');
+            if (!salonSchedule) {
+                const container = document.getElementById('hours-list');
+                container.innerHTML = '<div class="text-center py-8"><div class="loading-spinner w-6 h-6 mx-auto border-2 border-gray-300"></div></div>';
+                await fetchSalonSchedule();
+            }
+            renderWorkingHours();
+        }
+
+        function updateTodayHoursDisplay() {
+            const el = document.getElementById('working-hours-short');
+            if (!salonSchedule || !salonSchedule.schedule) {
+                el.textContent = '--:--';
+                return;
+            }
+            
+            const now = new Date();
+            const todayIdx = now.getDay();
+            const s = salonSchedule.schedule;
+            const closedDays = s.closed_days || [];
+            
+            const open = s.opening_time ? s.opening_time.substring(0, 5) : '09:00';
+            const close = s.closing_time ? s.closing_time.substring(0, 5) : '22:00';
+
+            el.className = 'block w-full'; // Ensure block display
+
+            if (closedDays.includes(todayIdx)) {
+                el.innerHTML = `
+                    <div class="flex flex-col items-center justify-center leading-tight">
+                        <span class="text-sm font-bold text-gray-900" dir="ltr">${open} - ${close}</span>
+                        <span class="text-xs font-bold text-red-500 mt-0.5">مغلق</span>
+                    </div>
+                `;
+            } else {
+                const currentMins = now.getHours() * 60 + now.getMinutes();
+                const startMins = timeToMinutes(open);
+                const endMins = timeToMinutes(close);
+                
+                const isOpen = currentMins >= startMins && currentMins < endMins;
+                
+                el.innerHTML = `
+                    <div class="flex flex-col items-center justify-center leading-tight">
+                        <span class="text-sm font-bold text-gray-900" dir="ltr">${open} - ${close}</span>
+                        <span class="text-xs font-bold ${isOpen ? 'text-green-600' : 'text-red-500'} mt-0.5">
+                            ${isOpen ? 'مفتوح' : 'مغلق'}
+                        </span>
+                    </div>
+                `;
+            }
+        }
+
+        function renderWorkingHours() {
+            const container = document.getElementById('hours-list');
+            if (!salonSchedule || !salonSchedule.schedule) {
+                // If not loaded yet, try to use default or wait
+                container.innerHTML = '<div class="text-center py-4 text-gray-400">لا تتوفر معلومات الجدول حالياً</div>';
+                return;
+            }
+
+            const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const todayIdx = new Date().getDay();
+            const s = salonSchedule.schedule;
+            const closedDays = s.closed_days || [];
+            
+            let html = '';
+            
+            days.forEach((day, idx) => {
+                const isToday = idx === todayIdx;
+                const isClosed = closedDays.includes(idx);
+                
+                html += `
+                    <div class="flex justify-between items-center p-3 rounded-xl ${isToday ? 'bg-purple-50 border border-purple-100' : 'hover:bg-gray-50'}">
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold ${isToday ? 'text-purple-700' : 'text-gray-700'}">${day}</span>
+                            ${isToday ? '<span class="text-[10px] bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded text-center font-bold">اليوم</span>' : ''}
+                        </div>
+                        <div class="font-medium text-sm ${isClosed ? 'text-red-500' : 'text-gray-600'}">
+                            ${isClosed ? 'مغلق' : `${s.opening_time.substring(0,5)} - ${s.closing_time.substring(0,5)}`}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // --- User Icon & Auth Logic ---
+        window.closeLoginPromptModal = () => document.getElementById('login-prompt-modal').classList.add('hidden');
+        window.closeSalonRestrictionModal = () => document.getElementById('salon-restriction-modal').classList.add('hidden');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userActionBtn = document.getElementById('user-action-btn');
+            
+            if (userActionBtn) {
+                userActionBtn.addEventListener('click', () => {
+                    const token = localStorage.getItem('saloony_token');
+                    
+                    if (!token) {
+                        // Guest: Show Login Prompt
+                        const redirectUrl = encodeURIComponent(window.location.href);
+                        document.getElementById('login-redirect-btn').href = `/pages/saloony/auth.html?redirect=${redirectUrl}`;
+                        document.getElementById('login-prompt-modal').classList.remove('hidden');
+                    } else {
+                        try {
+                            const user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                            
+                            if (user.user_type === 'user') {
+                                // User: Go to Account
+                                window.location.href = '/pages/saloony/user_account.html';
+                            } else {
+                                // Salon/Admin/Employee: Show Restriction
+                                document.getElementById('salon-restriction-modal').classList.remove('hidden');
+                            }
+                        } catch (e) {
+                            console.error('Error parsing user data:', e);
+                            // Fallback to login if data is corrupted
+                            const redirectUrl = encodeURIComponent(window.location.href);
+                            document.getElementById('login-redirect-btn').href = `/pages/saloony/auth.html?redirect=${redirectUrl}`;
+                            document.getElementById('login-prompt-modal').classList.remove('hidden');
+                        }
+                    }
+                });
+            }
+        });
+
+        async function attemptRefresh() {
+            try {
+                const rt = localStorage.getItem('saloony_refresh_token');
+                if (!rt) return false;
+                
+                const res = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: rt })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.access_token) {
+                        localStorage.setItem('saloony_token', data.access_token);
+                        if (data.refresh_token) localStorage.setItem('saloony_refresh_token', data.refresh_token);
+                        return true;
+                    }
+                } else {
+                    localStorage.removeItem('saloony_token');
+                    localStorage.removeItem('saloony_refresh_token');
+                    localStorage.removeItem('saloony_user');
+                }
+            } catch (e) { console.error('Refresh error:', e); }
+            return false;
+        }
+
+        // Initialize
+        loadSalonData();
+    </script>
+</body>
+</html>

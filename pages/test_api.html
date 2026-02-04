@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <div id="results">Running tests...</div>
+    <script>
+        async function runTests() {
+            const results = document.getElementById('results');
+            let html = '';
+            
+            // Test 1: Ping
+            try {
+                const res = await fetch('/api/admin/subscriptions/ping');
+                html += `<p>Ping: ${res.status} ${res.statusText}</p>`;
+                if (res.ok) {
+                    const data = await res.json();
+                    html += `<p>Ping Response: ${JSON.stringify(data)}</p>`;
+                }
+            } catch (e) {
+                html += `<p>Ping Error: ${e.message}</p>`;
+            }
+
+            // Test 2: Delete Dummy
+            // Need admin token... assume user is logged in or we can't test easily.
+            // But we can check if we get 401 vs 404.
+            // 401 means route exists but unauthorized (GOOD).
+            // 404 means route does not exist (BAD).
+            try {
+                const res = await fetch('/api/admin/subscriptions/999999', {
+                    method: 'DELETE'
+                });
+                html += `<p>Delete 999999: ${res.status} ${res.statusText}</p>`;
+            } catch (e) {
+                html += `<p>Delete Error: ${e.message}</p>`;
+            }
+
+            results.innerHTML = html;
+        }
+        runTests();
+    </script>
+</body>
+</html>

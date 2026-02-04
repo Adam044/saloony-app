@@ -67,7 +67,7 @@ module.exports = function register(app, deps) {
       const payload = {
         title: title || 'اختبار الإشعارات',
         body: body || 'هذا إشعار تجريبي من Saloony.',
-        url: url || (user_id ? '/home_user.html' : '/home_salon.html'),
+        url: url || (user_id ? '/' : '/admin_salon'),
         tag: tag || 'saloony-test'
       };
       await sendPushToTargets({ user_id, salon_id, payload });

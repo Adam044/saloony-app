@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Saloony - Admin Dashboard</title>
+    <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
+    <script defer src="/admin_saloony/assets/admin-core.js"></script>
+</head>
+<body class="page-transition page-fade-in">
+    <!-- Auth Check -->
+    <script>
+        (function() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) window.location.replace('/auth.html');
+        })();
+    </script>
+
+    <!-- Loading overlay -->
+    <div id="dashboard-loading" class="fixed inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-[60] hidden">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-slate-800"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="admin-layout-wrapper">
+        <div class="page-container">
+            <div id="message-box" class="hidden p-4 mb-6 text-center rounded-xl font-bold shadow-sm transition-all duration-300 max-w-6xl mx-auto" role="alert"></div>
+            
+            <div class="space-y-8">
+                <!-- Dashboard View -->
+                <section>
+                    <h2 class="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-2">
+                        <i class="fas fa-chart-pie text-emerald-500"></i> Overview
+                    </h2>
+                    
+                    <div id="stats-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <p class="col-span-full text-center text-muted p-12">Loading stats...</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const adminToken = localStorage.getItem('adminToken');
+        const messageBox = document.getElementById('message-box');
+
+        const showMessage = (element, message, isSuccess = true) => {
+            element.classList.remove('hidden'); 
+            element.textContent = message;
+            element.className = 'p-4 mb-6 text-center rounded-xl font-bold shadow-sm transition-all duration-300 max-w-6xl mx-auto border';
+            element.classList.add(...(isSuccess ? ['bg-emerald-100', 'text-emerald-800', 'border-emerald-200'] : ['bg-red-100', 'text-red-800', 'border-red-200']));
+            setTimeout(() => { element.classList.add('hidden'); }, 5000);
+        };
+
+        const formatCurrencyILS = (amount) => {
+            const num = Number(amount || 0);
+            return `₪${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+        };
+
+        const loadAdminStats = async () => {
+            const grid = document.getElementById('stats-grid');
+            // grid.innerHTML = ... (already set in HTML)
+            try {
+                const response = await fetch('/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                const stats = await response.json();
+                const totals = stats.totals || {
+                    users: stats.totalUsers,
+                    salons: stats.totalSalons,
+                    activeSalons: stats.activeSalons,
+                    pendingSalons: stats.pendingSalons,
+                };
+
+                // Revenue calculation
+                let revTotal = null;
+                try {
+                    const pRes = await fetch('/api/admin/payments', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                    const pData = pRes.ok ? await pRes.json() : [];
+                    const payments = Array.isArray(pData) ? pData : (Array.isArray(pData.payments) ? pData.payments : []);
+                    const completed = payments.filter(p => p.payment_status === 'completed' || p.payment_status === 'مكتملة');
+                    const sumAll = completed.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+                    revTotal = formatCurrencyILS(sumAll);
+                } catch (_) {
+                    revTotal = `${stats.totalRevenue || 0} ₪`;
+                }
+
+                // Visits calculation
+                let visitsTotalsAll = { visits: 0, activated: 0, interested: 0, notInterested: 0 };
+                try {
+                    const eRes = await fetch('/api/admin/employees', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                    const eData = await eRes.json();
+                    const employees = Array.isArray(eData) ? eData : (Array.isArray(eData.employees) ? eData.employees : []);
+                    const summaries = await Promise.all((employees || []).map(async (emp) => {
+                        try {
+                            const s = await fetch(`/api/admin/employees/${emp.id}/analytics/summary`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                            return s.ok ? await s.json() : null;
+                        } catch (_) { return null; }
+                    }));
+                    summaries.forEach(sd => {
+                        if (!sd || !sd.all) return;
+                        const t = sd.all;
+                        const v = Number(t.activated||0) + Number(t.signed_up||0) + Number(t.interested||0) + Number(t.not_interested||0) + Number(t.unknown||0);
+                        visitsTotalsAll.visits += v;
+                        visitsTotalsAll.activated += Number(t.activated||0);
+                        visitsTotalsAll.interested += Number(t.interested||0);
+                        visitsTotalsAll.notInterested += Number(t.not_interested||0);
+                    });
+                } catch (_) {}
+
+                const coreCards = [
+                    { title: 'Total Users', count: totals.users || 0, icon: 'fa-users', color: 'text-blue-500' },
+                    { title: 'Total Salons', count: totals.salons || 0, icon: 'fa-store-alt', color: 'text-slate-700' },
+                    { title: 'Active Salons', count: totals.activeSalons || 0, icon: 'fa-check-circle', color: 'text-emerald-500' },
+                    { title: 'Pending Salons', count: totals.pendingSalons || 0, icon: 'fa-clock', color: 'text-amber-500' },
+                    { title: 'Total Appointments', count: totals.totalAppointments || 0, icon: 'fa-calendar-check', color: 'text-blue-600' },
+                ];
+                
+                const visitsCards = [
+                    { title: 'Total Visits', count: visitsTotalsAll.visits || 0, icon: 'fa-walking', color: 'text-indigo-500' },
+                    { title: 'Total Activations', count: visitsTotalsAll.activated || 0, icon: 'fa-check-double', color: 'text-emerald-600' },
+                    { title: 'Interested', count: visitsTotalsAll.interested || 0, icon: 'fa-thumbs-up', color: 'text-amber-600' },
+                ];
+
+                const revenueCards = [
+                    revTotal ? { title: 'Total Revenue', count: revTotal, icon: 'fa-coins', color: 'text-yellow-600' } : null,
+                ].filter(Boolean);
+
+                const renderCards = (arr) => arr.map(card => `
+                    <div class="stat-card card flex items-center justify-between p-6 hover:shadow-md transition-all">
+                        <div>
+                            <p class="text-muted text-sm font-bold mb-1">${card.title}</p>
+                            <p class="text-3xl font-extrabold text-slate-800">${card.count}</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100 shadow-sm">
+                            <i class="fas ${card.icon} text-xl ${card.color}"></i>
+                        </div>
+                    </div>
+                `).join('');
+
+                grid.innerHTML = `
+                    ${renderCards(coreCards)}
+                    
+                    <div class="col-span-full mt-8 mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <i class="fas fa-briefcase text-indigo-500"></i>
+                        <span class="text-lg font-bold text-slate-800">Sales Activity (Employees)</span>
+                    </div>
+                    ${renderCards(visitsCards)}
+                    
+                    <div class="col-span-full mt-8 mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <i class="fas fa-wallet text-emerald-500"></i>
+                        <span class="text-lg font-bold text-slate-800">Financials</span>
+                    </div>
+                    ${renderCards(revenueCards)}
+                `;
+
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                grid.innerHTML = '<p class="col-span-full text-center text-red-500 font-bold p-8">Failed to load stats</p>';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', loadAdminStats);
+    </script>
+</body>
+</html>

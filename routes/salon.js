@@ -78,7 +78,7 @@ module.exports = function register(app, deps) {
     const salonId = req.params.salon_id;
     try {
       const images = await dbAll(
-        `SELECT image_path, width, height FROM salon_images WHERE salon_id = $1 AND is_primary = true ORDER BY created_at DESC LIMIT 1`,
+        `SELECT image_path, width, height FROM salon_images WHERE salon_id = $1 AND image_type = 'logo'`,
         [salonId]
       );
       if (images && images.length > 0) {
@@ -97,6 +97,30 @@ module.exports = function register(app, deps) {
     }
   });
 
+  app.get('/api/salon/schedule/:salon_id', async (req, res) => {
+    const salonId = req.params.salon_id;
+    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
+      return res.status(400).json({ success: false, message: 'Salon ID is required.' });
+    }
+    try {
+      const schedule = await dbGet('SELECT * FROM schedules WHERE salon_id = $1', [salonId]);
+      
+      // Parse closed_days if it's a string (assuming JSON array string)
+      if (schedule && schedule.closed_days && typeof schedule.closed_days === 'string') {
+        try { schedule.closed_days = JSON.parse(schedule.closed_days); } catch {}
+      }
+
+      // Fetch breaks and modifications
+      const breaks = await dbAll('SELECT * FROM breaks WHERE salon_id = $1 ORDER BY start_time ASC', [salonId]);
+      const modifications = await dbAll('SELECT * FROM schedule_modifications WHERE salon_id = $1 ORDER BY id DESC', [salonId]);
+      
+      res.json({ success: true, schedule: schedule, breaks: breaks, modifications: modifications });
+    } catch (error) {
+      console.error('Error fetching schedule:', error);
+      return res.status(500).json({ success: false, message: 'Database error.' });
+    }
+  });
+
   app.get('/api/salon/info/:salon_id', async (req, res) => {
     const salonId = req.params.salon_id;
     if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
@@ -104,12 +128,17 @@ module.exports = function register(app, deps) {
     }
     try {
       const row = await dbGet(
-        `SELECT s.id, s.salon_name, s.address, s.city, s.gender_focus, s.image_url, s.salon_phone, s.owner_name, s.owner_phone, s.user_id, u.email
-         FROM salons s JOIN users u ON s.user_id = u.id WHERE s.id = $1`,
+        `SELECT s.id, s.salon_name, s.address, s.city, s.gender_focus, s.image_url, s.logo_url, s.salon_phone, s.owner_name, s.owner_phone, s.user_id, s.about, 
+                u.email, u.user_type as role,
+                sl.latitude, sl.longitude
+         FROM salons s 
+         JOIN users u ON s.user_id = u.id 
+         LEFT JOIN salon_locations sl ON s.id = sl.salon_id
+         WHERE s.id = $1`,
         [salonId]
       );
       if (!row) return res.status(404).json({ success: false, message: 'Salon not found.' });
-      res.json({ success: true, info: row });
+      res.json({ success: true, salon: row });
     } catch {
       return res.status(500).json({ success: false, message: 'Database error.' });
     }
@@ -122,7 +151,7 @@ module.exports = function register(app, deps) {
     }
     try {
       const current = await dbGet(
-        'SELECT salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url FROM salons WHERE id = $1',
+        'SELECT salon_name, owner_name, salon_phone, owner_phone, address, city, gender_focus, image_url, logo_url, about FROM salons WHERE id = $1',
         [salonId]
       );
       if (!current) return res.status(404).json({ success: false, message: 'Salon not found.' });
@@ -136,6 +165,8 @@ module.exports = function register(app, deps) {
         city,
         gender_focus,
         image_url,
+        logo_url,
+        about
       } = req.body || {};
       const pick = (val, existing) => {
         if (val === undefined || val === null) return existing;
@@ -152,6 +183,7 @@ module.exports = function register(app, deps) {
       const nextOwnerPhone = pick(owner_phone, current.owner_phone);
       const nextAddress = pick(address, current.address);
       const nextCity = pick(city, current.city);
+      const nextAbout = pick(about, current.about);
       const nextGenderFocusRaw = pick(gender_focus, current.gender_focus);
       const nextGenderFocus = ['men','women'].includes(String(nextGenderFocusRaw).toLowerCase())
         ? String(nextGenderFocusRaw).toLowerCase()
@@ -160,6 +192,10 @@ module.exports = function register(app, deps) {
       const safeImageUrl = typeof nextImageUrlRaw === 'string'
         ? nextImageUrlRaw.trim().replace(/^`|`$/g, '')
         : nextImageUrlRaw;
+      const nextLogoUrlRaw = pick(logo_url, current.logo_url);
+      const safeLogoUrl = typeof nextLogoUrlRaw === 'string'
+        ? nextLogoUrlRaw.trim().replace(/^`|`$/g, '')
+        : nextLogoUrlRaw;
 
       await dbRun(
         `UPDATE salons
@@ -170,8 +206,10 @@ module.exports = function register(app, deps) {
              address = $5,
              city = $6,
              gender_focus = $7,
-             image_url = $8
-         WHERE id = $9`,
+             image_url = $8,
+             about = $9,
+             logo_url = $10
+         WHERE id = $11`,
         [
           nextSalonName,
           nextOwnerName,
@@ -181,11 +219,13 @@ module.exports = function register(app, deps) {
           nextCity,
           nextGenderFocus,
           safeImageUrl,
+          nextAbout,
+          safeLogoUrl,
           salonId,
         ]
       );
 
-      return res.json({ success: true, message: 'Salon info updated successfully.', image_url: safeImageUrl || current.image_url });
+      return res.json({ success: true, message: 'Salon info updated successfully.', image_url: safeImageUrl || current.image_url, logo_url: safeLogoUrl || current.logo_url });
     } catch (e) {
       return res.status(500).json({ success: false, message: 'Database error during salon update.' });
     }
@@ -668,7 +708,10 @@ module.exports = function register(app, deps) {
       }
       const sessionToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + roleConfig.session_duration_hours);
+      // Professional Approach: Set session to 30 days (Persistent Session)
+      // We ignore the config duration for now to ensure "App-like" persistence
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      
       await db.run('INSERT INTO role_sessions (salon_id, staff_role_id, session_token, expires_at) VALUES ($1, $2, $3, $4)', [salonId, authenticatedRole.id, sessionToken, expiresAt.toISOString()]);
       res.json({ success: true, session_token: sessionToken, role_type: authenticatedRole.role_type, staff_id: authenticatedRole.staff_id, staff_name: authenticatedRole.staff_name, expires_at: expiresAt.toISOString() });
     } catch (error) {
@@ -693,7 +736,13 @@ module.exports = function register(app, deps) {
       if (!session) {
         return res.status(401).json({ success: false, message: 'Invalid or expired session.' });
       }
-      res.json({ success: true, valid: true, role_type: session.role_type, staff_id: session.staff_id, staff_name: session.staff_name, expires_at: session.expires_at });
+
+      // Sliding Expiration: Extend session by 30 days on every verify to keep active users logged in
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+      await db.run('UPDATE role_sessions SET expires_at = $1 WHERE salon_id = $2 AND session_token = $3', [newExpiresAt.toISOString(), salonId, session_token]);
+
+      res.json({ success: true, valid: true, role_type: session.role_type, staff_id: session.staff_id, staff_name: session.staff_name, expires_at: newExpiresAt.toISOString() });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Verification error.' });
     }
@@ -709,6 +758,48 @@ module.exports = function register(app, deps) {
       res.json({ success: true, message: 'Logged out successfully.' });
     } catch (error) {
       res.status(500).json({ success: false, message: 'Logout error.' });
+    }
+  });
+
+  // Salon Visits Routes
+  app.post('/api/salon/visit/:salon_id', async (req, res) => {
+    try {
+      const salonId = req.params.salon_id;
+      if (!salonId || isNaN(Number(salonId))) {
+        return res.status(400).json({ success: false, message: 'Invalid salon ID' });
+      }
+      
+      const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const userAgent = req.headers['user-agent'];
+      
+      await dbRun(
+        'INSERT INTO salon_visits (salon_id, ip_address, user_agent) VALUES ($1, $2, $3)',
+        [salonId, ip, userAgent]
+      );
+      
+      res.json({ success: true, message: 'Visit recorded' });
+    } catch (error) {
+      console.error('Error recording visit:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  });
+
+  app.get('/api/salon/visits/:salon_id', async (req, res) => {
+    try {
+      const salonId = req.params.salon_id;
+      if (!salonId || isNaN(Number(salonId))) {
+        return res.status(400).json({ success: false, message: 'Invalid salon ID' });
+      }
+      
+      const result = await dbGet(
+        'SELECT COUNT(*) as count FROM salon_visits WHERE salon_id = $1',
+        [salonId]
+      );
+      
+      res.json({ success: true, count: result ? result.count : 0 });
+    } catch (error) {
+      console.error('Error getting visits:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
     }
   });
 }

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Saloony - Users Management</title>
+    <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
+    <script defer src="/admin_saloony/assets/admin-core.js"></script>
+</head>
+<body class="page-transition page-fade-in">
+    <!-- Admin Header/Layout injected by admin-header.js -->
+    
+    <div id="admin-layout-wrapper">
+        <div class="page-container">
+            <section class="card mb-6 flex items-center justify-between">
+                <div>
+                    <h2 class="card-title">Users Management</h2>
+                    <p class="text-muted text-sm mt-1">View and manage user and salon accounts</p>
+                </div>
+            </section>
+
+            <section class="card mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-input" placeholder="Search by name, email or phone..." class="input pl-10 w-full">
+                    </div>
+                    <div>
+                        <select id="filter-type" class="input w-full">
+                            <option value="">All User Types</option>
+                            <option value="user">User</option>
+                            <option value="salon">Salon</option>
+                            <option value="admin">Employee</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="filter-city" class="input w-full">
+                            <option value="">All Cities</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div id="users-container" class="table-wrapper">
+                    <p class="text-center text-muted p-8">Loading users...</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) window.location.replace('/auth.html');
+
+        let allUsers = [];
+
+        async function loadUsers() {
+            const container = document.getElementById('users-container');
+            container.innerHTML = '<p class="text-center text-muted p-8">Loading users...</p>';
+            try {
+                const res = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${adminToken}` } });
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                allUsers = Array.isArray(data) ? data : (Array.isArray(data.users) ? data.users : []);
+
+                if (!Array.isArray(allUsers) || allUsers.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted p-8">No user records found.</p>';
+                    return;
+                }
+
+                // Populate Cities
+                const cities = [...new Set(allUsers.map(u => u.city).filter(Boolean))].sort();
+                const citySelect = document.getElementById('filter-city');
+                citySelect.innerHTML = '<option value="">All Cities</option>' + cities.map(c => `<option value="${c}">${c}</option>`).join('');
+
+                renderUsers(allUsers);
+            } catch (e) {
+                console.error('Failed to load users:', e);
+                container.innerHTML = '<p class="text-center text-red-500 p-8 font-bold">Failed to load user data</p>';
+            }
+        }
+
+        function renderUsers(users) {
+            const container = document.getElementById('users-container');
+            if (users.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted p-8">No matching records found.</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="w-full text-left">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>City</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map((u, i) => {
+                            let typeLabel = 'Employee';
+                            let badgeClass = 'badge-success';
+                            
+                            if (u.user_type === 'user') {
+                                typeLabel = 'User';
+                                badgeClass = 'badge-info';
+                            } else if (u.user_type === 'salon') {
+                                typeLabel = 'Salon';
+                                badgeClass = 'badge-neutral';
+                            }
+                            
+                            return `
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td>${i + 1}</td>
+                                    <td class="font-bold text-slate-700">${u.name}</td>
+                                    <td>${u.email}</td>
+                                    <td class="font-mono text-sm">${u.phone || '<span class="text-muted">-</span>'}</td>
+                                    <td>${u.city || '<span class="text-muted">-</span>'}</td>
+                                    <td>
+                                        <span class="badge ${badgeClass}">
+                                            ${typeLabel}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button onclick="generateResetCode('${(u.email||u.phone||'').replace(/'/g,'')}')" 
+                                                class="btn btn-secondary text-xs py-1 px-2 text-blue-600 hover:bg-blue-50 hover:border-blue-200" title="Generate Reset Code">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const typeFilter = document.getElementById('filter-type').value;
+            const cityFilter = document.getElementById('filter-city').value;
+
+            const filtered = allUsers.filter(u => {
+                const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm) || 
+                                      (u.email || '').toLowerCase().includes(searchTerm) || 
+                                      (u.phone || '').toLowerCase().includes(searchTerm);
+                const matchesType = !typeFilter || u.user_type === typeFilter;
+                const matchesCity = !cityFilter || u.city === cityFilter;
+                
+                return matchesSearch && matchesType && matchesCity;
+            });
+
+            renderUsers(filtered);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+            
+            // Attach event listeners
+            document.getElementById('search-input').addEventListener('input', filterUsers);
+            document.getElementById('filter-type').addEventListener('change', filterUsers);
+            document.getElementById('filter-city').addEventListener('change', filterUsers);
+        });
+    </script>
+</body>
+</html>

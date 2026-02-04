@@ -210,7 +210,7 @@ module.exports = function register(app, deps) {
         const appointmentDate = new Date(row.start_time);
         const todayLocal = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
         if (appointmentDate.toDateString() === todayLocal.toDateString()) {
-          await sendPushToTargets({ salon_id: row.salon_id, payload: { title: 'إلغاء موعد متأخر', body: `تم إلغاء موعد قريب بتاريخ ${appointmentDate.toLocaleDateString('ar-EG')} على الساعة ${appointmentDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, url: '/home_salon.html#appointments' } });
+          await sendPushToTargets({ salon_id: row.salon_id, payload: { title: 'إلغاء موعد متأخر', body: `تم إلغاء موعد قريب بتاريخ ${appointmentDate.toLocaleDateString('ar-EG')} على الساعة ${appointmentDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, url: '/admin_salon#appointments' } });
         }
         return res.status(200).json({ success: true, message: `تم إلغاء الموعد. تم إضافة إنذار لحسابك${newStrikes != null ? ` (الإنذارات: ${newStrikes}/3)` : ''} لأن الإلغاء كان متأخراً.`, strikeIssued: true });
       }
@@ -219,7 +219,7 @@ module.exports = function register(app, deps) {
       const appointmentDate2 = new Date(row.start_time);
       const nowLocal = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
       if (appointmentDate2.toDateString() === nowLocal.toDateString()) {
-        await sendPushToTargets({ salon_id: row.salon_id, payload: { title: 'تم إلغاء موعد', body: `تم إلغاء موعد بتاريخ ${appointmentDate2.toLocaleDateString('ar-EG')} على الساعة ${appointmentDate2.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, url: '/home_salon.html#appointments' } });
+        await sendPushToTargets({ salon_id: row.salon_id, payload: { title: 'تم إلغاء موعد', body: `تم إلغاء موعد بتاريخ ${appointmentDate2.toLocaleDateString('ar-EG')} على الساعة ${appointmentDate2.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, url: '/admin_salon#appointments' } });
       }
       res.json({ success: true, message: 'تم إلغاء الموعد بنجاح.' });
     } catch {
@@ -318,7 +318,7 @@ module.exports = function register(app, deps) {
       const appointmentDate = new Date(start_time);
       const nowLocal = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
       if (appointmentDate.toDateString() === nowLocal.toDateString()) {
-        await sendPushToTargets({ salon_id, payload: { title: 'حجز جديد', body: `لديك حجز جديد بتاريخ ${appointmentDate.toLocaleDateString('ar-EG')} على الساعة ${appointmentDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, url: '/home_salon.html#appointments' } });
+        await sendPushToTargets({ salon_id, payload: { title: 'حجز جديد', body: `لديك حجز جديد بتاريخ ${appointmentDate.toLocaleDateString('ar-EG')} على الساعة ${appointmentDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })}`, url: '/admin_salon#appointments' } });
       }
       res.json({ success: true, message: 'تم حجز موعدك بنجاح!', appointmentId, assignedStaffName, servicesCount: servicesToBook.length });
     } catch {

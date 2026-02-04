@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Progress & Growth - Saloony</title>
+  <link rel="icon" href="/Images/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/admin_saloony/assets/admin-core.js"></script>
+</head>
+<body class="modal-closed page-transition page-fade-in bg-slate-50">
+  
+  <div id="admin-layout-wrapper">
+    <!-- Main Content -->
+    <div class="page-container">
+      <!-- Top Tabs Navigation -->
+      <div class="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+        <button class="nav-tab active" data-tab="overview">
+          <i class="fas fa-chart-pie"></i> Overview
+        </button>
+        <button class="nav-tab" data-tab="calendar">
+          <i class="fas fa-calendar-alt"></i> Calendar
+        </button>
+        <button class="nav-tab" data-tab="details">
+          <i class="fas fa-list-ul"></i> Details
+        </button>
+      </div>
+
+      <!-- Sections -->
+      
+      <!-- Overview Section -->
+      <section id="tab-overview" class="grid gap-6 view-section">
+        <!-- Overview Filters -->
+        <div class="card">
+          <h3 class="card-title mb-4">Overview - Filters</h3>
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Mode Toggle -->
+            <div class="inline-flex rounded-xl overflow-hidden border border-gray-200">
+              <button class="px-4 py-2 text-sm font-bold bg-white hover:bg-slate-50 transition" data-overview-mode="salons" id="btn-mode-salons">Salons</button>
+              <button class="px-4 py-2 text-sm font-bold bg-white hover:bg-slate-50 border-l border-r border-gray-200 transition" data-overview-mode="users" id="btn-mode-users">Users</button>
+              <button class="px-4 py-2 text-sm font-bold bg-white hover:bg-slate-50 transition" data-overview-mode="revenue" id="btn-mode-revenue">Revenue</button>
+            </div>
+            <!-- Salons sub-filters -->
+            <div id="salon-subfilters" class="flex flex-wrap items-center gap-2">
+              <select id="filter-gender" class="w-auto text-sm py-2">
+                <option value="">All</option>
+                <option value="men">Men</option>
+                <option value="women">Women</option>
+              </select>
+              <select id="filter-city" class="w-auto text-sm py-2">
+                <option value="">All Cities</option>
+              </select>
+              <select id="filter-status" class="w-auto text-sm py-2">
+                <option value="">All Statuses</option>
+                <option value="accepted">Active</option>
+                <option value="rejected">Inactive</option>
+                <option value="pending">Pending</option>
+              </select>
+              <select id="filter-plan-core" class="w-auto text-sm py-2">
+                <option value="">All Plans</option>
+                <option value="booking">With Bookings</option>
+                <option value="visibility_only">No Bookings</option>
+              </select>
+              <select id="filter-plan-package" class="w-auto text-sm py-2">
+                <option value="">All Packages</option>
+                <option value="2months_offer">2 Months Offer</option>
+                <option value="monthly_200">200ils</option>
+                <option value="monthly_60">70ils</option>
+                <option value="per_booking">Per Booking</option>
+                <option value="visibility_only_monthly_99">No Bookings 99/Month</option>
+                <option value="visibility_only_offer_199">No Bookings Offer 200/3 Months</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="salons-kpis">
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Joined Today</div>
+              <div class="value" id="kpi-today">0</div>
+            </div>
+            <div class="bg-amber-100 text-amber-700 p-3 rounded-xl"><i class="fas fa-sun text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Joined This Month</div>
+              <div class="value" id="kpi-month">0</div>
+            </div>
+            <div class="bg-blue-100 text-blue-700 p-3 rounded-xl"><i class="fas fa-calendar-alt text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Total Salons</div>
+              <div class="value" id="kpi-total">0</div>
+            </div>
+            <div class="bg-emerald-100 text-emerald-700 p-3 rounded-xl"><i class="fas fa-store-alt text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Growth Rate</div>
+              <div class="value" id="kpi-growth">0%</div>
+            </div>
+            <div class="bg-indigo-100 text-indigo-700 p-3 rounded-xl"><i class="fas fa-chart-line text-xl"></i></div>
+          </div>
+        </div>
+
+        <!-- Revenue KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="revenue-kpis" style="display:none">
+          <div class="card flex flex-row items-center justify-between border-b-4 border-emerald-400">
+            <div class="kpi-card">
+              <div class="label">Revenue This Month</div>
+              <div class="value" id="kpi-revenue-month">₪0</div>
+            </div>
+            <div class="bg-blue-100 text-blue-700 p-3 rounded-xl"><i class="fas fa-wallet text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Revenue Today</div>
+              <div class="value" id="kpi-revenue-today">₪0</div>
+            </div>
+            <div class="bg-amber-100 text-amber-700 p-3 rounded-xl"><i class="fas fa-bolt text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Total Revenue</div>
+              <div class="value" id="kpi-revenue-total">₪0</div>
+            </div>
+            <div class="bg-emerald-100 text-emerald-700 p-3 rounded-xl"><i class="fas fa-coins text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Revenue Growth</div>
+              <div class="value" id="kpi-revenue-growth">0%</div>
+            </div>
+            <div class="bg-indigo-100 text-indigo-700 p-3 rounded-xl"><i class="fas fa-chart-line text-xl"></i></div>
+          </div>
+        </div>
+
+        <!-- Users KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="users-kpis" style="display:none">
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Total Users</div>
+              <div class="value" id="kpi-users-total">0</div>
+            </div>
+            <div class="bg-emerald-100 text-emerald-700 p-3 rounded-xl"><i class="fas fa-users text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Cities Count</div>
+              <div class="value" id="kpi-users-cities">0</div>
+            </div>
+            <div class="bg-blue-100 text-blue-700 p-3 rounded-xl"><i class="fas fa-city text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Clients</div>
+              <div class="value" id="kpi-users-client">0</div>
+            </div>
+            <div class="bg-amber-100 text-amber-700 p-3 rounded-xl"><i class="fas fa-user text-xl"></i></div>
+          </div>
+          <div class="card flex flex-row items-center justify-between">
+            <div class="kpi-card">
+              <div class="label">Salons</div>
+              <div class="value" id="kpi-users-salon">0</div>
+            </div>
+            <div class="bg-indigo-100 text-indigo-700 p-3 rounded-xl"><i class="fas fa-store text-xl"></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calendar Section -->
+      <section id="tab-calendar" class="view-section hidden">
+        <div class="card">
+          <h3 class="card-title mb-4">Calendar Analytics</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <select id="cal-year"></select>
+            <select id="cal-month"></select>
+            <select id="cal-mode">
+              <option value="month">By Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+          <div id="calendar-grid" class="table-wrapper">
+            <p class="text-center text-slate-400 p-8">Select a month or all time to view calendar.</p>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Details Section -->
+      <section id="tab-details" class="view-section hidden">
+        <div class="card">
+          <h3 class="card-title mb-4">Joined Salons List</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <select id="details-year"></select>
+            <select id="details-month"></select>
+            <select id="details-day"></select>
+          </div>
+          <div class="table-wrapper" id="onboarded-list">
+            <p class="text-center text-slate-400 p-8">Loading...</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) { window.location.replace('/auth.html'); }
+    
+    // ... existing variable declarations ...
+    let salons = [];
+    let payments = [];
+    let users = [];
+    let onboarding = []; 
+    // ... existing functions ...
+    function monthKey(d) {
+      const dt = new Date(d);
+      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+    }
+    function formatMonthLabel(key) {
+      const [y,m] = key.split('-');
+      return `${m}/${y}`;
+    }
+    function formatDate(d) {
+      try { return new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' }); } catch { return d; }
+    }
+    function formatCurrencyILS(amount) {
+      const num = Number(amount || 0);
+      return `₪${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+    }
+
+    // Cache for signup (location) dates per salon
+    window.salonLocationCache = window.salonLocationCache || {};
+    async function getSalonSignupDate(salonId) {
+      const cache = window.salonLocationCache;
+      if (cache[salonId] !== undefined) return cache[salonId];
+      try {
+        const res = await fetch(`/api/salon/location/${salonId}`);
+        if (!res.ok) { cache[salonId] = null; return null; }
+        const data = await res.json();
+        const created = data?.created_at || data?.location?.created_at || null;
+        cache[salonId] = created;
+        return created;
+      } catch { cache[salonId] = null; return null; }
+    }
+
+    async function loadData() {
+      const [salonsRes, paymentsRes, usersRes, subsRes] = await Promise.all([
+        fetch('/api/admin/salons', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
+        fetch('/api/admin/payments', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
+        fetch('/api/admin/users', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
+        fetch('/api/admin/subscriptions', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
+      ]);
+      const salonsJson = await salonsRes.json();
+      const paymentsJson = await paymentsRes.json();
+      const usersJson = await usersRes.json();
+      const subsJson = await subsRes.json();
+      salons = Array.isArray(salonsJson) ? salonsJson : (Array.isArray(salonsJson.salons) ? salonsJson.salons : []);
+      payments = Array.isArray(paymentsJson) ? paymentsJson : (Array.isArray(paymentsJson.payments) ? paymentsJson.payments : (Array.isArray(paymentsJson.items) ? paymentsJson.items : []));
+      users = Array.isArray(usersJson) ? usersJson : (Array.isArray(usersJson.users) ? usersJson.users : []);
+      window.subscriptions = Array.isArray(subsJson) ? subsJson : (Array.isArray(subsJson.subscriptions) ? subsJson.subscriptions : []);
+
+      // Build onboarding from actual salon signup timestamp (salons.created_at)
+      onboarding = (salons || [])
+        .map(s => ({
+          salon_id: s.id,
+          salon_name: s.salon_name,
+          city: s.city,
+          gender: s.gender_focus,
+          status: s.status,
+          onboard_date: s.created_at || null
+        }))
+        .filter(s => s.onboard_date); // ensure date exists
+
+      initSalonCityOptions();
+      refreshAllViews();
+    }
+
+    // Overview mode state
+    let overviewMode = 'salons';
+    function initSalonCityOptions() {
+      const citySel = document.getElementById('filter-city');
+      if (!citySel) return;
+      const uniqueCities = Array.from(new Set((salons || []).map(s => s.city).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b),'en'));
+      citySel.innerHTML = `<option value="">All Cities</option>` + uniqueCities.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+    function getSalonFilters() {
+      const gender = document.getElementById('filter-gender')?.value || '';
+      const city = document.getElementById('filter-city')?.value || '';
+      const status = document.getElementById('filter-status')?.value || '';
+      const planCore = document.getElementById('filter-plan-core')?.value || '';
+      const planPackage = document.getElementById('filter-plan-package')?.value || '';
+      return { gender, city, status, planCore, planPackage };
+    }
+
+    function getLatestSubscriptionForSalon(salonId) {
+      try {
+        const related = (window.subscriptions || []).filter(s => s.salon_id === salonId);
+        if (!related.length) return null;
+        related.sort((a,b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+        return related[0];
+      } catch { return null; }
+    }
+    function getFilteredOnboarding() {
+      const { gender, city, status, planCore, planPackage } = getSalonFilters();
+      return onboarding.filter(o => {
+        const genderOk = !gender || o.gender === gender;
+        const cityOk = !city || o.city === city;
+        const statusOk = !status || o.status === status;
+        const latestSub = getLatestSubscriptionForSalon(o.salon_id);
+        const planOk = !planCore || (
+          latestSub && (
+            (planCore === 'visibility_only' && latestSub.plan === 'visibility_only') ||
+            (planCore === 'booking' && latestSub.plan === 'booking')
+          )
+        );
+        const packageOk = !planPackage || (latestSub && latestSub.package === planPackage);
+        return genderOk && cityOk && statusOk && planOk && packageOk;
+      });
+    }
+
+    function computeKPIs() {
+      const data = getFilteredOnboarding();
+      const today = new Date();
+      const todayKey = today.toISOString().slice(0,10);
+      const monthKeyStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+
+      const kpiTotal = data.length;
+      const kpiToday = data.filter(o => o.onboard_date && o.onboard_date.slice(0,10) === todayKey).length;
+      const kpiMonth = data.filter(o => monthKey(o.onboard_date) === monthKeyStr).length;
+
+      // Growth vs last month
+      const lastMonthKey = `${today.getFullYear()}-${String(today.getMonth()).padStart(2,'0')}`;
+      const lastMonth = data.filter(o => monthKey(o.onboard_date) === lastMonthKey).length;
+      const growth = lastMonth === 0 ? (kpiMonth > 0 ? 100 : 0) : Math.round(((kpiMonth - lastMonth) / lastMonth) * 100);
+
+      document.getElementById('kpi-total').textContent = kpiTotal;
+      document.getElementById('kpi-today').textContent = kpiToday;
+      document.getElementById('kpi-month').textContent = kpiMonth;
+      document.getElementById('kpi-growth').textContent = `${growth}%`;
+    }
+
+    function computeRevenueKPIs() {
+      // Restrict to completed payments and to salons passing filters
+      const allowedSalonIds = new Set(getFilteredOnboarding().map(o => o.salon_id));
+      const completed = payments.filter(p => (p.payment_status === 'completed' || p.payment_status === 'مكتملة') && allowedSalonIds.has(p.salon_id));
+
+      const today = new Date();
+      const todayKey = today.toISOString().slice(0,10);
+      const monthKeyStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+      const lastMonthKey = `${today.getFullYear()}-${String(today.getMonth()).padStart(2,'0')}`;
+
+      const sumAll = completed.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      const sumToday = completed.filter(p => p.created_at?.slice(0,10) === todayKey)
+                                .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      const sumMonth = completed.filter(p => monthKey(p.created_at) === monthKeyStr)
+                                .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      const sumLastMonth = completed.filter(p => monthKey(p.created_at) === lastMonthKey)
+                                   .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      const revGrowth = sumLastMonth === 0 ? (sumMonth > 0 ? 100 : 0) : Math.round(((sumMonth - sumLastMonth) / sumLastMonth) * 100);
+
+      document.getElementById('kpi-revenue-total').textContent = formatCurrencyILS(sumAll);
+      document.getElementById('kpi-revenue-today').textContent = formatCurrencyILS(sumToday);
+      document.getElementById('kpi-revenue-month').textContent = formatCurrencyILS(sumMonth);
+      document.getElementById('kpi-revenue-growth').textContent = `${revGrowth}%`;
+    }
+
+    function computeUserKPIs() {
+      const total = (users || []).length;
+      const cities = new Set();
+      let clientCount = 0;
+      let salonOwnerCount = 0;
+      for (const u of users || []) {
+        if (u.city) cities.add(u.city);
+        const type = (u.user_type || '').toLowerCase();
+        if (type.includes('salon') || type.includes('owner') || type.includes('manager')) salonOwnerCount += 1;
+        else clientCount += 1;
+      }
+      document.getElementById('kpi-users-total').textContent = total;
+      document.getElementById('kpi-users-cities').textContent = cities.size;
+      document.getElementById('kpi-users-client').textContent = clientCount;
+      document.getElementById('kpi-users-salon').textContent = salonOwnerCount;
+    }
+
+    function renderOverviewMode() {
+      const isSalons = overviewMode === 'salons';
+      const isUsers = overviewMode === 'users';
+      const isRevenue = overviewMode === 'revenue';
+      document.getElementById('salons-kpis').style.display = isSalons ? '' : 'none';
+      document.getElementById('users-kpis').style.display = isUsers ? '' : 'none';
+      document.getElementById('revenue-kpis').style.display = isRevenue ? '' : 'none';
+      document.getElementById('salon-subfilters').style.display = isSalons ? '' : 'none';
+      // Active styles for mode buttons
+      const setActive = (id, active) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle('bg-white', !active);
+        el.classList.toggle('bg-gray-900', active);
+        el.classList.toggle('text-white', active);
+      };
+      setActive('btn-mode-salons', isSalons);
+      setActive('btn-mode-users', isUsers);
+      setActive('btn-mode-revenue', isRevenue);
+      // Compute KPIs for the selected mode
+      if (isSalons) computeKPIs();
+      if (isUsers) computeUserKPIs();
+      if (isRevenue) computeRevenueKPIs();
+    }
+
+    // Calendar rendering
+    function getDailyCounts(year, month) {
+      const data = getFilteredOnboarding();
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const counts = Array(daysInMonth).fill(0);
+      for (const o of data) {
+        const dt = new Date(o.onboard_date);
+        if (dt.getFullYear() === year && (dt.getMonth()+1) === month) {
+          const d = dt.getDate();
+          counts[d-1] += 1;
+        }
+      }
+      return counts;
+    }
+
+    function shadeForCount(c) {
+      if (c === 0) return '#f3f4f6'; // gray-100
+      if (c === 1) return 'rgba(6,193,103,0.25)';
+      if (c <= 3) return 'rgba(6,193,103,0.45)';
+      if (c <= 6) return 'rgba(6,193,103,0.65)';
+      return 'rgba(6,193,103,0.85)';
+    }
+
+    function renderCalendarMonth(year, month) {
+      const container = document.getElementById('calendar-grid');
+      const counts = getDailyCounts(year, month);
+      const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+      const firstDay = new Date(year, month-1, 1).getDay(); // 0=Sunday
+      const daysInMonth = counts.length;
+      // Build grid (start with empty cells up to firstDay for alignment)
+      let cells = '';
+      for (let i=0; i<firstDay; i++) {
+        cells += `<div class="p-3 rounded-lg border border-gray-200 bg-white"></div>`;
+      }
+      for (let d=1; d<=daysInMonth; d++) {
+        const c = counts[d-1];
+        const bg = shadeForCount(c);
+        cells += `
+          <div class="p-3 rounded-lg border border-gray-200" style="background:${bg}">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-700">${d}</span>
+              <span class="text-xs font-extrabold text-gray-900">${c}</span>
+            </div>
+          </div>`;
+      }
+      container.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+          <div class="font-extrabold text-primary-dark">${monthNames[month-1]} ${year}</div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="inline-flex items-center gap-1"><span style="width:14px;height:14px;background:${shadeForCount(1)};display:inline-block;border-radius:4px;border:1px solid #d1d5db"></span> قليل</span>
+            <span class="inline-flex items-center gap-1"><span style="width:14px;height:14px;background:${shadeForCount(4)};display:inline-block;border-radius:4px;border:1px solid #d1d5db"></span> متوسط</span>
+            <span class="inline-flex items-center gap-1"><span style="width:14px;height:14px;background:${shadeForCount(8)};display:inline-block;border-radius:4px;border:1px solid #d1d5db"></span> مرتفع</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-7 gap-2">
+          ${cells}
+        </div>
+      `;
+    }
+
+    function renderAllTimeOverview() {
+      const container = document.getElementById('calendar-grid');
+      const data = getFilteredOnboarding();
+      const byMonth = new Map(); // key: YYYY-MM -> count
+      for (const o of data) {
+        const k = monthKey(o.onboard_date);
+        byMonth.set(k, (byMonth.get(k) || 0) + 1);
+      }
+      const months = Array.from(byMonth.keys()).sort();
+      if (months.length === 0) { container.innerHTML = '<p class="text-center muted" style="padding:24px">لا توجد بيانات حتى الآن.</p>'; return; }
+      const groups = new Map(); // year -> [{m, count}]
+      months.forEach(k => {
+        const [y, m] = k.split('-');
+        const arr = groups.get(y) || [];
+        arr.push({ m: parseInt(m, 10), count: byMonth.get(k) });
+        groups.set(y, arr);
+      });
+      let html = '';
+      const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+      Array.from(groups.keys()).sort().forEach(y => {
+        const arr = groups.get(y).sort((a,b) => a.m - b.m);
+        html += `<div class="mb-4"><div class="font-extrabold mb-2">${y}</div><div class="grid grid-cols-6 md:grid-cols-12 gap-2">`;
+        arr.forEach(({ m, count }) => {
+          const bg = shadeForCount(count);
+          html += `<div class="p-3 rounded-lg border border-gray-200" style="background:${bg}">
+                     <div class="text-xs font-bold text-gray-700">${monthNames[m-1]}</div>
+                     <div class="text-xs font-extrabold text-gray-900">${count}</div>
+                   </div>`;
+        });
+        html += `</div></div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderCalendar() {
+      const ySel = document.getElementById('cal-year');
+      const mSel = document.getElementById('cal-month');
+      const modeSel = document.getElementById('cal-mode');
+      if (!ySel || !mSel || !modeSel) return;
+      const mode = modeSel.value;
+      if (mode === 'all') { renderAllTimeOverview(); return; }
+      const year = parseInt(ySel.value || String(new Date().getFullYear()), 10);
+      const month = parseInt(mSel.value || String(new Date().getMonth()+1), 10);
+      renderCalendarMonth(year, month);
+    }
+
+    function renderOnboardedList() {
+      const container = document.getElementById('onboarded-list');
+      const data = getFilteredOnboarding().filter(o => {
+        const ySel = document.getElementById('details-year');
+        const mSel = document.getElementById('details-month');
+        const dSel = document.getElementById('details-day');
+        if (!ySel || !mSel || !dSel) return true;
+        const yVal = ySel.value; // '' => all years
+        const mVal = mSel.value; // '' => all months
+        const dayVal = dSel.value; // '' => all days
+        const dt = new Date(o.onboard_date);
+        const yearOk = !yVal || dt.getFullYear() === parseInt(yVal, 10);
+        const monthOk = !mVal || (dt.getMonth()+1) === parseInt(mVal, 10);
+        const dayOk = !dayVal || dt.getDate() === parseInt(dayVal, 10);
+        return yearOk && monthOk && dayOk;
+      });
+      if (data.length === 0) { container.innerHTML = '<p class="text-center muted" style="padding:24px">لا توجد نتائج.</p>'; return; }
+      container.innerHTML = `
+        <table>
+          <thead><tr><th>الصالون</th><th>المدينة</th><th>الفئة</th><th>تاريخ الانضمام</th></tr></thead>
+          <tbody>
+            ${data.map(o => `<tr><td>${o.salon_name}</td><td>${o.city || '---'}</td><td>${o.gender === 'women' ? 'نساء' : 'رجال'}</td><td>${formatDate(o.onboard_date)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function refreshAllViews() {
+      renderOverviewMode();
+      renderCalendar();
+      renderOnboardedList();
+    }
+
+    // Tabs behavior
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData().catch(e => console.error('Progress load error', e));
+      // Populate Details filters (year/month) and default to current
+      (function initDetailFilters(){
+        const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+        const ySel = document.getElementById('details-year');
+        const mSel = document.getElementById('details-month');
+        const dSel = document.getElementById('details-day');
+        if (ySel && mSel) {
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          const startYear = 2025;
+          const years = [];
+          for (let y = startYear; y <= currentYear; y++) years.push(y);
+          ySel.innerHTML = `<option value="">كل السنوات</option>` + years.map(y => `<option value="${y}">${y}</option>`).join('');
+          ySel.value = String(currentYear);
+          mSel.innerHTML = `<option value="">كل الأشهر</option>` + monthNames.map((name, idx) => `<option value="${idx+1}">${name}</option>`).join('');
+          mSel.value = String(now.getMonth()+1);
+          function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+          function updateDaysOptions() {
+            const yVal = ySel.value;
+            const mVal = mSel.value;
+            if (!dSel) return;
+            if (!mVal) {
+              dSel.innerHTML = `<option value="">كل الأيام</option>`;
+              dSel.value = '';
+              dSel.disabled = true;
+              return;
+            }
+            dSel.disabled = false;
+            const theYear = yVal ? parseInt(yVal, 10) : currentYear;
+            const theMonth = parseInt(mVal, 10);
+            const count = daysInMonth(theYear, theMonth);
+            const options = Array.from({ length: count }, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('');
+            dSel.innerHTML = `<option value="">كل الأيام</option>` + options;
+            dSel.value = '';
+          }
+          updateDaysOptions();
+          window.__updateDaysOptions = updateDaysOptions;
+        }
+      })();
+      (function initCalendarFilters(){
+        const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+        const ySel = document.getElementById('cal-year');
+        const mSel = document.getElementById('cal-month');
+        const modeSel = document.getElementById('cal-mode');
+        if (ySel && mSel && modeSel) {
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          const startYear = 2025;
+          const years = [];
+          for (let y = startYear; y <= currentYear; y++) years.push(y);
+          ySel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+          ySel.value = String(currentYear);
+          mSel.innerHTML = monthNames.map((name, idx) => `<option value="${idx+1}">${name}</option>`).join('');
+          mSel.value = String(now.getMonth()+1);
+          modeSel.value = 'month';
+        }
+      })();
+      document.getElementById('cal-year')?.addEventListener('change', renderCalendar);
+      document.getElementById('cal-month')?.addEventListener('change', renderCalendar);
+      document.getElementById('cal-mode')?.addEventListener('change', renderCalendar);
+      // Overview mode + salon filters
+      document.getElementById('btn-mode-salons')?.addEventListener('click', () => { overviewMode = 'salons'; renderOverviewMode(); });
+      document.getElementById('btn-mode-users')?.addEventListener('click', () => { overviewMode = 'users'; renderOverviewMode(); });
+      document.getElementById('btn-mode-revenue')?.addEventListener('click', () => { overviewMode = 'revenue'; renderOverviewMode(); });
+      document.getElementById('filter-gender')?.addEventListener('change', () => { refreshAllViews(); });
+      document.getElementById('filter-city')?.addEventListener('change', () => { refreshAllViews(); });
+      document.getElementById('filter-status')?.addEventListener('change', () => { refreshAllViews(); });
+      document.getElementById('details-year')?.addEventListener('change', () => { window.__updateDaysOptions?.(); renderOnboardedList(); });
+      document.getElementById('details-month')?.addEventListener('change', () => { window.__updateDaysOptions?.(); renderOnboardedList(); });
+      document.getElementById('details-day')?.addEventListener('change', renderOnboardedList);
+      // Tabs behavior via top tabs
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const t = btn.dataset.tab;
+          document.getElementById('tab-overview').style.display = (t === 'overview') ? '' : 'none';
+          document.getElementById('tab-calendar').style.display = (t === 'calendar') ? '' : 'none';
+          document.getElementById('tab-details').style.display = (t === 'details') ? '' : 'none';
+        });
+      });
+    });
+
+    // Filter change handlers
+    document.getElementById('filter-gender')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-city')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-status')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-plan-core')?.addEventListener('change', refreshAllViews);
+    document.getElementById('filter-plan-package')?.addEventListener('change', refreshAllViews);
+  </script>
+</body>
+</html>
