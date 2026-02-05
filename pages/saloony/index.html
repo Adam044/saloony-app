@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <script src="../../assets/offline-detect.js"></script>
-  <script src="../../assets/app-mode.js"></script>
-  <script src="../../assets/js/components.js"></script>
+  <script src="../../assets/offline-detect.js" defer></script>
+  <script src="../../assets/app-mode.js" defer></script>
+  <script src="../../assets/js/components.js" defer></script>
 <!-- Google tag (gtag.js) - load only in production to avoid CSP issues locally -->
 <script>
   (function() {
@@ -54,6 +54,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="صالوني">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preload" as="image" href="../../assets/images/auth.jpg">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css">
 <style>
@@ -86,7 +87,12 @@
     }
     h3 { color: var(--text-main); }
     .bg-hero { background-image: url('../../assets/images/auth.jpg'); }
+    /* Optimization: Hardware acceleration for animations */
+    .will-change-transform { will-change: transform; }
+    /* Optimization: Improve rendering performance for off-screen content */
+    section { content-visibility: auto; contain-intrinsic-size: 800px; }
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body class="flex flex-col min-h-screen selection:bg-[#06C167] selection:text-white">
 
@@ -100,9 +106,9 @@
     <!-- Overlay with gradient -->
     <div class="absolute inset-0 bg-gradient-to-b from-[#020617]/90 via-[#020617]/80 to-[#020617]/60"></div>
     
-    <!-- Animated background elements -->
-    <div class="absolute top-20 left-10 w-72 h-72 bg-[#06C167] rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-float"></div>
-    <div class="absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-float" style="animation-delay: 2s;"></div>
+    <!-- Animated background elements (Optimized for mobile performance) -->
+    <div class="absolute top-20 left-10 w-72 h-72 bg-[#06C167] rounded-full md:mix-blend-multiply filter blur-[60px] md:blur-[128px] opacity-20 animate-float will-change-transform"></div>
+    <div class="absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full md:mix-blend-multiply filter blur-[60px] md:blur-[128px] opacity-20 animate-float will-change-transform" style="animation-delay: 2s;"></div>
 
     <div class="relative text-center max-w-5xl px-6 z-10">
         <div class="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-md animate-float">
@@ -141,8 +147,8 @@
 
 <!-- Features Section -->
 <section id="features" class="py-24 relative overflow-hidden">
-    <!-- Background Glow -->
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#06C167] rounded-full mix-blend-multiply filter blur-[150px] opacity-5 pointer-events-none"></div>
+    <!-- Background Glow (Optimized) -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#06C167] rounded-full md:mix-blend-multiply filter blur-[80px] md:blur-[150px] opacity-5 pointer-events-none"></div>
 
     <div class="max-w-7xl mx-auto px-6 relative z-10">
         <div class="text-center mb-20">
@@ -307,7 +313,6 @@
 
 <div id="global-footer"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
 <script>
     // Initialize Global Components
     document.addEventListener('DOMContentLoaded', () => {
