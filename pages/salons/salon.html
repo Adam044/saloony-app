@@ -54,6 +54,20 @@
         @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .animate-zoom-in { animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     </style>
+    <script>
+        // Capture Salon Context for non-logged-in users
+        (function captureSalonContext() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const salonId = urlParams.get('id');
+                if (salonId) {
+                    localStorage.setItem('saloony_last_visited_salon', salonId);
+                }
+            } catch (e) {
+                console.error('Error saving salon context', e);
+            }
+        })();
+    </script>
 </head>
 <body class="pb-24 md:pb-0 selection:bg-black selection:text-white">
 

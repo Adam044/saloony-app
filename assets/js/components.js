@@ -210,7 +210,7 @@ const SaloonyComponents = {
                 <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#06C167]/30 to-transparent"></div>
                 <div class="absolute -top-[100px] -left-[100px] w-[300px] h-[300px] bg-[#06C167]/5 rounded-full blur-[100px] pointer-events-none"></div>
 
-                <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-12 gap-12 relative z-10">
+                <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12 relative z-10">
                     <!-- Brand Section (Col 1-5) -->
                     <div class="md:col-span-5 text-center md:text-right">
                         <div class="inline-flex items-center gap-3 mb-6">
