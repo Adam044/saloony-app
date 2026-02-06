@@ -53,7 +53,7 @@ const SaloonyComponents = {
         const accountIcon = token ? 'fa-user' : 'fa-right-to-bracket';
 
         const html = `
-            <header class="glass fixed top-0 w-full z-[70] border-b border-white/5 transition-all duration-300 text-white" id="main-header">
+            <header class="bg-[#020617] fixed top-0 w-full z-[70] border-b border-white/5 transition-all duration-300 text-white shadow-lg" id="main-header">
                 <div class="max-w-7xl mx-auto px-6 h-[80px] flex items-center justify-between">
                     <!-- Logo Area -->
                     <a href="${pagesPath}/index.html" class="flex items-center gap-3 group relative z-[70]">
@@ -77,61 +77,65 @@ const SaloonyComponents = {
                 </div>
             </header>
 
-            <!-- Fullscreen Menu Overlay -->
-            <div id="fullscreen-menu" class="fixed inset-0 bg-[#020617]/95 backdrop-blur-3xl z-[60] translate-x-full transition-transform duration-500 ease-[cubic-bezier(0.87,0,0.13,1)]">
+            <!-- Mobile Menu Drawer & Backdrop -->
+            <div id="menu-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-300" onclick="document.getElementById('menu-toggle').click()"></div>
+
+            <div id="mobile-menu-drawer" class="fixed top-0 right-0 h-full w-[300px] bg-[#020617]/95 backdrop-blur-xl z-[90] translate-x-full transition-transform duration-300 ease-out border-l border-white/10 shadow-2xl flex flex-col">
                 
-                <!-- Decorative Background Elements -->
-                <div class="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#06C167]/10 rounded-full blur-[120px] pointer-events-none"></div>
-                <div class="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-                
-                <div class="w-full h-full flex flex-col items-center justify-center relative z-10 px-6">
-                    <nav class="flex flex-col items-start gap-6 w-full max-w-lg">
-                        <a href="${pagesPath}/index.html" class="menu-link group w-full flex items-center gap-6 p-4 rounded-2xl hover:bg-white/5 transition-all duration-300 opacity-0 translate-y-8">
-                            <span class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl text-white group-hover:bg-[#06C167] group-hover:scale-110 transition-all duration-300">
+                <!-- Drawer Header -->
+                <div class="p-6 flex items-center justify-between border-b border-white/5">
+                    <span class="text-xl font-bold text-white">القائمة</span>
+                    <button onclick="document.getElementById('menu-toggle').click()" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-all">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Drawer Content -->
+                <div class="flex-1 overflow-y-auto py-6 px-4">
+                    <nav class="flex flex-col gap-2">
+                        <a href="${pagesPath}/index.html" class="menu-link flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-slate-300 hover:text-[#06C167] transition-all group ${activePage === 'home' ? 'bg-white/5 text-[#06C167]' : ''}">
+                            <span class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${activePage === 'home' ? 'bg-[#06C167]/10 text-[#06C167]' : ''}">
                                 <i class="fa-solid fa-house"></i>
                             </span>
-                            <span class="text-4xl font-bold text-white group-hover:text-[#06C167] transition-colors ${getActiveClass('home')}">الرئيسية</span>
-                            <i class="fa-solid fa-arrow-left mr-auto text-white/20 group-hover:text-[#06C167] group-hover:-translate-x-2 transition-all duration-300 text-2xl"></i>
+                            <span class="font-bold text-lg">الرئيسية</span>
                         </a>
 
-                            <a href="${accountHref}" class="menu-link group w-full flex items-center gap-6 p-4 rounded-2xl hover:bg-white/5 transition-all duration-300 opacity-0 translate-y-8" style="transition-delay: 100ms;">
-                            <span class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl text-white group-hover:bg-[#06C167] group-hover:scale-110 transition-all duration-300">
+                        <a href="${accountHref}" class="menu-link flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-slate-300 hover:text-[#06C167] transition-all group ${activePage === 'profile' ? 'bg-white/5 text-[#06C167]' : ''}">
+                            <span class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${activePage === 'profile' ? 'bg-[#06C167]/10 text-[#06C167]' : ''}">
                                 <i class="fa-solid ${accountIcon}"></i>
                             </span>
-                            <span class="text-4xl font-bold text-white group-hover:text-[#06C167] transition-colors ${getActiveClass('profile')}">${accountText}</span>
-                            <i class="fa-solid fa-arrow-left mr-auto text-white/20 group-hover:text-[#06C167] group-hover:-translate-x-2 transition-all duration-300 text-2xl"></i>
+                            <span class="font-bold text-lg">${accountText}</span>
                         </a>
 
-                        <a href="${pagesPath}/registred_salons.html" class="menu-link group w-full flex items-center gap-6 p-4 rounded-2xl hover:bg-white/5 transition-all duration-300 opacity-0 translate-y-8" style="transition-delay: 200ms;">
-                            <span class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl text-white group-hover:bg-[#06C167] group-hover:scale-110 transition-all duration-300">
+                        <a href="${pagesPath}/registred_salons.html" class="menu-link flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-slate-300 hover:text-[#06C167] transition-all group ${activePage === 'salons' ? 'bg-white/5 text-[#06C167]' : ''}">
+                            <span class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${activePage === 'salons' ? 'bg-[#06C167]/10 text-[#06C167]' : ''}">
                                 <i class="fa-solid fa-shop"></i>
                             </span>
-                            <span class="text-4xl font-bold text-white group-hover:text-[#06C167] transition-colors ${getActiveClass('salons')}">الصالونات</span>
-                            <i class="fa-solid fa-arrow-left mr-auto text-white/20 group-hover:text-[#06C167] group-hover:-translate-x-2 transition-all duration-300 text-2xl"></i>
+                            <span class="font-bold text-lg">الصالونات</span>
                         </a>
 
-                        <a href="${pagesPath}/contact.html" class="menu-link group w-full flex items-center gap-6 p-4 rounded-2xl hover:bg-white/5 transition-all duration-300 opacity-0 translate-y-8" style="transition-delay: 300ms;">
-                            <span class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl text-white group-hover:bg-[#06C167] group-hover:scale-110 transition-all duration-300">
+                        <a href="${pagesPath}/contact.html" class="menu-link flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 text-slate-300 hover:text-[#06C167] transition-all group ${activePage === 'contact' ? 'bg-white/5 text-[#06C167]' : ''}">
+                            <span class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-lg group-hover:scale-110 transition-transform ${activePage === 'contact' ? 'bg-[#06C167]/10 text-[#06C167]' : ''}">
                                 <i class="fa-solid fa-envelope"></i>
                             </span>
-                            <span class="text-4xl font-bold text-white group-hover:text-[#06C167] transition-colors ${getActiveClass('contact')}">تواصل معنا</span>
-                            <i class="fa-solid fa-arrow-left mr-auto text-white/20 group-hover:text-[#06C167] group-hover:-translate-x-2 transition-all duration-300 text-2xl"></i>
+                            <span class="font-bold text-lg">تواصل معنا</span>
                         </a>
-                        
-                        <div class="w-full h-px bg-white/10 my-4 opacity-0 translate-y-8 menu-link" style="transition-delay: 400ms;"></div>
-                        
-                        <div class="flex items-center justify-center w-full gap-8 opacity-0 translate-y-8 menu-link" style="transition-delay: 500ms;">
-                            <a href="#" class="group relative w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-gradient-to-tr hover:from-purple-500 hover:to-pink-500 hover:scale-110 transition-all duration-300">
-                                <i class="fa-brands fa-instagram text-2xl"></i>
-                            </a>
-                            <a href="#" class="group w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-[#1877F2] hover:scale-110 transition-all duration-300">
-                                <i class="fa-brands fa-facebook-f text-2xl"></i>
-                            </a>
-                            <a href="#" class="group w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-black hover:border hover:border-white/20 hover:scale-110 transition-all duration-300">
-                                <i class="fa-brands fa-tiktok text-2xl"></i>
-                            </a>
-                        </div>
                     </nav>
+
+                    <div class="my-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+
+                    <!-- Social Links -->
+                    <div class="flex justify-center gap-4">
+                        <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-gradient-to-tr hover:from-purple-500 hover:to-pink-500 transition-all hover:scale-110">
+                            <i class="fa-brands fa-instagram"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#1877F2] transition-all hover:scale-110">
+                            <i class="fa-brands fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-black hover:border hover:border-white/20 transition-all hover:scale-110">
+                            <i class="fa-brands fa-tiktok"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         `;
@@ -140,57 +144,45 @@ const SaloonyComponents = {
 
         // Initialize Menu Functionality
         const menuToggle = document.getElementById('menu-toggle');
-        const fullscreenMenu = document.getElementById('fullscreen-menu');
-        const menuLinks = document.querySelectorAll('.menu-link');
+        const menuDrawer = document.getElementById('mobile-menu-drawer');
+        const menuBackdrop = document.getElementById('menu-backdrop');
         const body = document.body;
         const header = document.getElementById('main-header');
 
         const closeMenu = () => {
             menuToggle.classList.remove('open');
-            fullscreenMenu.classList.add('translate-x-full');
+            
+            // Hide Drawer
+            menuDrawer.classList.add('translate-x-full');
+            
+            // Hide Backdrop
+            menuBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            menuBackdrop.classList.add('opacity-0', 'pointer-events-none');
+            
             body.style.overflow = ''; // Restore scrolling
-            
-            // Restore header styles
-            if (header) {
-                header.classList.remove('!bg-transparent', '!border-transparent', '!backdrop-blur-none');
-            }
-            
-            // Reset links for next open
-            menuLinks.forEach(link => {
-                link.classList.add('opacity-0', 'translate-y-8');
-            });
         };
 
         const openMenu = () => {
             menuToggle.classList.add('open');
-            fullscreenMenu.classList.remove('translate-x-full');
+            
+            // Show Drawer
+            menuDrawer.classList.remove('translate-x-full');
+            
+            // Show Backdrop
+            menuBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+            menuBackdrop.classList.add('opacity-100', 'pointer-events-auto');
+            
             body.style.overflow = 'hidden'; // Prevent scrolling
-            
-            // Make header transparent so menu bg shows through
-            if (header) {
-                header.classList.add('!bg-transparent', '!border-transparent', '!backdrop-blur-none');
-            }
-            
-            // Animate links in
-            setTimeout(() => {
-                menuLinks.forEach(link => {
-                    link.classList.remove('opacity-0', 'translate-y-8');
-                });
-            }, 300);
         };
 
-        if (menuToggle && fullscreenMenu) {
-            menuToggle.addEventListener('click', () => {
+        if (menuToggle && menuDrawer) {
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const isOpen = menuToggle.classList.contains('open');
                 if (isOpen) closeMenu();
                 else openMenu();
             });
 
-            // Close on backdrop click (optional but good UX)
-            fullscreenMenu.addEventListener('click', (e) => {
-                if (e.target === fullscreenMenu) closeMenu();
-            });
-            
             // Close on Escape key
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && menuToggle.classList.contains('open')) closeMenu();
@@ -224,7 +216,7 @@ const SaloonyComponents = {
                         <div class="inline-flex items-center gap-3 mb-6">
                             <img src="${assetsPath}/images/Saloony_logo.png" 
                                  onerror="this.src='https://placehold.co/48x48/1E293B/ffffff?text=S'" 
-                                 class="w-10 h-10 object-contain brightness-110">
+                                 class="w-32 h-auto object-contain brightness-110">
                         </div>
                         <p class="text-slate-400 text-sm leading-7 mb-6 max-w-sm mx-auto md:mx-0">
                             منصتك الأولى لاكتشاف وحجز مواعيد الصالونات. نجمع بين الأناقة والتكنولوجيا لنقدم لك تجربة جمال لا تضاهى.

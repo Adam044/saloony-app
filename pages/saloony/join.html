@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saloony - انضم إلينا</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full mx-4 bg-white rounded-3xl shadow-xl overflow-hidden text-center p-8">
+        <div class="mb-6">
+            <div class="w-20 h-20 bg-[#06C167]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fab fa-whatsapp text-4xl text-[#06C167]"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">جاري تحويلك إلى واتساب...</h1>
+            <p class="text-slate-600 mb-6">سيتم توصيلك بفريقنا لإعداد صالونك الإلكتروني خلال دقائق!</p>
+        </div>
+        
+        <a href="https://wa.me/972595522004" id="whatsapp-link" class="block w-full py-4 bg-[#06C167] text-white rounded-xl font-bold text-lg hover:bg-[#05a357] transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-4">
+            <i class="fab fa-whatsapp ml-2"></i> اضغط هنا إذا لم يتم التحويل
+        </a>
+        
+        <a href="index.html" class="text-slate-500 text-sm hover:text-slate-700 underline">العودة للرئيسية</a>
+    </div>
+
+    <script>
+        // Automatic redirect after 1.5 seconds
+        setTimeout(() => {
+            window.location.href = "https://wa.me/972595522004";
+        }, 1500);
+    </script>
+</body>
+</html>

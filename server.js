@@ -3,8 +3,6 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const bodyParser = require('body-parser');
-const cors = require('cors'); // CORS
-const helmet = require('helmet'); // Security headers
 const rateLimit = require('express-rate-limit'); // Rate limiting
 const crypto = require('crypto'); // Used for generating simple tokens/salts
 const bcrypt = require('bcrypt'); // Secure password hashing
@@ -16,14 +14,27 @@ const multer = require('multer'); // File upload handling
 const fs = require('fs'); // File system for saving uploads
 const sharp = require('sharp'); // Image optimization
 const { createClient } = require('@supabase/supabase-js'); // Supabase client
-const jwt = require('jsonwebtoken'); // JWT issuance and verification
 const { z } = require('zod'); // Schema validation
 require('dotenv').config(); // Load environment variables (.env)
+
+// Security Modules
+const { hashPassword, verifyPassword } = require('./security/hashing');
+const { signToken, verifyToken, decodeToken, JWT_SECRET, ACCESS_TOKEN_TTL, REFRESH_TOKEN_DAYS } = require('./security/jwt');
+
+// Deprecated helper wrapper to maintain internal consistency if needed (or just replace usages)
+function signAccessToken(userId, role) {
+    return signToken({ sub: userId, role: role, type: 'access' }, { expiresIn: ACCESS_TOKEN_TTL });
+}
+const { configureHelmet } = require('./security/helmet');
+const { configureCors, getAllowedOrigins } = require('./security/cors');
+const { cleanExpiredSessions } = require('./security/sessions');
+const { requireSalonAdminRole, authenticateJWT, requireAuth, requireRole, requireAdmin } = require('./security/middleware');
+const { hashPin, verifyPin } = require('./security/hashing');
 
 // Legacy admin token set for backward compatibility
 const validAdminTokens = new Set();
 
-// Initialize Supabase client for storage
+const allowedOrigins = getAllowedOrigins();
 const supabase = createClient(
     process.env.SUPABASE_URL || 'your-supabase-url',
     process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key'
@@ -45,26 +56,18 @@ try {
 }
 
 // Auth configuration
-const NODE_ENV = process.env.NODE_ENV || 'development';
-let JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    if (NODE_ENV === 'production') {
-        console.error('FATAL: Missing JWT_SECRET in environment. Refusing to start in production.');
-        process.exit(1);
-    } else {
-        // Use a fixed secret for local development to preserve sessions across restarts
-        JWT_SECRET = 'dev-secret-fixed-for-saloony-development-12345'; 
-        console.warn('WARNING: No JWT_SECRET set. Using fixed dev secret. Set JWT_SECRET in your .env for production security.');
-    }
-}
-const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
-const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
+// JWT_SECRET, ACCESS_TOKEN_TTL, REFRESH_TOKEN_DAYS are now imported from ./security/jwt.js
 
 // --- Core Data & Helpers (Imported) ---
 const { CITIES } = require('./config/constants');
-const { hashPassword, verifyPassword, validatePhoneFormat, normalizePhoneNumber } = require('./utils/helpers');
+const { validatePhoneFormat, normalizePhoneNumber } = require('./utils/helpers');
 
 const { initializeDb } = require('./db/tables'); // Import centralized schema initialization
+
+// FIXED: Add explicit route for join.html
+app.get('/join.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'join.html'));
+});
 
 // Helper functions using our database module
 const dbAll = (sql, params = []) => db.query(sql, params);
@@ -588,126 +591,10 @@ async function autoUpdateAppointmentStatuses() {
 app.disable('x-powered-by');
 
 // Configure CORS to only allow trusted origins
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-app.use(cors({
-    origin: function(origin, callback) {
-        // Allow same-origin or non-browser requests
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization']
-}));
+app.use(configureCors());
 
 // Security headers (CSP configured to allow existing CDNs and inline scripts)
-app.use(helmet({
-    contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-            'default-src': ["'self'"],
-            // Allow required external CDNs and inline scripts to preserve current look
-            'script-src': [
-                "'self'",
-                'chrome-extension:',
-                'https://cdn.tailwindcss.com',
-                'https://www.googletagmanager.com',
-                'https://cdnjs.cloudflare.com',
-                'https://cdn.jsdelivr.net',
-                "'unsafe-inline'"
-            ],
-            'worker-src': [
-                "'self'",
-                'blob:'
-            ],
-            // Match script-src for script elements explicitly
-            'script-src-elem': [
-                "'self'",
-                'chrome-extension:',
-                'https://cdn.tailwindcss.com',
-                'https://www.googletagmanager.com',
-                'https://cdnjs.cloudflare.com',
-                'https://cdn.jsdelivr.net',
-                'https://unpkg.com',
-                "'unsafe-inline'"
-            ],
-            // Permit external styles (Google Fonts) and inline style blocks
-            'style-src': [
-                "'self'",
-                'chrome-extension:',
-                'https://fonts.googleapis.com',
-                'https://cdnjs.cloudflare.com',
-                "'unsafe-inline'"
-            ],
-            // Match style-src for style elements explicitly
-            'style-src-elem': [
-                "'self'",
-                'chrome-extension:',
-                'https://fonts.googleapis.com',
-                'https://cdnjs.cloudflare.com',
-                'https://unpkg.com',
-                "'unsafe-inline'"
-            ],
-            // Permit font loading from Google Fonts
-            'font-src': [
-                "'self'",
-                'https://fonts.gstatic.com',
-                'https://cdnjs.cloudflare.com',
-                'data:'
-            ],
-            // Images may come from local files and data URLs
-            'img-src': [
-                "'self'",
-                'chrome-extension:',
-                'data:',
-                'blob:',
-                'https://*.googleusercontent.com',
-                'https:',
-                'https://tile.openstreetmap.org',
-                'https://demotiles.maplibre.org',
-                'https://ogmap.com',
-                'https://tiles.ogmap.com'
-            ].concat((process.env.MAP_TILE_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)),
-            // Allow inline event handlers to preserve current behavior
-            'script-src-attr': ["'unsafe-inline'"],
-            // Network requests restricted to same origin by default
-            'connect-src': [
-                "'self'",
-                'chrome-extension:',
-                'https://www.google-analytics.com',
-                'https://region1.google-analytics.com',
-                'https://www.googletagmanager.com',
-                'https://stats.g.doubleclick.net',
-                'https://cdn.tailwindcss.com',
-                'https://cdnjs.cloudflare.com',
-                'https://cdn.jsdelivr.net',
-                'https://unpkg.com',
-                'https://fonts.googleapis.com',
-                'https://fonts.gstatic.com',
-                'https://nominatim.openstreetmap.org',
-                'https://*.supabase.co',
-                'https://demotiles.maplibre.org',
-                'https://ogmap.com',
-                'https://tiles.ogmap.com',
-                'ws:',
-                'wss:'
-            ].concat((process.env.MAP_TILE_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)),
-        }
-    }
-}));
-
-// Additional security headers
-app.use(helmet.frameguard({ action: 'deny' })); // Disallow embedding
-app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' })); // Preserve origin for allowlist checks
-// Restrict powerful browser features
-app.use((req, res, next) => {
-    // Allow geolocation for this origin while keeping camera/microphone disabled
-    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
-    next();
-});
+app.use(configureHelmet());
 
 // Global rate limiting (per IP)
 const globalLimiter = rateLimit({
@@ -873,13 +760,9 @@ const registerSubscriptionsRoutes = require('./routes/subscriptions');
 const registerProductsRoutes = require('./routes/products');
 
 registerReviewsRoutes(app, { dbAll, dbGet, dbRun, requireAuth, upload, supabase, crypto, sharp });
-registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled });
+registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled, hashPassword });
 registerSubscriptionsRoutes(app, { db, dbAll, dbGet, dbRun, requireAdmin, requireAuth });
-registerSalonRoutes(app, { 
-    db, dbAll, dbGet, dbRun, requireSalonAdminRole, 
-    addSalonClient, removeSalonClient, sendSalonEvent, 
-    bcrypt, crypto, upload, sharp, supabase 
-});
+registerSalonRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, hashPin, verifyPin, crypto, upload, sharp, supabase });
 registerProductsRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, upload, sharp, supabase, crypto });
 registerEmployeeRoutes(app, { db, requireRole, sendPushToAdmins });
 registerPushRoutes(app, { dbAll, dbGet, dbRun, webPush, sendPushToTargets, VAPID_PUBLIC_KEY });
@@ -899,33 +782,11 @@ app.use((req, res, next) => {
 
 // ===============================
 // ===== JWT Helpers & Middleware =====
-function signAccessToken(userId, role) {
-    return jwt.sign({ sub: userId, role }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
-}
 
 async function storeRefreshToken(userId, refreshTokenPlain) {
     const hash = crypto.createHash('sha256').update(refreshTokenPlain).digest('hex');
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000).toISOString();
     await dbRun('INSERT INTO refresh_tokens (user_id, token_hash, expires_at, revoked) VALUES ($1, $2, $3, FALSE)', [userId, hash, expiresAt]);
-}
-
-function authenticateJWT(req, res, next) {
-    const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) {
-        return res.status(401).json({ error: 'Authorization header missing' });
-    }
-    try {
-        const payload = jwt.verify(token, JWT_SECRET);
-        req.user = { id: payload.sub, role: payload.role };
-        return next();
-    } catch (e) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
-    }
-}
-
-function requireAuth(req, res, next) {
-    return authenticateJWT(req, res, next);
 }
 
 function getCookie(req, name) {
@@ -939,16 +800,6 @@ function getCookie(req, name) {
         if (k === name) return decodeURIComponent(v);
     }
     return null;
-}
-
-// Generic role guard using JWT role claim
-function requireRole(role) {
-    return (req, res, next) => authenticateJWT(req, res, () => {
-        if (req.user.role !== role) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
-        next();
-    });
 }
 
 // ===== Zod Schemas =====
@@ -1062,22 +913,7 @@ async function getTokenUsage(timeframe) {
 async function generateSessionToken() {
     return crypto.randomBytes(32).toString('hex');
 }
-
-async function hashPin(pin) {
-    return await bcrypt.hash(pin.toString(), 10);
-}
-
-async function verifyPin(pin, hashedPin) {
-    return await bcrypt.compare(pin.toString(), hashedPin);
-}
-
-async function cleanExpiredSessions() {
-    try {
-        await db.run('DELETE FROM role_sessions WHERE expires_at < CURRENT_TIMESTAMP');
-    } catch (error) {
-        console.error('Error cleaning expired sessions:', error);
-    }
-}
+// hashPin and verifyPin are imported from ./security/hashing.js
 
 // Clean expired sessions every hour
 setInterval(cleanExpiredSessions, 60 * 60 * 1000);
@@ -1121,6 +957,10 @@ app.get('/', (req, res) => {
 
 app.get('/index.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'pages', 'saloony', 'index.html'));
+});
+
+app.get('/join.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pages', 'saloony', 'join.html'));
 });
 
 app.get('/registred_salons.html', (req, res) => {
@@ -1468,7 +1308,7 @@ app.post('/api/auth/register', async (req, res) => {
             let isAdmin = false;
             if (token) {
                 try {
-                    const payload = jwt.verify(token, JWT_SECRET);
+                    const payload = verifyToken(token);
                     if (payload.role === 'admin') isAdmin = true;
                 } catch (e) { }
             }
@@ -1820,7 +1660,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Issue JWT access token and refresh token
-        const accessToken = signAccessToken(userRow.id, userType);
+        const accessToken = signToken({ sub: userRow.id, role: userType, type: 'access' });
         const refreshToken = crypto.randomBytes(32).toString('hex');
         await storeRefreshToken(userRow.id, refreshToken);
 
@@ -1830,7 +1670,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Also set secure cookies for browser sessions
-        const isProd = NODE_ENV === 'production';
+        const isProd = process.env.NODE_ENV === 'production';
         try {
             res.cookie('access_token', accessToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 15 * 60 * 1000 });
             res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000 });
@@ -1883,14 +1723,14 @@ app.post('/api/auth/refresh', async (req, res) => {
         // Lookup user role to embed in JWT
         const roleRow = await dbGet('SELECT user_type FROM users WHERE id = $1', [rtRow.user_id]);
         const role = roleRow?.user_type || 'user';
-        const access = signAccessToken(rtRow.user_id, role);
+        const access = signToken({ sub: rtRow.user_id, role: role, type: 'access' });
 
         // Backward-compat: add admin access token to legacy set
         if (role === 'admin') {
             validAdminTokens.add(access);
         }
 
-        const isProd = NODE_ENV === 'production';
+        const isProd = process.env.NODE_ENV === 'production';
         try {
             res.cookie('access_token', access, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 15 * 60 * 1000 });
             res.cookie('refresh_token', newRefresh, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000 });
@@ -1974,7 +1814,7 @@ app.post('/api/auth/password-reset/verify', resetVerifyLimiter, async (req, res)
             await dbRun('UPDATE password_reset_codes SET attempts_left = $1 WHERE id = $2', [left, row.id]);
             return res.status(401).json({ success: false, message: 'Invalid code', attempts_left: left });
         }
-        const token = jwt.sign({ sub: user.id, role: 'reset', prc_id: row.id }, JWT_SECRET, { expiresIn: '10m' });
+        const token = signToken({ sub: user.id, role: 'reset', prc_id: row.id }, { expiresIn: '10m' });
         return res.json({ success: true, reset_token: token });
     } catch (e) {
         return res.status(500).json({ success: false, message: 'Server error' });
@@ -1986,7 +1826,7 @@ app.post('/api/auth/password-reset/complete', resetCompleteLimiter, async (req, 
         const { reset_token, new_password } = req.body || {};
         if (!reset_token || !new_password) return res.status(400).json({ success: false, message: 'reset_token and new_password required' });
         let payload;
-        try { payload = jwt.verify(reset_token, JWT_SECRET); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid token' }); }
+        try { payload = verifyToken(reset_token); } catch (_) { return res.status(401).json({ success: false, message: 'Invalid token' }); }
         if (payload.role !== 'reset') return res.status(403).json({ success: false, message: 'Forbidden' });
         const prc = await dbGet('SELECT id, user_id, used_at FROM password_reset_codes WHERE id = $1', [payload.prc_id]);
         if (!prc || prc.user_id !== payload.sub) return res.status(400).json({ success: false, message: 'Invalid state' });
@@ -2201,6 +2041,29 @@ app.delete('/api/salon/roles/:id', async (req, res) => {
 });
 
 // API for image upload (multipart/form-data) - OPTIMIZED VERSION
+app.post('/api/admin/upload', requireAdmin, upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file provided' });
+        }
+
+        // Upload optimized images to Supabase Storage (using 'admin' as pseudo-ID)
+        const uploadResults = await uploadImageToSupabase(req.file.buffer, 'admin', req.file.originalname);
+        
+        if (!uploadResults || uploadResults.length === 0) {
+            throw new Error('Failed to upload to storage');
+        }
+
+        // Select the best format (Medium WebP)
+        const bestImage = uploadResults.find(r => r.size === 'medium' && r.format === 'webp') || uploadResults[0];
+
+        res.json({ success: true, imageUrl: bestImage.url });
+    } catch (error) {
+        console.error('Admin upload error:', error);
+        res.status(500).json({ success: false, message: 'Upload failed' });
+    }
+});
+
 app.post('/api/upload', upload.single('image'), async (req, res) => {
     try {
         const salonIdRaw = req.query.salon_id || req.body.salon_id;
@@ -2286,52 +2149,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 // --- Social Links ---
 
 // Helper: verify salon role session token with admin role_type
-async function requireSalonAdminRole(req, res, next) {
-    try {
-        const salonId = req.params.salon_id;
-        const tokenFromHeader = (req.headers.authorization || '').startsWith('Bearer ')
-            ? (req.headers.authorization || '').slice(7)
-            : null;
-        const session_token = req.body?.session_token || tokenFromHeader;
-        if (!salonId || !session_token) {
-            return res.status(401).json({ success: false, message: 'Salon ID and session token required.' });
-        }
-
-        // 1. Try to verify as JWT (Owner/Admin)
-        try {
-            // Check if it looks like a JWT (3 parts separated by dots)
-            if (session_token.split('.').length === 3) {
-                const payload = jwt.verify(session_token, JWT_SECRET);
-                // If System Admin, allow
-                if (payload.role === 'admin') return next();
-                
-                // If Salon Owner, verify ownership
-                if (payload.role === 'salon') {
-                    const salon = await db.get('SELECT id FROM salons WHERE id = $1 AND user_id = $2', [salonId, payload.sub]);
-                    if (salon) return next();
-                }
-            }
-        } catch (jwtErr) {
-            // Not a valid JWT or verification failed, proceed to check as Role Session
-        }
-
-        const session = await db.get(`
-            SELECT rs.*, sr.role_type
-            FROM role_sessions rs
-            JOIN staff_roles sr ON rs.staff_role_id = sr.id
-            WHERE rs.salon_id = $1 AND rs.session_token = $2 AND rs.expires_at > CURRENT_TIMESTAMP
-        `, [Number(salonId), session_token]);
-        if (!session || session.role_type !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Admin role required.' });
-        }
-        return next();
-    } catch (e) {
-        console.error('Role check error:', e.message);
-        return res.status(500).json({ success: false, message: 'Role verification error.' });
-    }
-}
-
-// Protected: upsert a social link (admin role required)
+// Role Management Routes
  
 
 // Protected: delete a social link (admin role required)
@@ -3247,26 +3065,6 @@ async function ensurePerfIndexes() {
     }
 }
 
-
- 
-
-function requireAdmin(req, res, next) {
-    const auth = req.headers.authorization || '';
-    const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!bearer) {
-        res.setHeader('WWW-Authenticate', 'Bearer realm="admin", error="invalid_token"');
-        return res.status(401).json({ error: 'No token provided' });
-    }
-    try {
-        const payload = jwt.verify(bearer, JWT_SECRET);
-        if (payload.role === 'admin') {
-            req.user = { id: payload.sub, role: payload.role };
-            return next();
-        }
-    } catch (_) {}
-    res.setHeader('WWW-Authenticate', 'Bearer realm="admin", error="invalid_token"');
-    return res.status(401).json({ error: 'Invalid or unauthorized token' });
-}
 
 // Debug endpoints guard
 function requireDebugEnabled(req, res, next) {

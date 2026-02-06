@@ -38,11 +38,6 @@
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
-                        <a href="salons.html" class="hover:text-emerald-600 transition"><i class="fas fa-arrow-left mr-1"></i> Back to Salons</a>
-                        <span>/</span>
-                        <span>Manage</span>
-                    </div>
                     <h1 class="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
                         <span id="salon-name">Loading...</span>
                         <span id="salon-status-badge" class="text-sm px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-bold">...</span>
@@ -349,7 +344,7 @@
                 const detailsRes = await fetch(`/api/salon/details/${salonId}`);
                 const detailsData = await detailsRes.json();
                 if (detailsData.success) {
-                    renderDetails(detailsData.row || detailsData);
+                    renderDetails(detailsData.salon);
                 }
                 
                 // 3. Get Financials & Subscriptions
@@ -591,14 +586,17 @@
                 const offerUsed = salonSubscriptions.some(s => s.package === 'offer' || (s.amount === 0 && s.status !== 'cancelled'));
                 
                 const offerBtn = document.getElementById('btn-offer');
+                
+                // Allow admin to override the "One Gift" rule
+                offerBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                offerBtn.onclick = () => confirmSubscription('offer');
+                
                 if (offerUsed) {
-                    offerBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
-                    offerBtn.onclick = null;
-                    offerBtn.title = "Offer already used by this salon";
+                    // Just show a visual indicator that it was used before
+                    offerBtn.title = "Offer already used by this salon (Admin Override)";
+                    offerBtn.innerHTML += ' <i class="fas fa-exclamation-circle text-xs text-yellow-500 ml-1"></i>';
                 } else {
-                    offerBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
-                    offerBtn.onclick = () => confirmSubscription('offer');
-                    offerBtn.title = "";
+                    offerBtn.title = "Grant Free Month";
                 }
             }
 
@@ -749,6 +747,38 @@
             }
         }
 
+        window.editPaymentDate = async function(paymentId, currentDate) {
+            const newDate = prompt("Enter new date (YYYY-MM-DD):", currentDate);
+            if (!newDate || newDate === currentDate) return;
+
+            // Simple validation
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                alert("Invalid date format. Please use YYYY-MM-DD.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/payments/${paymentId}/date`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify({ date: newDate })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    fetchInvoices();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error');
+            }
+        }
+
         async function fetchInvoices() {
             try {
                 const res = await fetch(`/api/admin/salons/${salonId}/payments`, {
@@ -766,7 +796,15 @@
 
                 els.invoicesTable.innerHTML = payments.map(p => `
                     <tr class="hover:bg-gray-50 transition group">
-                        <td class="px-4 py-3 text-slate-500 font-mono">${new Date(p.created_at).toISOString().slice(0,10)}</td>
+                        <td class="px-4 py-3 text-slate-500 font-mono">
+                            <div class="flex items-center gap-2 group/date">
+                                <span>${new Date(p.created_at).toISOString().slice(0,10)}</span>
+                                <button onclick="editPaymentDate(${p.id}, '${new Date(p.created_at).toISOString().slice(0,10)}')" 
+                                    class="opacity-0 group-hover/date:opacity-100 text-blue-400 hover:text-blue-600 transition text-xs" title="Edit Date">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
                         <td class="px-4 py-3 font-mono text-xs text-slate-500 font-bold">#${p.invoice_number || '-'}</td>
                         <td class="px-4 py-3 font-bold text-slate-800 text-right flex items-center justify-end gap-3">
                             <span class="${p.payment_status === 'pending' ? 'text-amber-500' : ''}">${p.amount} ${p.currency}</span>

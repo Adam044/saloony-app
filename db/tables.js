@@ -77,6 +77,13 @@ async function initializeDb() {
             FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
         )`);
 
+        // System Settings for dynamic content (e.g., partnership images)
+        await db.run(`CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
         // Employee visits logged during field work
         await db.run(`CREATE TABLE IF NOT EXISTS employee_visits (
             id SERIAL PRIMARY KEY,

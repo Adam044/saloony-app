@@ -126,6 +126,12 @@ body {
     animation: float 6s ease-in-out infinite;
 }
 
+@media (max-width: 768px) {
+    .animate-float {
+        animation: none !important;
+    }
+}
+
 @keyframes glow {
     0% { box-shadow: 0 0 5px var(--primary-glow); }
     50% { box-shadow: 0 0 20px var(--primary-glow); }

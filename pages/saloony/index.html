@@ -4,26 +4,26 @@
   <script src="../../assets/offline-detect.js" defer></script>
   <script src="../../assets/app-mode.js" defer></script>
   <script src="../../assets/js/components.js" defer></script>
-<!-- Google tag (gtag.js) - load only in production to avoid CSP issues locally -->
-<script>
-  (function() {
-    var host = window.location.hostname;
-    var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '';
-    if (isLocal) {
-      // Skip analytics on local/preview environments to avoid CSP console errors
-      return;
-    }
-    var gaScript = document.createElement('script');
-    gaScript.async = true;
-    gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-XXS767C8SQ';
-    document.head.appendChild(gaScript);
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){ dataLayer.push(arguments); }
-    window.gtag = gtag;
-    gtag('js', new Date());
-    gtag('config', 'G-XXS767C8SQ');
-  })();
-</script>
+  <!-- Google tag (gtag.js) - load only in production to avoid CSP issues locally -->
+  <script>
+    (function() {
+      var host = window.location.hostname;
+      var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '';
+      if (isLocal) {
+        // Skip analytics on local/preview environments to avoid CSP console errors
+        return;
+      }
+      var gaScript = document.createElement('script');
+      gaScript.async = true;
+      gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-XXS767C8SQ';
+      document.head.appendChild(gaScript);
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){ dataLayer.push(arguments); }
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', 'G-XXS767C8SQ');
+    })();
+  </script>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -106,35 +106,28 @@
     <!-- Overlay with gradient -->
     <div class="absolute inset-0 bg-gradient-to-b from-[#020617]/90 via-[#020617]/80 to-[#020617]/60"></div>
     
-    <!-- Animated background elements (Optimized for mobile performance) -->
-    <div class="absolute top-20 left-10 w-72 h-72 bg-[#06C167] rounded-full md:mix-blend-multiply filter blur-[40px] md:blur-[128px] opacity-10 md:opacity-20 animate-float will-change-transform"></div>
-    <div class="absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full md:mix-blend-multiply filter blur-[40px] md:blur-[128px] opacity-10 md:opacity-20 animate-float will-change-transform" style="animation-delay: 2s;"></div>
+    <!-- Animated background elements -->
+    <div class="hidden md:block absolute top-20 left-10 w-72 h-72 bg-[#06C167] rounded-full md:mix-blend-multiply filter blur-[128px] opacity-20 animate-float will-change-transform"></div>
+    <div class="hidden md:block absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full md:mix-blend-multiply filter blur-[128px] opacity-20 animate-float will-change-transform" style="animation-delay: 2s;"></div>
 
     <div class="relative text-center max-w-5xl px-6 z-10">
-        <div class="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-md animate-float">
-            <span class="relative flex h-3 w-3 ml-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#06C167] opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-[#06C167]"></span>
-            </span>
-            <span class="text-sm font-medium text-white/90">النظام الرقمي الأحدث للصالونات</span>
-        </div>
-
         <h1 class="text-5xl sm:text-7xl font-black mb-8 leading-tight tracking-tight drop-shadow-xl">
-            <span class="text-white">صالونك،</span>
-            <br class="sm:hidden" />
-            <span class="text-gradient-primary drop-shadow-none">بمستوى عالمي.</span>
+            <span class="text-white">لا تكن مجرد صالون،</span>
+            <br />
+            <span class="text-gradient-primary drop-shadow-none">كن علامة تجارية.</span>
         </h1>
         
         <p class="text-slate-200 text-lg sm:text-2xl mb-12 leading-relaxed max-w-3xl mx-auto font-light drop-shadow-md">
-            نحول صالونك إلى وجهة رقمية متكاملة. موقع خاص، حجوزات ذكية، وإدارة احترافية
-            <span class="text-white font-medium">بأحدث تقنيات الويب</span>.
+            امتلك منصتك الرقمية الخاصة، وابدأ رحلة النجاح باسمك وعلامتك التجارية.
         </p>
 
-        <div class="mt-20 flex flex-col items-center gap-4 cursor-pointer z-20 transition-opacity hover:opacity-80" onclick="document.getElementById('features').scrollIntoView({behavior: 'smooth'})">
-            <span class="text-white/60 text-xs font-medium tracking-[0.2em] uppercase">اكتشف المزيد</span>
-            <div class="w-6 h-10 border border-white/20 rounded-full flex justify-center p-1 backdrop-blur-sm">
-                <div class="w-1 h-2 bg-white/40 rounded-full mt-1"></div>
-            </div>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+             <a href="join.html" class="px-8 py-4 bg-[#06C167] text-white rounded-full font-bold text-lg hover:bg-[#05a357] transition-all shadow-[0_0_20px_rgba(6,193,103,0.4)] hover:shadow-[0_0_30px_rgba(6,193,103,0.6)] transform hover:-translate-y-1">
+                <i class="fab fa-whatsapp ml-2"></i> انضم إلينا الآن
+            </a>
+            <button onclick="document.getElementById('what-is-saloony').scrollIntoView({behavior: 'smooth'})" class="px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full font-bold text-lg hover:bg-white/20 transition-all">
+                اكتشف المزايا
+            </button>
         </div>
     </div>
     
@@ -142,168 +135,247 @@
     <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#F8FAFC] to-transparent pointer-events-none"></div>
 </section>
 
-<!-- Separator Gradient (Optional - Removed for smoother look) -->
-<!-- <div class="h-px w-full bg-gradient-to-r from-transparent via-[#06C167]/50 to-transparent"></div> -->
-
-<!-- Features Section -->
-<section id="features" class="py-24 relative overflow-hidden">
-    <!-- Background Glow (Optimized) -->
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#06C167] rounded-full md:mix-blend-multiply filter blur-[80px] md:blur-[150px] opacity-5 pointer-events-none"></div>
-
+<!-- What is Saloony Section -->
+<section id="what-is-saloony" class="py-24 bg-slate-50 relative overflow-hidden">
     <div class="max-w-7xl mx-auto px-6 relative z-10">
-        <div class="text-center mb-20">
-            <h2 class="text-4xl sm:text-5xl font-bold mb-6 text-slate-900">لماذا صالوني؟</h2>
-            <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-                لأننا لا نقدم مجرد موقع، بل <span class="text-slate-900 font-medium">نظام تشغيل متكامل</span> لنمو أعمالك.
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <h2 class="text-4xl font-bold text-slate-900 mb-6">ما هو <span class="text-[#06C167]">صالوني</span>؟</h2>
+            <p class="text-xl text-slate-600 leading-relaxed mb-8">
+                تخيل أن يكون لصالونك فرع رقمي مفتوح 24 ساعة. صالوني ليس مجرد نظام حجوزات، بل هو <strong>مدير أعمالك الرقمي</strong>.
+            </p>
+            <p class="text-xl text-slate-600 leading-relaxed">
+                نحن نمنحك <strong>صفحة هبوط (Landing Page)</strong> شاملة يجد فيها عملاؤك كل ما يحتاجونه:
             </p>
         </div>
+        
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-8 text-center sm:text-right">
+             <!-- Feature Items -->
+             <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:border-[#06C167]/30 transition-colors group">
+                <div class="w-14 h-14 bg-[#06C167]/10 rounded-2xl flex items-center justify-center text-[#06C167] mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-calendar-check text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-xl mb-3 text-slate-900">حجز المواعيد</h3>
+                <p class="text-slate-500 leading-relaxed">حجوزات فورية 24/7 دون عناء، مع إدارة كاملة للتقويم.</p>
+             </div>
 
-        <div class="grid lg:grid-cols-2 gap-12 lg:gap-20">
-            <!-- Left Column: Business Owners -->
-            <div class="space-y-8">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="h-10 w-1 bg-[#06C167] rounded-full shadow-[0_0_15px_#06C167]"></div>
-                    <h3 class="text-3xl font-bold text-slate-900">لأصحاب الصالونات</h3>
+             <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:border-[#06C167]/30 transition-colors group">
+                <div class="w-14 h-14 bg-[#06C167]/10 rounded-2xl flex items-center justify-center text-[#06C167] mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-bag-shopping text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-xl mb-3 text-slate-900">منتجاتك وعروضك</h3>
+                <p class="text-slate-500 leading-relaxed">متجر إلكتروني متكامل لعرض وبيع منتجاتك وخدماتك.</p>
+             </div>
+
+             <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:border-[#06C167]/30 transition-colors group">
+                <div class="w-14 h-14 bg-[#06C167]/10 rounded-2xl flex items-center justify-center text-[#06C167] mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-map-location-dot text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-xl mb-3 text-slate-900">الموقع والاتجاهات</h3>
+                <p class="text-slate-500 leading-relaxed">خريطة تفاعلية دقيقة لموقعك مع ساعات العمل والاتصال.</p>
+             </div>
+
+             <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:border-[#06C167]/30 transition-colors group">
+                <div class="w-14 h-14 bg-[#06C167]/10 rounded-2xl flex items-center justify-center text-[#06C167] mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-circle-info text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-xl mb-3 text-slate-900">معلوماتك الكاملة</h3>
+                <p class="text-slate-500 leading-relaxed">ملف تعريفي شامل يعكس هوية صالونك واحترافيته.</p>
+             </div>
+
+             <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:border-[#06C167]/30 transition-colors group">
+                <div class="w-14 h-14 bg-[#06C167]/10 rounded-2xl flex items-center justify-center text-[#06C167] mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-percent text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-xl mb-3 text-slate-900">العروض والخصومات</h3>
+                <p class="text-slate-500 leading-relaxed">أدوات تسويقية قوية لإنشاء وترويج العروض الموسمية.</p>
+             </div>
+
+             <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:border-[#06C167]/30 transition-colors group">
+                <div class="w-14 h-14 bg-[#06C167]/10 rounded-2xl flex items-center justify-center text-[#06C167] mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-xl mb-3 text-slate-900">خدماتك المميزة</h3>
+                <p class="text-slate-500 leading-relaxed">عرض جذاب لخدماتك مع الأسعار والصور والتفاصيل.</p>
+             </div>
+        </div>
+    </div>
+</section>
+
+<!-- Partnership Section (Moved Here) -->
+<section class="py-24 bg-white border-y border-slate-100">
+    <div class="max-w-6xl mx-auto px-6">
+        <div class="bg-slate-50 rounded-3xl p-8 md:p-12 border border-slate-200">
+            <div class="flex flex-col md:flex-row items-center gap-12">
+                <div class="md:w-1/2 text-center md:text-right">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold mb-4">
+                        <i class="fas fa-award"></i>
+                        <span>اعتماد رسمي</span>
+                    </div>
+                    <h2 class="text-3xl font-bold text-slate-900 mb-4 leading-tight">
+                        نحن المعتمدون الرسميون من <span class="text-blue-600">نقابة أصحاب صالونات التجميل في رام الله والبيرة</span>
+                    </h2>
+                    <p class="text-slate-600 text-lg mb-6 leading-relaxed">
+                        نفخر بكوننا الشريك التقني الأول لتطوير قطاع التجميل في فلسطين.
+                    </p>
+                    
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 inline-block text-right w-full">
+                        <p class="font-bold text-emerald-600 mb-1 flex items-center gap-2">
+                            <i class="fas fa-gift"></i> عرض خاص للأعضاء
+                        </p>
+                        <p class="text-slate-500 text-sm">
+                            أي صالون منتسب للنقابة يحصل على نظام صالوني المتكامل <span class="font-bold text-slate-800">مجاناً لمدة شهر كامل!</span>
+                        </p>
+                    </div>
                 </div>
                 
-                <div class="feature-card group">
-                    <div class="feature-icon group-hover:scale-110 transition-transform duration-300">
-                        <i class="fa-solid fa-laptop-code"></i>
+                <div class="md:w-1/2 w-full">
+                    <div id="partnership-banner-container" class="rounded-xl overflow-hidden border border-slate-200 bg-white min-h-[250px] flex items-center justify-center relative">
+                        <!-- Default placeholder or loader -->
+                        <div class="absolute inset-0 flex items-center justify-center text-slate-400 flex-col gap-2">
+                            <i class="fas fa-handshake text-5xl opacity-20"></i>
+                            <span class="text-xs opacity-40 font-medium">صورة الشراكة</span>
+                        </div>
+                        <img id="partnership-banner-img" src="" alt="شراكة نقابة الصالونات" class="w-full h-auto relative z-10 opacity-0 transition-opacity duration-500">
                     </div>
-                    <h4 class="text-xl font-bold text-slate-900 mb-2">هوية رقمية فاخرة</h4>
-                    <p class="text-slate-600 leading-relaxed">
-                        موقع خاص بتصميم عالمي يعكس فخامة صالونك. ليس مجرد صفحة، بل واجهة احترافية تليق بجمهورك.
-                    </p>
-                </div>
-
-                <div class="feature-card group">
-                    <div class="feature-icon group-hover:scale-110 transition-transform duration-300">
-                        <i class="fa-solid fa-calendar-check"></i>
-                    </div>
-                    <h4 class="text-xl font-bold text-slate-900 mb-2">أتمتة الحجوزات</h4>
-                    <p class="text-slate-600 leading-relaxed">
-                        نظام ذكي يدير مواعيدك 24/7. تخلص من دفاتر المواعيد والاتصالات الضائعة.
-                    </p>
-                </div>
-                
-                 <div class="feature-card group">
-                    <div class="feature-icon group-hover:scale-110 transition-transform duration-300">
-                        <i class="fa-solid fa-chart-pie"></i>
-                    </div>
-                    <h4 class="text-xl font-bold text-slate-900 mb-2">لوحة تحكم شاملة</h4>
-                    <p class="text-slate-600 leading-relaxed">
-                        إحصائيات دقيقة، إدارة للموظفين، ومتابعة للأداء المالي من مكان واحد.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Right Column: Customers -->
-            <div class="space-y-8">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="h-10 w-1 bg-blue-500 rounded-full shadow-[0_0_15px_blue]"></div>
-                    <h3 class="text-3xl font-bold text-slate-900">لعملائك</h3>
-                </div>
-
-                <div class="feature-card group">
-                    <div class="feature-icon group-hover:scale-110 transition-transform duration-300" style="color: #3B82F6; background: rgba(59, 130, 246, 0.1);">
-                        <i class="fa-solid fa-qrcode"></i>
-                    </div>
-                    <h4 class="text-xl font-bold text-slate-900 mb-2">وصول فوري ذكي</h4>
-                    <p class="text-slate-600 leading-relaxed">
-                        مسح سريع للـ QR Code وينقلهم فوراً لعالم صالونك. لا حاجة لتحميل تطبيقات معقدة.
-                    </p>
-                </div>
-
-                <div class="feature-card group">
-                    <div class="feature-icon group-hover:scale-110 transition-transform duration-300" style="color: #3B82F6; background: rgba(59, 130, 246, 0.1);">
-                        <i class="fa-solid fa-stopwatch"></i>
-                    </div>
-                    <h4 class="text-xl font-bold text-slate-900 mb-2">حجز في 3 خطوات</h4>
-                    <p class="text-slate-600 leading-relaxed">
-                        تجربة مستخدم سلسة جداً: اختر الخدمة، الموعد، وأكد الحجز. انتهى الأمر.
-                    </p>
-                </div>
-                
-                 <div class="feature-card group">
-                    <div class="feature-icon group-hover:scale-110 transition-transform duration-300" style="color: #3B82F6; background: rgba(59, 130, 246, 0.1);">
-                        <i class="fa-regular fa-star"></i>
-                    </div>
-                    <h4 class="text-xl font-bold text-slate-900 mb-2">شفافية ووضوح</h4>
-                    <p class="text-slate-600 leading-relaxed">
-                        الأسعار، الخدمات، والمواعيد المتاحة واضحة تماماً، مما يبني ثقة عالية.
-                    </p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Pricing Section -->
-<section id="pricing" class="py-24 relative overflow-hidden">
-    <!-- Background Elements -->
-    <div class="absolute inset-0 bg-slate-50"></div>
-    <div class="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+<!-- How it works Section -->
+<section id="how-it-works" class="py-24 bg-slate-50 relative overflow-hidden">
+    <!-- Background Glow -->
+    <div class="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#06C167] rounded-full md:mix-blend-multiply filter blur-[150px] opacity-5 pointer-events-none"></div>
 
     <div class="max-w-7xl mx-auto px-6 relative z-10">
         <div class="text-center mb-16">
-            <h2 class="text-4xl font-black mb-6 text-slate-900">استثمار ذكي لمستقبل صالونك</h2>
+            <h2 class="text-4xl sm:text-5xl font-bold mb-6 text-slate-900">سهل للغاية!</h2>
+            <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+                لا تعقيدات، لا تجهيزات، ابدأ في دقائق.
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-4 gap-8 text-center relative">
+            <!-- Connecting Line (Desktop) -->
+            <div class="hidden md:block absolute top-12 right-0 left-0 h-1 bg-slate-200 -z-10 transform -translate-y-1/2 mx-20"></div>
+
+            <!-- Step 1 -->
+            <div class="relative bg-white p-8 rounded-2xl shadow-sm border border-slate-100 group hover:-translate-y-2 transition-transform duration-300">
+                <div class="w-16 h-16 bg-[#06C167] text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-[#06C167]/30 relative z-10">
+                    1
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-3">نجهز لك النظام</h3>
+                <p class="text-slate-500">
+                    نقوم بإعداد صالونك بالكامل على النظام وتجهيز صفحتك الخاصة.
+                </p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="relative bg-white p-8 rounded-2xl shadow-sm border border-slate-100 group hover:-translate-y-2 transition-transform duration-300">
+                <div class="w-16 h-16 bg-[#06C167] text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-[#06C167]/30 relative z-10">
+                    2
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-3">شارك رابطك</h3>
+                <p class="text-slate-500">
+                    انشر رابط صفحتك على وسائل التواصل الاجتماعي لعملائك.
+                </p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="relative bg-white p-8 rounded-2xl shadow-sm border border-slate-100 group hover:-translate-y-2 transition-transform duration-300">
+                <div class="w-16 h-16 bg-[#06C167] text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-[#06C167]/30 relative z-10">
+                    3
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-3">ملصق QR</h3>
+                <p class="text-slate-500">
+                    ضع ملصق الـ QR على باب صالونك ليسهل الوصول إليك.
+                </p>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="relative bg-white p-8 rounded-2xl shadow-sm border border-slate-100 group hover:-translate-y-2 transition-transform duration-300">
+                <div class="w-16 h-16 bg-[#06C167] text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 shadow-lg shadow-[#06C167]/30 relative z-10">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-3">انطلق!</h3>
+                <p class="text-slate-500">
+                    أنت جاهز لاستقبال الحجوزات مع دعم فني معك 24/7.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing & CTA Section -->
+<section id="pricing" class="py-24 relative overflow-hidden bg-white">
+    <div class="max-w-6xl mx-auto px-6 relative z-10">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-black mb-6 text-slate-900">استثمار بسيط، عائد كبير</h2>
             <p class="text-xl text-slate-600 mb-12 leading-relaxed max-w-2xl mx-auto">
-                باقة واحدة شاملة تغنيك عن تكاليف البرمجة، الاستضافة، وتطبيقات الحجز المنفصلة.
+                انضم الآن لمجتمع صالوني وابدأ بتطوير أعمالك اليوم.
             </p>
         </div>
         
         <!-- Premium Pricing Card -->
-        <div class="max-w-2xl mx-auto px-6 relative z-10">
-            <div class="bg-white/90 backdrop-blur-xl rounded-3xl p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-slate-100 text-center relative overflow-hidden group hover:border-[#06C167]/30 transition-colors duration-500">
+        <div class="relative bg-[#0F172A] rounded-[2.5rem] p-8 md:p-16 overflow-hidden shadow-xl border border-slate-800">
+            
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-20">
                 
-                <!-- Content -->
-                <div class="relative z-10">
-                    <!-- Main Headline -->
-                    <h2 class="text-3xl font-black text-slate-900 tracking-tight leading-tight mb-4">
-                        صالونك الرقمي، <span class="text-[#06C167]">جاهز في دقائق.</span>
-                    </h2>
+                <!-- Left Side: Value -->
+                <div class="text-center md:text-right flex-1 w-full">
                     
-                    <!-- Pricing & Offer Row -->
-                    <div class="flex flex-col sm:flex-row items-center justify-center gap-6 py-6">
-                        <!-- Price -->
-                        <div class="text-center">
-                            <div class="flex items-baseline justify-center gap-1">
-                                <span class="text-5xl font-black text-slate-900">99.90</span>
-                                <span class="text-xl text-slate-500 font-bold">₪</span>
-                            </div>
-                            <span class="text-sm text-slate-400 font-medium">شهرياً فقط</span>
-                        </div>
-
-                        <!-- Divider -->
-                        <div class="hidden sm:block w-px h-12 bg-slate-200"></div>
-
-                        <!-- Syndicate Badge (Compact) -->
-                        <div class="flex items-center gap-3 bg-[#06C167]/5 border border-[#06C167]/10 rounded-xl px-4 py-3">
-                            <div class="w-8 h-8 rounded-full bg-[#06C167]/10 flex items-center justify-center shrink-0">
-                                <i class="fa-solid fa-gift text-[#06C167] text-sm"></i>
-                            </div>
-                            <div class="text-right">
-                                <span class="block text-sm font-bold text-slate-900">لأعضاء النقابة</span>
-                                <span class="block text-xs text-slate-600">شهر مجاني عند الاشتراك</span>
-                            </div>
+                    <h2 class="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">باقة شاملة <br/><span class="text-slate-400 font-normal text-2xl md:text-3xl">لكل ما تحتاجه</span></h2>
+                    
+                    <div class="flex items-baseline justify-center md:justify-start gap-2 my-8">
+                        <span class="text-7xl md:text-8xl font-black text-white tracking-tighter">99.90</span>
+                        <div class="text-right">
+                            <span class="text-3xl text-[#06C167] font-bold block">₪</span>
+                            <span class="text-slate-400 text-lg">شهرياً</span>
                         </div>
                     </div>
 
-                    <!-- CTA -->
-                    <div class="flex flex-col sm:flex-row justify-center gap-3">
-                        <a href="contact.html" class="w-full sm:w-auto inline-flex items-center justify-center btn-primary px-8 py-3 text-base shadow-lg shadow-[#06C167]/20 hover:shadow-[#06C167]/30 transition-all duration-300 rounded-xl">
-                            ابدأ رحلتك الآن
-                        </a>
-                        <a href="registred_salons.html" class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 text-base font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-slate-900 transition-all duration-300 rounded-xl group">
-                            <span>تصفح شركاء النجاح</span>
-                            <i class="fa-solid fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform text-[#06C167]"></i>
-                        </a>
+                    <!-- Features Pills -->
+                    <div class="flex flex-wrap gap-3 justify-center md:justify-start">
+                        <span class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm flex items-center gap-2">
+                            <i class="fas fa-check-circle text-[#06C167]"></i> شامل كل المزايا
+                        </span>
+                        <span class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm flex items-center gap-2">
+                            <i class="fas fa-shield-alt text-[#06C167]"></i> آمن ومحمي
+                        </span>
+                        <span class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm flex items-center gap-2">
+                            <i class="fas fa-bolt text-[#06C167]"></i> تفعيل فوري
+                        </span>
                     </div>
-                    
-                    <p class="text-xs text-slate-400 mt-4 font-medium">
-                        سهل الاستخدام • تفعيل فوري • دعم فني دائم
-                    </p>
                 </div>
+
+                <!-- Divider (Desktop only) -->
+                <div class="hidden md:block w-px h-64 bg-slate-800"></div>
+
+                <!-- Right Side: Action -->
+                <div class="w-full md:w-[400px] flex flex-col gap-5">
+                    <a href="join.html" class="group relative w-full flex items-center justify-center gap-3 bg-[#06C167] text-white p-6 rounded-2xl font-bold text-xl hover:bg-[#05a357] transition-all shadow-lg transform hover:-translate-y-1">
+                        <i class="fab fa-whatsapp text-2xl"></i>
+                        <span>اشترك الآن</span>
+                    </a>
+                    
+                    <a href="registred_salons.html" class="w-full flex items-center justify-center gap-3 bg-white/5 text-white border border-white/10 p-5 rounded-2xl font-bold text-lg hover:bg-white/10 transition-all hover:border-white/30 group">
+                        <span>شاهد الصالونات المشتركة</span>
+                        <i class="fa-solid fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+                    </a>
+
+                    <!-- Union Offer Badge -->
+                    <div class="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                            <i class="fas fa-gift"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-blue-100 font-bold text-sm">عرض خاص للنقابة</h4>
+                            <p class="text-blue-300/80 text-xs mt-1">شهر مجاني كامل عند الاشتراك عن طريق النقابة.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -318,7 +390,25 @@
     document.addEventListener('DOMContentLoaded', () => {
         SaloonyComponents.renderHeader('global-header', { activePage: 'home', basePath: '../../' });
         SaloonyComponents.renderFooter('global-footer', { basePath: '../../' });
+        loadPartnershipImage();
     });
+
+    async function loadPartnershipImage() {
+        try {
+            const res = await fetch('/api/public/settings/partnership');
+            const data = await res.json();
+            if (data.success && data.url) {
+                const img = document.getElementById('partnership-banner-img');
+                img.src = data.url;
+                img.onload = () => {
+                    img.classList.remove('opacity-0');
+                    document.querySelector('#partnership-banner-container div').classList.add('hidden'); // Hide placeholder
+                };
+            }
+        } catch (e) {
+            console.error('Failed to load partnership image');
+        }
+    }
 </script>
 </body>
 </html>

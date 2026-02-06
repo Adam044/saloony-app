@@ -1,6 +1,5 @@
 module.exports = function register(app, deps) {
-  const { db, requireAdmin, requireDebugEnabled } = deps;
-  const bcrypt = require('bcrypt');
+  const { db, requireAdmin, requireDebugEnabled, hashPassword } = deps;
 
   app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
@@ -46,6 +45,43 @@ module.exports = function register(app, deps) {
     }
   });
 
+  // Get system settings
+  app.get('/api/admin/settings', requireAdmin, async (req, res) => {
+    try {
+      const rows = await db.query('SELECT key, value FROM system_settings');
+      const settings = {};
+      if (rows && Array.isArray(rows)) {
+        rows.forEach(row => { settings[row.key] = row.value; });
+      }
+      res.json({ success: true, settings });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ success: false, message: 'Failed to fetch settings' });
+    }
+  });
+
+  // Update system settings
+  app.post('/api/admin/settings', requireAdmin, async (req, res) => {
+    try {
+      const { settings } = req.body;
+      if (!settings) return res.status(400).json({ success: false, message: 'No settings provided' });
+
+      for (const [key, value] of Object.entries(settings)) {
+        // Check if exists
+        const existing = await db.query('SELECT 1 FROM system_settings WHERE key = $1', [key]);
+        if (existing && existing.length > 0) {
+            await db.query('UPDATE system_settings SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2', [value, key]);
+        } else {
+            await db.query('INSERT INTO system_settings (key, value) VALUES ($1, $2)', [key, value]);
+        }
+      }
+      res.json({ success: true, message: 'Settings updated' });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ success: false, message: 'Failed to update settings' });
+    }
+  });
+
   app.post('/api/admin/employees', requireAdmin, async (req, res) => {
     try {
       const { name, email, phone, city, password, username } = req.body || {};
@@ -55,7 +91,7 @@ module.exports = function register(app, deps) {
       if (!nameToInsert) {
         return res.status(400).json({ success: false, message: 'الاسم مطلوب.' });
       }
-      const hashedPassword = await bcrypt.hash(String(password || ''), 12);
+      const hashedPassword = await hashPassword(String(password || ''));
       let usernameToInsert = (username && String(username).trim()) ? String(username).trim() : null;
       if (!usernameToInsert) {
         // Auto-generate unique employee username code
@@ -87,7 +123,7 @@ module.exports = function register(app, deps) {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
       let temp = 'Emp';
       for (let i = 0; i < 7; i++) temp += chars[Math.floor(Math.random() * chars.length)];
-      const hashed = await bcrypt.hash(temp, 12);
+      const hashed = await hashPassword(temp);
       await db.run('UPDATE users SET password = $1 WHERE id = $2', [hashed, id]);
       res.json({ success: true, temp_password: temp });
     } catch (e) {

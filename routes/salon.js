@@ -1,5 +1,5 @@
 module.exports = function register(app, deps) {
-  const { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, bcrypt, crypto, upload, sharp, supabase } = deps;
+  const { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, hashPin, verifyPin, crypto, upload, sharp, supabase } = deps;
 
   app.get('/api/salons/:salon_id/services', async (req, res) => {
     const salonId = req.params.salon_id;
@@ -315,12 +315,11 @@ module.exports = function register(app, deps) {
       return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
     }
     try {
-      const row = await dbGet(
-        `SELECT s.id AS salonId, s.salon_name, s.address, s.city, s.image_url, s.salon_phone, s.owner_phone,
-                COALESCE(AVG(r.rating), 0) AS avg_rating, COUNT(r.id) AS review_count
-         FROM salons s LEFT JOIN reviews r ON s.id = r.salon_id WHERE s.id = $1 GROUP BY s.id, s.salon_phone, s.owner_phone`,
-        [salonId]
-      );
+      const sql = `
+      SELECT s.id AS salonId, s.salon_name, s.address, s.city, s.image_url, s.salon_phone, s.owner_phone, s.owner_name, s.gender_focus, s.created_at,
+             COALESCE(AVG(r.rating), 0) AS avg_rating, COUNT(r.id) AS review_count
+      FROM salons s LEFT JOIN reviews r ON s.id = r.salon_id WHERE s.id = $1 GROUP BY s.id, s.salon_phone, s.owner_phone`;
+      const row = await dbGet(sql, [salonId]);
       if (!row) return res.status(404).json({ success: false, message: 'Salon not found.' });
       try {
         const socials = await db.query('SELECT platform, url FROM social_links WHERE salon_id = $1', [Number(salonId)]);
@@ -648,13 +647,13 @@ module.exports = function register(app, deps) {
                 JOIN staff s ON sr.staff_id = s.id 
                 WHERE sr.salon_id = $1 AND sr.staff_id != $2 AND sr.is_active = TRUE
             `, [salonId, staff_id])) {
-          const match = await bcrypt.compare(pin.toString(), role.pin_hash);
+          const match = await verifyPin(pin.toString(), role.pin_hash);
           if (match) {
             return res.status(400).json({ success: false, message: `لا يمكن استخدام نفس الرقم السري لأكثر من موظف. هذا الرقم مستخدم بالفعل من قبل ${role.staff_name}. يرجى اختيار رقم سري مختلف.` });
           }
         }
       }
-      const hashedPin = await bcrypt.hash(pin.toString(), 10);
+      const hashedPin = await hashPin(pin.toString());
       await db.run(`
             INSERT INTO staff_roles (salon_id, staff_id, role_type, pin_hash, biometric_enabled, updated_at)
             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
@@ -715,7 +714,7 @@ module.exports = function register(app, deps) {
           return res.status(400).json({ success: false, message: 'PIN must be exactly 6 digits.' });
         }
         for (const role of staffRoles) {
-          const match = await bcrypt.compare(pin.toString(), role.pin_hash);
+          const match = await verifyPin(pin.toString(), role.pin_hash);
           if (match) { authenticatedRole = role; break; }
         }
         if (!authenticatedRole) {

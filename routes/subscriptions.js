@@ -193,19 +193,12 @@ module.exports = function register(app, deps) {
             if (status === 'completed') {
                 const payment = await dbGet('SELECT * FROM payments WHERE id = $1', [id]);
                 if (payment) {
-                    const existingSub = await dbGet('SELECT id FROM subscriptions WHERE salon_id = $1', [payment.salon_id]);
-                    if (existingSub) {
-                        await dbRun(
-                            `UPDATE subscriptions SET status = 'active', end_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-                            [payment.valid_until, existingSub.id]
-                        );
-                    } else {
-                        await dbRun(
-                            `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
-                             VALUES ($1, 'monthly_100', $2, $3, 'active')`,
-                            [payment.salon_id, payment.valid_from, payment.valid_until]
-                        );
-                    }
+                    // Always insert new subscription to allow multiple periods
+                    await dbRun(
+                        `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
+                         VALUES ($1, 'monthly_100', $2, $3, 'active')`,
+                        [payment.salon_id, payment.valid_from, payment.valid_until]
+                    );
                 }
             }
 
@@ -239,23 +232,41 @@ module.exports = function register(app, deps) {
             );
             
             // Create/Update Subscription
-            const existingSub = await dbGet('SELECT id FROM subscriptions WHERE salon_id = $1', [salonId]);
-            if (existingSub) {
-                await dbRun(
-                    `UPDATE subscriptions SET status = 'active', end_date = $1, package = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
-                    [endDate, type, existingSub.id]
-                );
-            } else {
-                 await dbRun(
-                    `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
-                     VALUES ($1, $2, $3, $4, 'active')`,
-                    [salonId, type, startDate, endDate]
-                );
-            }
+            // Fix: Always insert a new subscription record to support multiple/disjoint periods
+            const packageType = type || 'monthly_100';
+            await dbRun(
+                `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
+                 VALUES ($1, $2, $3, $4, 'active')`,
+                [salonId, packageType, startDate, endDate]
+            );
 
             res.json({ success: true, message: 'Subscription created' });
         } catch (err) {
             console.error('Error creating admin subscription:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Admin: Update payment date
+    app.post('/api/admin/payments/:id/date', requireAdmin, async (req, res) => {
+        const { id } = req.params;
+        const { date } = req.body; // Expecting 'YYYY-MM-DD' or ISO string
+
+        if (!date) {
+            return res.status(400).json({ success: false, message: 'Date is required' });
+        }
+
+        try {
+            // Fix: Append 12:00:00 to avoid timezone off-by-one errors when converting to UTC
+            // This ensures the date stays the same regardless of local time interpretation (within reasonable offsets)
+            const dateWithTime = `${date} 12:00:00`;
+            await dbRun(
+                `UPDATE payments SET created_at = $1 WHERE id = $2`,
+                [dateWithTime, id]
+            );
+            res.json({ success: true, message: 'Date updated' });
+        } catch (err) {
+            console.error('Error updating payment date:', err);
             res.status(500).json({ success: false, message: 'Server error' });
         }
     });

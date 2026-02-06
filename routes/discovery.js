@@ -38,6 +38,16 @@ module.exports = function register(app, deps) {
     }
   });
 
+  app.get('/api/public/settings/partnership', async (req, res) => {
+    try {
+      const row = await dbGet('SELECT value FROM system_settings WHERE key = $1', ['partnership_banner_url']);
+      res.json({ success: true, url: row ? row.value : null });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ success: false, message: 'Failed to fetch partnership image' });
+    }
+  });
+
   app.get('/api/favorites/:user_id', requireAuth, async (req, res) => {
     const paramUserId = req.params.user_id;
     const authUserId = req.user?.id;

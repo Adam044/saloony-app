@@ -1,16 +1,3 @@
-const bcrypt = require('bcrypt');
-
-// Helper function to hash passwords securely using bcrypt
-async function hashPassword(password) {
-    const saltRounds = 12; // Higher salt rounds for better security
-    return await bcrypt.hash(password, saltRounds);
-}
-
-// Helper function to verify passwords
-async function verifyPassword(password, hashedPassword) {
-    return await bcrypt.compare(password, hashedPassword);
-}
-
 // Validate phone number format (must start with 0 and be exactly 10 digits)
 function validatePhoneFormat(phone) {
     if (!phone) return true; // Allow empty for optional fields
@@ -41,8 +28,6 @@ function normalizePhoneNumber(input) {
 }
 
 module.exports = {
-    hashPassword,
-    verifyPassword,
     validatePhoneFormat,
     normalizePhoneNumber
 };
