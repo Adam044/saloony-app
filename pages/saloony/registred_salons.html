@@ -36,7 +36,7 @@
 <!-- Global Header Container -->
 <div id="global-header"></div>
 
-<main class="flex-1 pt-24 pb-12">
+<main class="flex-1 pt-28 pb-12">
   <section class="max-w-7xl mx-auto px-6">
     <div class="text-center mb-16">
       <div class="inline-flex items-center px-4 py-2 rounded-full bg-slate-100 border border-slate-200 mb-6">
@@ -80,6 +80,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         SaloonyComponents.renderHeader('global-header', { activePage: 'salons', basePath: '../../' });
         SaloonyComponents.renderFooter('global-footer', { basePath: '../../' });
+        loadRegisteredSalons();
     });
 
     async function loadRegisteredSalons() {
@@ -168,13 +169,6 @@
             `;
         }
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        SaloonyComponents.renderHeader('global-header', { activePage: 'salons', basePath: '../../' });
-        SaloonyComponents.renderFooter('global-footer', { basePath: '../../' });
-        loadRegisteredSalons();
-    });
 </script>
-<div id="global-footer"></div>
 </body>
 </html>
