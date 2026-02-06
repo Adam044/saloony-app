@@ -59,6 +59,7 @@ async function initializeDb() {
             rating INTEGER NOT NULL,
             comment TEXT,
             date_posted TEXT NOT NULL,
+            image_url TEXT,
             UNIQUE (salon_id, user_id),
             FOREIGN KEY (salon_id) REFERENCES salons(id),
             FOREIGN KEY (user_id) REFERENCES users(id)
@@ -177,6 +178,18 @@ async function initializeDb() {
             FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
         )`);
 
+        // Salon Gallery (New Feature)
+        await db.run(`CREATE TABLE IF NOT EXISTS salon_gallery (
+            id SERIAL PRIMARY KEY,
+            salon_id INTEGER NOT NULL,
+            image_url TEXT NOT NULL,
+            category TEXT DEFAULT 'general',
+            title TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons(id) ON DELETE CASCADE
+        )`);
+        await db.run(`CREATE INDEX IF NOT EXISTS idx_salon_gallery_salon ON salon_gallery(salon_id)`);
+
         // Salon Visits (Analytics)
         await db.run(`CREATE TABLE IF NOT EXISTS salon_visits (
             id SERIAL PRIMARY KEY,
@@ -273,6 +286,8 @@ async function initializeDb() {
         )`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_subscriptions_salon ON subscriptions(salon_id)`);
         await db.run(`CREATE INDEX IF NOT EXISTS idx_subscriptions_end ON subscriptions(end_date)`);
+
+        /* Removed duplicate salon_subscriptions table in favor of payments table */
 
         // Create salon_locations table (one location per salon for now)
         await db.run(`CREATE TABLE IF NOT EXISTS salon_locations (

@@ -7,6 +7,7 @@ const Sidebar = {
             { label: 'Dashboard', icon: 'fa-solid fa-home', href: '/admin_saloony/dashboard/index.html' },
             { label: 'Progress', icon: 'fa-solid fa-chart-line', href: '/admin_saloony/dashboard/progress.html' },
             { label: 'Salons', icon: 'fa-solid fa-store', href: '/admin_saloony/dashboard/salons.html' },
+            { label: 'Subscriptions', icon: 'fa-solid fa-file-invoice-dollar', href: '/admin_saloony/dashboard/subscriptions.html' },
             { label: 'Users', icon: 'fa-solid fa-users', href: '/admin_saloony/dashboard/users.html' },
             { label: 'Create Salon', icon: 'fa-solid fa-plus-circle', href: '/admin_saloony/dashboard/create_salon.html' },
             { label: 'Employees', icon: 'fa-solid fa-id-card', href: '/admin_saloony/employees/index.html' },

@@ -232,15 +232,52 @@ export const openModal = (modalId) => {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.classList.add('overflow-hidden');
+
+        // Handle Animations
+        // We look for a child that might be the content wrapper with transition classes
+        // Standard pattern: backdrop is first child, content is second child (or wrapper)
+        // But better to rely on class matching or data attributes if possible. 
+        // For now, let's try to find elements with specific animation starting classes
+        
+        requestAnimationFrame(() => {
+            const backdrop = modal.querySelector('[id$="-backdrop"]') || modal.querySelector('.backdrop-blur-sm');
+            const content = modal.querySelector('[id$="-content"]') || modal.querySelector('.transform');
+
+            if (backdrop) {
+                backdrop.classList.remove('opacity-0');
+                backdrop.classList.add('opacity-100');
+            }
+
+            if (content) {
+                content.classList.remove('opacity-0', 'scale-95');
+                content.classList.add('opacity-100', 'scale-100');
+            }
+        });
     }
 };
 
 export const closeModal = (modalId) => {
     const modal = document.getElementById(modalId);
     if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        document.body.classList.remove('overflow-hidden');
+        const backdrop = modal.querySelector('[id$="-backdrop"]') || modal.querySelector('.backdrop-blur-sm');
+        const content = modal.querySelector('[id$="-content"]') || modal.querySelector('.transform');
+
+        if (backdrop) {
+            backdrop.classList.remove('opacity-100');
+            backdrop.classList.add('opacity-0');
+        }
+
+        if (content) {
+            content.classList.remove('opacity-100', 'scale-100');
+            content.classList.add('opacity-0', 'scale-95');
+        }
+
+        // Wait for animation to finish before hiding
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
     }
 };
 

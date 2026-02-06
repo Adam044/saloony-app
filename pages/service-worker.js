@@ -1,9 +1,10 @@
-const CACHE_NAME = 'saloony-cache-v9';
-const APP_VERSION = '1.1.0'; // Update this with each deployment
+const CACHE_NAME = 'saloony-cache-v10';
+const APP_VERSION = '1.1.1'; // Update this with each deployment
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/auth.html',
+  '/pages/saloony/splash.html',
+  '/pages/saloony/auth.html',
   '/salon.html',
   '/offline.html',
   '/outage.html',

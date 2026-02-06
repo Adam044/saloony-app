@@ -872,10 +872,14 @@ const registerPushRoutes = require('./routes/push');
 const registerSubscriptionsRoutes = require('./routes/subscriptions');
 const registerProductsRoutes = require('./routes/products');
 
-registerReviewsRoutes(app, { dbAll, dbGet, dbRun, requireAuth });
+registerReviewsRoutes(app, { dbAll, dbGet, dbRun, requireAuth, upload, supabase, crypto, sharp });
 registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled });
-registerSubscriptionsRoutes(app, { db, requireAdmin });
-registerSalonRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, bcrypt, crypto });
+registerSubscriptionsRoutes(app, { db, dbAll, dbGet, dbRun, requireAdmin, requireAuth });
+registerSalonRoutes(app, { 
+    db, dbAll, dbGet, dbRun, requireSalonAdminRole, 
+    addSalonClient, removeSalonClient, sendSalonEvent, 
+    bcrypt, crypto, upload, sharp, supabase 
+});
 registerProductsRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, upload, sharp, supabase, crypto });
 registerEmployeeRoutes(app, { db, requireRole, sendPushToAdmins });
 registerPushRoutes(app, { dbAll, dbGet, dbRun, webPush, sendPushToTargets, VAPID_PUBLIC_KEY });

@@ -1,5 +1,6 @@
 
 import { showMessage, showActionProgress, showActionSuccess, initHeaderSalon } from './ui.js';
+import { getRoleSessionToken } from './auth.js';
 
 let currentSalonData = null;
 
@@ -238,6 +239,24 @@ const openEditModal = async (salonId) => {
     
     // Set About
     setValue('edit-about', currentSalonData.about);
+
+    // Populate Social Links
+    try {
+        const token = getRoleSessionToken(salonId) || localStorage.getItem('saloony_token');
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const socialRes = await fetch(`/api/salon/social-links/${salonId}`, { headers });
+        const socialData = await socialRes.json();
+        if (socialData.success && socialData.social) {
+            setValue('edit-social-facebook', socialData.social.facebook);
+            setValue('edit-social-instagram', socialData.social.instagram);
+            setValue('edit-social-tiktok', socialData.social.tiktok);
+            setValue('edit-social-other', socialData.social.other);
+        }
+    } catch (err) {
+        console.error('Error loading social links:', err);
+    }
     }
 
     modal.classList.remove('hidden');
@@ -360,9 +379,13 @@ const handleProfileSave = async (e, salonId) => {
 
         if (!payload.salon_name) throw new Error('يرجى إدخال اسم الصالون');
 
+        const token = getRoleSessionToken(salonId) || localStorage.getItem('saloony_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch(`/api/salon/info/${salonId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(payload)
         });
 
@@ -375,10 +398,47 @@ const handleProfileSave = async (e, salonId) => {
             localStorage.setItem('saloony_user', JSON.stringify(currentSalonData));
             
             // Update Header immediately
-            await initHeaderSalon(salonId);
+                    await initHeaderSalon(salonId);
 
-            hud.success('تم تحديث البيانات بنجاح');
-            closeEditModal();
+                    // Save Social Links
+                    const socialLinks = [
+                        { platform: 'facebook', id: 'edit-social-facebook' },
+                        { platform: 'instagram', id: 'edit-social-instagram' },
+                        { platform: 'tiktok', id: 'edit-social-tiktok' },
+                        { platform: 'other', id: 'edit-social-other' }
+                    ];
+
+                    const token = getRoleSessionToken() || localStorage.getItem('saloony_token');
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                    for (const link of socialLinks) {
+                        const input = document.getElementById(link.id);
+                        if (input) {
+                            const url = input.value.trim();
+                            try {
+                                if (url) {
+                                    await fetch(`/api/salon/social-links/${salonId}`, {
+                                        method: 'POST',
+                                        headers: headers,
+                                        body: JSON.stringify({ platform: link.platform, url })
+                                    });
+                                } else {
+                                    // If empty, try to delete
+                                    await fetch(`/api/salon/social-links/${salonId}`, {
+                                        method: 'DELETE',
+                                        headers: headers,
+                                        body: JSON.stringify({ platform: link.platform })
+                                    });
+                                }
+                            } catch (err) {
+                                console.error(`Error saving social link ${link.platform}:`, err);
+                            }
+                        }
+                    }
+
+                    hud.success('تم تحديث البيانات بنجاح');
+                    closeEditModal();
         } else {
             throw new Error(data.message || 'فشل حفظ التغييرات');
         }

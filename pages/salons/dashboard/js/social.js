@@ -190,7 +190,7 @@ export const loadSocialLinks = async () => {
     }
 
     try {
-        const token = getRoleSessionToken();
+        const token = getRoleSessionToken(currentSalonId);
         const headers = {};
         if (token) headers['x-role-token'] = token;
         
@@ -213,7 +213,7 @@ export const loadSocialLinks = async () => {
 };
 
 export const saveSocialLinks = async () => {
-    const token = getRoleSessionToken();
+    const token = getRoleSessionToken(currentSalonId);
     if (!token) {
         showMessage(null, 'يتطلب الحفظ جلسة دور المدير (PIN).', false);
         // Trigger PIN screen if available (handled by auth module generally, but here we just warn)

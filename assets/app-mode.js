@@ -48,11 +48,10 @@
         const choice = await deferredInstallPrompt.prompt();
         const outcome = choice && choice.outcome;
         if (outcome === 'accepted') setUserModeChoice('app');
-      } catch (_) {}
-    } else {
-      // Fallback: open instructions asset/page if available
-      window.location.href = '/index.html';
+        return outcome;
+      } catch (_) { return null; }
     }
+    return null;
   }
 
   function ensureStyles() {

@@ -254,7 +254,7 @@
         fetch('/api/admin/salons', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
         fetch('/api/admin/payments', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
         fetch('/api/admin/users', { headers:{ 'Authorization': `Bearer ${adminToken}` } }),
-        fetch('/api/admin/subscriptions', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
+        fetch('/api/admin/subscriptions/all', { headers:{ 'Authorization': `Bearer ${adminToken}` } })
       ]);
       const salonsJson = await salonsRes.json();
       const paymentsJson = await paymentsRes.json();

@@ -9,211 +9,330 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
     <script defer src="/admin_saloony/assets/admin-core.js"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+    </style>
 </head>
-<body class="bg-slate-50">
-    <div id="loading-overlay" class="fixed inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-[60]">
-        <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-300" style="border-top-color:#1E293B"></div>
-    </div>
-
-    <div class="p-6 max-w-7xl mx-auto space-y-6">
-        <!-- Header Card -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-2xl shadow-inner overflow-hidden">
-                    <img id="salon-logo" src="" alt="" class="w-full h-full object-cover hidden">
-                    <i id="salon-icon" class="fas fa-store"></i>
-                </div>
-                <div>
-                    <h1 class="text-2xl font-extrabold text-slate-800" id="salon-name">Loading...</h1>
-                    <div class="flex items-center gap-3 mt-1 text-sm">
-                        <span id="salon-status-badge" class="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-bold text-xs">...</span>
-                        <span class="text-slate-400 font-mono" id="salon-id-display"></span>
-                        <div class="flex items-center text-amber-400 text-xs font-bold gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                            <i class="fas fa-star"></i>
-                            <span id="salon-rating">0.0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="flex gap-3 w-full md:w-auto items-center">
-                <a id="public-link" href="#" target="_blank" class="hidden md:inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm">
-                    <i class="fas fa-external-link-alt"></i> <span>Salon Page</span>
-                </a>
-                
-                <!-- Status Toggle -->
-                <div class="flex items-center bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm h-[46px]">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="salon-status-toggle" class="sr-only peer" onchange="toggleSalonStatus()">
-                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                        <span class="ms-3 text-sm font-bold text-slate-700 select-none" id="salon-status-text">Inactive</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Right Column: Info -->
-            <div class="space-y-6">
-                <!-- Owner Info -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-user-tie text-emerald-500"></i> Owner Information
-                    </h3>
-                    <div class="space-y-3 text-sm">
-                        <div class="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                            <span class="text-slate-500">Name</span>
-                            <span class="font-bold text-slate-800" id="owner-name">—</span>
-                        </div>
-                        <div class="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                            <span class="text-slate-500">Phone</span>
-                            <a href="#" id="owner-phone" class="font-bold text-slate-800 hover:text-emerald-600 transition" dir="ltr">—</a>
-                        </div>
-                        <div class="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
-                            <span class="text-slate-500">Salon Phone</span>
-                            <a href="#" id="salon-phone" class="font-bold text-slate-800 hover:text-emerald-600 transition" dir="ltr">—</a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Location Info -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-map-location-dot text-emerald-500"></i> Location
-                    </h3>
-                    <div class="space-y-3 text-sm">
-                        <div class="p-3 bg-gray-50 rounded-xl text-slate-600 leading-relaxed" id="salon-address">
-                            —
-                        </div>
-                        <div class="flex gap-2">
-                            <span class="text-slate-500">City:</span>
-                            <span class="font-bold text-slate-800" id="salon-city">—</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Left Column: Financials & Stats -->
-            <div class="lg:col-span-2 space-y-6">
-                
-                <!-- Subscription Blocks Section (New) -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-calendar-check text-emerald-500"></i> Subscription Management
-                        </h3>
-                        <div class="flex items-center gap-2 bg-slate-50 rounded-lg p-1 border border-slate-100">
-                            <button onclick="changeYear(-1)" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm text-slate-500 transition"><i class="fas fa-chevron-left"></i></button>
-                            <span id="current-year" class="font-bold text-slate-700 px-3 font-mono">2025</span>
-                            <button onclick="changeYear(1)" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm text-slate-500 transition"><i class="fas fa-chevron-right"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="months-grid">
-                        <p class="col-span-full text-center py-8 text-slate-400">Loading calendar...</p>
-                    </div>
-
-                    <div class="flex flex-wrap gap-6 mt-6 pt-6 border-t border-gray-50 text-xs font-medium text-slate-500 justify-center">
-                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div> Paid (100 ILS)</div>
-                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-blue-500 shadow-sm"></div> 50% Offer</div>
-                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-purple-500 shadow-sm"></div> Gift</div>
-                        <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-200 shadow-sm"></div> Unpaid</div>
-                    </div>
-                </div>
-
-                <!-- Invoices History Section -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-history text-slate-400"></i> Payment History
-                        </h3>
-                    </div>
-                    
-                    <div class="overflow-x-auto rounded-xl border border-gray-100">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-slate-500 font-medium">
-                                <tr>
-                                    <th class="px-4 py-3">Date</th>
-                                    <th class="px-4 py-3">Invoice #</th>
-                                    <th class="px-4 py-3 text-right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody id="invoices-table-body" class="divide-y divide-gray-100 bg-white">
-                                <tr>
-                                    <td colspan="3" class="px-4 py-8 text-center text-slate-400">Loading invoices...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Stats/Charts Placeholder -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="text-slate-500 text-xs font-bold mb-1">Total Bookings</div>
-                        <div class="text-2xl font-extrabold text-slate-800" id="total-bookings">—</div>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="text-slate-500 text-xs font-bold mb-1">Total Views</div>
-                        <div class="text-2xl font-extrabold text-slate-800" id="total-views">—</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4 transition-opacity duration-200">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-transform duration-200">
-            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-800 text-center mb-2" id="confirm-title">Confirm Action</h3>
-            <p class="text-slate-500 text-center mb-6 text-sm" id="confirm-message">Are you sure you want to proceed?</p>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="closeConfirmModal()" class="py-2.5 px-4 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition">Cancel</button>
-                <button id="confirm-btn-action" class="py-2.5 px-4 rounded-xl text-white font-bold bg-red-500 hover:bg-red-600 transition shadow-lg shadow-red-500/30">Delete</button>
-            </div>
-        </div>
-    </div>
-
+<body class="bg-slate-50 font-sans text-slate-900">
+    <!-- Auth Check -->
     <script>
+        (function() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) window.location.replace('/auth.html');
+        })();
+    </script>
+
+    <div id="admin-layout-wrapper">
+        <div class="page-container p-6 relative">
+            
+            <!-- Loading Overlay -->
+            <div id="page-loading" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-emerald-500 mb-4"></div>
+                <p class="text-slate-500 font-bold animate-pulse">Loading Salon Details...</p>
+            </div>
+
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 text-sm text-slate-400 mb-1">
+                        <a href="salons.html" class="hover:text-emerald-600 transition"><i class="fas fa-arrow-left mr-1"></i> Back to Salons</a>
+                        <span>/</span>
+                        <span>Manage</span>
+                    </div>
+                    <h1 class="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
+                        <span id="salon-name">Loading...</span>
+                        <span id="salon-status-badge" class="text-sm px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 font-bold">...</span>
+                    </h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="window.open(`/salon.html?id=${salonId}`, '_blank')" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm">
+                        <i class="fas fa-external-link-alt mr-2"></i> View Public Page
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left Column: Details -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Basic Info Card -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-info-circle text-emerald-500"></i> Salon Details
+                        </h3>
+                        <div class="space-y-4" id="details-container">
+                            <!-- Populated by JS -->
+                            <div class="animate-pulse space-y-3">
+                                <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+                                <div class="h-4 bg-slate-100 rounded w-1/2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Card -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-bar text-blue-500"></i> Analytics
+                        </h3>
+                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Profile Views</p>
+                                <p class="text-2xl font-extrabold text-slate-800 mt-1" id="salon-views">0</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                                <i class="fas fa-eye"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Subscriptions & Finance -->
+                <div class="lg:col-span-2 space-y-8">
+                    
+                    <!-- Subscription Calendar -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-calendar-check text-purple-500"></i> Subscription Status
+                            </h3>
+                            <div class="flex items-center gap-4 bg-slate-50 rounded-lg p-1">
+                                <button onclick="changeYear(-1)" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm text-slate-500 transition">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="font-mono font-bold text-slate-700" id="current-year">2024</span>
+                                <button onclick="changeYear(1)" class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm text-slate-500 transition">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="months-grid">
+                            <!-- Calendar Grid -->
+                        </div>
+                        
+                        <div class="mt-6 flex flex-wrap items-center gap-4 text-xs text-slate-500 border-t border-slate-50 pt-4">
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300"></span> Paid</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-purple-100 border border-purple-300"></span> Gift</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-100 border border-blue-300"></span> 50% Off</div>
+                            <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-100 border border-amber-300"></span> Pending</div>
+                        </div>
+                    </div>
+
+                    <!-- Invoices Table -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div class="p-6 border-b border-slate-50 flex items-center justify-between">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fas fa-file-invoice-dollar text-emerald-600"></i> Payment History
+                            </h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                                    <tr>
+                                        <th class="px-4 py-3">Date</th>
+                                        <th class="px-4 py-3">Invoice #</th>
+                                        <th class="px-4 py-3 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoices-table-body" class="divide-y divide-slate-50">
+                                    <tr><td colspan="3" class="px-4 py-8 text-center text-slate-400">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-all scale-100">
+            <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mb-4 mx-auto">
+                <i class="fas fa-exclamation-triangle text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 text-center mb-2" id="confirm-title">Confirm Action</h3>
+            <p class="text-slate-500 text-sm text-center mb-6" id="confirm-message">Are you sure?</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition">Cancel</button>
+                <button id="confirm-btn-action" class="flex-1 py-2.5 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition shadow-lg shadow-amber-500/30">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Action Modal -->
+    <div id="sub-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative animate-fade-in-up">
+            <button onclick="closeSubModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="text-center mb-6">
+                <h3 class="text-xl font-extrabold text-slate-800" id="sub-modal-title">Month Year</h3>
+                <p class="text-sm text-slate-500" id="sub-modal-desc">Manage subscription</p>
+            </div>
+
+            <!-- Create New -->
+            <div id="sub-modal-create" class="hidden space-y-3">
+                <button onclick="confirmSubscription('paid')" class="w-full py-4 px-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-xl flex items-center justify-between group transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="font-bold text-emerald-900">Mark as Paid</div>
+                            <div class="text-xs text-emerald-600">Manual payment received</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-emerald-300 group-hover:text-emerald-500 transition"></i>
+                </button>
+
+                <button id="btn-offer" onclick="confirmSubscription('offer')" class="w-full py-4 px-4 bg-purple-50 hover:bg-purple-100 border border-purple-100 rounded-xl flex items-center justify-between group transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center shadow-sm">
+                            <i class="fas fa-gift"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="font-bold text-purple-900">Gift Month</div>
+                            <div class="text-xs text-purple-600">Free trial / Special offer</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-purple-300 group-hover:text-purple-500 transition"></i>
+                </button>
+
+                <button onclick="confirmSubscription('half_offer')" class="w-full py-4 px-4 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-xl flex items-center justify-between group transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-sm">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="font-bold text-blue-900">50% Discount</div>
+                            <div class="text-xs text-blue-600">Half price offer</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-blue-300 group-hover:text-blue-500 transition"></i>
+                </button>
+            </div>
+
+            <!-- Verify Pending -->
+            <div id="sub-modal-pending" class="hidden space-y-4">
+                <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 text-center mb-2">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mx-auto mb-2">
+                        <i class="fas fa-clock text-xl"></i>
+                    </div>
+                    <h4 class="font-bold text-amber-900">Payment Pending</h4>
+                    <p class="text-xs text-amber-600 mt-1" id="pending-method">Method: -</p>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase">Payment Amount</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                        <input type="number" id="pending-amount-input" value="100" class="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <button onclick="approvePendingPayment()" class="py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 transition">
+                        Approve
+                    </button>
+                    <button onclick="rejectPendingPayment()" class="py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition">
+                        Reject
+                    </button>
+                </div>
+            </div>
+
+            <!-- Manage Existing -->
+            <div id="sub-modal-manage" class="hidden space-y-3">
+                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center mb-4">
+                    <div class="text-sm text-slate-500">Current Status</div>
+                    <div class="font-bold text-slate-800 text-lg" id="sub-details-status">Active</div>
+                </div>
+                <button onclick="deleteSubscription()" class="w-full py-3 text-red-500 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition border border-red-100">
+                    <i class="fas fa-trash-alt mr-2"></i> Delete Subscription
+                </button>
+            </div>
+
+            <button onclick="closeSubModal()" class="mt-6 w-full py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const adminToken = localStorage.getItem('adminToken');
         const urlParams = new URLSearchParams(window.location.search);
         const salonId = urlParams.get('id');
-        const adminToken = localStorage.getItem('adminToken');
 
-        if (!adminToken) window.location.replace('/auth.html');
         if (!salonId) {
-            alert('Salon ID not found');
-            window.location.href = '/admin_saloony/dashboard/salons.html';
+            alert('No Salon ID provided');
+            window.location.href = 'salons.html';
         }
 
-        // DOM Elements
+        // Define UI Elements Mapping
         const els = {
+            loading: document.getElementById('page-loading'),
             name: document.getElementById('salon-name'),
             statusBadge: document.getElementById('salon-status-badge'),
-            statusToggle: document.getElementById('salon-status-toggle'),
-            statusText: document.getElementById('salon-status-text'),
-            idDisplay: document.getElementById('salon-id-display'),
-            rating: document.getElementById('salon-rating'),
-            logo: document.getElementById('salon-logo'),
-            icon: document.getElementById('salon-icon'),
-            ownerName: document.getElementById('owner-name'),
-            ownerPhone: document.getElementById('owner-phone'),
-            salonPhone: document.getElementById('salon-phone'),
-            address: document.getElementById('salon-address'),
-            city: document.getElementById('salon-city'),
-            invoicesTable: document.getElementById('invoices-table-body'),
-            publicLink: document.getElementById('public-link'),
-            loading: document.getElementById('loading-overlay'),
-            bookingsCount: document.getElementById('total-bookings'),
-            viewsCount: document.getElementById('total-views')
+            detailsContainer: document.getElementById('details-container'),
+            viewsCount: document.getElementById('salon-views'),
+            invoicesTable: document.getElementById('invoices-table-body')
         };
 
         // --- Functions ---
 
         let currentYear = new Date().getFullYear();
         let salonSubscriptions = [];
+        let salonPayments = []; // Store payments globally
+        let currentPendingPayment = null;
+        let currentSubscriptionId = null;
+        let currentActionMonth = null;
+        let currentActionYear = null;
+
+        // Render functions needed by fetchSalonData
+        function renderHeader(salon) {
+            els.name.textContent = salon.salon_name;
+            els.statusBadge.textContent = salon.status;
+            
+            // Status colors
+            const statusColors = {
+                'active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                'pending': 'bg-amber-100 text-amber-700 border-amber-200',
+                'rejected': 'bg-red-100 text-red-700 border-red-200',
+                'suspended': 'bg-slate-200 text-slate-600 border-slate-300'
+            };
+            const colorClass = statusColors[salon.status] || 'bg-slate-100 text-slate-500 border-slate-200';
+            els.statusBadge.className = `text-sm px-3 py-1 rounded-full border font-bold uppercase tracking-wide ${colorClass}`;
+        }
+
+        function renderDetails(details) {
+            if (!details) return;
+            
+            const items = [
+                { label: 'Owner Name', value: details.owner_name, icon: 'fa-user' },
+                { label: 'Phone', value: details.owner_phone || details.salon_phone, icon: 'fa-phone' },
+                { label: 'City', value: details.city, icon: 'fa-map-marker-alt' },
+                { label: 'Address', value: details.address, icon: 'fa-location-dot' },
+                { label: 'Gender Focus', value: details.gender_focus, icon: 'fa-venus-mars' },
+                { label: 'Joined', value: new Date(details.created_at).toLocaleDateString(), icon: 'fa-calendar' }
+            ];
+
+            els.detailsContainer.innerHTML = items.map(item => `
+                <div class="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 mt-0.5">
+                        <i class="fas ${item.icon} text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${item.label}</p>
+                        <p class="font-bold text-slate-700 text-sm">${item.value || '-'}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
 
         async function fetchSalonData() {
             try {
@@ -235,8 +354,8 @@
                 
                 // 3. Get Financials & Subscriptions
                 await Promise.all([
-                    fetchInvoices(),
-                    fetchSubscriptions()
+                    fetchInvoices(), // This populates salonPayments
+                    fetchSubscriptions() // This populates salonSubscriptions
                 ]);
 
                 // 4. Get Stats
@@ -266,9 +385,35 @@
             }
         }
 
-        function changeYear(delta) {
+        // Global functions for HTML onclick attributes
+        window.changeYear = function(delta) {
             currentYear += delta;
             renderCalendar();
+        }
+
+        window.closeConfirmModal = function() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        window.deleteInvoice = async function(id) {
+             if(!confirm('Delete this invoice record?')) return;
+             
+             try {
+                 const res = await fetch(`/api/admin/payments/${id}`, {
+                     method: 'DELETE',
+                     headers: { 'Authorization': `Bearer ${adminToken}` }
+                 });
+                 const data = await res.json();
+                 if (data.success) {
+                     fetchInvoices();
+                     fetchSubscriptions(); // Update calendar too
+                 } else {
+                     alert('Failed to delete invoice: ' + data.message);
+                 }
+             } catch (e) {
+                 console.error(e);
+                 alert('Connection error');
+             }
         }
 
         // --- Custom Confirmation Logic ---
@@ -290,9 +435,6 @@
             modal.classList.remove('hidden');
         }
 
-        function closeConfirmModal() {
-            document.getElementById('confirm-modal').classList.add('hidden');
-        }
         // -------------------------------
 
         function renderCalendar() {
@@ -314,133 +456,114 @@
 
             months.forEach((monthName, index) => {
                 // Determine the middle of the month to check coverage
-                // Using UTC construction to compare with API dates (which are usually YYYY-MM-DD)
-                // Actually, let's use string comparison for safety against timezones
                 const mStr = String(index + 1).padStart(2, '0');
                 const checkDate = `${currentYear}-${mStr}-15`; // Middle of the month
-
-                // Find matching subscription
+                
+                // Find matching subscription (Active)
                 const sub = salonSubscriptions.find(s => {
-                    // API dates are typically YYYY-MM-DD strings
                     const start = s.start_date.slice(0, 10);
                     const end = s.end_date ? s.end_date.slice(0, 10) : '2099-12-31';
-                    
                     return checkDate >= start && checkDate <= end;
+                });
+
+                // Find matching pending payment
+                const pendingPayment = salonPayments.find(p => {
+                    if (p.payment_status !== 'pending') return false;
+                    
+                    const pStart = p.valid_from.slice(0, 10);
+                    const pEnd = p.valid_until.slice(0, 10);
+                    // Check overlap
+                    const mStart = `${currentYear}-${mStr}-01`;
+                    const lastDay = new Date(currentYear, index + 1, 0).getDate();
+                    const mEnd = `${currentYear}-${mStr}-${lastDay}`;
+                    
+                    return pStart <= mEnd && pEnd >= mStart;
                 });
 
                 const isPast = (currentYear < thisYear) || (currentYear === thisYear && index < currentMonthIndex);
                 
-                let statusClass = 'bg-slate-50 hover:bg-slate-100 border-2 border-transparent hover:border-emerald-200 cursor-pointer'; // Default
+                let cellClass = 'bg-slate-50 border-slate-100 text-slate-400';
                 let icon = '';
-                let label = '';
-                let subId = null;
+                let status = 'none';
 
                 if (sub) {
                     if (sub.package === 'offer' || sub.amount === 0) {
-                        statusClass = 'bg-purple-50 border-2 border-purple-200 text-purple-700';
-                        icon = '<i class="fas fa-gift text-purple-500"></i>';
-                        label = 'Gift';
+                        cellClass = 'bg-purple-50 border-purple-200 text-purple-600';
+                        icon = '<i class="fas fa-gift"></i>';
+                        status = 'gift';
                     } else if (sub.package === 'half_offer') {
-                        statusClass = 'bg-blue-50 border-2 border-blue-200 text-blue-700';
-                        icon = '<i class="fas fa-percentage text-blue-500"></i>';
-                        label = '50% Off';
+                        cellClass = 'bg-blue-50 border-blue-200 text-blue-600';
+                        icon = '<i class="fas fa-percentage"></i>';
+                        status = 'half';
                     } else {
-                        statusClass = 'bg-emerald-50 border-2 border-emerald-200 text-emerald-700';
-                        icon = '<i class="fas fa-check-circle text-emerald-500"></i>';
-                        label = 'Paid';
+                        cellClass = 'bg-emerald-50 border-emerald-200 text-emerald-600';
+                        icon = '<i class="fas fa-check"></i>';
+                        status = 'paid';
                     }
-                    subId = sub.id;
+                } else if (pendingPayment) {
+                    cellClass = 'bg-amber-50 border-amber-200 text-amber-600 animate-pulse';
+                    icon = '<i class="fas fa-clock"></i>';
+                    status = 'pending';
                 }
 
-                const div = document.createElement('div');
-                div.className = `relative p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer ${statusClass}`;
-                
-                // Content
-                div.innerHTML = `
-                    <div class="text-sm font-bold ${!sub ? 'text-slate-600' : ''}">${monthName}</div>
-                    ${sub ? `
-                    <div class="flex items-center gap-1.5 text-xs font-medium opacity-80">
-                        ${icon} <span>${label}</span>
-                    </div>` : ''}
-                `;
-
                 // Interaction
-                div.onclick = () => openSubscriptionModal(index, monthName, offerUsed, sub);
-
-                grid.appendChild(div);
+                const isClickable = true; // Always clickable to manage or add
+                
+                grid.innerHTML += `
+                    <div onclick="openSubModal(${index}, ${currentYear}, '${status}', '${monthName}')" 
+                        class="relative h-20 rounded-xl border flex flex-col items-center justify-center cursor-pointer transition hover:shadow-md ${cellClass}">
+                        <span class="text-xs font-bold mb-1">${monthName.slice(0,3)}</span>
+                        <div class="text-lg">${icon || (isPast ? '<i class="fas fa-times opacity-20"></i>' : '<i class="fas fa-plus opacity-30"></i>')}</div>
+                        ${status === 'pending' ? '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500"></span>' : ''}
+                    </div>
+                `;
             });
         }
 
-        // --- Subscription Modal ---
-        let selectedMonthIndex = null;
-        let currentSubId = null;
-
-        function openSubscriptionModal(monthIndex, monthName, offerUsed, existingSub) {
-            selectedMonthIndex = monthIndex;
-            currentSubId = existingSub ? existingSub.id : null;
+        window.openSubModal = function(monthIndex, year, status, monthName) {
+            currentActionMonth = monthIndex;
+            currentActionYear = year;
             
-            // Create modal if not exists
-            let modal = document.getElementById('sub-modal');
-            if (!modal) {
-                document.body.insertAdjacentHTML('beforeend', `
-                    <div id="sub-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
-                        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-all scale-100">
-                            <h3 class="text-lg font-bold text-slate-800 mb-1" id="sub-modal-title">Activate Subscription</h3>
-                            <p class="text-slate-500 text-sm mb-6" id="sub-modal-desc">Select an option for this month.</p>
-                            
-                            <div id="sub-modal-create" class="space-y-3">
-                                <button onclick="confirmSubscription('monthly_100')" class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-emerald-100 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300 transition group text-left">
-                                    <div>
-                                        <div class="font-bold text-emerald-800">Paid Subscription</div>
-                                        <div class="text-xs text-emerald-600">Generate Invoice (100 ILS)</div>
-                                    </div>
-                                    <i class="fas fa-check-circle text-2xl text-emerald-400 group-hover:text-emerald-600 transition"></i>
-                                </button>
+            // Find existing sub or pending payment for context
+            const mStr = String(monthIndex + 1).padStart(2, '0');
+            const checkDate = `${year}-${mStr}-15`;
 
-                                <button onclick="confirmSubscription('half_offer')" class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-blue-100 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition group text-left">
-                                    <div>
-                                        <div class="font-bold text-blue-800">50% Offer</div>
-                                        <div class="text-xs text-blue-600">Union Member (50 ILS)</div>
-                                    </div>
-                                    <i class="fas fa-percentage text-2xl text-blue-400 group-hover:text-blue-600 transition"></i>
-                                </button>
+            const existingSub = salonSubscriptions.find(s => {
+                const start = s.start_date.slice(0, 10);
+                const end = s.end_date ? s.end_date.slice(0, 10) : '2099-12-31';
+                return checkDate >= start && checkDate <= end;
+            });
 
-                                <button id="btn-offer" onclick="confirmSubscription('offer')" class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-purple-100 bg-purple-50 hover:bg-purple-100 hover:border-purple-300 transition group text-left">
-                                    <div>
-                                        <div class="font-bold text-purple-800">Gift</div>
-                                        <div class="text-xs text-purple-600">One-time offer</div>
-                                    </div>
-                                    <i class="fas fa-gift text-2xl text-purple-400 group-hover:text-purple-600 transition"></i>
-                                </button>
-                            </div>
+            // Find pending payment
+            const pendingPayment = salonPayments.find(p => {
+                if (p.payment_status !== 'pending') return false;
+                const pStart = p.valid_from.slice(0, 10);
+                const pEnd = p.valid_until.slice(0, 10);
+                const mStart = `${year}-${mStr}-01`;
+                const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+                const mEnd = `${year}-${mStr}-${lastDay}`;
+                return pStart <= mEnd && pEnd >= mStart;
+            });
 
-                            <div id="sub-modal-manage" class="hidden space-y-3">
-                                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center mb-4">
-                                    <div class="text-sm text-slate-500">Current Status</div>
-                                    <div class="font-bold text-slate-800 text-lg" id="sub-details-status">Active</div>
-                                </div>
-                                <button onclick="deleteSubscription()" class="w-full py-3 text-red-500 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition border border-red-100">
-                                    <i class="fas fa-trash-alt mr-2"></i> Delete Subscription
-                                </button>
-                            </div>
+            currentPendingPayment = pendingPayment; // Store for approve action
+            currentSubscriptionId = existingSub ? existingSub.id : null;
 
-                            <button onclick="closeSubModal()" class="mt-6 w-full py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">Cancel</button>
-                        </div>
-                    </div>
-                `);
-                modal = document.getElementById('sub-modal');
-            }
-
+            const modal = document.getElementById('sub-modal');
+            
             const createContainer = document.getElementById('sub-modal-create');
             const manageContainer = document.getElementById('sub-modal-manage');
+            const pendingContainer = document.getElementById('sub-modal-pending');
             const title = document.getElementById('sub-modal-title');
             const desc = document.getElementById('sub-modal-desc');
+
+            createContainer.classList.add('hidden');
+            manageContainer.classList.add('hidden');
+            pendingContainer.classList.add('hidden');
 
             if (existingSub) {
                 // Manage Mode
                 title.textContent = `Manage ${monthName}`;
                 desc.textContent = "Subscription details";
-                createContainer.classList.add('hidden');
                 manageContainer.classList.remove('hidden');
                 
                 let statusText = 'Paid';
@@ -449,14 +572,24 @@
                 
                 document.getElementById('sub-details-status').textContent = statusText;
 
+            } else if (pendingPayment) {
+                // Pending Mode
+                title.textContent = `Verify Payment`;
+                desc.textContent = `${monthName} ${year}`;
+                pendingContainer.classList.remove('hidden');
+                
+                document.getElementById('pending-method').textContent = `Method: ${pendingPayment.payment_method === 'reflect' ? 'Reflect' : 'Bank Transfer'}`;
+
             } else {
                 // Create Mode
-                title.textContent = `${monthName} ${currentYear}`;
+                title.textContent = `${monthName} ${year}`;
                 desc.textContent = "Select an option for this month.";
                 createContainer.classList.remove('hidden');
-                manageContainer.classList.add('hidden');
 
                 // Update UI based on offer usage
+                // Check offer usage AGAIN based on latest data
+                const offerUsed = salonSubscriptions.some(s => s.package === 'offer' || (s.amount === 0 && s.status !== 'cancelled'));
+                
                 const offerBtn = document.getElementById('btn-offer');
                 if (offerUsed) {
                     offerBtn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
@@ -472,22 +605,93 @@
             modal.classList.remove('hidden');
         }
 
-        function closeSubModal() {
+        window.closeSubModal = function() {
             document.getElementById('sub-modal').classList.add('hidden');
         }
 
-        async function confirmSubscription(type) {
-            if (selectedMonthIndex === null) return;
+        window.approvePendingPayment = async function() {
+            if (!currentPendingPayment) return;
             
-            // Construct YYYY-MM-DD strings explicitly to avoid timezone shifts
-            const m = String(selectedMonthIndex + 1).padStart(2, '0');
-            const startDate = `${currentYear}-${m}-01`;
+            const amountInput = document.getElementById('pending-amount-input');
+            const amount = amountInput ? parseFloat(amountInput.value) : 100;
+
+            if (isNaN(amount) || amount < 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/subscriptions/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify({ 
+                        id: currentPendingPayment.id,
+                        status: 'completed',
+                        amount: amount
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    closeSubModal();
+                    fetchInvoices();      // Refresh invoices/payments
+                    fetchSubscriptions(); // Refresh active subscriptions
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error');
+            }
+        }
+
+        window.rejectPendingPayment = async function() {
+            if (!currentPendingPayment) return;
+            if(!confirm('Reject this payment?')) return;
+
+            try {
+                const res = await fetch('/api/admin/subscriptions/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify({ 
+                        id: currentPendingPayment.id,
+                        status: 'failed' // or rejected
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    closeSubModal();
+                    fetchInvoices();
+                    fetchSubscriptions();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error');
+            }
+        }
+
+        window.confirmSubscription = function(type) {
+            showConfirm('Activate Subscription', `Confirm activating ${type}?`, () => {
+                createSubscription(type);
+            });
+        }
+
+        async function createSubscription(type) {
+            // Calculate dates based on currentActionMonth/Year
+            const startDate = `${currentActionYear}-${String(currentActionMonth + 1).padStart(2, '0')}-01`;
+            const lastDay = new Date(currentActionYear, currentActionMonth + 1, 0).getDate();
+            const endDate = `${currentActionYear}-${String(currentActionMonth + 1).padStart(2, '0')}-${lastDay}`;
             
-            // Calculate end date (last day of month)
-            const lastDay = new Date(currentYear, selectedMonthIndex + 1, 0).getDate();
-            const endDate = `${currentYear}-${m}-${lastDay}`;
-            
-            let amount = 100;
+            let amount = 100; // Default
             if (type === 'offer') amount = 0;
             else if (type === 'half_offer') amount = 50;
 
@@ -522,12 +726,39 @@
             }
         }
 
+        window.deleteSubscription = async function() {
+            if (!currentSubscriptionId) return;
+            if(!confirm('Are you sure you want to delete this subscription?')) return;
+
+            try {
+                const res = await fetch(`/api/admin/subscriptions/${currentSubscriptionId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeSubModal();
+                    fetchSubscriptions();
+                    fetchInvoices();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error');
+            }
+        }
+
         async function fetchInvoices() {
             try {
-                const res = await fetch(`/api/salon/payments/${salonId}`);
+                const res = await fetch(`/api/admin/salons/${salonId}/payments`, {
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
                 const data = await res.json();
                 const payments = data.payments || [];
                 
+                salonPayments = payments; // Update global store for calendar
+
                 if (payments.length === 0) {
                     els.invoicesTable.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-slate-400 text-sm">No invoices found</td></tr>`;
                     return;
@@ -538,7 +769,8 @@
                         <td class="px-4 py-3 text-slate-500 font-mono">${new Date(p.created_at).toISOString().slice(0,10)}</td>
                         <td class="px-4 py-3 font-mono text-xs text-slate-500 font-bold">#${p.invoice_number || '-'}</td>
                         <td class="px-4 py-3 font-bold text-slate-800 text-right flex items-center justify-end gap-3">
-                            <span>${p.amount} ${p.currency}</span>
+                            <span class="${p.payment_status === 'pending' ? 'text-amber-500' : ''}">${p.amount} ${p.currency}</span>
+                            ${p.payment_status === 'pending' ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 rounded">Pending</span>' : ''}
                             <button onclick="deleteInvoice(${p.id})" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition p-1" title="Delete Invoice">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
@@ -546,183 +778,18 @@
                     </tr>
                 `).join('');
 
+                // Refresh calendar to show pending dots
+                renderCalendar();
+
             } catch (e) {
+                console.error(e);
                 els.invoicesTable.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-red-400 text-sm">Failed to load invoices</td></tr>`;
             }
         }
-
-        async function toggleSalonStatus() {
-            const isChecked = els.statusToggle.checked;
-            const newStatus = isChecked ? 'accepted' : 'rejected'; 
-            
-            // Optimistic UI
-            els.statusText.textContent = isChecked ? 'Active' : 'Inactive';
-            els.statusText.className = `ms-3 text-sm font-bold select-none ${isChecked ? 'text-emerald-600' : 'text-slate-500'}`;
-            
-            // Disable toggle while processing
-            els.statusToggle.disabled = true;
-
-            try {
-                const res = await fetch(`/api/admin/salon/status/${salonId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${adminToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: newStatus })
-                });
-                
-                const data = await res.json();
-                if (data.success) {
-                    const statusHtml = isChecked 
-                        ? '<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold"><i class="fas fa-check-circle"></i> Active</span>'
-                        : '<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-xs font-bold"><i class="fas fa-ban"></i> Inactive</span>';
-                    els.statusBadge.innerHTML = statusHtml;
-                } else {
-                    // Revert
-                    els.statusToggle.checked = !isChecked;
-                    els.statusText.textContent = !isChecked ? 'Active' : 'Inactive';
-                    els.statusText.className = `ms-3 text-sm font-bold select-none ${!isChecked ? 'text-emerald-600' : 'text-slate-500'}`;
-                    alert('Failed to update status: ' + (data.error || 'Unknown error'));
-                }
-            } catch (e) {
-                console.error(e);
-                els.statusToggle.checked = !isChecked;
-                els.statusText.textContent = !isChecked ? 'Active' : 'Inactive';
-                els.statusText.className = `ms-3 text-sm font-bold select-none ${!isChecked ? 'text-emerald-600' : 'text-slate-500'}`;
-                alert('Connection error');
-            } finally {
-                els.statusToggle.disabled = false;
-            }
-        }
-
-        function renderHeader(salon) {
-            els.name.textContent = salon.salon_name;
-            els.idDisplay.textContent = `#${salon.id}`;
-            els.publicLink.href = `/salon.html?id=${salon.id}`;
-            els.publicLink.classList.remove('hidden');
-            
-            // Status Badge
-            let statusHtml = '';
-            if (salon.status === 'accepted') statusHtml = '<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold"><i class="fas fa-check-circle"></i> Active</span>';
-            else if (salon.status === 'rejected') statusHtml = '<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-xs font-bold"><i class="fas fa-ban"></i> Inactive</span>';
-            else statusHtml = '<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold"><i class="fas fa-clock"></i> Pending</span>';
-            els.statusBadge.innerHTML = statusHtml;
-
-            // Set Toggle State
-            const isActive = salon.status === 'accepted';
-            els.statusToggle.checked = isActive;
-            els.statusText.textContent = isActive ? 'Active' : 'Inactive';
-            els.statusText.className = `ms-3 text-sm font-bold select-none ${isActive ? 'text-emerald-600' : 'text-slate-500'}`;
-
-            // Basic info from list
-            els.city.textContent = salon.city || '—';
-            
-            // Owner info
-            if (salon.owner_name) els.ownerName.textContent = salon.owner_name;
-            if (salon.owner_phone) {
-                els.ownerPhone.textContent = salon.owner_phone;
-                els.ownerPhone.href = `tel:${salon.owner_phone}`;
-            }
-            if (salon.salon_phone) {
-                els.salonPhone.textContent = salon.salon_phone;
-                els.salonPhone.href = `tel:${salon.salon_phone}`;
-            }
-
-            // Location info
-            if (salon.address) els.address.textContent = salon.address;
-        }
-
-        function renderDetails(details) {
-            if (details.image_url) {
-                els.logo.src = details.image_url;
-                els.logo.classList.remove('hidden');
-                els.icon.classList.add('hidden');
-            }
-            if (details.avg_rating) els.rating.textContent = Number(details.avg_rating).toFixed(1);
-            if (details.address) els.address.textContent = details.address;
-            if (details.salon_phone) {
-                els.salonPhone.textContent = details.salon_phone;
-                els.salonPhone.href = `tel:${details.salon_phone}`;
-            }
-        }
-
-        async function deleteSubscription() {
-            if (!currentSubId) {
-                console.error('No currentSubId set');
-                return;
-            }
-
-            showConfirm(
-                'Delete Subscription', 
-                'Are you sure you want to delete this subscription? This will NOT delete the associated invoice automatically.',
-                async () => {
-                    try {
-                        const res = await fetch(`/api/admin/subscriptions/${currentSubId}`, {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${adminToken}` }
-                        });
-                        
-                        if (!res.ok) {
-                            const text = await res.text();
-                            console.error('Delete failed:', res.status, text);
-                            alert(`Error: Server returned ${res.status}. Check console for details.`);
-                            return;
-                        }
-
-                        const data = await res.json();
-                        if (data.success) {
-                            closeSubModal();
-                            // Force delay to allow DB commit (though awaiting fetch usually enough)
-                            setTimeout(() => fetchSubscriptions(), 100);
-                        } else {
-                            alert('Error: ' + (data.error || 'Failed to delete'));
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        alert('Connection error or invalid response');
-                    }
-                }
-            );
-        }
-
-        async function deleteInvoice(id) {
-            showConfirm(
-                'Delete Invoice',
-                'Are you sure you want to delete this invoice?',
-                async () => {
-                    try {
-                        const res = await fetch(`/api/admin/payments/${id}`, {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${adminToken}` }
-                        });
-
-                        if (!res.ok) {
-                            const text = await res.text();
-                            console.error('Delete failed:', res.status, text);
-                            alert(`Error: Server returned ${res.status}. Check console for details.`);
-                            return;
-                        }
-                        
-                        const data = await res.json();
-                        if (data.success) {
-                            closeInvoiceModal(); // Assuming we might want to close if opened via modal, or just refresh
-                            fetchInvoices();
-                        } else {
-                            alert('Error: ' + (data.error || 'Failed to delete'));
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        alert('Connection error or invalid response');
-                    }
-                }
-            );
-        }
-
-        // Init
+        
+        // Start
         fetchSalonData();
 
     </script>
-
 </body>
 </html>

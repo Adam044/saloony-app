@@ -26,7 +26,30 @@ const SaloonyComponents = {
         // Check Auth for Menu
         const token = localStorage.getItem('saloony_token');
         const accountText = token ? 'حسابي' : 'تسجيل الدخول';
-        const accountHref = token ? `${pagesPath}/user_account.html` : `${pagesPath}/auth.html`;
+        
+        // Determine Account Link based on User Type
+        let accountHref = token ? `${pagesPath}/user_account.html` : `${pagesPath}/auth.html`;
+        if (token) {
+            try {
+                const userStr = localStorage.getItem('saloony_user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    const userType = String(user.user_type || '').toLowerCase().trim();
+                    
+                    if (userType === 'salon' || userType === 'salon_owner') {
+                        accountHref = '/admin_salon';
+                    } else if (userType === 'admin' || userType === 'administrator') {
+                        accountHref = '/admin_dashboard';
+                    } else if (userType === 'employee') {
+                        accountHref = '/presentation';
+                    }
+                    // 'user' type keeps the default user_account.html
+                }
+            } catch (e) {
+                console.error('Error parsing user data for menu link', e);
+            }
+        }
+
         const accountIcon = token ? 'fa-user' : 'fa-right-to-bracket';
 
         const html = `

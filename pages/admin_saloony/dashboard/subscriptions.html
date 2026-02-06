@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pending Subscriptions - Saloony Admin</title>
+    <link rel="icon" type="image/png" href="/images/Saloony-app_icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/admin_saloony/assets/admin-style.css">
+    <script defer src="/admin_saloony/assets/admin-core.js"></script>
+    <script defer src="/admin_saloony/components/Sidebar.js"></script>
+</head>
+<body class="bg-slate-50">
+    <div id="app-layout" class="flex h-screen overflow-hidden">
+        <!-- Sidebar container -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+            <!-- Top Bar -->
+            <header class="bg-white/80 backdrop-blur-md border-b border-gray-100 z-30 sticky top-0">
+                <div class="flex items-center justify-between px-6 py-4">
+                    <div class="flex items-center gap-4">
+                        <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition">
+                            <i class="fa-solid fa-bars text-xl"></i>
+                        </button>
+                        <h1 class="text-xl font-bold text-slate-800">Pending Subscriptions</h1>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100">
+                            <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                            <span class="text-xs font-bold text-amber-700" id="pending-count">0 Pending</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div class="max-w-6xl mx-auto space-y-6">
+                    
+                    <!-- Pending List -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-gray-50 text-slate-500 font-medium">
+                                    <tr>
+                                        <th class="px-6 py-4">Salon</th>
+                                        <th class="px-6 py-4">Payment Method</th>
+                                        <th class="px-6 py-4">Date</th>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="subscriptions-table-body" class="divide-y divide-gray-100">
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                                            <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
+                                            <p>Loading subscriptions...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Render Sidebar
+            const sidebarContainer = document.getElementById('sidebar-container');
+            if (sidebarContainer && window.Sidebar) {
+                sidebarContainer.innerHTML = window.Sidebar.render();
+            }
+            
+            fetchSubscriptions();
+        });
+
+        async function fetchSubscriptions() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) window.location.replace('/auth.html');
+
+            try {
+                const res = await fetch('/api/admin/subscriptions?status=pending', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderTable(data.subscriptions);
+                    document.getElementById('pending-count').textContent = `${data.subscriptions.length} Pending`;
+                } else {
+                    console.error('Failed to load:', data.message);
+                }
+            } catch (e) {
+                console.error('Error:', e);
+            }
+        }
+
+        function renderTable(subs) {
+            const tbody = document.getElementById('subscriptions-table-body');
+            
+            if (subs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                            <div class="flex flex-col items-center gap-3">
+                                <div class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center">
+                                    <i class="fas fa-check text-slate-300 text-xl"></i>
+                                </div>
+                                <p>No pending subscriptions found</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = subs.map(sub => `
+                <tr class="hover:bg-slate-50 transition cursor-pointer group" onclick="window.location.href='/admin_saloony/dashboard/manage_salon.html?id=${sub.salon_id}'">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-lg">
+                                ${sub.salon_name.charAt(0)}
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800 group-hover:text-emerald-600 transition">${sub.salon_name}</div>
+                                <div class="text-xs text-slate-500">${sub.owner_name}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            ${getMethodIcon(sub.payment_method)}
+                            <span class="capitalize font-medium text-slate-700">${sub.payment_method}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-slate-500">
+                        ${new Date(sub.created_at).toLocaleDateString()}
+                        <div class="text-xs opacity-60">${new Date(sub.created_at).toLocaleTimeString()}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold flex w-fit items-center gap-1.5">
+                            <i class="fas fa-clock text-[10px]"></i> Pending
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <i class="fas fa-chevron-right text-slate-300 group-hover:text-emerald-500 transition"></i>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getMethodIcon(method) {
+            if (method === 'reflect') return '<i class="fas fa-mobile-alt text-purple-500 bg-purple-50 p-1.5 rounded-md"></i>';
+            if (method === 'bank') return '<i class="fas fa-university text-blue-500 bg-blue-50 p-1.5 rounded-md"></i>';
+            return '<i class="fas fa-money-bill text-slate-500"></i>';
+        }
+    </script>
+</body>
+</html>

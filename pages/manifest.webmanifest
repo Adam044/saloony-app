@@ -5,7 +5,7 @@
   "description": "احجز موعدك بسهولة مع أفضل الصالونات",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/",
+  "start_url": "/pages/saloony/splash.html",
   "scope": "/",
   "display": "standalone",
   "prefer_related_applications": false,

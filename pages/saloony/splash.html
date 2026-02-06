@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>صالوني - جاري التحميل...</title>
+    <meta name="theme-color" content="#152026">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: linear-gradient(135deg, #152026 0%, #1E293B 100%);
+            color: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        
+        /* Background Pattern */
+        .bg-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(rgba(6, 193, 103, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-container {
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: scale(0.9);
+            animation: fadeInScale 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            position: relative;
+        }
+        
+        /* Glow effect behind logo */
+        .logo-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(6, 193, 103, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulseGlow 2s infinite ease-in-out;
+            z-index: -1;
+        }
+
+        .logo {
+            width: 140px;
+            height: auto;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+        }
+
+        /* Modern Spinner */
+        .spinner-container {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out 0.4s forwards;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #06C167;
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+        }
+        
+        .spinner-ring:nth-child(2) {
+            width: 70%;
+            height: 70%;
+            top: 15%;
+            left: 15%;
+            border-top-color: transparent;
+            border-bottom-color: #10b981;
+            animation-duration: 1.5s;
+            animation-direction: reverse;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInScale {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.2; }
+        }
+        
+        .loading-text {
+            margin-top: 2rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #94a3b8;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out 0.6s forwards;
+            letter-spacing: 0.5px;
+        }
+        
+        .user-welcome {
+            margin-top: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+        
+        .user-welcome.visible {
+            opacity: 1;
+            height: auto;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-pattern"></div>
+
+    <div class="content-wrapper">
+        <div class="logo-container">
+            <div class="logo-glow"></div>
+            <!-- Using absolute path from server root -->
+            <img src="/assets/images/Saloony_logo.png" alt="Saloony" class="logo" onerror="this.src='/images/Saloony-app_icon.png'">
+        </div>
+    
+        <div class="spinner-container">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+        </div>
+        
+        <div class="loading-text">جاري التحميل...</div>
+        <div id="welcome-msg" class="user-welcome"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial check for user to show welcome message immediately if possible
+            try {
+                const userStr = localStorage.getItem('saloony_user');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    if (user && user.name) {
+                        const welcomeEl = document.getElementById('welcome-msg');
+                        welcomeEl.textContent = `أهلاً بك، ${user.name}`;
+                        welcomeEl.classList.add('visible');
+                    }
+                }
+            } catch (e) {}
+
+            // Wait for a moment for the splash effect, then redirect
+            setTimeout(() => {
+                checkAuthAndRedirect();
+            }, 1500);
+        });
+
+        function checkAuthAndRedirect() {
+            try {
+                const token = localStorage.getItem('saloony_token');
+                const userStr = localStorage.getItem('saloony_user');
+                
+                if (!token || !userStr) {
+                    // Not logged in -> Auth page
+                    window.location.href = '/pages/saloony/auth.html';
+                    return;
+                }
+
+                const user = JSON.parse(userStr);
+                // Robust user type check (handle casing and potential missing fields)
+                // Priority: user.user_type -> user.role -> 'user' default
+                const rawType = user.user_type || user.role || 'user';
+                const userType = String(rawType).toLowerCase().trim();
+
+                console.log('Detected User Type:', userType); // Debug
+
+                // Redirect based on role
+                if (userType === 'salon' || userType === 'salon_owner') {
+                    // Salon Dashboard (mapped to /admin_salon in server.js)
+                    window.location.href = '/admin_salon';
+                } else if (userType === 'admin' || userType === 'administrator') {
+                    // Admin Dashboard
+                    window.location.href = '/admin_dashboard';
+                } else if (userType === 'employee') {
+                    // Employee Dashboard
+                    window.location.href = '/presentation';
+                } else {
+                    // Regular user - Redirect to User Dashboard
+                    window.location.href = '/pages/saloony/user_account.html';
+                }
+
+            } catch (e) {
+                console.error('Auth check error:', e);
+                // Fallback to auth page on critical error
+                // Optional: Clear corrupted storage
+                // localStorage.removeItem('saloony_user');
+                window.location.href = '/pages/saloony/auth.html';
+            }
+        }
+    </script>
+</body>
+</html>

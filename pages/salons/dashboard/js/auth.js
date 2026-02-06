@@ -139,7 +139,11 @@ export let currentStaffId = null;
 export let currentStaffName = '';
 let availableBiometricRoles = [];
 
-export const getRoleSessionToken = () => sessionToken;
+export const getRoleSessionToken = (specificSalonId) => {
+    const salonId = specificSalonId || window.salonId;
+    if (!salonId) return null;
+    return localStorage.getItem(`saloony_role_session_${salonId}`);
+};
 
 // DOM Elements
 const pinAuthScreen = document.getElementById('pin-auth-screen');

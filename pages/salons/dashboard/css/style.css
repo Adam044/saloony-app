@@ -79,6 +79,12 @@ body {
 }
 
 
+/* --- Mobile Optimizations --- */
+#sidebar {
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* --- Buttons --- */
 .btn-action { 
     background: linear-gradient(135deg, #06C167 0%, #059669 100%);

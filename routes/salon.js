@@ -1,5 +1,5 @@
 module.exports = function register(app, deps) {
-  const { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, bcrypt, crypto } = deps;
+  const { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, bcrypt, crypto, upload, sharp, supabase } = deps;
 
   app.get('/api/salons/:salon_id/services', async (req, res) => {
     const salonId = req.params.salon_id;
@@ -138,6 +138,22 @@ module.exports = function register(app, deps) {
         [salonId]
       );
       if (!row) return res.status(404).json({ success: false, message: 'Salon not found.' });
+      
+      // Fetch social links
+      try {
+        const socials = await dbAll('SELECT platform, url FROM social_links WHERE salon_id = $1', [salonId]);
+        const m = {};
+        if (socials) {
+            for (const s of socials) m[s.platform] = s.url;
+        }
+        row.facebook_url = m.facebook || null;
+        row.instagram_url = m.instagram || null;
+        row.tiktok_url = m.tiktok || null;
+        row.social = m;
+      } catch (e) {
+          console.error('Error fetching social links for info:', e);
+      }
+
       res.json({ success: true, salon: row });
     } catch {
       return res.status(500).json({ success: false, message: 'Database error.' });
@@ -801,5 +817,88 @@ module.exports = function register(app, deps) {
       console.error('Error getting visits:', error);
       res.status(500).json({ success: false, message: 'Internal server error' });
     }
+  });
+
+  // ==========================================
+  // GALLERY FEATURES
+  // ==========================================
+
+  // Helper to upload gallery image
+  async function uploadGalleryImage(buffer, salonId) {
+      try {
+          const timestamp = Date.now();
+          const randomId = crypto.randomBytes(6).toString('hex');
+          const filename = `gallery_${salonId}_${timestamp}_${randomId}.webp`;
+          
+          const optimizedBuffer = await sharp(buffer)
+              .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+              .webp({ quality: 80 })
+              .toBuffer();
+          
+          const { data, error } = await supabase.storage
+              .from('salon-images')
+              .upload(filename, optimizedBuffer, {
+                  contentType: 'image/webp',
+                  cacheControl: '31536000',
+                  upsert: false
+              });
+          
+          if (error) throw error;
+          
+          const { data: urlData } = supabase.storage
+              .from('salon-images')
+              .getPublicUrl(filename);
+              
+          return urlData.publicUrl;
+      } catch (error) {
+          console.error('Gallery upload error:', error);
+          throw error;
+      }
+  }
+
+  // Get Gallery Images
+  app.get('/api/salon/gallery/:salon_id', async (req, res) => {
+      try {
+          const salonId = req.params.salon_id;
+          const rows = await dbAll('SELECT * FROM salon_gallery WHERE salon_id = $1 ORDER BY created_at DESC', [salonId]);
+          res.json({ success: true, images: rows });
+      } catch (e) {
+          res.status(500).json({ success: false, message: 'Server error' });
+      }
+  });
+
+  // Add Gallery Image
+  app.post('/api/salon/gallery/:salon_id', requireSalonAdminRole, upload.single('image'), async (req, res) => {
+      try {
+          const salonId = req.params.salon_id;
+          const { category, title } = req.body;
+          
+          if (!req.file) {
+              return res.status(400).json({ success: false, message: 'Image is required' });
+          }
+
+          const imageUrl = await uploadGalleryImage(req.file.buffer, salonId);
+          
+          const result = await dbGet(
+              'INSERT INTO salon_gallery (salon_id, image_url, category, title) VALUES ($1, $2, $3, $4) RETURNING *',
+              [salonId, imageUrl, category || null, title || null]
+          );
+          
+          res.json({ success: true, image: result });
+      } catch (e) {
+          console.error('Gallery add error:', e);
+          res.status(500).json({ success: false, message: 'Server error' });
+      }
+  });
+
+  // Delete Gallery Image
+  app.delete('/api/salon/gallery/:salon_id/:image_id', requireSalonAdminRole, async (req, res) => {
+      try {
+          const { salon_id, image_id } = req.params;
+          await dbRun('DELETE FROM salon_gallery WHERE id = $1 AND salon_id = $2', [image_id, salon_id]);
+          res.json({ success: true });
+      } catch (e) {
+          res.status(500).json({ success: false, message: 'Server error' });
+      }
   });
 }

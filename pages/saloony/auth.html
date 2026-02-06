@@ -500,13 +500,17 @@ class AuthManager {
                         return;
                     }
 
-                    if (result.user.user_type === 'salon') {
+                    const userType = String(result.user.user_type || '').toLowerCase().trim();
+
+                    if (userType === 'salon' || userType === 'salon_owner') {
                         window.location.href = '/admin_salon';
-                    } else if (result.user.user_type === 'user') {
-                        // No dedicated user app experience anymore; send to home page
-                        window.location.href = '/';
-                    } else if (result.user.user_type === 'employee') {
+                    } else if (userType === 'user') {
+                        // Regular user - Redirect to User Dashboard
+                        window.location.href = '/pages/saloony/user_account.html';
+                    } else if (userType === 'employee') {
                         window.location.href = '/presentation';
+                    } else if (userType === 'admin' || userType === 'administrator') {
+                        window.location.href = '/admin_dashboard';
                     }
                 }
             } else {
@@ -564,9 +568,11 @@ class AuthManager {
                         return;
                     }
 
-                    if (result.user.user_type === 'salon') window.location.href = '/admin_salon';
-                    else if (result.user.user_type === 'user') window.location.href = '/';
-                    else if (result.user.user_type === 'employee') window.location.href = '/presentation';
+                    const userType = String(result.user.user_type || '').toLowerCase().trim();
+                    if (userType === 'salon' || userType === 'salon_owner') window.location.href = '/admin_salon';
+                    else if (userType === 'user') window.location.href = '/pages/saloony/user_account.html';
+                    else if (userType === 'employee') window.location.href = '/presentation';
+                    else if (userType === 'admin' || userType === 'administrator') window.location.href = '/admin_dashboard';
                 }
             } else {
                 this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
@@ -763,10 +769,16 @@ class AuthManager {
         setTimeout(() => {
             slide.classList.add('hidden');
             // FIX: Use user_type for redirect
-            if (user && user.user_type === 'user') {
-                window.location.href = '/';
-            } else if (user && user.user_type === 'salon') {
+            const userType = user && user.user_type ? String(user.user_type).toLowerCase().trim() : '';
+            
+            if (userType === 'user') {
+                window.location.href = '/pages/saloony/user_account.html'; // Explicitly go to user account
+            } else if (userType === 'salon' || userType === 'salon_owner') {
                 window.location.href = '/admin_salon';
+            } else if (userType === 'employee') {
+                 window.location.href = '/presentation';
+            } else if (userType === 'admin' || userType === 'administrator') {
+                 window.location.href = '/admin_dashboard';
             } else {
                 // Fallback to login if state is unclear
                  window.location.href = '/auth.html';

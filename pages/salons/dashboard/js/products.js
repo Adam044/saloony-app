@@ -348,7 +348,7 @@ const handleProductSubmit = async (e) => {
         const url = id ? `/api/products/${currentSalonId}/${id}` : `/api/products/${currentSalonId}`;
         const method = id ? 'PUT' : 'POST';
         
-        const token = getRoleSessionToken() || localStorage.getItem('saloony_token');
+        const token = getRoleSessionToken(currentSalonId) || localStorage.getItem('saloony_token');
         const headers = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -382,7 +382,7 @@ const handleProductSubmit = async (e) => {
 const confirmDeleteProduct = async (id) => {
     if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
         try {
-            const token = getRoleSessionToken() || localStorage.getItem('saloony_token');
+            const token = getRoleSessionToken(currentSalonId) || localStorage.getItem('saloony_token');
             const headers = {};
             if (token) headers['Authorization'] = `Bearer ${token}`;
 

@@ -1,152 +1,314 @@
-module.exports = function registerSubscriptionsRoutes(app, { db, requireAdmin }) {
-  // Debug endpoint to verify router is active
-  app.get('/api/admin/subscriptions/ping', (req, res) => {
-    res.json({ message: 'Subscriptions router is active', timestamp: new Date() });
-  });
+const express = require('express');
 
-  app.get('/api/admin/subscriptions', requireAdmin, async (req, res) => {
-    try {
-      const rows = await db.query(`
-        SELECT sub.*, s.salon_name, s.owner_name
-        FROM subscriptions sub
-        LEFT JOIN salons s ON sub.salon_id = s.id
-        ORDER BY sub.start_date DESC
-      `);
-      res.json(rows);
-    } catch (e) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
+module.exports = function register(app, deps) {
+    const { dbAll, dbGet, dbRun, requireAuth, requireAdmin } = deps;
 
-  app.post('/api/admin/subscriptions/:salon_id', requireAdmin, async (req, res) => {
-    try {
-      const salonId = Number(req.params.salon_id);
-      const { package: pkg, startDate, endDate, type, amount: customAmount } = req.body || {};
-      
-      if (!salonId) {
-        return res.status(400).json({ error: 'Missing salon_id' });
-      }
+    // Helper to get current month start/end dates
+    const getCurrentMonthDates = () => {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return {
+            start: start.toISOString().split('T')[0],
+            end: end.toISOString().split('T')[0],
+            monthStr: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        };
+    };
 
-      // Force Month-Based Logic (Start: 1st, End: Last Day)
-      // Even if specific dates are passed, we align them to full months.
-      let start, end;
-      
-      const inputDate = startDate ? new Date(startDate) : new Date();
-      // Use UTC methods to avoid timezone shifts when setting dates
-      const year = inputDate.getFullYear();
-      const month = inputDate.getMonth(); // 0-indexed
+    // --- Salon Endpoints ---
 
-      // Start Date = 1st of the month
-      // Format as YYYY-MM-DD
-      const startObj = new Date(Date.UTC(year, month, 1));
-      start = startObj.toISOString().slice(0, 10);
+    // Get subscription status for the current month
+    app.get('/api/subscriptions/status', requireAuth, async (req, res) => {
+        const salonId = req.user.id;
+        const { start, end, monthStr } = getCurrentMonthDates();
 
-      // End Date = Last day of the month (default 1 month duration)
-      // new Date(year, month + 1, 0) gives last day of month
-      const endObj = new Date(Date.UTC(year, month + 1, 0));
-      end = endObj.toISOString().slice(0, 10);
+        try {
+            // Check for any payment covering this month (valid_from <= end AND valid_until >= start)
+            // Or specifically a 'monthly_subscription' for this month
+            // We'll look for a payment record created for this month or valid for this month
+            
+            // Logic: Look for the most recent payment for this month
+            const payment = await dbGet(
+                `SELECT * FROM payments 
+                 WHERE salon_id = $1 
+                 AND (
+                    (valid_from <= $2 AND valid_until >= $3)
+                    OR
+                    (description LIKE $4)
+                 )
+                 ORDER BY created_at DESC LIMIT 1`,
+                [salonId, end, start, `%${monthStr}%`]
+            );
 
-      const packageKey = type || 'monthly_100';
+            if (!payment) {
+                return res.json({ 
+                    success: true, 
+                    status: 'unpaid', 
+                    month: monthStr 
+                });
+            }
 
-      // 1. Create Subscription
-      await db.run(
-        `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
-         VALUES ($1, $2, $3, $4, 'active')`,
-        [salonId, packageKey, start, end]
-      );
+            // Map payment_status to our UI status
+            // payment_status: 'completed' -> 'paid', 'pending' -> 'pending', 'failed' -> 'unpaid'
+            let status = 'unpaid';
+            if (payment.payment_status === 'completed') status = 'paid';
+            else if (payment.payment_status === 'pending') status = 'pending';
 
-      // 2. Create Payment Record (Invoice)
-      try {
-        let paymentType = packageKey;
-        let amount = (customAmount !== undefined) ? Number(customAmount) : 100;
-        let description = 'Monthly Subscription';
-        
-        if (paymentType === 'offer' || amount === 0) {
-            description = 'Gift Subscription';
-            amount = 0;
-        } else if (paymentType === 'half_offer') {
-            description = '50% Offer (Union Member)';
-            amount = 50;
+            res.json({ 
+                success: true, 
+                status: status, 
+                payment: payment,
+                month: monthStr
+            });
+
+        } catch (err) {
+            console.error('Error getting subscription status:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Notify payment (Mark as pending)
+    app.post('/api/subscriptions/notify-payment', requireAuth, async (req, res) => {
+        const salonId = req.user.id;
+        const { payment_method } = req.body; // 'reflect' or 'bank'
+        const { start, end, monthStr } = getCurrentMonthDates();
+
+        if (!['reflect', 'bank'].includes(payment_method)) {
+            return res.status(400).json({ success: false, message: 'Invalid payment method' });
         }
 
-        const validFrom = new Date(start);
-        const validUntil = end ? new Date(end) : null;
-        const invoiceNumber = `INV-${Date.now()}-${salonId}`; // Simple unique ID
+        try {
+            // Check if already exists
+            const existing = await dbGet(
+                `SELECT id, payment_status FROM payments 
+                 WHERE salon_id = $1 
+                 AND description LIKE $2 
+                 AND payment_status IN ('completed', 'pending')
+                 LIMIT 1`,
+                [salonId, `%${monthStr}%`]
+            );
 
-        await db.run(
-          `INSERT INTO payments (
-            salon_id, payment_type, amount, currency, payment_status,
-            payment_method, description, valid_from, valid_until,
-            invoice_number, admin_notes
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [
-            salonId,
-            paymentType,
-            amount,
-            'ILS',
-            'paid',
-            'bank_transfer', // Default assumption for manual entry
-            description,
-            validFrom.toISOString(),
-            validUntil ? validUntil.toISOString() : null,
-            invoiceNumber,
-            'Admin manual entry'
-          ]
-        );
-      } catch (err) {
-        console.error('Failed to create payment record:', err);
-      }
+            if (existing) {
+                if (existing.payment_status === 'completed') {
+                    return res.status(400).json({ success: false, message: 'Already paid for this month.' });
+                }
+                if (existing.payment_status === 'pending') {
+                    return res.status(400).json({ success: false, message: 'Payment verification is already pending.' });
+                }
+            }
 
-      // 3. Ensure Salon is Active
-      await db.run('UPDATE salons SET status = $1 WHERE id = $2', ['accepted', salonId]);
+            // Create pending payment record
+            // Default amount? 200 ILS? Or 0 until confirmed? 
+            // We'll set a placeholder amount or 0.
+            const amount = 0; 
+            const invoiceNumber = `INV-${Date.now()}-${salonId}`;
+            
+            await dbRun(
+                `INSERT INTO payments (
+                    salon_id, payment_type, amount, currency, payment_status, 
+                    payment_method, description, valid_from, valid_until, created_at,
+                    invoice_number
+                ) VALUES ($1, 'monthly_subscription', $2, 'ILS', 'pending', $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)`,
+                [
+                    salonId, 
+                    amount, 
+                    payment_method, 
+                    `Monthly Subscription ${monthStr}`,
+                    start,
+                    end,
+                    invoiceNumber
+                ]
+            );
 
-      const created = await db.get(
-        `SELECT sub.*, s.salon_name FROM subscriptions sub LEFT JOIN salons s ON sub.salon_id = s.id WHERE sub.salon_id = $1 ORDER BY sub.start_date DESC LIMIT 1`,
-        [salonId]
-      );
-      res.json({ success: true, subscription: created });
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
+            res.json({ success: true, message: 'Payment notification sent', status: 'pending' });
+        } catch (err) {
+            console.error('Error notifying payment:', err);
+            
+            // Handle Foreign Key Violation (e.g. Salon Deleted)
+            if (err.code === '23503' && err.constraint === 'payments_salon_id_fkey') {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: 'Salon account not found. Please log in again.' 
+                });
+            }
 
-  app.get('/api/admin/payments', requireAdmin, async (req, res) => {
-    try {
-      const rows = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
-      res.json({ success: true, payments: rows });
-    } catch (e) {
-      res.status(500).json({ success: false });
-    }
-  });
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
 
-  app.delete('/api/admin/payments/:id', requireAdmin, async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      if (!id) return res.status(400).json({ error: 'Invalid ID' });
-      
-      // Check if this payment is linked to a subscription via some logic?
-      // For now, just delete the payment as requested.
-      // Ideally we might want to delete the subscription too if it was auto-created, 
-      // but there's no foreign key link in the schema shown.
-      
-      const result = await db.run('DELETE FROM payments WHERE id = $1', [id]);
-      res.json({ success: true });
-    } catch (e) {
-      console.error(`Error deleting payment ${req.params.id}:`, e);
-      res.status(500).json({ error: 'Failed to delete payment' });
-    }
-  });
+    // --- Admin Endpoints ---
 
-  app.delete('/api/admin/subscriptions/:id', requireAdmin, async (req, res) => {
-    try {
-      const id = Number(req.params.id);
-      if (!id) return res.status(400).json({ error: 'Invalid ID' });
-      const result = await db.run('DELETE FROM subscriptions WHERE id = $1', [id]);
-      res.json({ success: true });
-    } catch (e) {
-      console.error(`Error deleting subscription ${req.params.id}:`, e);
-      res.status(500).json({ error: 'Failed to delete subscription' });
-    }
-  });
-}
+    // Admin: Get all actual subscriptions (not just pending payments)
+    app.get('/api/admin/subscriptions/all', requireAdmin, async (req, res) => {
+        try {
+            const subs = await dbAll('SELECT * FROM subscriptions ORDER BY created_at DESC');
+            res.json({ success: true, subscriptions: subs });
+        } catch (err) {
+            console.error('Error fetching all subscriptions:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Admin: Get pending subscriptions
+    app.get('/api/admin/subscriptions', requireAdmin, async (req, res) => {
+        
+        const status = req.query.status || 'pending';
+
+        try {
+            const payments = await dbAll(
+                `SELECT p.*, s.salon_name, s.owner_name, s.salon_phone 
+                 FROM payments p
+                 JOIN salons s ON p.salon_id = s.id
+                 WHERE p.payment_status = $1 
+                 AND p.payment_type = 'monthly_subscription'
+                 ORDER BY p.created_at DESC`,
+                [status]
+            );
+
+            res.json({ success: true, subscriptions: payments });
+        } catch (err) {
+            console.error('Error fetching admin subscriptions:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Update subscription status (Approve/Reject)
+    app.post('/api/admin/subscriptions/update', requireAdmin, async (req, res) => {
+        const { id, status, amount } = req.body; // id is payment id
+        
+        if (!['completed', 'failed', 'pending'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status' });
+        }
+
+        try {
+            // Update payment record
+            await dbRun(
+                `UPDATE payments 
+                 SET payment_status = $1, amount = COALESCE($2, amount), updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $3`,
+                [status, amount, id]
+            );
+
+            // If completed, update/create subscription
+            if (status === 'completed') {
+                const payment = await dbGet('SELECT * FROM payments WHERE id = $1', [id]);
+                if (payment) {
+                    const existingSub = await dbGet('SELECT id FROM subscriptions WHERE salon_id = $1', [payment.salon_id]);
+                    if (existingSub) {
+                        await dbRun(
+                            `UPDATE subscriptions SET status = 'active', end_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+                            [payment.valid_until, existingSub.id]
+                        );
+                    } else {
+                        await dbRun(
+                            `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
+                             VALUES ($1, 'monthly_100', $2, $3, 'active')`,
+                            [payment.salon_id, payment.valid_from, payment.valid_until]
+                        );
+                    }
+                }
+            }
+
+            res.json({ success: true, message: 'Status updated' });
+        } catch (err) {
+            console.error('Error updating subscription status:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Admin: Create/Update Subscription for a salon manually
+    app.post('/api/admin/subscriptions/:salonId', requireAdmin, async (req, res) => {
+        const { salonId } = req.params;
+        const { type, startDate, endDate, amount } = req.body;
+
+        try {
+             // Create payment record (Invoice)
+             const description = type === 'offer' ? 'Gift Subscription' : 
+                                 type === 'half_offer' ? '50% Offer Subscription' : 
+                                 'Monthly Subscription';
+             const invoiceNumber = `INV-${Date.now()}-${salonId}`;
+             
+             const paymentRes = await dbRun(
+                `INSERT INTO payments (
+                    salon_id, payment_type, amount, currency, payment_status, 
+                    payment_method, description, valid_from, valid_until, created_at,
+                    invoice_number
+                ) VALUES ($1, 'monthly_subscription', $2, 'ILS', 'completed', 'admin_manual', $3, $4, $5, CURRENT_TIMESTAMP, $6)
+                RETURNING id`,
+                [salonId, amount, description, startDate, endDate, invoiceNumber]
+            );
+            
+            // Create/Update Subscription
+            const existingSub = await dbGet('SELECT id FROM subscriptions WHERE salon_id = $1', [salonId]);
+            if (existingSub) {
+                await dbRun(
+                    `UPDATE subscriptions SET status = 'active', end_date = $1, package = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+                    [endDate, type, existingSub.id]
+                );
+            } else {
+                 await dbRun(
+                    `INSERT INTO subscriptions (salon_id, package, start_date, end_date, status)
+                     VALUES ($1, $2, $3, $4, 'active')`,
+                    [salonId, type, startDate, endDate]
+                );
+            }
+
+            res.json({ success: true, message: 'Subscription created' });
+        } catch (err) {
+            console.error('Error creating admin subscription:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Admin: Get all payments
+    app.get('/api/admin/payments', requireAdmin, async (req, res) => {
+         try {
+             const payments = await dbAll(
+                 `SELECT * FROM payments ORDER BY created_at DESC`
+             );
+             res.json({ success: true, payments });
+         } catch (err) {
+             console.error('Error getting all payments:', err);
+             res.status(500).json({ success: false, message: 'Server error' });
+         }
+    });
+
+    // Admin: Get payments for a specific salon
+    app.get('/api/admin/salons/:salonId/payments', requireAdmin, async (req, res) => {
+         const { salonId } = req.params;
+         try {
+             const payments = await dbAll(
+                 `SELECT * FROM payments WHERE salon_id = $1 ORDER BY created_at DESC`,
+                 [salonId]
+             );
+             res.json({ success: true, payments });
+         } catch (err) {
+             console.error('Error getting salon payments:', err);
+             res.status(500).json({ success: false, message: 'Server error' });
+         }
+    });
+
+    // Admin: Delete subscription
+    app.delete('/api/admin/subscriptions/:id', requireAdmin, async (req, res) => {
+        const { id } = req.params;
+        try {
+            await dbRun('DELETE FROM subscriptions WHERE id = $1', [id]);
+            res.json({ success: true, message: 'Subscription deleted' });
+        } catch (err) {
+            console.error('Error deleting subscription:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+
+    // Admin: Delete payment
+    app.delete('/api/admin/payments/:id', requireAdmin, async (req, res) => {
+        const { id } = req.params;
+        try {
+            await dbRun('DELETE FROM payments WHERE id = $1', [id]);
+            res.json({ success: true, message: 'Payment deleted' });
+        } catch (err) {
+            console.error('Error deleting payment:', err);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
+    });
+};

@@ -149,7 +149,7 @@
         </div>
 
         <!-- Services Section (Horizontal Scroll) -->
-        <section class="py-4">
+        <section id="services-section" class="py-4">
             <div class="flex justify-between items-end mb-6 px-1">
                 <div>
                     <h2 class="text-2xl font-black text-gray-900 mb-1">خدماتنا المميزة</h2>
@@ -179,7 +179,7 @@
         </section>
 
         <!-- About / Description -->
-        <section class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden">
+        <section id="about-section" class="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden mb-8">
             <div class="relative z-10">
                 <h3 class="text-xl font-bold text-gray-900 mb-4">عن الصالون</h3>
                 <p id="salon-description" class="text-gray-600 leading-relaxed text-sm md:text-base">
@@ -192,8 +192,39 @@
             <div class="absolute top-0 left-0 w-32 h-32 bg-yellow-50 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
         </section>
 
+        <!-- Products Section -->
+        <section id="products-section" class="py-4 hidden">
+            <div class="flex justify-between items-end mb-6 px-1">
+                <div>
+                    <h2 class="text-2xl font-black text-gray-900 mb-1">المنتجات</h2>
+                    <p class="text-sm text-gray-500">منتجات عالية الجودة للعناية بجمالك</p>
+                </div>
+            </div>
+            <div class="relative -mx-4 px-4 md:mx-0 md:px-0">
+                <div id="products-grid" class="flex overflow-x-auto gap-4 pb-8 pt-2 px-1 snap-x-mandatory hide-scrollbar scroll-smooth">
+                    <!-- Products Injected Here -->
+                </div>
+                <!-- Fade effect for mobile -->
+                <div class="absolute left-0 top-0 bottom-8 w-16 bg-gradient-to-r from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+                <div class="absolute right-0 top-0 bottom-8 w-4 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+            </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section id="gallery-section" class="py-4 hidden">
+            <div class="flex justify-between items-end mb-6 px-1">
+                <div>
+                    <h2 class="text-2xl font-black text-gray-900 mb-1">معرض الصور</h2>
+                    <p class="text-sm text-gray-500">جولة في أروقة صالوننا وأحدث أعمالنا</p>
+                </div>
+            </div>
+            <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <!-- Gallery Injected Here -->
+            </div>
+        </section>
+
         <!-- Reviews Section -->
-        <section>
+        <section id="reviews-section" class="hidden">
             <div class="flex justify-between items-end mb-6 px-1">
                 <h2 class="text-2xl font-black text-gray-900">آراء العملاء</h2>
                 <button id="add-review-btn" class="text-sm font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-xl transition-all">
@@ -273,10 +304,42 @@
                     <textarea id="review-comment" rows="4" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 focus:bg-white focus:border-black outline-none transition-all resize-none" placeholder="شاركينا تجربتك..."></textarea>
                 </div>
 
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">صورة (اختياري)</label>
+                    <div class="relative">
+                        <input type="file" id="review-image" accept="image/*" class="hidden" onchange="handleReviewImageSelect(this)">
+                        <label for="review-image" class="flex items-center justify-center w-full p-4 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all group">
+                            <div class="text-center" id="review-image-placeholder">
+                                <i class="fas fa-camera text-2xl text-gray-300 group-hover:text-purple-500 mb-2 transition-colors"></i>
+                                <p class="text-xs text-gray-500 group-hover:text-purple-600">اضغط لإضافة صورة</p>
+                            </div>
+                            <img id="review-image-preview" class="hidden h-32 rounded-lg object-cover mx-auto" />
+                        </label>
+                        <button type="button" id="remove-review-image" class="hidden absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600" onclick="removeReviewImage()">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <button type="submit" class="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-900 transition-all shadow-lg shadow-black/20">
                     نشر التقييم
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- Restriction Modal -->
+    <div id="restriction-modal" class="fixed inset-0 bg-black/80 z-[80] hidden flex items-center justify-center backdrop-blur-md transition-all duration-300">
+        <div class="bg-white w-[90%] md:w-[400px] rounded-3xl shadow-2xl p-8 text-center animate-zoom-in relative">
+            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="text-xl font-black text-gray-900 mb-2" id="restriction-title">تنبيه</h3>
+            <p class="text-gray-600 mb-6" id="restriction-message">الرسالة هنا</p>
+            <button onclick="document.getElementById('restriction-modal').classList.add('hidden')" class="w-full bg-gray-100 text-gray-900 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors">
+                حسناً، فهمت
+            </button>
         </div>
     </div>
 
@@ -615,6 +678,8 @@
                     await fetchSalonSchedule(); // Fetch schedule early
                     updateTodayHoursDisplay(); // Update hours button
                     await loadServices();
+                    await loadProducts();
+                    await loadGallery();
                     await loadReviews();
                 } else {
                     throw new Error(data.message || 'Failed to load salon data');
@@ -636,7 +701,17 @@
             // Text Content
             document.getElementById('salon-name').textContent = salon.salon_name;
             document.getElementById('salon-tagline').textContent = salon.tagline || `مرحباً بكم في ${salon.salon_name}`;
-            document.getElementById('salon-description').textContent = salon.about || salon.description || salon.tagline || 'نقدم لكم أرقى الخدمات بأفضل المعايير.';
+            
+            // About Section Logic
+            const aboutText = salon.about || salon.description;
+            const aboutSection = document.getElementById('about-section');
+            if (aboutText && aboutText.trim().length > 0) {
+                document.getElementById('salon-description').textContent = aboutText;
+                aboutSection.classList.remove('hidden');
+            } else {
+                aboutSection.classList.add('hidden');
+            }
+
             document.getElementById('salon-city').textContent = salon.city || 'غير محدد';
             
             // Make city badge clickable to scroll to map
@@ -653,6 +728,12 @@
 
             const address = salon.address ? `${salon.city}، ${salon.address}` : salon.city;
             document.getElementById('salon-address-full').textContent = address;
+
+            if (!salon.address && !salon.city && !salon.latitude) {
+                document.getElementById('location').classList.add('hidden');
+            } else {
+                document.getElementById('location').classList.remove('hidden');
+            }
 
             // Images
             const heroImg = document.getElementById('salon-hero-image');
@@ -691,8 +772,18 @@
             // Social
             const socialContainer = document.getElementById('social-links-share');
             const links = [];
-            if (salon.facebook || salon.facebook_url) links.push({ icon: 'fab fa-facebook-f', url: salon.facebook || salon.facebook_url });
-            if (salon.instagram || salon.instagram_url) links.push({ icon: 'fab fa-instagram', url: salon.instagram || salon.instagram_url });
+            
+            // Normalize social object if present
+            const social = salon.social || {};
+            const fb = salon.facebook || salon.facebook_url || social.facebook;
+            const insta = salon.instagram || salon.instagram_url || social.instagram;
+            const tiktok = salon.tiktok || salon.tiktok_url || social.tiktok;
+            const other = salon.other || salon.other_url || social.other;
+
+            if (fb) links.push({ icon: 'fab fa-facebook-f', url: fb });
+            if (insta) links.push({ icon: 'fab fa-instagram', url: insta });
+            if (tiktok) links.push({ icon: 'fab fa-tiktok', url: tiktok });
+            if (other) links.push({ icon: 'fas fa-link', url: other });
             
             if (links.length) {
                 socialContainer.innerHTML = links.map(l => `
@@ -705,6 +796,81 @@
             }
 
             // Share logic is handled in DOMContentLoaded event listener below
+        }
+
+        async function loadProducts() {
+            try {
+                const res = await fetch(`/api/products/${salonId}`);
+                const data = await res.json();
+                const grid = document.getElementById('products-grid');
+                const section = document.getElementById('products-section');
+                
+                if (data.success && data.products && data.products.length > 0) {
+                    grid.innerHTML = data.products.map(p => `
+                        <div class="product-card shrink-0 w-48 bg-white rounded-2xl p-3 shadow-sm border border-gray-100 snap-center group hover:shadow-md transition-all">
+                            <div class="aspect-square rounded-xl overflow-hidden mb-3 bg-gray-50 relative">
+                                <img src="${p.image_url}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" alt="${p.name}">
+                            </div>
+                            <h4 class="font-bold text-gray-900 text-sm truncate mb-1">${p.name}</h4>
+                            <div class="flex justify-between items-center">
+                                <span class="text-purple-600 font-bold text-sm">${p.price} ${p.currency}</span>
+                                <span class="text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-md">${p.category}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    // Padding
+                    grid.appendChild(document.createElement('div')).className = 'w-2 shrink-0';
+                    
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error loading products:', e);
+                document.getElementById('products-section').classList.add('hidden');
+            }
+        }
+
+        async function loadGallery() {
+            try {
+                const res = await fetch(`/api/salon/gallery/${salonId}`);
+                const data = await res.json();
+                const grid = document.getElementById('gallery-grid');
+                const section = document.getElementById('gallery-section');
+                
+                if (data.success && data.images && data.images.length > 0) {
+                    grid.innerHTML = data.images.map(img => `
+                        <div class="group relative aspect-square rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-zoom-in" onclick="openImageModal('${img.image_url}', '${img.title || ''}')">
+                            <img src="${img.image_url}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+                            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4 min-h-[40%]">
+                                <h4 class="text-white font-bold text-sm truncate shadow-black drop-shadow-md mb-1">${img.title || ''}</h4>
+                                <span class="text-[10px] text-white/90 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg self-start border border-white/10">${img.category || 'عام'}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error loading gallery:', e);
+                document.getElementById('gallery-section').classList.add('hidden');
+            }
+        }
+
+        function openImageModal(src, title) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in';
+            modal.onclick = () => modal.remove();
+            modal.innerHTML = `
+                <img src="${src}" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl transform transition-transform scale-95 animate-zoom-in" onclick="event.stopPropagation()">
+                ${title ? `<p class="absolute bottom-8 text-white font-bold text-lg drop-shadow-md">${title}</p>` : ''}
+                <button class="absolute top-4 right-4 text-white text-2xl w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            document.body.appendChild(modal);
         }
 
         async function loadServices() {
@@ -720,6 +886,12 @@
         }
 
         function renderServices(services) {
+            const section = document.getElementById('services-section');
+            if (!services || services.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+            section.classList.remove('hidden');
             servicesGrid.innerHTML = '';
             
             // Padding
@@ -779,50 +951,133 @@
         }
 
         function renderReviews(reviews) {
-            const container = document.getElementById('reviews-container');
-            container.innerHTML = '';
-            
+            const section = document.getElementById('reviews-section');
             if (reviews.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-white rounded-3xl border border-dashed border-gray-200">
-                        <i class="far fa-comment-dots text-4xl text-gray-300 mb-3"></i>
-                        <p class="text-gray-500 font-medium">لا توجد تقييمات بعد</p>
-                    </div>
-                `;
+                section.classList.add('hidden');
                 return;
             }
+            
+            section.classList.remove('hidden');
+            const container = document.getElementById('reviews-container');
+            container.innerHTML = '';
 
-            reviews.slice(0, 4).forEach(review => {
+            // Get current user for delete permission
+            let currentUser = null;
+            try {
+                currentUser = JSON.parse(localStorage.getItem('saloony_user'));
+            } catch (e) {}
+
+            reviews.forEach(review => {
                 const el = document.createElement('div');
-                el.className = 'bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col';
+                el.className = 'bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col relative group';
                 
                 const stars = Array(5).fill(0).map((_, i) => 
                     `<i class="fas fa-star text-xs ${i < review.rating ? 'text-yellow-400' : 'text-gray-200'}"></i>`
                 ).join('');
 
+                const isOwner = currentUser && currentUser.id === review.user_id;
+                const deleteBtn = isOwner ? `
+                    <button onclick="deleteReview(${review.id})" class="absolute top-4 left-4 text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 w-8 h-8 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 z-10" title="حذف التقييم">
+                        <i class="fas fa-trash-alt text-xs"></i>
+                    </button>
+                ` : '';
+
+                const reviewImage = review.image_url ? `
+                    <div class="mt-3 mb-1">
+                        <img src="${review.image_url}" class="h-24 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity border border-gray-100" onclick="openImageModal('${review.image_url}', 'صورة التقييم')">
+                    </div>
+                ` : '';
+
                 el.innerHTML = `
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">
-                            ${(review.user_name || 'U').charAt(0)}
+                    ${deleteBtn}
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500 overflow-hidden">
+                             ${review.user_avatar ? `<img src="${review.user_avatar}" class="w-full h-full object-cover">` : (review.user_name || 'U').charAt(0)}
                         </div>
                         <div>
                             <h5 class="font-bold text-sm text-gray-900">${review.user_name || 'عميل'}</h5>
                             <div class="flex gap-0.5 mt-0.5">${stars}</div>
                         </div>
-                        <span class="mr-auto text-xs text-gray-400">${formatReviewDate(review.date_posted)}</span>
+                        <span class="mr-auto text-xs text-gray-400 self-start mt-1">${formatReviewDate(review.date_posted)}</span>
                     </div>
                     <p class="text-gray-600 text-sm leading-relaxed">${review.comment || ''}</p>
+                    ${reviewImage}
                 `;
                 container.appendChild(el);
             });
         }
 
+        async function deleteReview(reviewId) {
+            if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
+            
+            try {
+                const token = localStorage.getItem('saloony_token');
+                const res = await fetch(`/api/reviews/${reviewId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    loadReviews();
+                } else {
+                    alert(data.message || 'فشل الحذف');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ أثناء الحذف');
+            }
+        }
+
         // --- Review & Add Logic ---
         let selectedRating = 0;
 
-        document.getElementById('add-review-btn').addEventListener('click', () => {
+        document.getElementById('add-review-btn').addEventListener('click', async () => {
             if (!checkAuth()) return; // checkAuth handles modal showing
-            openReviewModal();
+
+            // Show loading state on button
+            const btn = document.getElementById('add-review-btn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<div class="loading-spinner w-4 h-4 mx-auto border-2 border-purple-600"></div>';
+            btn.disabled = true;
+
+            try {
+                const token = localStorage.getItem('saloony_token');
+                const res = await fetch(`/api/reviews/check-eligibility/${salonId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (!data.eligible) {
+                    const modal = document.getElementById('restriction-modal');
+                    const title = document.getElementById('restriction-title');
+                    const message = document.getElementById('restriction-message');
+
+                    if (data.reason === 'salon_user') {
+                        title.textContent = 'لا يمكن إضافة تقييم';
+                        message.textContent = 'حسابات الصالونات لا يمكنها إضافة تقييمات.';
+                    } else if (data.reason === 'time_limit') {
+                        title.textContent = 'انتظار مطلوب';
+                        message.textContent = `يمكنك إضافة تقييم جديد بعد ${data.days_left} أيام.`;
+                    } else {
+                        title.textContent = 'تنبيه';
+                        message.textContent = data.message || 'لا يمكنك إضافة تقييم حالياً.';
+                    }
+                    
+                    modal.classList.remove('hidden');
+                } else {
+                    openReviewModal();
+                }
+            } catch (error) {
+                console.error('Eligibility check failed:', error);
+                // Fallback to open modal if check fails, or show error?
+                // Better to let them try and fail at submit than block due to network error?
+                // Or show generic error.
+                alert('حدث خطأ أثناء التحقق من الصلاحية. يرجى المحاولة لاحقاً.');
+            } finally {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            }
         });
 
         window.openReviewModal = function() {
@@ -839,6 +1094,31 @@
             document.getElementById('review-rating').value = '';
             document.getElementById('review-comment').value = '';
             updateStars(0);
+            removeReviewImage();
+        }
+
+        function handleReviewImageSelect(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('review-image-preview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    document.getElementById('review-image-placeholder').classList.add('hidden');
+                    document.getElementById('remove-review-image').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function removeReviewImage() {
+            const input = document.getElementById('review-image');
+            input.value = '';
+            const preview = document.getElementById('review-image-preview');
+            preview.src = '';
+            preview.classList.add('hidden');
+            document.getElementById('review-image-placeholder').classList.remove('hidden');
+            document.getElementById('remove-review-image').classList.add('hidden');
         }
 
         // Star Rating Logic
@@ -886,6 +1166,7 @@
             }
             
             const comment = document.getElementById('review-comment').value;
+            const imageInput = document.getElementById('review-image');
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
@@ -893,17 +1174,21 @@
             
             try {
                 const token = localStorage.getItem('saloony_token');
+                
+                const formData = new FormData();
+                formData.append('salon_id', parseInt(salonId));
+                formData.append('rating', selectedRating);
+                formData.append('comment', comment);
+                if (imageInput.files[0]) {
+                    formData.append('image', imageInput.files[0]);
+                }
+
                 const res = await fetch('/api/reviews/submit', {
                     method: 'POST',
                     headers: { 
-                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({
-                        salon_id: parseInt(salonId),
-                        rating: selectedRating,
-                        comment: comment
-                    })
+                    body: formData
                 });
                 
                 const data = await res.json();
