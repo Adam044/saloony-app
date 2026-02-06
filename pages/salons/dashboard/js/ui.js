@@ -173,6 +173,7 @@ const initNavigation = (currentUser) => {
                 localStorage.removeItem('salonToken');
                 localStorage.removeItem('saloony_token');
                 localStorage.removeItem('saloony_user');
+                localStorage.removeItem('saloony_refresh_token');
                 window.location.replace('/auth.html');
              }, 'تسجيل خروج');
         });

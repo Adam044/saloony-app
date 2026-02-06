@@ -136,7 +136,12 @@
         const logoutBtn = document.getElementById('admin-logout');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
-                try { localStorage.removeItem('adminToken'); } catch (_) {}
+                try { 
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('saloony_token');
+                    localStorage.removeItem('saloony_user');
+                    localStorage.removeItem('saloony_refresh_token');
+                } catch (_) {}
                 location.href = '/auth.html';
             });
         }

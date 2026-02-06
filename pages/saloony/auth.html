@@ -322,10 +322,46 @@ class AuthManager {
     }
 
     init() {
+        this.checkAuth();
         this.bindEvents();
         this.populateCities();
         this.setActiveTab('login');
         this.setActiveRole('user');
+    }
+
+    checkAuth() {
+        // 1. Check for Admin Token first
+        const adminToken = localStorage.getItem('adminToken');
+        if (adminToken) {
+            window.location.href = '/admin_dashboard';
+            return;
+        }
+
+        // 2. Check for Standard User Token
+        const token = localStorage.getItem('saloony_token');
+        const userStr = localStorage.getItem('saloony_user');
+
+        if (token && userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                const userType = String(user.user_type || '').toLowerCase().trim();
+
+                if (userType === 'salon' || userType === 'salon_owner') {
+                    window.location.href = '/admin_salon';
+                } else if (userType === 'user') {
+                    window.location.href = '/pages/saloony/user_account.html';
+                } else if (userType === 'employee') {
+                    window.location.href = '/presentation';
+                } else if (userType === 'admin' || userType === 'administrator') {
+                    window.location.href = '/admin_dashboard';
+                }
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                // Optional: Clear invalid data if parsing fails
+                // localStorage.removeItem('saloony_token');
+                // localStorage.removeItem('saloony_user');
+            }
+        }
     }
 
     bindEvents() {
