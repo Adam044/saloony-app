@@ -30,13 +30,48 @@ module.exports = function register(app, deps) {
       } else if (filter === 'cancelled') {
         whereClause = `AND a.status = 'Cancelled'`;
         orderBy = 'DESC';
+      } else if (filter === 'query') {
+        // Advanced Query Filter
+        const { startDate, endDate, status, staffId } = req.query;
+        
+        // Date Range
+        if (startDate) {
+            whereClause += ` AND DATE(a.start_time) >= $${params.length + 1}`;
+            params.push(startDate);
+        }
+        if (endDate) {
+            whereClause += ` AND DATE(a.start_time) <= $${params.length + 1}`;
+            params.push(endDate);
+        }
+
+        // Status
+        if (status && status !== 'all') {
+            if (status === 'upcoming') {
+                 whereClause += ` AND a.status = 'Scheduled' AND a.start_time::timestamp > NOW()`;
+            } else if (status === 'completed') {
+                 whereClause += ` AND (a.status = 'Completed' OR a.status = 'Absent')`;
+            } else if (status === 'cancelled') {
+                 whereClause += ` AND a.status = 'Cancelled'`;
+            } else {
+                 whereClause += ` AND a.status = $${params.length + 1}`;
+                 params.push(status);
+            }
+        }
+
+        // Staff
+        if (staffId && staffId !== 'all') {
+            whereClause += ` AND a.staff_id = $${params.length + 1}`;
+            params.push(staffId);
+        }
+
+        orderBy = 'DESC';
       } else {
         return res.status(400).json({ success: false, message: 'Invalid filter.' });
       }
       const sql = `
         SELECT 
           a.id, a.start_time, a.end_time, a.status, a.price,
-          u.name AS user_name, u.phone AS user_phone,
+          u.name AS user_name, u.phone AS user_phone, u.strikes AS user_strikes,
           s.name_ar AS service_name,
           st.name AS staff_name
         FROM appointments a
@@ -149,7 +184,7 @@ module.exports = function register(app, deps) {
     const sql = `
       SELECT 
         a.id, a.start_time, a.end_time, a.status, a.price,
-        s.salon_name,
+        s.salon_name, s.logo_url, s.image_url, s.salon_phone AS phone_number, s.address AS location_text,
         serv.name_ar AS service_name,
         st.name AS staff_name
       FROM appointments a
@@ -237,6 +272,17 @@ module.exports = function register(app, deps) {
     if (!salon_id || !user_id || !start_time || !end_time || price === undefined) {
       return res.status(400).json({ success: false, message: 'بيانات الحجز غير كاملة.' });
     }
+
+    // Check for strikes/ban
+    try {
+      const userStatus = await dbGet('SELECT strikes FROM users WHERE id = $1', [user_id]);
+      if (userStatus && userStatus.strikes >= 3) {
+        return res.status(403).json({ success: false, message: 'عفواً، حسابك محظور بسبب تكرار عدم الحضور للمواعيد (3 إنذارات). لا يمكنك حجز مواعيد جديدة.' });
+      }
+    } catch {
+      return res.status(500).json({ success: false, message: 'خطأ في التحقق من حالة الحساب.' });
+    }
+
     let servicesToBook = [];
     if (services && Array.isArray(services) && services.length > 0) {
       servicesToBook = services;

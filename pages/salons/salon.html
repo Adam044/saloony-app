@@ -1421,8 +1421,8 @@
                              let totalDuration = 0;
 
                              selectedServices.forEach(s => {
-                                totalPrice += s.price;
-                                totalDuration += s.duration;
+                                totalPrice += Number(s.price);
+                                totalDuration += Number(s.duration);
                                 
                                 // Icon Logic
                                 let iconHtml = '<i class="fas fa-cut text-xs"></i>';
@@ -1448,7 +1448,7 @@
                                 container.appendChild(div);
                              });
 
-                             document.getElementById('step1-total-price').textContent = `${totalPrice} ₪`;
+                             document.getElementById('step1-total-price').textContent = `${totalPrice.toFixed(2)} ₪`;
                              document.getElementById('step1-total-duration').innerHTML = `<i class="far fa-clock ml-1"></i> ${totalDuration} دقيقة`;
                              
                              document.getElementById('next-step-btn').classList.remove('hidden');
@@ -1528,7 +1528,7 @@
             document.getElementById('summary-datetime').textContent = `${dayName} | ${dateNum} | ${selectedTime}`;
             
             const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
-            document.getElementById('summary-price').textContent = `${totalPrice} ₪`;
+            document.getElementById('summary-price').textContent = `${parseFloat(totalPrice).toFixed(2)} ₪`;
         }
 
         async function fetchSalonSchedule() {
@@ -1613,7 +1613,16 @@
 
             // Check if day is closed
             const dayIndex = new Date(selectedDate).getDay();
-            if (salonSchedule.schedule.closed_days && salonSchedule.schedule.closed_days.includes(dayIndex)) {
+            
+            // Check modifications for full day closure
+            const dailyMods = (salonSchedule.modifications || []).filter(m => {
+                if (m.mod_type === 'once') return m.mod_date === selectedDate;
+                if (m.mod_type === 'recurring') return m.mod_day_index == dayIndex;
+                return false;
+            });
+
+            if ((salonSchedule.schedule && salonSchedule.schedule.closed_days && salonSchedule.schedule.closed_days.includes(dayIndex)) || 
+                dailyMods.some(m => m.closure_type === 'full_day')) {
                 loading.classList.add('hidden');
                 noSlots.classList.remove('hidden');
                 noSlots.innerHTML = `
@@ -1651,6 +1660,7 @@
                 // This is a simplified check. Backend does full validation.
                 
                 const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
+                const dailyBreaks = salonSchedule.breaks || [];
 
                 const availableSlots = [];
                 for (let time = startMins; time + totalDuration <= endMins; time += 30) {
@@ -1658,14 +1668,42 @@
                     const slotEnd = time + totalDuration;
                     let isSlotFree = true;
                     
+                    // Check breaks & modifications (Intervals)
+                    const isBlocked = (staffId) => {
+                        // Check breaks
+                        for (const b of dailyBreaks) {
+                            const bStart = timeToMinutes(b.start_time);
+                            const bEnd = timeToMinutes(b.end_time);
+                            const bStaffId = b.staff_id || 0;
+                            const staffMatch = bStaffId === 0 || parseInt(bStaffId) === parseInt(staffId);
+                            if (staffMatch && slotStart < bEnd && slotEnd > bStart) return true;
+                        }
+                        // Check modifications (interval)
+                        for (const m of dailyMods) {
+                            if (m.closure_type === 'interval' && m.start_time && m.end_time) {
+                                const mStart = timeToMinutes(m.start_time);
+                                const mEnd = timeToMinutes(m.end_time);
+                                const mStaffId = m.staff_id || 0;
+                                const staffMatch = mStaffId === 0 || parseInt(mStaffId) === parseInt(staffId);
+                                if (staffMatch && slotStart < mEnd && slotEnd > mStart) return true;
+                            }
+                        }
+                        return false;
+                    };
+
                     if (selectedStaffId !== 0) {
-                        const isBusy = appointments.some(a => {
-                            if (a.staff_id != selectedStaffId) return false;
-                            const aStart = timeToMinutes(a.start_time.split('T')[1].substring(0,5));
-                            const aEnd = timeToMinutes(a.end_time.split('T')[1].substring(0,5));
-                            return (slotStart < aEnd && slotEnd > aStart);
-                        });
-                        if (isBusy) isSlotFree = false;
+                        // Specific Staff Check
+                        if (isBlocked(selectedStaffId)) {
+                            isSlotFree = false;
+                        } else {
+                            const isBusy = appointments.some(a => {
+                                if (a.staff_id != selectedStaffId) return false;
+                                const aStart = timeToMinutes(a.start_time.split('T')[1].substring(0,5));
+                                const aEnd = timeToMinutes(a.end_time.split('T')[1].substring(0,5));
+                                return (slotStart < aEnd && slotEnd > aStart);
+                            });
+                            if (isBusy) isSlotFree = false;
+                        }
                     } else {
                         // Any staff logic: check if ANY staff is free for this duration
                         // Simple check: count available staff at this slot
@@ -1680,6 +1718,11 @@
                             if (slotStart < aEnd && slotEnd > aStart) {
                                 if (a.staff_id) busyStaffIds.add(a.staff_id);
                             }
+                        });
+                        
+                        // Add staff who are blocked by breaks/modifications
+                        salonStaff.forEach(s => {
+                            if (isBlocked(s.id)) busyStaffIds.add(s.id);
                         });
                         
                         // If number of busy staff < total staff, then slot is free
@@ -1738,14 +1781,16 @@
             btn.innerHTML = '<div class="loading-spinner w-5 h-5 border-2 border-white"></div>';
 
             try {
-                const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
+                const totalDuration = selectedServices.reduce((sum, s) => sum + Number(s.duration), 0);
+                const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price), 0);
                 
                 const payload = {
                     salon_id: parseInt(salonId),
-                    services: selectedServices.map(s => ({ id: s.id, price: s.price })),
+                    services: selectedServices.map(s => ({ id: s.id, price: Number(s.price) })),
                     staff_id: selectedStaffId,
                     start_time: `${selectedDate}T${selectedTime}:00`,
-                    end_time: calculateEndTime(selectedDate, selectedTime, totalDuration)
+                    end_time: calculateEndTime(selectedDate, selectedTime, totalDuration),
+                    price: totalPrice
                 };
 
                 let res = await fetch('/api/appointment/book', {

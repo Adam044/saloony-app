@@ -15,8 +15,8 @@ if (!JWT_SECRET) {
     }
 }
 
-const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
-const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
+const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '30d';
+const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 30);
 
 /**
  * Sign a new JWT token.

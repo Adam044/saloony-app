@@ -6,7 +6,7 @@ const API_BASE = '/api';
 
 const getHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
-    const token = localStorage.getItem('salonToken'); // Or however we store it
+    const token = localStorage.getItem('saloony_token'); // Standardized token key
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }

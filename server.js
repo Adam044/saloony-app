@@ -1672,7 +1672,7 @@ app.post('/api/auth/login', async (req, res) => {
         // Also set secure cookies for browser sessions
         const isProd = process.env.NODE_ENV === 'production';
         try {
-            res.cookie('access_token', accessToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 15 * 60 * 1000 });
+            res.cookie('access_token', accessToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
             res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000 });
         } catch (_) {}
 
@@ -1715,35 +1715,72 @@ app.post('/api/auth/refresh', async (req, res) => {
         if (new Date(rtRow.expires_at).getTime() <= Date.now()) {
             return res.status(401).json({ success: false, message: 'Refresh token expired.' });
         }
+
+        // Fetch full user details first
+        const userRow = await dbGet('SELECT * FROM users WHERE id = $1', [rtRow.user_id]);
+        if (!userRow) {
+             return res.status(401).json({ success: false, message: 'User not found.' });
+        }
+
         // Rotate: revoke old and issue a new refresh token
         await dbRun('UPDATE refresh_tokens SET revoked = TRUE WHERE id = $1', [rtRow.id]);
         const newRefresh = crypto.randomBytes(32).toString('hex');
         await storeRefreshToken(rtRow.user_id, newRefresh);
 
-        // Lookup user role to embed in JWT
-        const roleRow = await dbGet('SELECT user_type FROM users WHERE id = $1', [rtRow.user_id]);
-        const role = roleRow?.user_type || 'user';
-        const access = signToken({ sub: rtRow.user_id, role: role, type: 'access' });
+        const userType = userRow.user_type || 'user';
+        const access = signToken({ sub: userRow.id, role: userType, type: 'access' });
 
         // Backward-compat: add admin access token to legacy set
-        if (role === 'admin') {
+        if (userType === 'admin') {
             validAdminTokens.add(access);
         }
 
         const isProd = process.env.NODE_ENV === 'production';
         try {
-            res.cookie('access_token', access, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 15 * 60 * 1000 });
+            res.cookie('access_token', access, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
             res.cookie('refresh_token', newRefresh, { httpOnly: true, secure: isProd, sameSite: 'Lax', maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000 });
         } catch (_) {}
 
-        return res.json({ success: true, access_token: access, refresh_token: newRefresh });
+        // Construct User Object (Mirroring Login Logic)
+        let userObject = {
+            userId: userRow.id,
+            name: userRow.name,
+            email: userRow.email,
+            city: userRow.city,
+            user_type: userRow.user_type,
+            phone: userRow.phone,
+            strikes_count: userRow.strikes || 0
+        };
+
+        if (userType === 'user') {
+            userObject.gender = userRow.gender;
+        } else if (userType === 'salon') {
+             // Fetch linked salon details
+             const salonResult = await db.query('SELECT id, salon_name, owner_name, salon_phone, owner_phone, address, gender_focus, image_url, status FROM salons WHERE user_id = $1', [userRow.id]);
+             if (salonResult && salonResult.length > 0) {
+                 const salonData = salonResult[0];
+                 userObject = {
+                    ...userObject,
+                    salonId: salonData.id,
+                    salon_name: salonData.salon_name,
+                    owner_name: salonData.owner_name,
+                    salon_phone: salonData.salon_phone,
+                    owner_phone: salonData.owner_phone,
+                    gender_focus: salonData.gender_focus,
+                    image_url: salonData.image_url,
+                    status: salonData.status
+                 };
+             }
+        }
+
+        return res.json({ success: true, access_token: access, refresh_token: newRefresh, user: userObject });
     } catch (e) {
         console.error('Refresh endpoint error:', e.message);
         return res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
 
-// Logout: revoke provided refresh token
+    // Logout: revoke provided refresh token
 app.post('/api/auth/logout', async (req, res) => {
     try {
         const { refresh_token } = req.body || {};
@@ -1751,6 +1788,12 @@ app.post('/api/auth/logout', async (req, res) => {
             const hash = crypto.createHash('sha256').update(refresh_token).digest('hex');
             await dbRun('UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = $1', [hash]);
         }
+        
+        // Clear cookies
+        const isProd = process.env.NODE_ENV === 'production';
+        res.clearCookie('access_token', { httpOnly: true, secure: isProd, sameSite: 'Lax' });
+        res.clearCookie('refresh_token', { httpOnly: true, secure: isProd, sameSite: 'Lax' });
+
         return res.json({ success: true, message: 'Logged out.' });
     } catch (e) {
         console.error('Logout endpoint error:', e.message);
@@ -1894,6 +1937,67 @@ app.post('/api/user/profile', async (req, res) => {
     }
 });
 
+// API to upload user profile photo
+app.post('/api/user/upload-photo', authenticateJWT, upload.single('photo'), async (req, res) => {
+    try {
+        const userId = req.user.id;
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No photo provided.' });
+        }
+
+        const uploadResults = await uploadUserImageToSupabase(req.file.buffer, userId, req.file.originalname);
+        if (!uploadResults || uploadResults.length === 0) {
+            throw new Error('Failed to upload photo.');
+        }
+
+        const bestImage = uploadResults.find(r => r.format === 'webp') || uploadResults[0];
+        await dbRun('UPDATE users SET image_url = $1 WHERE id = $2', [bestImage.url, userId]);
+
+        res.json({ success: true, image_url: bestImage.url });
+    } catch (error) {
+        console.error('User photo upload error:', error);
+        res.status(500).json({ success: false, message: 'Failed to upload photo.' });
+    }
+});
+
+// API to get recent salons for "Book Again"
+app.get('/api/user/:user_id/recent-salons', authenticateJWT, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.user_id);
+        const tokenUserId = req.user.id;
+
+        if (userId != tokenUserId && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Unauthorized.' });
+        }
+
+        const query = `
+           SELECT s.id, s.salon_name as name, s.logo_url, s.image_url, s.city
+           FROM salons s
+           JOIN (
+               SELECT salon_id, MAX(start_time) as last_visit
+               FROM appointments
+               WHERE user_id = $1 AND status IN ('Completed', 'Scheduled')
+               GROUP BY salon_id
+           ) visits ON s.id = visits.salon_id
+           ORDER BY visits.last_visit DESC
+           LIMIT 10
+       `;
+
+       const rows = await dbAll(query, [userId]);
+       
+       const salons = rows.map(s => ({
+           ...s,
+           logo_url: s.logo_url || s.image_url
+       }));
+
+       res.json({ success: true, salons });
+
+    } catch (error) {
+        console.error('Recent salons fetch error:', error);
+        res.status(500).json({ success: false, message: 'Database error.' });
+    }
+});
+
 // API to get a consistent list of cities
 app.get('/api/cities', (req, res) => {
     // Return the master city list for all dropdowns
@@ -1959,6 +2063,74 @@ async function uploadImageToSupabase(buffer, salonId, originalFilename) {
     } catch (error) {
         console.error('Supabase upload error:', error);
         throw error;
+    }
+}
+
+async function uploadUserImageToSupabase(buffer, userId, originalFilename) {
+    try {
+        const timestamp = Date.now();
+        const randomId = crypto.randomBytes(6).toString('hex');
+        const baseFilename = `user_${userId}_${timestamp}_${randomId}`;
+        
+        let webp, jpeg;
+        
+        try {
+             webp = await sharp(buffer)
+                .resize(300, 300, { fit: 'cover' })
+                .webp({ quality: 85 })
+                .toBuffer();
+                
+             jpeg = await sharp(buffer)
+                .resize(300, 300, { fit: 'cover' })
+                .jpeg({ quality: 80 })
+                .toBuffer();
+        } catch (sharpError) {
+             console.error('Sharp processing error:', sharpError);
+             // Fallback: upload original buffer if sharp fails
+             webp = buffer;
+             jpeg = buffer;
+        }
+            
+        const uploads = [
+            { buffer: webp, path: `users/${baseFilename}.webp`, size: 'medium', format: 'webp' },
+            { buffer: jpeg, path: `users/${baseFilename}.jpg`, size: 'medium', format: 'jpeg' }
+        ];
+        
+        const uploadResults = [];
+        
+        for (const upload of uploads) {
+            const { data, error } = await supabase.storage
+                .from('salon-images')
+                .upload(upload.path, upload.buffer, {
+                    contentType: upload.format === 'webp' ? 'image/webp' : 'image/jpeg',
+                    cacheControl: '31536000',
+                    upsert: false
+                });
+                
+            if (error) {
+                console.error(`User upload error for ${upload.path}:`, error);
+                // Continue to try other formats if one fails
+                continue;
+            }
+            
+            const { data: urlData } = supabase.storage
+                .from('salon-images')
+                .getPublicUrl(upload.path);
+                
+            if (urlData && urlData.publicUrl) {
+                 uploadResults.push({
+                    format: upload.format,
+                    url: urlData.publicUrl,
+                    path: upload.path
+                });
+            }
+        }
+        
+        return uploadResults;
+    } catch (error) {
+        console.error('Supabase user upload error:', error);
+        // Instead of throwing, return empty array so upper logic handles it gracefully
+        return []; 
     }
 }
 
@@ -2704,7 +2876,7 @@ async function validateBookingSlot(salonId, staffId, startTime, endTime, service
             const staffMatch = breakStaffId === 0 || parseInt(breakStaffId) === parseInt(staffId);
             
             if (staffMatch && startMinutes < breakEnd && endMinutes > breakStart) {
-                return { valid: false, message: 'الوقت المحدد يتعارض مع فترة استراحة.' };
+                return { valid: false, message: `الوقت المحدد يتعارض مع فترة استراحة (${minutesToTime(breakStart)} - ${minutesToTime(breakEnd)}).` };
             }
         }
         

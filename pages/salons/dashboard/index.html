@@ -275,39 +275,79 @@
                 
                 <!-- Appointments View -->
                 <div id="appointments-view" class="view-content">
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-800">إدارة المواعيد</h2>
-                            <p class="text-slate-500 text-sm">تابع حجوزاتك وحالاتها لحظة بلحظة</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button id="open-block-slot-btn" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-4 py-2 rounded-xl font-bold transition-colors flex items-center gap-2">
-                                <i class="fas fa-calendar-times"></i>
-                                <span class="hidden sm:inline">حجب وقت</span>
-                            </button>
+                    <!-- Header -->
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold text-slate-800">إدارة المواعيد</h2>
+                        <p class="text-slate-500 text-sm">تابع حجوزاتك وحالاتها لحظة بلحظة</p>
+                    </div>
+
+                    <!-- Modern Filters Container -->
+                    <div class="glass-card p-2 mb-6 border border-white/50 shadow-lg sticky top-0 z-20">
+                        <!-- Integrated Filter Toolbar -->
+                        <div class="flex flex-col gap-3">
+                            
+                            <!-- Row 1: Date Strip (Horizontal Scroll) -->
+                            <div class="flex items-center gap-2 overflow-hidden">
+                                <button id="date-nav-prev" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <div id="appt-date-filter-container" class="flex-1 flex gap-2 overflow-x-auto custom-scrollbar no-scrollbar scroll-smooth py-1 px-1">
+                                    <!-- Populated by JS -->
+                                </div>
+                                <button id="date-nav-next" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                
+                                <!-- Custom Date Trigger -->
+                                <div class="relative">
+                                    <button id="date-custom-trigger" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-500 hover:text-secondary hover:bg-secondary/10 transition-colors">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </button>
+                                    <input type="date" id="appt-date-custom" class="absolute top-full left-0 mt-2 z-50 opacity-0 w-8 h-8 pointer-events-auto cursor-pointer">
+                                </div>
+                            </div>
+
+                            <!-- Divider -->
+                            <div class="h-[1px] bg-gray-100 w-full"></div>
+
+                            <!-- Row 2: Status & Staff -->
+                            <div class="flex flex-wrap items-center justify-between gap-3 px-1">
+                                <!-- Status Tabs -->
+                                <div id="appt-status-filter-container" class="flex gap-1 overflow-x-auto custom-scrollbar">
+                                    <!-- Populated by JS -->
+                                </div>
+
+                                <!-- Staff Avatars -->
+                    <div id="appt-staff-filter-container" class="flex gap-2 overflow-x-auto custom-scrollbar py-1 px-1">
+                        <!-- Populated by JS -->
+                    </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Tabs -->
-                    <div class="glass-card p-1.5 flex space-x-2 space-x-reverse overflow-x-auto mb-6">
-                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap active" data-filter="today">اليوم</button>
-                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap text-gray-500 hover:bg-gray-50" data-filter="upcoming">القادمة</button>
-                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap text-gray-500 hover:bg-gray-50" data-filter="completed">المكتملة</button>
-                        <button class="tab-appointments flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap text-gray-500 hover:bg-gray-50" data-filter="cancelled">الملغاة</button>
-                        <span id="appointments-count" class="hidden">0</span>
+                    <!-- Results Summary & Count -->
+                    <div class="flex items-center justify-between mb-4 px-2">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-8 bg-secondary rounded-full"></span>
+                            <div class="text-sm font-bold text-slate-700">
+                                المواعيد <span class="text-gray-400 font-normal mx-1">|</span> <span id="appt-filtered-count" class="text-secondary text-xl font-black">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Block Time Button Removed as requested -->
                     </div>
 
-                    <!-- Timeline View (For Today) -->
-                    <div id="timeline-view" class="hidden glass-card overflow-hidden flex flex-col h-[600px] border border-gray-100 shadow-sm relative bg-white">
-                        <div class="flex items-center justify-center h-full text-gray-400">
-                             <i class="fas fa-spinner fa-spin mr-2"></i> جاري تحميل الجدول...
+                    <!-- Main List Container -->
+                    <div id="appointments-list-container" class="space-y-4 min-h-[200px] pb-20">
+                        <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+                            <i class="fas fa-circle-notch fa-spin text-2xl mb-3 text-secondary"></i>
+                            <p>جاري تحميل المواعيد...</p>
                         </div>
                     </div>
-
-                    <!-- List View (For Other Tabs) -->
-                    <div id="appointments-list-container" class="space-y-4 min-h-[200px]">
-                        <p class="text-gray-500 text-center py-10">جاري تحميل المواعيد...</p>
-                    </div>
+                    
+                    <!-- Hidden Timeline View (Preserved if needed for future, but hiding for now to use List View) -->
+                    <div id="timeline-view" class="hidden"></div>
                 </div>
 
                 <!-- Management View -->

@@ -170,7 +170,6 @@ const initNavigation = (currentUser) => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
              confirmAction('هل أنت متأكد من تسجيل الخروج؟', () => {
-                localStorage.removeItem('salonToken');
                 localStorage.removeItem('saloony_token');
                 localStorage.removeItem('saloony_user');
                 localStorage.removeItem('saloony_refresh_token');

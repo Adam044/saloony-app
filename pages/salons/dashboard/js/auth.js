@@ -31,6 +31,10 @@ export const attemptRefresh = async () => {
         const data = await res.json();
         if (data && data.access_token) {
             localStorage.setItem('saloony_token', data.access_token);
+            if (data.user) {
+                localStorage.setItem('saloony_user', JSON.stringify(data.user));
+                console.log('✅ Session restored via auto-refresh');
+            }
             return data.access_token;
         }
         return null;
@@ -107,6 +111,39 @@ export const initAuth = async () => {
             return null;
         }
         token = newToken;
+        
+        // RELOAD USER DATA after refresh (crucial for session restoration)
+        try {
+            const updatedRawUser = localStorage.getItem('saloony_user');
+            if (updatedRawUser && updatedRawUser !== 'undefined') {
+                user = JSON.parse(updatedRawUser);
+                userId = user.userId || user.userid || user.id;
+                salonId = user.salonId || user.salon_id || user.salonid;
+                if (salonId) window.salonId = salonId;
+            }
+        } catch (e) {
+            console.error('Failed to reload user data:', e);
+        }
+    }
+
+    // EXTRA CHECK: If we have a token but missing IDs (e.g. cleared storage), try to refresh to recover
+    if ((!userId || !salonId) && token) {
+        console.log('⚠️ Token exists but User/Salon IDs missing. Attempting recovery via refresh...');
+        const recoveredToken = await attemptRefresh();
+        if (recoveredToken) {
+            try {
+                const recoveredUserRaw = localStorage.getItem('saloony_user');
+                if (recoveredUserRaw) {
+                    user = JSON.parse(recoveredUserRaw);
+                    userId = user.userId || user.userid || user.id;
+                    salonId = user.salonId || user.salon_id || user.salonid;
+                    if (salonId) window.salonId = salonId;
+                    console.log('✅ Session recovered successfully!');
+                }
+            } catch (e) {
+                console.error('Recovery failed:', e);
+            }
+        }
     }
 
     // Schedule refresh
@@ -140,9 +177,7 @@ export let currentStaffName = '';
 let availableBiometricRoles = [];
 
 export const getRoleSessionToken = (specificSalonId) => {
-    const salonId = specificSalonId || window.salonId;
-    if (!salonId) return null;
-    return localStorage.getItem(`saloony_role_session_${salonId}`);
+    return sessionToken; // Return memory token only to enforce PIN on refresh
 };
 
 // DOM Elements
@@ -175,14 +210,18 @@ export const checkRoleSystemEnabled = async () => {
             }
             
             // Check for existing valid session
-            const existingToken = localStorage.getItem(`saloony_role_session_${salonId}`);
-            if (existingToken) {
-                const isValid = await verifySession(existingToken);
+            // FORCE PIN ON REFRESH: We do NOT restore from localStorage anymore.
+            // We only check if we already have an in-memory token (unlikely on refresh, but possible in SPA nav)
+            if (sessionToken) {
+                const isValid = await verifySession(sessionToken);
                 if (isValid) {
                     showMainApp();
                     return;
                 }
             }
+            
+            // Clear any stale token from storage to be safe
+            localStorage.removeItem(`saloony_role_session_${salonId}`);
             
             // Show PIN screen
             showPinScreen();
@@ -379,7 +418,9 @@ const authenticatePin = async () => {
             window.currentStaffId = currentStaffId;
             window.currentStaffName = currentStaffName;
             
-            localStorage.setItem(`saloony_role_session_${salonId}`, sessionToken);
+            // DO NOT persist to localStorage to ensure PIN is required on refresh
+            // localStorage.setItem(`saloony_role_session_${salonId}`, sessionToken);
+            localStorage.removeItem(`saloony_role_session_${salonId}`);
             
             // Show main app
             showMainApp();

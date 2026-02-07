@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>حسابي - صالوني</title>
     <link rel="icon" type="image/x-icon" href="../../assets/images/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,50 +11,26 @@
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <script src="../../assets/js/components.js"></script>
     <style>
-        body { font-family: 'Tajawal', sans-serif; background-color: #F8FAFC; }
+        body { font-family: 'Tajawal', sans-serif; background-color: #F8FAFC; -webkit-tap-highlight-color: transparent; }
         
-        /* Hide Menu Toggle on this page only */
-        #menu-toggle { display: none !important; }
-
-        /* Custom Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
         }
 
-        .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
-        .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Skeleton Loading Animation */
-        .skeleton {
-            background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-            background-size: 200% 100%;
-            animation: skeleton-loading 1.5s infinite;
+        .strike-dot {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        @keyframes skeleton-loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        /* Header Overrides for Light Theme */
-        #main-header {
-            background: rgba(255, 255, 255, 0.8) !important;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-            backdrop-filter: blur(12px) !important;
+        .strike-dot.active {
+            background-color: #EF4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            transform: scale(1.1);
         }
     </style>
 </head>
-<body class="flex flex-col min-h-screen text-slate-800 bg-[#F8FAFC] overflow-x-hidden selection:bg-[#06C167]/20 selection:text-[#06C167] animate-fade-in">
+<body class="bg-slate-50 text-slate-800 pb-24">
 
     <!-- Global Header -->
     <div id="global-header"></div>
@@ -62,120 +38,224 @@
     <!-- Toast Notification -->
     <div id="toast-container" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Background Decoration -->
-    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div class="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-[#06C167]/5 rounded-full blur-[100px]"></div>
-        <div class="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px]"></div>
-    </div>
-
-    <main class="flex-1 pt-28 pb-12 px-4 md:px-8 relative z-10">
-        <div class="max-w-5xl mx-auto space-y-10">
+    <main class="pt-24 px-4 max-w-lg mx-auto w-full">
+        
+        <!-- Profile Header -->
+        <div class="relative mb-8 text-center animate-fade-in">
+            <div class="inline-block relative group">
+                <div class="w-28 h-28 rounded-[2rem] bg-white p-1.5 shadow-2xl shadow-slate-200 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                    <div class="w-full h-full rounded-[1.7rem] bg-slate-100 flex items-center justify-center text-4xl font-black text-slate-300 overflow-hidden relative">
+                        <span id="user-initials">?</span>
+                        <img id="user-avatar" src="" class="w-full h-full object-cover hidden" alt="Avatar">
+                    </div>
+                </div>
+                <div class="absolute -bottom-2 -right-2 bg-white rounded-xl p-1 shadow-lg">
+                    <button onclick="openVerification()" class="w-8 h-8 bg-slate-800 text-white rounded-lg flex items-center justify-center hover:scale-110 transition-transform">
+                        <i class="fas fa-camera text-xs"></i>
+                    </button>
+                </div>
+            </div>
             
-            <!-- Profile Header -->
-            <div class="glass-card rounded-[2.5rem] p-8 md:p-10 relative overflow-hidden animate-slide-up">
-                <!-- Header Gradient -->
-                <div class="absolute top-0 left-0 w-full h-36 bg-gradient-to-r from-[#06C167]/10 to-[#059669]/10 opacity-50"></div>
-                <div class="absolute top-0 left-0 w-full h-36 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+            <h1 id="user-name" class="text-2xl font-black text-slate-900 mt-6 mb-1">...</h1>
+            <p id="user-phone" class="text-slate-400 font-bold dir-ltr font-mono text-sm">...</p>
+        </div>
+
+        <!-- Stats / Strikes Grid -->
+        <div class="grid grid-cols-2 gap-4 mb-8 animate-slide-up" style="animation-delay: 0.1s;">
+            <!-- Wallet/Points (Placeholder for future) -->
+            <div class="glass-panel rounded-3xl p-5 flex flex-col items-center justify-center gap-2 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-bl-full -mr-4 -mt-4"></div>
+                <span class="text-3xl font-black text-emerald-500" id="total-bookings">-</span>
+                <span class="text-xs font-bold text-slate-400">حجوزات ناجحة</span>
+            </div>
+
+            <!-- Strikes System -->
+            <div class="glass-panel rounded-3xl p-5 flex flex-col items-center justify-center gap-3 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-16 h-16 bg-red-500/5 rounded-br-full -ml-4 -mt-4"></div>
                 
-                <div class="relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 pt-10">
-                    <!-- Avatar -->
-                    <div class="relative group">
-                        <div class="w-32 h-32 rounded-full bg-white p-1.5 shadow-xl ring-4 ring-white/50">
-                            <div class="w-full h-full rounded-full bg-slate-50 flex items-center justify-center text-4xl font-black text-slate-300 overflow-hidden relative border border-slate-100">
-                                <span id="user-initials">U</span>
-                                <img id="user-avatar" src="" class="w-full h-full object-cover hidden" alt="Avatar">
-                            </div>
-                        </div>
-                        <button class="absolute bottom-1 right-1 w-8 h-8 bg-[#06C167] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer" title="تغيير الصورة (قريباً)">
-                            <i class="fas fa-camera text-xs"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- Info -->
-                    <div class="flex-1 text-center md:text-right mb-2 md:mb-4">
-                        <h1 id="user-name" class="text-3xl md:text-4xl font-black text-slate-800 mb-2 tracking-tight">...</h1>
-                        <div class="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm font-medium text-slate-500">
-                            <span class="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-                                <i class="far fa-envelope text-[#06C167]"></i>
-                                <span id="user-email">...</span>
-                            </span>
-                            <span class="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
-                                <i class="fas fa-phone-alt text-[#06C167] text-xs"></i>
-                                <span id="user-phone">...</span>
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="flex gap-3 mb-4">
-                        <button onclick="logout()" class="group flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-red-500 font-bold border border-slate-200 hover:bg-red-50 hover:border-red-200 transition-all duration-300 shadow-sm">
-                            <i class="fas fa-sign-out-alt transition-transform group-hover:-translate-x-1"></i>
-                            <span>تسجيل خروج</span>
-                        </button>
-                    </div>
+                <!-- Dots -->
+                <div class="flex items-center gap-2" id="strikes-dots">
+                    <div class="w-4 h-4 rounded-full bg-slate-200 strike-dot"></div>
+                    <div class="w-4 h-4 rounded-full bg-slate-200 strike-dot"></div>
+                    <div class="w-4 h-4 rounded-full bg-slate-200 strike-dot"></div>
                 </div>
-            </div>
-
-            <!-- Continue Booking Section (Hidden by default) -->
-            <div id="continue-booking-section" class="hidden animate-slide-up">
-                <div class="glass-card rounded-[2rem] p-6 md:p-8 border border-blue-100 bg-blue-50/50">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                <i class="fas fa-history"></i>
-                            </div>
-                            <h2 class="text-xl font-bold text-slate-800">استكمال الحجز</h2>
-                        </div>
-                        <button onclick="clearLastVisited()" class="text-slate-400 hover:text-red-500 transition-colors text-sm">
-                            <i class="fas fa-times"></i> إخفاء
-                        </button>
-                    </div>
-                    
-                    <div id="last-visited-salon-card" class="bg-white rounded-2xl p-4 flex flex-col md:flex-row items-center gap-6 shadow-sm border border-slate-100">
-                        <!-- Loading State -->
-                        <div class="animate-pulse flex items-center gap-4 w-full">
-                            <div class="w-16 h-16 bg-slate-200 rounded-full"></div>
-                            <div class="flex-1 space-y-2">
-                                <div class="h-4 bg-slate-200 rounded w-1/3"></div>
-                                <div class="h-3 bg-slate-200 rounded w-1/4"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Content Area -->
-            <div class="animate-slide-up" style="animation-delay: 0.1s;">
-                <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                    <h2 class="text-2xl font-black text-slate-800">حجوزاتي</h2>
-                    
-                    <!-- Tabs -->
-                    <div class="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
-                        <button onclick="switchTab('upcoming')" id="tab-upcoming" class="relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden group">
-                            <span class="relative z-10">مواعيد قادمة</span>
-                            <div class="absolute inset-0 bg-[#06C167] opacity-0 transition-opacity duration-300" id="tab-bg-upcoming"></div>
-                        </button>
-                        <button onclick="switchTab('past')" id="tab-past" class="relative px-6 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:text-slate-600 transition-all duration-300">
-                            <span class="relative z-10">السجل السابق</span>
-                            <div class="absolute inset-0 bg-[#06C167] opacity-0 transition-opacity duration-300" id="tab-bg-past"></div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Appointments List -->
-                <div id="appointments-container" class="grid grid-cols-1 gap-5 min-h-[300px]">
-                    <!-- Loading State (Skeleton) -->
-                    <div class="space-y-4">
-                        <div class="glass-card rounded-3xl p-6 h-32 w-full skeleton border-0"></div>
-                        <div class="glass-card rounded-3xl p-6 h-32 w-full skeleton border-0"></div>
-                    </div>
+                
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-slate-400">حالة الحساب:</span>
+                    <span id="account-status-text" class="text-xs font-black text-emerald-500">نشط</span>
                 </div>
             </div>
         </div>
+
+        <!-- Book Again Section -->
+        <div id="book-again-section" class="mb-8 hidden animate-slide-up" style="animation-delay: 0.15s;">
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h2 class="text-lg font-black text-slate-900">حجز مجدداً</h2>
+                <span class="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">آخر الزيارات</span>
+            </div>
+            <div id="recent-salons-container" class="flex gap-4 overflow-x-auto pb-4 px-2 snap-x no-scrollbar" style="scroll-padding-left: 1rem; scroll-padding-right: 1rem;">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+
+        <!-- Appointments Section -->
+        <div class="animate-slide-up" style="animation-delay: 0.2s;">
+            <!-- Tabs -->
+            <div class="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                <button onclick="switchTab('upcoming')" id="tab-upcoming" class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group text-white bg-slate-800 shadow-lg shadow-slate-200">
+                    مواعيد قادمة
+                </button>
+                <button onclick="switchTab('past')" id="tab-past" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:text-slate-600 transition-all duration-300">
+                    السجل السابق
+                </button>
+            </div>
+
+            <!-- List -->
+            <div id="appointments-container" class="space-y-4 min-h-[300px]">
+                <!-- Loading -->
+                <div class="animate-pulse space-y-4">
+                    <div class="h-24 bg-slate-200/50 rounded-3xl"></div>
+                    <div class="h-24 bg-slate-200/50 rounded-3xl"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer & Logout -->
+        <footer class="mt-12 border-t border-slate-100 pt-8 pb-4 text-center animate-slide-up" style="animation-delay: 0.3s;">
+            <div class="flex justify-center gap-6 mb-6">
+                <a href="#" class="text-slate-400 hover:text-slate-600 text-sm font-bold">المساعدة</a>
+                <a href="#" class="text-slate-400 hover:text-slate-600 text-sm font-bold">الشروط</a>
+                <button onclick="logout()" class="text-red-400 hover:text-red-500 text-sm font-bold flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i> تسجيل خروج
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-300 font-mono">Saloony &copy; 2026</p>
+        </footer>
+
+    </main>
+
+    <!-- Verification Modal -->
+    <div id="verification-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity opacity-0" id="verification-backdrop" onclick="closeVerification()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 transition-transform translate-y-full flex flex-col gap-4 max-h-[90vh]" id="verification-panel">
+            <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-2"></div>
+            <h3 class="text-lg font-black text-center mb-2">التحقق من الهوية</h3>
+            
+            <div class="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] shadow-2xl mx-auto w-full max-w-xs ring-4 ring-slate-100">
+                <video id="camera-feed" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="camera-canvas" class="hidden"></canvas>
+                <img id="captured-preview" class="hidden w-full h-full object-cover">
+                
+                <!-- Camera Controls -->
+                <div class="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-6 z-10">
+                    <button id="btn-capture" onclick="capturePhoto()" class="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 backdrop-blur-md hover:scale-105 transition-transform shadow-lg">
+                        <div class="w-12 h-12 bg-white rounded-full"></div>
+                    </button>
+                    
+                    <div id="action-buttons" class="hidden flex gap-4">
+                        <button onclick="retakePhoto()" class="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button onclick="uploadPhoto()" class="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Overlay Guidelines -->
+                <div class="absolute inset-0 border-2 border-white/20 rounded-2xl pointer-events-none">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-64 border-2 border-white/40 rounded-[3rem]"></div>
+                </div>
+            </div>
+            <p class="text-center text-xs text-slate-400 mt-2 font-medium">يرجى التقاط صورة واضحة للوجه للتحقق</p>
+        </div>
+    </div>
+
     </main>
 
     <script>
         // --- Helpers ---
+        let isRefreshing = false;
+        let refreshSubscribers = [];
+
+        function onRefreshed(token) {
+            refreshSubscribers.map(cb => cb(token));
+            refreshSubscribers = [];
+        }
+
+        function addRefreshSubscriber(cb) {
+            refreshSubscribers.push(cb);
+        }
+
+        async function fetchWithAuth(url, options = {}) {
+            let token = localStorage.getItem('saloony_token');
+            
+            // Prepare headers
+            if (!options.headers) options.headers = {};
+            if (!(options.body instanceof FormData)) {
+                // Only set Content-Type if not FormData (browser sets it for FormData)
+                // But existing calls might set it manually. 
+                // We should respect existing Content-Type if set, or add JSON if body is string
+            }
+            
+            // Always add Authorization if token exists
+            if (token) {
+                options.headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            let res = await fetch(url, options);
+
+            // Handle 401 Unauthorized
+            if (res.status === 401) {
+                if (isRefreshing) {
+                    return new Promise(resolve => {
+                        addRefreshSubscriber(async (newToken) => {
+                            options.headers['Authorization'] = `Bearer ${newToken}`;
+                            resolve(await fetch(url, options));
+                        });
+                    });
+                }
+
+                isRefreshing = true;
+
+                try {
+                    // Attempt Refresh
+                    const refreshRes = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include' // Send cookies
+                    });
+
+                    if (refreshRes.ok) {
+                        const data = await refreshRes.json();
+                        if (data.success && data.token) {
+                            console.log('Session refreshed successfully');
+                            localStorage.setItem('saloony_token', data.token);
+                            if (data.user) {
+                                localStorage.setItem('saloony_user', JSON.stringify(data.user));
+                            }
+
+                            onRefreshed(data.token);
+                            isRefreshing = false;
+
+                            // Retry original request
+                            options.headers['Authorization'] = `Bearer ${data.token}`;
+                            return await fetch(url, options);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Refresh attempt failed:', e);
+                }
+
+                // If refresh failed
+                isRefreshing = false;
+                logout(false);
+                throw new Error('Auth failed');
+            }
+
+            return res;
+        }
+
         function parseJwt(token) {
             try {
                 const base64Url = token.split('.')[1];
@@ -189,406 +269,629 @@
             }
         }
 
+        let currentFilter = 'upcoming';
+
         // --- Init ---
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             SaloonyComponents.renderHeader('global-header', { activePage: 'profile', basePath: '../../' });
             
-            checkAuth();
+            await checkAuth();
             loadProfile();
             loadAppointments('upcoming');
-            checkLastVisitedSalon();
+            loadRecentSalons();
         });
 
-        // --- Auth ---
-        function checkAuth() {
-            const token = localStorage.getItem('saloony_token');
-            if (!token) {
-                window.location.href = 'auth.html';
-                return;
-            }
-            
-            // Basic Token Expiry Check
-            const payload = parseJwt(token);
-            if (!payload || (payload.exp && payload.exp * 1000 < Date.now())) {
-                logout(false);
-            }
-        }
+        // --- Camera & Verification ---
+        let stream = null;
+        const video = document.getElementById('camera-feed');
+        const canvas = document.getElementById('camera-canvas');
+        const preview = document.getElementById('captured-preview');
+        const btnCapture = document.getElementById('btn-capture');
+        const actionButtons = document.getElementById('action-buttons');
+        const modal = document.getElementById('verification-modal');
+        const backdrop = document.getElementById('verification-backdrop');
+        const panel = document.getElementById('verification-panel');
 
-        function logout(shouldConfirm = true) {
-            if(shouldConfirm && !confirm('هل أنت متأكد من تسجيل الخروج؟')) return;
-
-            localStorage.removeItem('saloony_token');
-            localStorage.removeItem('saloony_user');
-            localStorage.removeItem('saloony_refresh_token');
-            window.location.href = 'index.html';
-        }
-
-        // --- Last Visited Salon Logic ---
-        function clearLastVisited() {
-            localStorage.removeItem('saloony_last_visited_salon');
-            document.getElementById('continue-booking-section').classList.add('hidden');
-        }
-
-        async function checkLastVisitedSalon() {
-            const lastSalonId = localStorage.getItem('saloony_last_visited_salon');
-            if (!lastSalonId) return;
-
-            const section = document.getElementById('continue-booking-section');
-            const container = document.getElementById('last-visited-salon-card');
-            
-            section.classList.remove('hidden');
+        async function openVerification() {
+            modal.classList.remove('hidden');
+            // Animate in
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                panel.classList.remove('translate-y-full');
+            }, 10);
 
             try {
-                // Fetch salon details
-                const response = await fetch(`${SaloonyComponents.apiBase}/salon/info/${lastSalonId}`);
-                if (!response.ok) throw new Error('Failed to load salon');
-                
-                const data = await response.json();
-                const salon = data.salon;
-
-                if (!salon) {
-                    clearLastVisited();
-                    return;
-                }
-
-                container.innerHTML = `
-                    <div class="flex-shrink-0">
-                        <img src="${salon.logo_url || '../../assets/images/Saloony-app_icon.png'}" 
-                             class="w-20 h-20 rounded-full object-cover border-2 border-slate-100 shadow-sm"
-                             onerror="this.src='../../assets/images/Saloony-app_icon.png'">
-                    </div>
-                    <div class="flex-1 text-center md:text-right">
-                        <h3 class="font-bold text-lg text-slate-800 mb-1">${salon.name}</h3>
-                        <p class="text-sm text-slate-500 mb-3 line-clamp-2">${salon.description || 'صالون مميز يقدم أفضل الخدمات'}</p>
-                        <div class="flex items-center justify-center md:justify-start gap-4 text-xs text-slate-400">
-                            <span><i class="fas fa-map-marker-alt ml-1"></i> ${salon.city || 'غير محدد'}</span>
-                            <span><i class="fas fa-star text-yellow-400 ml-1"></i> ${salon.rating || '5.0'}</span>
-                        </div>
-                    </div>
-                    <div class="flex-shrink-0 w-full md:w-auto mt-4 md:mt-0">
-                        <a href="../salons/salon.html?id=${salon.id}" class="block w-full md:w-auto text-center px-8 py-3 bg-[#06C167] text-white rounded-xl font-bold hover:bg-[#05a357] transition-all shadow-lg shadow-[#06C167]/20 transform hover:-translate-y-1">
-                            متابعة الحجز <i class="fas fa-arrow-left mr-2"></i>
-                        </a>
-                    </div>
-                `;
-
-            } catch (error) {
-                console.error('Error loading last visited salon:', error);
-                clearLastVisited();
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                preview.classList.add('hidden');
+                btnCapture.classList.remove('hidden');
+                actionButtons.classList.add('hidden');
+                actionButtons.classList.remove('flex');
+            } catch (err) {
+                console.error(err);
+                alert('لا يمكن الوصول للكاميرا. يرجى التأكد من السماح بالوصول.');
+                closeVerification();
             }
         }
 
-        // --- Profile ---
+        function closeVerification() {
+            backdrop.classList.add('opacity-0');
+            panel.classList.add('translate-y-full');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+            }, 300);
+        }
+
+        function capturePhoto() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            
+            preview.src = dataUrl;
+            preview.classList.remove('hidden');
+            video.classList.add('hidden');
+            
+            btnCapture.classList.add('hidden');
+            actionButtons.classList.remove('hidden');
+            actionButtons.classList.add('flex');
+        }
+
+        function retakePhoto() {
+            preview.classList.add('hidden');
+            video.classList.remove('hidden');
+            btnCapture.classList.remove('hidden');
+            actionButtons.classList.add('hidden');
+            actionButtons.classList.remove('flex');
+        }
+
+        function dataURLtoBlob(dataurl) {
+            var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], {type:mime});
+        }
+
+        async function uploadPhoto() {
+            const dataUrl = preview.src;
+            const blob = dataURLtoBlob(dataUrl);
+            const formData = new FormData();
+            formData.append('photo', blob, 'user-verification.jpg');
+            
+            // Show loading state if needed
+            
+            try {
+                const res = await fetchWithAuth('/api/user/upload-photo', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    // Update UI
+                    const avatar = document.getElementById('user-avatar');
+                    avatar.src = data.image_url;
+                    avatar.classList.remove('hidden');
+                    document.getElementById('user-initials').classList.add('hidden');
+                    
+                    // Update LocalStorage
+                    let user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                    user.image_url = data.image_url;
+                    localStorage.setItem('saloony_user', JSON.stringify(user));
+                    
+                    closeVerification();
+                } else {
+                    alert('فشل رفع الصورة: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ أثناء الرفع');
+            }
+        }
+
+        // --- Data Loading ---
         async function loadProfile() {
             try {
                 let user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
                 const token = localStorage.getItem('saloony_token');
                 
-                // Auto-recovery: If user data is missing but token exists
+                // Recovery Logic
                 if ((!user.name || !user.id) && token) {
                     const payload = parseJwt(token);
                     if (payload && payload.sub) {
                         try {
-                            const userType = payload.role || 'user';
-                            const res = await fetch('/api/user/profile', {
+                            const res = await fetchWithAuth('/api/user/profile', {
                                 method: 'POST',
-                                headers: { 
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                },
-                                body: JSON.stringify({ userId: payload.sub, user_type: userType })
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: payload.sub, user_type: payload.role || 'user' })
                             });
-                            
-                            if (res.status === 401) {
-                                logout(false);
-                                return;
-                            }
-                            
                             if (res.ok) {
-                                const data = await res.json();
-                                // Merge with existing or set new
-                                user = { ...user, ...data };
-                                if (data.id) user.id = data.id; // Ensure ID is top level
+                                user = await res.json();
                                 localStorage.setItem('saloony_user', JSON.stringify(user));
-                                console.log('User profile recovered successfully');
                             }
-                        } catch (err) {
-                            console.error('Failed to recover profile:', err);
-                        }
+                        } catch (e) { console.error(e); }
                     }
                 }
 
                 if (user.name) {
                     document.getElementById('user-name').textContent = user.name;
-                    document.getElementById('user-email').textContent = user.email;
                     document.getElementById('user-phone').textContent = user.phone || 'غير محدد';
-                    document.getElementById('user-initials').textContent = (user.name || 'U').charAt(0).toUpperCase();
-
-                    if (user.image) {
-                        const img = document.getElementById('user-avatar');
-                        img.src = user.image;
-                        img.classList.remove('hidden');
-                        img.onerror = function() {
-                            this.classList.add('hidden');
-                        };
+                    document.getElementById('user-initials').textContent = user.name.charAt(0).toUpperCase();
+                    
+                    if (user.image_url) {
+                        document.getElementById('user-avatar').src = user.image_url;
+                        document.getElementById('user-avatar').classList.remove('hidden');
+                        document.getElementById('user-initials').classList.add('hidden');
                     }
+
+                    // Update Strikes
+                    updateStrikesUI(user.strikes_count || 0);
                 }
-            } catch (e) { console.error(e); }
+            } catch (err) {
+                console.error('Profile load error:', err);
+            }
         }
 
-        // --- Toast Notification ---
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            const colors = type === 'success' 
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-lg shadow-emerald-500/10 border' 
-                : 'bg-red-50 text-red-600 border-red-200 shadow-lg shadow-red-500/10 border';
-            
-            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-
-            toast.className = `flex items-center gap-3 px-6 py-4 rounded-2xl transform -translate-y-full opacity-0 transition-all duration-500 ${colors}`;
-            toast.innerHTML = `
-                <i class="fas ${icon} text-xl"></i>
-                <span class="font-bold text-sm">${message}</span>
-            `;
-
-            container.appendChild(toast);
-
-            // Animate in
-            requestAnimationFrame(() => {
-                toast.classList.remove('-translate-y-full', 'opacity-0');
-            });
-
-            // Remove after 3s
-            setTimeout(() => {
-                toast.classList.add('-translate-y-full', 'opacity-0');
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
-        }
-
-        // --- Appointments ---
-        let currentTab = 'upcoming';
-
-        function switchTab(tab) {
-            currentTab = tab;
-            
-            const activeClass = 'text-white shadow-md';
-            const inactiveClass = 'text-slate-400 hover:text-slate-600 hover:bg-slate-50';
-
-            const tabUpcoming = document.getElementById('tab-upcoming');
-            const tabPast = document.getElementById('tab-past');
-            const bgUpcoming = document.getElementById('tab-bg-upcoming');
-            const bgPast = document.getElementById('tab-bg-past');
-
-            if (tab === 'upcoming') {
-                tabUpcoming.classList.add(...activeClass.split(' '));
-                tabUpcoming.classList.remove(...inactiveClass.split(' '));
-                bgUpcoming.classList.replace('opacity-0', 'opacity-100');
+        async function loadRecentSalons() {
+            try {
+                const token = localStorage.getItem('saloony_token');
+                let user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                // Ensure we have user ID
+                if (!user.id) {
+                     const payload = parseJwt(token);
+                     if (payload) user.id = payload.sub;
+                }
+                if (!user.id) return;
                 
-                tabPast.classList.remove(...activeClass.split(' '));
-                tabPast.classList.add(...inactiveClass.split(' '));
-                bgPast.classList.replace('opacity-100', 'opacity-0');
-            } else {
-                tabPast.classList.add(...activeClass.split(' '));
-                tabPast.classList.remove(...inactiveClass.split(' '));
-                bgPast.classList.replace('opacity-0', 'opacity-100');
+                const res = await fetchWithAuth(`/api/user/${user.id}/recent-salons`);
+                const data = await res.json();
+                
+                if (data.success && data.salons && data.salons.length > 0) {
+                    const container = document.getElementById('recent-salons-container');
+                    document.getElementById('book-again-section').classList.remove('hidden');
+                    
+                    container.innerHTML = data.salons.map(salon => {
+                        const imgContent = salon.logo_url 
+                            ? `<img src="${salon.logo_url}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">`
+                            : `<div class="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400"><i class="fas fa-store text-2xl"></i></div>`;
+                            
+                        return `
+                        <div class="snap-center shrink-0 w-32 flex flex-col gap-2">
+                            <div class="aspect-square rounded-2xl bg-slate-100 overflow-hidden relative shadow-sm group cursor-pointer" onclick="window.location.href='../../salon.html?id=${salon.id}'">
+                                ${imgContent}
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                                <button class="absolute bottom-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-slate-900 shadow-lg hover:bg-emerald-500 hover:text-white transition-colors">
+                                    <i class="fas fa-redo text-xs"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs font-bold text-center truncate px-1 text-slate-700">${salon.name}</p>
+                        </div>
+                    `}).join('');
+                }
+            } catch (e) {
+                console.error('Failed to load recent salons', e);
+            }
+        }
 
-                tabUpcoming.classList.remove(...activeClass.split(' '));
-                tabUpcoming.classList.add(...inactiveClass.split(' '));
-                bgUpcoming.classList.replace('opacity-100', 'opacity-0');
+        function updateStrikesUI(strikes) {
+            const dotsContainer = document.getElementById('strikes-dots');
+            const statusText = document.getElementById('account-status-text');
+            
+            dotsContainer.innerHTML = '';
+            
+            // Render 3 dots
+            for (let i = 0; i < 3; i++) {
+                const isStrike = i < strikes;
+                const dot = document.createElement('div');
+                dot.className = `w-4 h-4 rounded-full transition-all duration-300 ${
+                    isStrike ? 'bg-red-500 shadow-lg shadow-red-500/40 scale-110' : 'bg-slate-200'
+                }`;
+                dotsContainer.appendChild(dot);
             }
 
-            loadAppointments(tab);
+            if (strikes >= 3) {
+                statusText.textContent = 'محظور';
+                statusText.className = 'text-xs font-black text-red-600';
+            } else if (strikes > 0) {
+                statusText.textContent = `${strikes} إنذار`;
+                statusText.className = 'text-xs font-black text-orange-500';
+            } else {
+                statusText.textContent = 'ممتاز';
+                statusText.className = 'text-xs font-black text-emerald-500';
+            }
         }
 
         async function loadAppointments(filter) {
+            currentFilter = filter;
             const container = document.getElementById('appointments-container');
-            // Skeleton Loading
-            container.innerHTML = `
-                <div class="glass-card rounded-[2rem] p-6 h-32 w-full skeleton border-0"></div>
-                <div class="glass-card rounded-[2rem] p-6 h-32 w-full skeleton border-0 opacity-50"></div>
-            `;
+            container.innerHTML = '<div class="animate-pulse space-y-4"><div class="h-24 bg-slate-200/50 rounded-3xl"></div><div class="h-24 bg-slate-200/50 rounded-3xl"></div></div>';
 
             try {
-                const user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
                 const token = localStorage.getItem('saloony_token');
-                
-                if (!token) {
-                    logout(false);
-                    return;
-                }
-                
-                // Robust ID check to handle different backend responses
-                let userId = user.id || user.userId || user.user_id || user._id;
+                let user = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                let userId = user.id || (parseJwt(token) || {}).sub;
 
-                // Fallback: Try to recover User ID from token if missing in user object
-                if (!userId) {
-                    const payload = parseJwt(token);
-                    if (payload && payload.sub) {
-                        userId = payload.sub;
-                        console.log('Recovered User ID from token:', userId);
-                        // Attempt to refresh profile data in background
-                        loadProfile();
-                    } else {
-                        // Token invalid or corrupted
-                        console.error('Invalid token payload');
-                        logout(false);
-                        return;
-                    }
-                }
-
-                if (!userId) {
-                     console.error('User ID missing even after recovery attempt');
-                     logout(false);
-                     return;
-                }
-
-                const res = await fetch(`/api/appointments/user/${userId}/${filter}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                if (!userId) { logout(false); return; }
                 
-                if (res.status === 401) {
-                    console.error('401 Unauthorized - Token expired or invalid');
-                    logout(false);
-                    return;
-                }
-                
+                const res = await fetchWithAuth(`/api/appointments/user/${userId}/${filter}`);
+
+                if (!res.ok) throw new Error('Auth failed');
                 const data = await res.json();
-                
+
                 if (data.success) {
+                    if (filter === 'past') {
+                         document.getElementById('total-bookings').textContent = data.appointments.filter(a => a.status === 'Completed').length;
+                    }
                     renderAppointments(data.appointments, filter);
-                } else {
-                    showEmptyState(container, data.message || 'حدث خطأ', filter);
                 }
-            } catch (e) {
-                console.error(e);
-                showEmptyState(container, 'فشل الاتصال بالخادم', filter);
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<p class="text-center text-red-400 py-8">فشل تحميل المواعيد</p>';
             }
         }
 
         function renderAppointments(appointments, filter) {
             const container = document.getElementById('appointments-container');
-            container.innerHTML = '';
-
-            if (appointments.length === 0) {
-                showEmptyState(container, null, filter);
+            
+            if (!appointments || appointments.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 flex flex-col items-center opacity-60">
+                        <i class="far fa-calendar-times text-4xl text-slate-300 mb-4"></i>
+                        <p class="text-slate-500 font-bold">No ${filter === 'upcoming' ? 'upcoming' : 'past'} appointments</p>
+                    </div>
+                `;
                 return;
             }
 
-            appointments.forEach((appt, index) => {
+            container.innerHTML = appointments.map((appt, idx) => {
                 const date = new Date(appt.start_time);
-                const dateDay = date.getDate();
-                const dateMonth = date.toLocaleDateString('ar-EG', { month: 'short' });
-                const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
                 
-                // Status Logic
-                let statusConfig = { text: 'مؤكد', color: 'emerald', icon: 'fa-check' };
-                if (appt.status === 'Completed') statusConfig = { text: 'مكتمل', color: 'blue', icon: 'fa-check-double' };
-                else if (appt.status === 'Cancelled') statusConfig = { text: 'ملغي', color: 'red', icon: 'fa-times' };
-
-                const el = document.createElement('div');
-                el.className = `group glass-card rounded-[2rem] p-6 hover:bg-white transition-all duration-300 flex flex-col md:flex-row gap-6 items-start md:items-center relative overflow-hidden animate-slide-up border border-white/50`;
-                el.style.animationDelay = `${index * 0.1}s`;
+                // English Numbers & Specific Date Format (dd/mm/yy)
+                const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                 
-                el.innerHTML = `
-                    <!-- Decorative Side Line -->
-                    <div class="absolute top-0 right-0 w-1.5 h-full bg-${statusConfig.color}-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                const statusConfig = getStatusConfig(appt.status);
+                const apptJson = encodeURIComponent(JSON.stringify(appt));
 
-                    <!-- Date Box -->
-                    <div class="shrink-0 flex md:flex-col items-center justify-center gap-2 md:gap-0 bg-slate-50 text-slate-700 rounded-2xl w-full md:w-20 h-16 md:h-24 border border-slate-200 group-hover:bg-[#06C167] group-hover:text-white group-hover:border-[#06C167] transition-colors duration-300">
-                        <span class="text-2xl font-black leading-none">${dateDay}</span>
-                        <span class="text-xs font-bold opacity-80">${dateMonth}</span>
+                // Image Logic: Logo -> Image -> Placeholder Icon
+                const imgSource = appt.logo_url || appt.image_url;
+                const imgContent = imgSource 
+                    ? `<img src="${imgSource}" class="w-full h-full object-cover">`
+                    : `<div class="w-full h-full flex items-center justify-center bg-slate-50 text-slate-300"><i class="fas fa-store text-xl"></i></div>`;
+
+                return `
+                <div onclick="openAppointmentModal('${apptJson}')" class="glass-panel rounded-[1.5rem] p-4 flex items-center gap-4 animate-slide-up hover:scale-[1.02] transition-transform duration-300 cursor-pointer relative overflow-hidden group" style="animation-delay: ${idx * 0.05}s">
+                    <!-- Status Strip -->
+                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-${statusConfig.color}-500"></div>
+
+                    <!-- Salon Logo -->
+                    <div class="relative w-16 h-16 rounded-2xl bg-white shrink-0 overflow-hidden shadow-sm border border-slate-100">
+                        ${imgContent}
                     </div>
-
+                    
                     <!-- Info -->
-                    <div class="flex-1 w-full">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                            <h3 class="font-bold text-xl text-slate-800 group-hover:text-[#06C167] transition-colors">${appt.salon_name}</h3>
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-${statusConfig.color}-50 text-${statusConfig.color}-600 border border-${statusConfig.color}-100">
-                                <i class="fas ${statusConfig.icon} text-[10px]"></i>
+                    <div class="flex-1 min-w-0 py-1">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="font-black text-slate-900 truncate text-base leading-tight">${appt.salon_name}</h3>
+                            <span class="text-[10px] font-bold text-${statusConfig.color}-500 bg-${statusConfig.color}-50 px-2 py-0.5 rounded-full whitespace-nowrap">
                                 ${statusConfig.text}
                             </span>
                         </div>
                         
-                        <p class="text-slate-500 font-medium text-sm mb-4 leading-relaxed line-clamp-2">${appt.services_names}</p>
+                        <p class="text-xs text-slate-400 font-bold mb-2 truncate">${appt.services_names}</p>
                         
-                        <div class="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
-                            <span class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                                <i class="far fa-clock text-slate-400"></i> ${timeStr}
+                        <div class="flex items-center gap-3 text-[11px] font-bold text-slate-500">
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg dir-ltr">
+                                <i class="far fa-calendar-alt text-emerald-500"></i> <span class="font-mono">${dateStr}</span>
                             </span>
-                            <span class="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                                <i class="fas fa-user-tag text-slate-400"></i> ${appt.staff_name || 'أي مختص'}
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg dir-ltr">
+                                <i class="far fa-clock text-emerald-500"></i> <span class="font-mono">${timeStr}</span>
                             </span>
                         </div>
                     </div>
 
-                    <!-- Price & Action -->
-                    <div class="w-full md:w-auto flex items-center justify-between md:flex-col md:items-end gap-4 mt-2 md:mt-0 border-t md:border-0 border-slate-100 pt-4 md:pt-0 pl-2">
-                        <div class="text-right">
-                            <span class="block text-[10px] text-slate-400 font-bold">الإجمالي</span>
-                            <div class="font-black text-xl text-[#06C167] leading-none">${appt.price} <span class="text-xs font-normal text-slate-400">₪</span></div>
+                    <!-- Arrow -->
+                    <div class="text-slate-300 group-hover:text-emerald-500 transition-colors pl-2">
+                        <i class="fas fa-chevron-left rtl:rotate-180"></i>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusConfig(status) {
+            switch(status) {
+                case 'Scheduled': return { color: 'emerald', text: 'مؤكد', icon: 'fa-check' };
+                case 'Completed': return { color: 'blue', text: 'مكتمل', icon: 'fa-check-double' };
+                case 'Cancelled': return { color: 'red', text: 'ملغي', icon: 'fa-times' };
+                case 'Absent': return { color: 'red', text: 'لم يحضر', icon: 'fa-user-slash' }; // Strike status
+                default: return { color: 'gray', text: status, icon: 'fa-info' };
+            }
+        }
+
+        function switchTab(tab) {
+            const btnUpcoming = document.getElementById('tab-upcoming');
+            const btnPast = document.getElementById('tab-past');
+            
+            if (tab === 'upcoming') {
+                btnUpcoming.className = 'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group text-white bg-slate-800 shadow-lg shadow-slate-200';
+                btnPast.className = 'flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:text-slate-600 transition-all duration-300';
+            } else {
+                btnPast.className = 'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden group text-white bg-slate-800 shadow-lg shadow-slate-200';
+                btnUpcoming.className = 'flex-1 py-2.5 rounded-xl text-sm font-bold text-slate-400 hover:text-slate-600 transition-all duration-300';
+            }
+            loadAppointments(tab);
+        }
+
+        async function checkAuth() {
+            const token = localStorage.getItem('saloony_token');
+            if (!token) {
+                logout(false);
+                return;
+            }
+        }
+
+        function logout(apiCall = true) {
+            if (apiCall) {
+                try { fetch('/api/auth/logout', { method: 'POST' }); } catch(e) {}
+            }
+            localStorage.removeItem('saloony_token');
+            localStorage.removeItem('saloony_user');
+            window.location.href = '../../index.html';
+        }
+    </script>
+
+    <!-- Appointment Details Modal -->
+    <div id="appointment-modal" class="fixed inset-0 z-[100] hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="appt-modal-backdrop" onclick="closeAppointmentModal()"></div>
+        
+        <!-- Modal Content -->
+        <div class="absolute bottom-0 left-0 w-full md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[400px] md:h-auto md:rounded-[2rem] bg-[#F8FAFC] rounded-t-[2.5rem] shadow-2xl transform transition-transform translate-y-full md:translate-y-10 scale-95 opacity-0" id="appt-modal-content">
+            
+            <!-- Handle for mobile -->
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2 md:hidden"></div>
+
+            <div class="relative overflow-hidden rounded-t-[2.5rem] md:rounded-t-[2rem]">
+                <!-- Salon Cover -->
+                <div class="h-32 bg-slate-200 relative">
+                    <img id="modal-salon-cover" src="" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <button onclick="closeAppointmentModal()" class="absolute top-4 right-4 w-8 h-8 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white flex items-center justify-center transition-all">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Salon Logo & Info -->
+                <div class="px-6 -mt-10 relative flex items-end gap-4 mb-6">
+                    <div class="w-20 h-20 rounded-[1.5rem] bg-white p-1 shadow-lg">
+                        <img id="modal-salon-logo" src="" class="w-full h-full object-cover rounded-[1.2rem]">
+                    </div>
+                    <div class="mb-2">
+                        <h2 id="modal-salon-name" class="text-xl font-black text-white drop-shadow-md leading-none mb-1">...</h2>
+                        <p id="modal-salon-address" class="text-xs text-slate-200 font-bold drop-shadow-sm mb-2 flex items-center gap-1">
+                            <i class="fas fa-map-marker-alt"></i> <span>...</span>
+                        </p>
+                        <div id="modal-status-badge" class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/90 backdrop-blur text-slate-900">
+                            <!-- Status -->
                         </div>
-                        
-                        ${filter === 'upcoming' && appt.status === 'Scheduled' ? `
-                            <button onclick="cancelAppointment(${appt.id})" class="w-full md:w-auto px-5 py-2.5 bg-white border border-red-100 text-red-500 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white hover:border-red-500 transition-all shadow-sm">
-                                إلغاء
-                            </button>
-                        ` : ''}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="px-6 pb-8 max-h-[60vh] overflow-y-auto">
+                
+                <!-- Date & Time -->
+                <div class="flex items-center gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <div class="flex-1 text-center border-l border-slate-100 pl-4">
+                        <p class="text-xs text-slate-400 font-bold mb-1">التاريخ</p>
+                        <p id="modal-date" class="text-sm font-black text-slate-800">...</p>
+                    </div>
+                    <div class="flex-1 text-center">
+                        <p class="text-xs text-slate-400 font-bold mb-1">الوقت</p>
+                        <p id="modal-time" class="text-sm font-black text-slate-800">...</p>
+                    </div>
+                </div>
+
+                <!-- Staff -->
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-bold">الموظف</p>
+                        <p id="modal-staff" class="text-sm font-bold text-slate-800">...</p>
+                    </div>
+                </div>
+
+                <!-- Services List -->
+                <div class="mb-6">
+                    <p class="text-xs text-slate-400 font-bold mb-3">الخدمات</p>
+                    <div id="modal-services-list" class="space-y-2">
+                        <!-- Services injected here -->
+                    </div>
+                </div>
+
+                <!-- Total -->
+                <div class="flex items-center justify-between border-t border-slate-100 pt-4 mb-6">
+                    <span class="font-bold text-slate-500">الإجمالي</span>
+                    <span id="modal-total-price" class="text-xl font-black text-emerald-600">...</span>
+                </div>
+
+                <!-- Actions -->
+                <div class="grid grid-cols-2 gap-3" id="modal-actions">
+                    <!-- Actions injected via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal Logic
+        function openAppointmentModal(apptJson) {
+            const appt = JSON.parse(decodeURIComponent(apptJson));
+            const modal = document.getElementById('appointment-modal');
+            const backdrop = document.getElementById('appt-modal-backdrop');
+            const content = document.getElementById('appt-modal-content');
+            
+            // Populate Data
+            // Image Logic for Modal
+            const coverImg = document.getElementById('modal-salon-cover');
+            const logoImg = document.getElementById('modal-salon-logo');
+            
+            const coverSrc = appt.image_url || appt.logo_url;
+            if (coverSrc) {
+                coverImg.src = coverSrc;
+                coverImg.classList.remove('hidden');
+                // Ensure parent has no fallback background if image is present
+                coverImg.parentElement.classList.remove('bg-slate-300'); 
+            } else {
+                coverImg.classList.add('hidden');
+                coverImg.parentElement.classList.add('bg-slate-300'); // Fallback color
+            }
+
+            const logoSrc = appt.logo_url;
+            if (logoSrc) {
+                logoImg.src = logoSrc;
+                logoImg.classList.remove('hidden');
+                // Hide placeholder if exists (we might need to add one in HTML if we want perfect fallback)
+            } else {
+                // If no logo, maybe show a default or hide
+                logoImg.classList.add('hidden');
+                // If we had a placeholder icon in HTML we would show it here.
+                // For now, let's just use a generic transparent pixel to avoid broken image icon if hidden class doesn't work for some reason
+                logoImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; 
+            }
+
+            document.getElementById('modal-salon-name').textContent = appt.salon_name;
+            document.getElementById('modal-salon-address').querySelector('span').textContent = appt.location_text || 'العنوان غير متوفر';
+            
+            const statusConfig = getStatusConfig(appt.status);
+            const statusBadge = document.getElementById('modal-status-badge');
+            statusBadge.className = `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                appt.status === 'Scheduled' ? 'bg-emerald-100 text-emerald-700' : 
+                appt.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 
+                'bg-slate-100 text-slate-700'
+            }`;
+            statusBadge.innerHTML = `<i class="fas ${statusConfig.icon}"></i> ${statusConfig.text}`;
+
+            const date = new Date(appt.start_time);
+            // English Numbers & Specific Date Format (dd/mm/yy)
+            document.getElementById('modal-date').textContent = date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            document.getElementById('modal-time').textContent = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            
+            document.getElementById('modal-staff').textContent = appt.staff_name || 'أي موظف متاح';
+            
+            // Services
+            const servicesContainer = document.getElementById('modal-services-list');
+            if (appt.all_services && appt.all_services.length > 0) {
+                servicesContainer.innerHTML = appt.all_services.map(s => `
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-50 shadow-sm">
+                        <span class="text-sm font-bold text-slate-700">${s.name_ar}</span>
+                        <span class="text-xs font-bold text-slate-400">${parseInt(s.price)} ₪</span>
+                    </div>
+                `).join('');
+            } else {
+                servicesContainer.innerHTML = `
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-50 shadow-sm">
+                        <span class="text-sm font-bold text-slate-700">${appt.service_name}</span>
+                        <span class="text-xs font-bold text-slate-400">${parseInt(appt.price)} ₪</span>
                     </div>
                 `;
-                container.appendChild(el);
+            }
+
+            document.getElementById('modal-total-price').textContent = `${parseInt(appt.price)} ₪`;
+
+            // Actions
+            const actionsContainer = document.getElementById('modal-actions');
+            actionsContainer.innerHTML = '';
+            
+            // Call Button
+            if (appt.phone_number) {
+                actionsContainer.innerHTML += `
+                    <a href="tel:${appt.phone_number}" class="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-phone"></i> اتصال
+                    </a>
+                `;
+            }
+
+            // Directions Button
+            if (appt.location_text) {
+                 const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appt.location_text)}`;
+                 actionsContainer.innerHTML += `
+                    <a href="${mapsUrl}" target="_blank" class="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-location-arrow"></i> الموقع
+                    </a>
+                `;
+            }
+
+            // Cancel Button (if scheduled and in future)
+            if (appt.status === 'Scheduled' && new Date(appt.start_time) > new Date()) {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors col-span-2';
+                cancelBtn.innerHTML = '<i class="fas fa-times"></i> إلغاء الموعد';
+                cancelBtn.onclick = () => cancelAppointment(appt.id);
+                actionsContainer.appendChild(cancelBtn);
+            }
+
+            // Show Modal
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                backdrop.classList.remove('opacity-0');
+                content.classList.remove('translate-y-full', 'scale-95', 'opacity-0');
+                content.classList.add('md:translate-y-0'); // Reset translate for desktop
             });
         }
 
-        function showEmptyState(container, message, filter) {
-            const isUpcoming = filter === 'upcoming';
-            const emptyText = message || (isUpcoming ? 'لا توجد مواعيد قادمة' : 'لا يوجد سجل للمواعيد السابقة');
-            const subText = isUpcoming 
-                ? 'استكشف أفضل الصالونات واحجز موعدك القادم الآن بكل سهولة' 
-                : 'لم تقم بإجراء أي حجوزات بعد. ابدأ رحلتك معنا الآن';
-
-            container.innerHTML = `
-                <div class="text-center py-20 px-6 flex flex-col items-center justify-center">
-                    <div class="relative w-24 h-24 mb-6 group">
-                        <div class="absolute inset-0 bg-[#06C167]/20 rounded-full animate-ping opacity-20"></div>
-                        <div class="relative w-full h-full bg-[#06C167]/10 rounded-full flex items-center justify-center text-[#06C167] text-4xl group-hover:scale-110 transition-transform duration-300">
-                            <i class="far ${isUpcoming ? 'fa-calendar-plus' : 'fa-calendar-check'}"></i>
-                        </div>
-                    </div>
-                    <h3 class="text-xl font-bold text-slate-800 mb-2">${emptyText}</h3>
-                    <p class="text-slate-500 max-w-xs mx-auto mb-8 leading-relaxed">${subText}</p>
-                    
-                    ${isUpcoming ? `
-                    <a href="registred_salons.html" class="inline-flex items-center gap-3 px-8 py-3.5 bg-[#06C167] text-white rounded-full font-bold hover:bg-[#05AE5D] hover:shadow-lg hover:shadow-[#06C167]/20 transition-all duration-300 transform hover:-translate-y-1">
-                        <span>تصفح الصالونات</span>
-                        <i class="fas fa-arrow-left"></i>
-                    </a>
-                    ` : ''}
-                </div>
-            `;
+        function closeAppointmentModal() {
+            const modal = document.getElementById('appointment-modal');
+            const backdrop = document.getElementById('appt-modal-backdrop');
+            const content = document.getElementById('appt-modal-content');
+            
+            backdrop.classList.add('opacity-0');
+            content.classList.add('translate-y-full', 'scale-95', 'opacity-0');
+            content.classList.remove('md:translate-y-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
         }
 
         async function cancelAppointment(id) {
-            if (!confirm('هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟')) return;
-
+            if(!confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) return;
+            
             try {
-                const token = localStorage.getItem('saloony_token');
-                const res = await fetch(`/api/appointments/cancel/${id}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const res = await fetchWithAuth(`/api/appointments/cancel/${id}`, { method: 'POST' });
                 const data = await res.json();
                 
                 if (data.success) {
-                    showToast(data.message || 'تم إلغاء الموعد بنجاح', 'success');
-                    loadAppointments('upcoming');
+                    closeAppointmentModal();
+                    loadAppointments(currentFilter);
+                    
+                    // Show toast or alert
+                    alert(data.message);
+                    
+                    // Update user strikes if needed
+                    // ideally reload the page or fetch user data again
+                    location.reload(); 
                 } else {
-                    showToast(data.message || 'فشل الإلغاء', 'error');
+                    alert(data.message || 'فشل إلغاء الموعد');
                 }
             } catch (e) {
                 console.error(e);
-                showToast('حدث خطأ أثناء الاتصال بالخادم', 'error');
+                alert('حدث خطأ أثناء الإلغاء');
             }
         }
     </script>

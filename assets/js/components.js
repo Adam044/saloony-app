@@ -4,6 +4,8 @@
  */
 
 const SaloonyComponents = {
+    apiBase: '/api',
+
     /**
      * Renders the global header
      * @param {string} containerId - ID of the container element (default: 'global-header')

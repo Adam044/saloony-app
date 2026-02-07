@@ -1,23 +1,41 @@
-import { fetchAppointments, updateAppointmentStatus as apiUpdateStatus, createBlockedTime, deleteBlockedTime, fetchSchedule, fetchStaff } from './api.js';
-import { showMessage, showConfirmationModal, showToast } from './ui.js';
+import { fetchAppointments, updateAppointmentStatus as apiUpdateStatus, fetchStaff } from './api.js';
+import { showMessage, showToast } from './ui.js';
 import { formatTimeWithPeriod } from './utils.js';
-import { getStaffList } from './staff.js';
 
-let currentAppointmentsFilter = 'today';
-let appointmentsFetchController = null;
-let currentTimelineStaffId = 'all';
-let currentAppointmentsData = [];
-
-// --- Constants & Config ---
-const TIMELINE_START_HOUR = 9;
-const TIMELINE_END_HOUR = 23;
-const PIXELS_PER_HOUR_VERT = 100;
+// --- State ---
+let state = {
+    filters: {
+        date: 'today',      // today, yesterday, last7, last30, all, custom
+        status: 'all',      // all, upcoming, completed, cancelled
+        staffId: 'all',
+        customDate: null
+    },
+    appointments: [],
+    staff: [],
+    loading: false,
+    fetchController: null
+};
 
 // --- Utils ---
-const timeToPixelsVert = (timeStr) => {
-    const [h, m] = timeStr.split(':').map(Number);
-    const totalHours = h + (m / 60);
-    return (totalHours - TIMELINE_START_HOUR) * PIXELS_PER_HOUR_VERT;
+
+const toEnglishDigits = (str) => {
+    if (!str) return '';
+    return str.toString().replace(/[٠-٩]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)]);
+};
+
+const formatDateEnglish = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2); // YY
+    return `${day}/${month}/${year}`;
+};
+
+const getRelativeDate = (daysOffset) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysOffset);
+    return d.toISOString().split('T')[0];
 };
 
 const getGreeting = () => {
@@ -27,673 +45,745 @@ const getGreeting = () => {
     return 'مساء الخير';
 };
 
-// --- Render Functions ---
+// --- Initialization ---
 
-const renderAppointmentCard = (appointment, filter) => {
-    const isScheduled = appointment.status === 'Scheduled';
-    const startTimeDisplay = formatTimeWithPeriod(appointment.start_time);
+export const initAppointments = async () => {
+    console.log('📅 Initializing Appointments Module...');
     
-    return `
-        <div class="glass-card p-4 mb-3 border-r-4 ${isScheduled ? 'border-secondary' : 'border-gray-300'}" onclick="window.openApptDetails(${appointment.id})">
-            <div class="flex justify-between items-center">
-                <h4 class="font-bold text-gray-800">${appointment.user_name}</h4>
-                <span class="text-sm font-bold text-secondary dir-ltr">${startTimeDisplay}</span>
-            </div>
-            <p class="text-sm text-gray-500 mt-1">${appointment.service_name}</p>
-        </div>
-    `;
+    // 1. Bind UI Events
+    bindEvents();
+    
+    // 2. Fetch Initial Data (Staff first, then Appointments)
+    await loadStaff();
+    
+    // Initial Filter Render
+    renderFilters();
+
+    // 3. Load Appointments based on default filters
+    loadAppointments();
+
+    // 4. Inject Modal
+    injectDetailsModal();
 };
 
-const renderEmptyState = (container, text, icon) => {
-    container.innerHTML = `
-        <div class="empty-state text-center py-12 text-gray-500">
-            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas ${icon} text-2xl text-gray-400"></i>
-            </div>
-            <p class="font-medium">${text}</p>
-        </div>
-    `;
-};
+const injectDetailsModal = () => {
+    if (document.getElementById('appt-details-modal')) return;
 
-// --- Main Timeline Controller ---
-
-const renderTimeline = (appointments, blockedSlots, staffList) => {
-    const container = document.getElementById('timeline-view');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    // Check Role
-    const isStaff = window.currentUserRole === 'staff';
-    const myStaffId = window.currentStaffId;
-
-    if (isStaff && myStaffId) {
-        // --- EMPLOYEE VIEW ---
-        const myAppts = appointments.filter(a => a.staff_id == myStaffId);
-        const myBlocks = blockedSlots.filter(b => b.staff_id == myStaffId);
-        const me = staffList.find(s => s.id == myStaffId) || { name: window.currentStaffName || 'الموظف' };
-        
-        renderEmployeeAgendaView(container, myAppts, myBlocks, me);
-    } else {
-        // --- MANAGER VIEW ---
-        // Filter staff if selected
-        let displayStaff = staffList;
-        if (currentTimelineStaffId && currentTimelineStaffId !== 'all') {
-            displayStaff = staffList.filter(s => s.id == currentTimelineStaffId);
-        }
-        
-        renderManagerSchedulerView(container, appointments, blockedSlots, displayStaff, staffList);
-    }
-};
-
-// --- View 1: Employee Agenda (Clean, Focused, Mobile-First) ---
-const renderEmployeeAgendaView = (container, appointments, blockedSlots, staff) => {
-    const total = appointments.length;
-    const completed = appointments.filter(a => a.status === 'Completed').length;
-    const nextAppt = appointments
-        .filter(a => a.status === 'Scheduled' && new Date(a.start_time) > new Date())
-        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
-
-    container.className = "h-full overflow-hidden bg-gray-50 flex flex-col";
-    
-    const html = `
-        <!-- Header -->
-        <div class="bg-white p-6 pb-8 rounded-b-3xl shadow-sm z-10 relative">
-            <div class="flex justify-between items-start mb-6">
-                <div>
-                    <p class="text-gray-500 text-sm mb-1">${getGreeting()}،</p>
-                    <h2 class="text-2xl font-bold text-gray-800">${staff.name}</h2>
-                </div>
-                <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                    <i class="fas fa-user"></i>
-                </div>
-            </div>
+    const modal = document.createElement('div');
+    modal.id = 'appt-details-modal';
+    modal.className = 'fixed inset-0 z-[60] hidden';
+    modal.innerHTML = `
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="appt-modal-backdrop"></div>
+        <div class="absolute inset-x-0 bottom-0 md:top-1/2 md:left-1/2 md:bottom-auto md:-translate-x-1/2 md:-translate-y-1/2 w-full md:w-[500px] bg-white md:rounded-3xl rounded-t-3xl shadow-2xl transform transition-all translate-y-full md:translate-y-10 opacity-0 duration-300 flex flex-col max-h-[90vh]" id="appt-modal-content">
             
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                    <span class="block text-2xl font-bold text-blue-600 mb-1">${total}</span>
-                    <span class="text-xs text-blue-400 font-medium">مواعيد اليوم</span>
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-3xl">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">تفاصيل الموعد</h3>
+                    <p class="text-xs text-gray-500 mt-1" id="md-appt-date">...</p>
                 </div>
-                <div class="bg-green-50 p-4 rounded-2xl border border-green-100">
-                    <span class="block text-2xl font-bold text-green-600 mb-1">${completed}</span>
-                    <span class="text-xs text-green-400 font-medium">مكتملة</span>
-                </div>
+                <button id="md-close-btn" class="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
-            ${nextAppt ? `
-                <div class="mt-6">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">الموعد التالي</p>
-                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-5 text-white shadow-lg shadow-slate-200 cursor-pointer transform transition-transform active:scale-95" onclick="window.openApptDetails(${nextAppt.id})">
-                        <div class="flex justify-between items-start mb-3">
-                            <span class="bg-white/20 px-3 py-1 rounded-lg text-xs font-medium backdrop-blur-sm">
-                                ${formatTimeWithPeriod(nextAppt.start_time)}
-                            </span>
-                            <span class="text-xs text-slate-300">${nextAppt.duration} دقيقة</span>
-                        </div>
-                        <h3 class="text-lg font-bold mb-1">${nextAppt.user_name}</h3>
-                        <p class="text-slate-400 text-sm flex items-center gap-2">
-                            <i class="fas fa-cut text-xs"></i> ${nextAppt.service_name}
-                        </p>
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                
+                <!-- Status Badge -->
+                <div class="flex justify-center">
+                    <div id="md-status-badge" class="px-4 py-1.5 rounded-full font-bold text-sm bg-gray-100 text-gray-600">
+                        ...
                     </div>
                 </div>
-            ` : ''}
-        </div>
 
-        <!-- Timeline Feed -->
-        <div class="flex-1 overflow-y-auto custom-scrollbar p-6 relative">
-            ${appointments.length === 0 ? `
-                <div class="flex flex-col items-center justify-center h-full text-gray-400 opacity-50">
-                    <i class="fas fa-calendar-check text-4xl mb-4"></i>
-                    <p>لا توجد مواعيد اليوم</p>
+                <!-- Client Info -->
+                <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <div class="flex items-center gap-4 mb-3">
+                        <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-xl text-secondary shadow-sm">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-lg" id="md-client-name">...</h4>
+                            <a href="#" id="md-client-phone" class="text-sm text-gray-500 hover:text-secondary flex items-center gap-2">
+                                <i class="fas fa-phone-alt"></i> <span>...</span>
+                            </a>
+                        </div>
+                        <div id="md-client-strikes" class="mr-auto flex gap-1">
+                            <!-- Strikes injected here -->
+                        </div>
+                    </div>
                 </div>
-            ` : `
-                <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                <div class="space-y-6 relative">
-                    ${appointments.sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map(appt => {
-                        const time = formatTimeWithPeriod(appt.start_time);
-                        const isDone = appt.status === 'Completed';
-                        const isCancelled = appt.status === 'Cancelled';
-                        
-                        return `
-                        <div class="flex gap-6 relative group" onclick="window.openApptDetails(${appt.id})">
-                            <!-- Time Node -->
-                            <div class="w-16 flex-shrink-0 flex flex-col items-end pt-2 z-10">
-                                <span class="text-sm font-bold text-gray-800 dir-ltr">${time}</span>
-                                <div class="w-3 h-3 rounded-full border-2 border-white shadow-sm mt-1 ${
-                                    isDone ? 'bg-green-500' : 
-                                    isCancelled ? 'bg-red-500' : 'bg-secondary'
-                                } absolute left-[29px]"></div>
+
+                <!-- Service Details -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 rounded-xl border border-gray-100 hover:border-secondary/30 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i class="fas fa-cut"></i>
                             </div>
-                            
-                            <!-- Card -->
-                            <div class="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 active:scale-[0.98] transition-transform ${isDone ? 'opacity-60' : ''}">
-                                <div class="flex justify-between items-start">
-                                    <h4 class="font-bold text-gray-800">${appt.user_name}</h4>
-                                    ${isDone ? '<i class="fas fa-check-circle text-green-500"></i>' : ''}
-                                </div>
-                                <p class="text-sm text-gray-500 mt-1">${appt.service_name}</p>
-                                <div class="mt-3 flex gap-2">
-                                    <span class="px-2 py-1 bg-gray-50 rounded-lg text-xs text-gray-500 font-medium">
-                                        ${parseFloat(appt.price).toFixed(0)} ₪
-                                    </span>
-                                </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold">الخدمة</p>
+                                <p class="font-bold text-slate-700" id="md-service-name">...</p>
                             </div>
                         </div>
-                        `;
-                    }).join('')}
+                        <div class="text-left">
+                            <p class="font-black text-slate-800" id="md-price">...</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-3 rounded-xl border border-gray-100 hover:border-secondary/30 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold">الوقت</p>
+                                <p class="font-bold text-slate-700" id="md-time">...</p>
+                            </div>
+                        </div>
+                        <div class="text-left">
+                             <p class="text-sm font-bold text-gray-500" id="md-duration">...</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center p-3 rounded-xl border border-gray-100 hover:border-secondary/30 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                                <i class="fas fa-user-tag"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold">الموظف</p>
+                                <p class="font-bold text-slate-700" id="md-staff-name">...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            `}
+
+            </div>
+
+            <!-- Actions Footer -->
+            <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-3xl grid grid-cols-2 gap-3" id="md-actions">
+                <!-- Injected dynamically -->
+            </div>
         </div>
     `;
-    
-    container.innerHTML = html;
-};
+    document.body.appendChild(modal);
 
-// --- View 2: Manager Scheduler (Robust, Grid-Based, Comprehensive) ---
-const renderManagerSchedulerView = (container, appointments, blockedSlots, displayStaff, allStaff) => {
-    container.className = "h-full flex flex-col bg-white overflow-hidden";
-    
-    // 1. Staff Filter Bar (Sticky Top)
-    const filterBar = document.createElement('div');
-    filterBar.className = 'flex items-center gap-2 p-3 border-b border-gray-100 bg-white overflow-x-auto custom-scrollbar flex-shrink-0';
-    
-    // "All" Button
-    const allBtn = document.createElement('button');
-    const isAll = currentTimelineStaffId === 'all';
-    allBtn.className = `px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 ${isAll ? 'bg-slate-800 text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`;
-    allBtn.innerHTML = '<i class="fas fa-users ml-2"></i>الكل';
-    allBtn.onclick = () => { currentTimelineStaffId = 'all'; renderTimeline(appointments, blockedSlots, allStaff); };
-    filterBar.appendChild(allBtn);
-
-    // Staff Buttons
-    allStaff.forEach(staff => {
-        const btn = document.createElement('button');
-        const isActive = currentTimelineStaffId == staff.id;
-        btn.className = `px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 flex items-center ${isActive ? 'bg-secondary text-white shadow-md' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`;
-        btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-current ml-2 opacity-50"></span>${staff.name}`;
-        btn.onclick = () => { currentTimelineStaffId = staff.id; renderTimeline(appointments, blockedSlots, allStaff); };
-        filterBar.appendChild(btn);
-    });
-    
-    container.appendChild(filterBar);
-
-    // 2. Scheduler Grid Container
-    const gridContainer = document.createElement('div');
-    gridContainer.className = 'flex-1 overflow-auto custom-scrollbar relative bg-gray-50/50';
-    gridContainer.id = 'scheduler-grid';
-
-    // 3. Render Grid
-    // Header Row (Staff Names)
-    const headerRow = document.createElement('div');
-    headerRow.className = 'flex sticky top-0 z-20 bg-white shadow-sm border-b border-gray-200';
-    headerRow.innerHTML = `<div class="w-16 flex-shrink-0 bg-white border-l border-gray-100"></div>`; // Time col spacer
-    
-    displayStaff.forEach(staff => {
-        const colHeader = document.createElement('div');
-        colHeader.className = 'flex-1 min-w-[200px] p-3 text-center border-l border-gray-100';
-        colHeader.innerHTML = `
-            <div class="font-bold text-gray-800 text-sm truncate">${staff.name}</div>
-            <div class="text-xs text-gray-400">${staff.role || 'موظف'}</div>
-        `;
-        headerRow.appendChild(colHeader);
-    });
-    gridContainer.appendChild(headerRow);
-
-    // Time Slots & Columns
-    const bodyContainer = document.createElement('div');
-    bodyContainer.className = 'flex relative min-h-[1200px]'; // Fixed height for scrolling
-    
-    // Time Column (Left Sticky)
-    const timeCol = document.createElement('div');
-    timeCol.className = 'w-16 flex-shrink-0 bg-white border-l border-gray-100 sticky right-0 z-10 flex flex-col text-xs text-gray-400 font-medium';
-    for (let i = TIMELINE_START_HOUR; i <= TIMELINE_END_HOUR; i++) {
-        const timeSlot = document.createElement('div');
-        timeSlot.style.height = `${PIXELS_PER_HOUR_VERT}px`;
-        timeSlot.className = 'border-b border-gray-50 flex justify-center pt-2 relative';
-        timeSlot.innerHTML = `<span class="bg-white px-1 z-10">${i}:00</span><div class="absolute top-0 right-0 w-2 border-t border-gray-200"></div>`;
-        timeCol.appendChild(timeSlot);
-    }
-    bodyContainer.appendChild(timeCol);
-
-    // Staff Columns
-    displayStaff.forEach(staff => {
-        const col = document.createElement('div');
-        col.className = 'flex-1 min-w-[200px] border-l border-gray-100 relative scheduler-grid-bg';
-        col.style.height = `${(TIMELINE_END_HOUR - TIMELINE_START_HOUR + 1) * PIXELS_PER_HOUR_VERT}px`;
+    // Close Events
+    const close = () => {
+        const content = modal.querySelector('#appt-modal-content');
+        const backdrop = modal.querySelector('#appt-modal-backdrop');
         
-        // Ghost Slot for Hover Effect
-        const ghostSlot = document.createElement('div');
-        ghostSlot.className = 'timeline-slot-hover';
-        col.appendChild(ghostSlot);
+        content.classList.remove('md:translate-y-0', 'translate-y-0', 'opacity-100');
+        content.classList.add('translate-y-full', 'md:translate-y-10', 'opacity-0');
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0');
+        
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
 
-        // Hover Interaction
-        col.addEventListener('mousemove', (e) => {
-            // Hide if hovering over an existing card
-            if (e.target.closest('.appt-card-modern') || e.target.closest('.absolute.rounded-lg')) {
-                ghostSlot.style.display = 'none';
-                return;
-            }
-            
-            const rect = col.getBoundingClientRect();
-            const relativeY = e.clientY - rect.top;
-            
-            // Snap to 30 mins (50px)
-            const snapY = Math.floor(relativeY / 50) * 50;
-            
-            // Don't show if out of bounds (bottom edge case)
-            if (snapY >= col.offsetHeight) return;
+    modal.querySelector('#md-close-btn').onclick = close;
+    modal.querySelector('#appt-modal-backdrop').onclick = close;
+    
+    // Expose close globally for internal use
+    window.closeApptDetails = close;
+};
 
-            ghostSlot.style.top = `${snapY}px`;
-            ghostSlot.style.display = 'block';
-        });
+// Open Details Function
+window.openApptDetails = (id) => {
+    const appt = state.appointments.find(a => a.id == id);
+    if (!appt) return;
 
-        col.addEventListener('mouseleave', () => {
-            ghostSlot.style.display = 'none';
-        });
+    const modal = document.getElementById('appt-details-modal');
+    const content = modal.querySelector('#appt-modal-content');
+    const backdrop = modal.querySelector('#appt-modal-backdrop');
 
-        // Click to Add (Empty Slots)
-        col.addEventListener('click', (e) => {
-            if (e.target !== col) return; // Ignore clicks on cards
-            const rect = col.getBoundingClientRect();
-            const y = e.clientY - rect.top + gridContainer.scrollTop; // Adjust for scroll
-            const hourOffset = y / PIXELS_PER_HOUR_VERT;
-            const clickedHour = TIMELINE_START_HOUR + Math.floor(hourOffset);
-            const clickedMin = Math.floor((hourOffset % 1) * 60);
-            
-            // Round to nearest 15
-            const roundedMin = Math.round(clickedMin / 15) * 15;
-            const timeStr = `${String(clickedHour).padStart(2, '0')}:${String(roundedMin).padStart(2, '0')}`;
-            
-            // Open Block/Book Modal
-            openBlockSlotModal({ staffId: staff.id, time: timeStr, date: new Date().toISOString().split('T')[0] });
-        });
+    // Populate Data
+    const dateStr = formatDateEnglish(appt.start_time.split('T')[0]);
+    document.getElementById('md-appt-date').textContent = dateStr;
+    document.getElementById('md-client-name').textContent = appt.user_name;
+    const cleanPhone = appt.user_phone ? appt.user_phone.replace(/\D/g, '') : '';
+    document.getElementById('md-client-phone').href = `https://wa.me/${cleanPhone}`;
+    document.getElementById('md-client-phone').target = '_blank';
+    document.getElementById('md-client-phone').querySelector('span').textContent = appt.user_phone;
+    
+    // Strikes
+    const strikesContainer = document.getElementById('md-client-strikes');
+    const strikes = appt.user_strikes || 0;
+    strikesContainer.innerHTML = '';
+    
+    // 3 Dots
+    for (let i = 0; i < 3; i++) {
+        const isStrike = i < strikes;
+        const dot = document.createElement('div');
+        dot.className = `w-3 h-3 rounded-full ${isStrike ? 'bg-red-500 shadow-sm shadow-red-500/50' : 'bg-gray-200'}`;
+        // Tooltip or title
+        dot.title = isStrike ? 'Strike' : 'Clean';
+        strikesContainer.appendChild(dot);
+    }
+    if (strikes >= 3) {
+        strikesContainer.innerHTML += '<span class="text-[10px] text-red-600 font-bold mr-1 self-center">محظور</span>';
+    } else if (strikes > 0) {
+        strikesContainer.innerHTML += `<span class="text-[10px] text-red-500 font-bold mr-1 self-center">${strikes} مخالفة</span>`;
+    }
 
-        // 1. Render Blocked Slots
-        const staffBlocks = blockedSlots.filter(b => b.staff_id == staff.id);
-        staffBlocks.forEach(block => {
-            const top = timeToPixelsVert(block.start_time);
-            const bottom = timeToPixelsVert(block.end_time);
-            const height = bottom - top;
-            
-            const el = document.createElement('div');
-            el.className = 'absolute left-1 right-1 rounded-lg flex items-center justify-center text-xs font-bold shadow-sm cursor-pointer transition-transform hover:scale-[0.98] z-0';
-            
-            // Check reason for color
-            const reason = (block.reason || '').toLowerCase();
-            if (reason.includes('break') || reason.includes('استراحة') || reason.includes('فطور') || reason.includes('غداء')) {
-                el.className += ' break-card-pattern';
-                el.innerHTML = `<i class="fas fa-coffee mr-1"></i> ${block.reason || 'استراحة'}`;
-            } else {
-                el.className += ' block-card-pattern';
-                el.innerHTML = `<i class="fas fa-ban mr-1"></i> ${block.reason || 'مغلق'}`;
-            }
-            
-            el.style.top = `${top}px`;
-            el.style.height = `${height}px`;
-            
-            // Delete block on click
-            el.onclick = (e) => {
-                e.stopPropagation();
-                showConfirmationModal('هل تريد حذف هذا الوقت المحجوز؟', () => {
-                    deleteBlockedTime(block.id).then(res => {
-                        if (res.success) loadAppointments('today');
-                    });
-                }, 'حذف الحجز');
-            };
-            
-            col.appendChild(el);
-        });
+    document.getElementById('md-service-name').textContent = appt.service_name; // or appt.services_names if multi
+    document.getElementById('md-price').textContent = parseFloat(appt.price).toFixed(0) + ' ₪';
+    
+    const timeDisplay = formatTimeWithPeriod(appt.start_time);
+    document.getElementById('md-time').textContent = timeDisplay;
+    
+    const duration = appt.end_time ? Math.round((new Date(appt.end_time) - new Date(appt.start_time)) / 60000) : 0;
+    document.getElementById('md-duration').textContent = duration + ' دقيقة';
+    
+    document.getElementById('md-staff-name').textContent = appt.staff_name || 'أي موظف';
 
-        // 2. Render Appointments
-        const staffAppts = appointments.filter(a => a.staff_id == staff.id);
-        staffAppts.forEach(appt => {
-            const top = timeToPixelsVert(formatTimeWithPeriod(appt.start_time));
-            const duration = appt.duration || 30;
-            const height = (duration / 60) * PIXELS_PER_HOUR_VERT;
-            
-            const card = document.createElement('div');
-            // Determine Color Style
-            let statusClass = 'appt-card-scheduled'; 
-            if (appt.status === 'Completed') statusClass = 'appt-card-completed';
-            if (appt.status === 'Cancelled') statusClass = 'appt-card-cancelled';
-            
-            card.className = `absolute left-1 right-1 p-2 text-xs cursor-pointer z-10 appt-card-modern ${statusClass}`;
-            card.style.top = `${top}px`;
-            card.style.height = `${Math.max(height, 40)}px`;
-            
-            card.innerHTML = `
-                <div class="font-bold truncate">${appt.user_name}</div>
-                <div class="opacity-90 truncate text-[10px]">${appt.service_name}</div>
-                ${height > 50 ? `<div class="mt-1 opacity-80 truncate">${formatTimeWithPeriod(appt.start_time)}</div>` : ''}
-            `;
-            
-            card.onclick = (e) => {
-                e.stopPropagation();
-                showAppointmentDetails(appt);
-            };
-            
-            col.appendChild(card);
-        });
+    // Status Badge
+    const badge = document.getElementById('md-status-badge');
+    if (appt.status === 'Scheduled') {
+        badge.className = 'px-4 py-1.5 rounded-full font-bold text-sm bg-emerald-100 text-emerald-700 border border-emerald-200';
+        badge.innerHTML = '<i class="fas fa-clock mr-1"></i> قادم';
+    } else if (appt.status === 'Completed') {
+        badge.className = 'px-4 py-1.5 rounded-full font-bold text-sm bg-blue-100 text-blue-700 border border-blue-200';
+        badge.innerHTML = '<i class="fas fa-check-circle mr-1"></i> مكتمل';
+    } else if (appt.status === 'Cancelled') {
+        badge.className = 'px-4 py-1.5 rounded-full font-bold text-sm bg-red-100 text-red-700 border border-red-200';
+        badge.innerHTML = '<i class="fas fa-times-circle mr-1"></i> ملغي';
+    }
 
-        bodyContainer.appendChild(col);
+    // Actions
+    const actionsContainer = document.getElementById('md-actions');
+    actionsContainer.innerHTML = '';
+
+    if (appt.status === 'Scheduled') {
+        actionsContainer.innerHTML = `
+            <button onclick="window.updateApptStatus(${appt.id}, 'Completed')" class="bg-secondary hover:bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                <i class="fas fa-check"></i> إكمال الموعد
+            </button>
+            <button onclick="window.updateApptStatus(${appt.id}, 'Cancelled')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-3 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2">
+                <i class="fas fa-times"></i> إلغاء
+            </button>
+        `;
+    } else {
+        actionsContainer.innerHTML = `
+            <button disabled class="col-span-2 bg-gray-100 text-gray-400 py-3 rounded-xl font-bold cursor-not-allowed border border-gray-200">
+                لا يمكن تغيير حالة هذا الموعد
+            </button>
+        `;
+    }
+
+    // Show
+    modal.classList.remove('hidden');
+    // Animate in
+    requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        
+        content.classList.remove('translate-y-full', 'md:translate-y-10', 'opacity-0');
+        content.classList.add('md:translate-y-0', 'translate-y-0', 'opacity-100');
     });
-
-    gridContainer.appendChild(bodyContainer);
-    container.appendChild(gridContainer);
-    
-    // Auto-scroll to 9 AM
-    setTimeout(() => {
-        gridContainer.scrollTop = 0;
-    }, 100);
 };
 
-// --- Shared Logic ---
-
-let blockModal, blockDateInput, blockStartInput, blockEndInput, blockStaffSelect, blockReasonInput, blockSubmitBtn, blockCancelBtn;
-
-const openBlockSlotModal = (data = {}) => {
-    if (!blockModal) return;
+window.updateApptStatus = async (id, status) => {
+    if (!confirm(status === 'Completed' ? 'هل أنت متأكد من إكمال الموعد؟' : 'هل أنت متأكد من إلغاء الموعد؟')) return;
     
-    // Reset
-    blockDateInput.value = data.date || new Date().toISOString().split('T')[0];
-    blockStartInput.value = data.time || '12:00';
-    blockEndInput.value = ''; 
-    blockReasonInput.value = '';
+    window.closeApptDetails();
     
-    // Pre-select staff
-    if (blockStaffSelect) {
-        blockStaffSelect.value = data.staffId || '';
-        // If employee view, lock it
-        if (window.currentUserRole === 'staff' && window.currentStaffId) {
-            blockStaffSelect.value = window.currentStaffId;
-            blockStaffSelect.disabled = true;
-        } else {
-            blockStaffSelect.disabled = false;
-        }
-    }
-    
-    blockModal.classList.remove('hidden');
-    blockModal.classList.add('flex');
-};
-
-const closeBlockSlotModal = () => {
-    if (blockModal) {
-        blockModal.classList.add('hidden');
-        blockModal.classList.remove('flex');
-    }
-};
-
-const submitBlockSlot = async () => {
-    const date = blockDateInput.value;
-    const start = blockStartInput.value;
-    const end = blockEndInput.value;
-    const staffId = blockStaffSelect.value;
-    const reason = blockReasonInput.value;
-
-    if (!date || !start || !end || !staffId) {
-        showToast('يرجى تعبئة جميع الحقول المطلوبة', 'error');
-        return;
-    }
-
     try {
-        const res = await createBlockedTime({
-            salon_id: window.salonId,
-            staff_id: staffId,
-            date,
-            start_time: start,
-            end_time: end,
-            reason
-        });
-
+        const res = await apiUpdateStatus(id, status);
         if (res.success) {
-            showToast('تم حجز الوقت بنجاح', 'success');
-            closeBlockSlotModal();
-            loadAppointments('today');
+            showToast(status === 'Completed' ? 'تم إكمال الموعد بنجاح' : 'تم إلغاء الموعد', 'success');
+            loadAppointments();
         } else {
-            showToast(res.message || 'فشل في حجز الوقت', 'error');
+            showToast('حدث خطأ أثناء تحديث الحالة', 'error');
         }
     } catch (e) {
         console.error(e);
-        showToast('حدث خطأ غير متوقع', 'error');
+        showToast('خطأ في الاتصال', 'error');
     }
 };
 
-const showAppointmentDetails = (appt) => {
-    const modal = document.getElementById('appointment-details-modal');
-    const content = document.getElementById('appt-modal-content');
-    const actions = document.getElementById('appt-modal-actions');
-    const closeBtn = document.getElementById('close-appt-modal-btn');
-    
-    if (!modal) return;
-    
-    const date = new Date(appt.start_time).toLocaleDateString('ar-EG');
-    const time = formatTimeWithPeriod(appt.start_time);
-    
-    content.innerHTML = `
-        <div class="flex items-center gap-4 mb-4">
-            <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-2xl text-slate-600">
-                <i class="fas fa-user"></i>
-            </div>
-            <div>
-                <h4 class="font-bold text-xl text-slate-800">${appt.user_name}</h4>
-                <p class="text-slate-500 dir-ltr text-right">${appt.user_phone}</p>
-            </div>
-        </div>
-        
-        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2 text-sm">
-            <div class="flex justify-between">
-                <span class="text-slate-500">الخدمة:</span>
-                <span class="font-bold text-slate-800">${appt.service_name}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-slate-500">التاريخ:</span>
-                <span class="font-bold text-slate-800">${date}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-slate-500">الوقت:</span>
-                <span class="font-bold text-slate-800 dir-ltr">${time}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-slate-500">الموظف:</span>
-                <span class="font-bold text-slate-800">${appt.staff_name || 'غير محدد'}</span>
-            </div>
-            <div class="flex justify-between border-t border-slate-200 pt-2 mt-2">
-                <span class="text-slate-500">السعر:</span>
-                <span class="font-bold text-secondary text-lg">${parseFloat(appt.price).toFixed(0)} ₪</span>
-            </div>
-        </div>
-        
-        <div class="text-center mt-4">
-             <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                 appt.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
-                 appt.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                 appt.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-             }">
-                 ${appt.status === 'Scheduled' ? 'مؤكد' : appt.status === 'Completed' ? 'منتهي' : appt.status}
-             </span>
-        </div>
-    `;
-    
-    actions.innerHTML = '';
-    if (appt.status === 'Scheduled') {
-        const completeBtn = document.createElement('button');
-        completeBtn.className = 'flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors shadow-lg shadow-green-200';
-        completeBtn.innerHTML = '<i class="fas fa-check ml-1"></i> إتمام';
-        completeBtn.onclick = () => {
-             updateStatus(appt.id, 'Completed', 'today');
-             modal.classList.add('hidden');
-        };
-        
-        const cancelBtn = document.createElement('button');
-        cancelBtn.className = 'flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors border border-red-200';
-        cancelBtn.innerHTML = '<i class="fas fa-times ml-1"></i> إلغاء';
-        cancelBtn.onclick = () => {
-             updateStatus(appt.id, 'Cancelled', 'today');
-             modal.classList.add('hidden');
-        };
-        
-        actions.appendChild(completeBtn);
-        actions.appendChild(cancelBtn);
-    } else {
-        const closeBtnAction = document.createElement('button');
-        closeBtnAction.className = 'flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors';
-        closeBtnAction.innerHTML = 'إغلاق';
-        closeBtnAction.onclick = () => modal.classList.add('hidden');
-        actions.appendChild(closeBtnAction);
+const bindEvents = () => {
+    // Custom Date Input
+    const customDateInput = document.getElementById('appt-date-custom');
+    if (customDateInput) {
+        customDateInput.addEventListener('change', (e) => {
+            state.filters.customDate = e.target.value;
+            if (state.filters.date === 'custom') {
+                loadAppointments();
+            }
+        });
     }
-    
-    modal.classList.remove('hidden');
-    
-    if (closeBtn) {
-        closeBtn.onclick = () => modal.classList.add('hidden');
+
+    // Date Navigation Scroll
+    const dateContainer = document.getElementById('appt-date-filter-container');
+    const prevBtn = document.getElementById('date-nav-prev');
+    const nextBtn = document.getElementById('date-nav-next');
+
+    if (dateContainer && prevBtn && nextBtn) {
+        prevBtn.onclick = () => dateContainer.scrollBy({ left: 100, behavior: 'smooth' });
+        nextBtn.onclick = () => dateContainer.scrollBy({ left: -100, behavior: 'smooth' });
     }
 };
 
-window.openApptDetails = (id) => {
-    const appt = currentAppointmentsData.find(a => a.id == id);
-    if (appt) showAppointmentDetails(appt);
-};
+// --- Data Loading ---
 
-// Expose reload for auth changes
-window.reloadAppointments = () => loadAppointments(currentAppointmentsFilter);
-
-export const loadAppointments = async (filter, opts = {}) => {
-    const listContainer = document.getElementById('appointments-list-container');
-    const timelineView = document.getElementById('timeline-view');
-    
-    // Update Tab UI
-    document.querySelectorAll('.tab-appointments').forEach(btn => {
-        btn.classList.remove('bg-primary-dark', 'text-white');
-        btn.classList.add('text-gray-500', 'bg-gray-200');
-        if (btn.getAttribute('data-filter') === filter) {
-            btn.classList.add('bg-primary-dark', 'text-white');
-            btn.classList.remove('text-gray-500', 'bg-gray-200');
-        }
-    });
-    
-    currentAppointmentsFilter = filter;
-
-    if (appointmentsFetchController) {
-        try { appointmentsFetchController.abort(); } catch (e) {}
-    }
-    appointmentsFetchController = new AbortController();
-    const { signal } = appointmentsFetchController;
-    
+const loadStaff = async () => {
     try {
         const salonId = window.salonId;
-        if (!salonId) throw new Error('Salon ID not found');
-
-        if (filter === 'today') {
-            if (listContainer) listContainer.classList.add('hidden');
-            if (timelineView) {
-                timelineView.classList.remove('hidden');
-                timelineView.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i> جاري تحميل الجدول...</div>';
-            }
-            
-            const [apptData, scheduleData, staffData] = await Promise.all([
-                fetchAppointments(salonId, filter, signal),
-                fetchSchedule(salonId),
-                fetchStaff(salonId)
-            ]);
-            
-            if (apptData.success) {
-                currentAppointmentsData = apptData.appointments;
-                
-                if (timelineView) {
-                    renderTimeline(
-                        apptData.appointments,
-                        scheduleData ? scheduleData.modifications : [],
-                        staffData.staff || []
-                    );
-                }
-                
-                const countEl = document.getElementById('appointments-count');
-                if (countEl) { 
-                    countEl.textContent = apptData.appointments.length; 
-                    countEl.classList.remove('hidden'); 
-                }
-            }
-            
-        } else {
-            if (timelineView) timelineView.classList.add('hidden');
-            if (listContainer) {
-                listContainer.classList.remove('hidden');
-                listContainer.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-2xl text-primary-dark"></i><p class="mt-2 text-gray-500">جاري تحميل المواعيد...</p></div>';
-            }
-
-            const data = await fetchAppointments(salonId, filter, signal);
-            
-            if (data.success) {
-                let appointments = data.appointments;
-                currentAppointmentsData = appointments;
-                
-                if (window.currentUserRole === 'staff' && window.currentStaffId) {
-                    appointments = appointments.filter(appt => appt.staff_id === window.currentStaffId);
-                }
-                
-                if (appointments.length > 0) {
-                    listContainer.innerHTML = appointments.map(appt => renderAppointmentCard(appt, filter)).join('');
-                    attachAppointmentListeners(filter);
-                    const countEl = document.getElementById('appointments-count');
-                    if (countEl) { countEl.textContent = appointments.length; countEl.classList.remove('hidden'); }
-                } else {
-                    let emptyText = window.currentUserRole === 'staff' ? 'لا توجد مواعيد مخصصة لك' : 'لا توجد مواعيد';
-                    renderEmptyState(listContainer, emptyText, 'fa-calendar-times');
-                }
-            }
-        }
-    } catch (error) {
-        if (error.name === 'AbortError') return;
-        console.error('Error loading appointments:', error);
-    }
-};
-
-const attachAppointmentListeners = (currentFilter) => {
-    // Only used for list view actions if any
-};
-
-const updateStatus = async (appointmentId, status, currentFilter) => {
-    try {
-        const data = await apiUpdateStatus(appointmentId, status);
+        if (!salonId) return;
+        
+        const data = await fetchStaff(salonId);
         if (data.success) {
-            showMessage(null, data.message || 'تم تحديث حالة الموعد بنجاح.', true);
-            loadAppointments(currentFilter);
-        } else {
-            showMessage(null, data.message || 'فشل في تحديث حالة الموعد.', false);
+            state.staff = data.staff || [];
+            renderStaffFilter();
         }
-    } catch (error) {
-        showMessage(null, 'خطأ في الشبكة أثناء تحديث الحالة.', false);
+    } catch (e) {
+        console.error('Failed to load staff:', e);
     }
 };
 
-export const initAppointments = async () => {
-    const container = document.getElementById('appointments-list-container');
-    const timelineView = document.getElementById('timeline-view');
-    if (!container && !timelineView) return;
+// --- Filters Rendering ---
 
-    // Listeners for filter buttons
-    document.querySelectorAll('.tab-appointments').forEach(btn => {
-        btn.addEventListener('click', () => loadAppointments(btn.getAttribute('data-filter')));
+const DATE_FILTERS = [
+    { id: 'yesterday', label: 'أمس' },
+    { id: 'today', label: 'اليوم' },
+    { id: 'tomorrow', label: 'غداً' }, // Added tomorrow logic helper needed if used
+    { id: 'all', label: 'الكل' },
+    { id: 'custom', label: 'محدد' }
+];
+
+const STATUS_FILTERS = [
+    { id: 'all', label: 'الكل', icon: 'fa-th-large' },
+    { id: 'upcoming', label: 'القادمة', icon: 'fa-clock' },
+    { id: 'completed', label: 'مكتملة', icon: 'fa-check-circle' },
+    { id: 'cancelled', label: 'ملغاة', icon: 'fa-times-circle' }
+];
+
+const renderFilters = () => {
+    renderDateFilter();
+    renderStatusFilter();
+    renderStaffFilter();
+};
+
+const renderDateFilter = () => {
+    const container = document.getElementById('appt-date-filter-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    // We modify DATE_FILTERS slightly for display
+    const displayFilters = [
+        { id: 'yesterday', label: 'أمس', icon: 'fa-history' },
+        { id: 'today', label: 'اليوم', icon: 'fa-calendar-day' },
+        { id: 'tomorrow', label: 'غداً', icon: 'fa-calendar-plus' },
+        { id: 'all', label: 'الكل', icon: 'fa-layer-group' },
+        { id: 'custom', label: 'تاريخ..', icon: 'fa-calendar-days' }
+    ];
+
+    displayFilters.forEach(opt => {
+        // Special case: if active is custom but not in list, handle it? 
+        // For now, simple.
+        let isActive = state.filters.date === opt.id;
+        
+        // Handle custom date display
+        let label = opt.label;
+        if (opt.id === 'custom' && state.filters.date === 'custom' && state.filters.customDate) {
+             label = formatDateEnglish(state.filters.customDate);
+             isActive = true;
+        }
+
+        const btn = document.createElement('button');
+        // Pill Style
+        btn.className = `shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            isActive 
+            ? 'bg-slate-800 text-white shadow-md transform scale-105' 
+            : 'bg-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+        }`;
+        
+        btn.innerHTML = `<i class="fas ${opt.icon} text-xs ${isActive ? 'text-white' : 'text-gray-400'}"></i> <span>${label}</span>`;
+        
+        btn.onclick = () => {
+            if (opt.id === 'custom') {
+                 // Trigger hidden input
+                 const trigger = document.getElementById('date-custom-trigger');
+                 const input = document.getElementById('appt-date-custom');
+                 if (input) input.showPicker ? input.showPicker() : input.click();
+                 return;
+            }
+
+            state.filters.date = opt.id;
+            // Handle Tomorrow Logic in Load (need to add it)
+            loadAppointments();
+        };
+        container.appendChild(btn);
     });
 
-    // Block Slot Buttons
-    const openBlockBtn = document.getElementById('open-block-slot-btn');
-    if (openBlockBtn) openBlockBtn.addEventListener('click', () => openBlockSlotModal());
+    // Scroll to active
+    // setTimeout(() => {
+    //     const active = container.querySelector('.bg-slate-800');
+    //     if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    // }, 100);
+};
 
-    // Block Slot Modal Elements
-    blockModal = document.getElementById('block-slot-modal');
-    blockDateInput = document.getElementById('block-date');
-    blockStartInput = document.getElementById('block-start');
-    blockEndInput = document.getElementById('block-end');
-    blockStaffSelect = document.getElementById('block-staff-select');
-    blockReasonInput = document.getElementById('block-reason');
-    blockSubmitBtn = document.getElementById('block-submit-btn');
-    blockCancelBtn = document.getElementById('block-cancel-btn');
+const renderStatusFilter = () => {
+    const container = document.getElementById('appt-status-filter-container');
+    if (!container) return;
+    container.innerHTML = '';
 
-    if (blockCancelBtn) blockCancelBtn.addEventListener('click', closeBlockSlotModal);
-    if (blockModal) blockModal.addEventListener('click', (e) => { if (e.target === blockModal) closeBlockSlotModal(); });
-    if (blockSubmitBtn) blockSubmitBtn.addEventListener('click', submitBlockSlot);
+    // Calculate Counts
+    const counts = {
+        all: state.appointments.length,
+        upcoming: state.appointments.filter(a => a.status === 'Scheduled').length,
+        completed: state.appointments.filter(a => a.status === 'Completed' || a.status === 'Absent').length,
+        cancelled: state.appointments.filter(a => a.status === 'Cancelled').length
+    };
 
-    // Initial Load
-    loadAppointments('today');
+    STATUS_FILTERS.forEach(opt => {
+        const isActive = state.filters.status === opt.id;
+        const count = counts[opt.id] || 0;
+        
+        const btn = document.createElement('button');
+        // Tab Style
+        btn.className = `shrink-0 px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+            isActive 
+            ? 'bg-secondary/10 text-secondary' 
+            : 'text-gray-400 hover:text-gray-600'
+        }`;
+        
+        btn.innerHTML = `
+            <i class="fas ${opt.icon} text-xs ${isActive ? 'text-secondary' : 'text-gray-400'}"></i>
+            <span>${opt.label}</span>
+            ${count > 0 ? `<span class="text-[10px] bg-gray-100 px-1.5 rounded-md ${isActive ? 'text-secondary font-black' : 'text-gray-400'}">${count}</span>` : ''}
+        `;
+        
+        btn.onclick = () => {
+            state.filters.status = opt.id;
+            renderStatusFilter();
+            renderAppointmentsList();
+        };
+        container.appendChild(btn);
+    });
+};
+
+const renderStaffFilter = () => {
+    const container = document.getElementById('appt-staff-filter-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // "All" Button
+    const isAllActive = state.filters.staffId === 'all';
+    const allBtn = document.createElement('button');
+    allBtn.className = `shrink-0 px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border ${
+        isAllActive 
+        ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' 
+        : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+    }`;
+    allBtn.innerHTML = `<i class="fas fa-users text-xs"></i> <span>الكل</span>`;
+    allBtn.onclick = () => {
+        state.filters.staffId = 'all';
+        loadAppointments();
+    };
+    container.appendChild(allBtn);
+    
+    // Staff Buttons
+    state.staff.forEach(s => {
+        const isActive = state.filters.staffId == s.id;
+        const btn = document.createElement('button');
+        
+        btn.className = `shrink-0 px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 border whitespace-nowrap ${
+            isActive 
+            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
+            : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+        }`;
+        
+        btn.innerHTML = `
+            <i class="fas fa-user-tie text-xs ${isActive ? 'text-white' : 'text-indigo-400'}"></i>
+            <span>${s.name}</span>
+        `;
+        
+        btn.onclick = () => {
+            state.filters.staffId = s.id;
+            loadAppointments();
+        };
+        container.appendChild(btn);
+    });
+};
+
+const createStaffFilterBtn = (id, name, isActive) => {
+    const btn = document.createElement('button');
+    btn.className = `shrink-0 px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all active:scale-95 border ${
+        isActive 
+        ? 'bg-slate-800 text-white border-slate-800' 
+        : 'bg-white text-gray-600 border-gray-200 hover:border-secondary hover:text-secondary'
+    }`;
+    btn.textContent = name;
+    btn.onclick = () => {
+        state.filters.staffId = id;
+        renderStaffFilter(); // Re-render to update active state
+        loadAppointments();
+    };
+    return btn;
+};
+
+// Expose globally for reload
+window.reloadAppointments = () => loadAppointments();
+
+export const loadAppointments = async () => {
+    const container = document.getElementById('appointments-list-container');
+    if (!container) return;
+
+    // Show Loading
+    state.loading = true;
+    container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-gray-400">
+            <i class="fas fa-circle-notch fa-spin text-3xl mb-4 text-secondary"></i>
+            <p class="font-bold">جاري تحديث القائمة...</p>
+        </div>
+    `;
+
+    // Abort previous fetch
+    if (state.fetchController) state.fetchController.abort();
+    state.fetchController = new AbortController();
+
+    try {
+        const salonId = window.salonId;
+        if (!salonId) throw new Error('No Salon ID');
+
+        // Build Query String
+        const queryParams = new URLSearchParams();
+        
+        // Date Logic
+        const today = new Date().toISOString().split('T')[0];
+        
+        switch (state.filters.date) {
+            case 'today':
+                queryParams.append('startDate', today);
+                queryParams.append('endDate', today);
+                break;
+            case 'yesterday':
+                const y = getRelativeDate(1);
+                queryParams.append('startDate', y);
+                queryParams.append('endDate', y);
+                break;
+            case 'tomorrow':
+                const t = getRelativeDate(-1);
+                queryParams.append('startDate', t);
+                queryParams.append('endDate', t);
+                break;
+            case 'last7':
+                queryParams.append('startDate', getRelativeDate(7));
+                queryParams.append('endDate', today);
+                break;
+            case 'last30':
+                queryParams.append('startDate', getRelativeDate(30));
+                queryParams.append('endDate', today);
+                break;
+            case 'custom':
+                if (state.filters.customDate) {
+                    queryParams.append('startDate', state.filters.customDate);
+                    queryParams.append('endDate', state.filters.customDate); // Single day for now, or could add range UI
+                }
+                break;
+            case 'all':
+                // No date params = all time
+                break;
+        }
+
+        // Status - WE FETCH ALL AND FILTER CLIENT SIDE TO SHOW COUNTS
+        // if (state.filters.status !== 'all') {
+        //    queryParams.append('status', state.filters.status);
+        // }
+
+        // Staff
+        if (state.filters.staffId !== 'all') {
+            queryParams.append('staffId', state.filters.staffId);
+        }
+
+        // Call API
+        // We use 'query' as the filter path param, and append query string
+        const filterPath = `query?${queryParams.toString()}`;
+        console.log('Fetching:', filterPath);
+        
+        const data = await fetchAppointments(salonId, filterPath, state.fetchController.signal);
+        
+        if (data.success) {
+            state.appointments = data.appointments || [];
+            renderFilters(); // Update counts based on new data
+            renderAppointmentsList();
+        } else {
+            throw new Error(data.message || 'Failed to load');
+        }
+
+    } catch (e) {
+        if (e.name === 'AbortError') return;
+        console.error('Load Error:', e);
+        container.innerHTML = `
+            <div class="text-center py-10 text-red-500 bg-red-50 rounded-2xl border border-red-100 mx-4">
+                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                <p>حدث خطأ أثناء تحميل المواعيد</p>
+                <button onclick="window.reloadAppointments()" class="mt-3 text-sm font-bold underline">إعادة المحاولة</button>
+            </div>
+        `;
+    } finally {
+        state.loading = false;
+    }
+};
+
+// --- Rendering ---
+
+const renderAppointmentsList = () => {
+    const container = document.getElementById('appointments-list-container');
+    const countEl = document.getElementById('appt-filtered-count');
+    
+    if (!container) return;
+
+    // Filter Client-Side by Status
+    let filtered = state.appointments;
+    if (state.filters.status !== 'all') {
+        filtered = filtered.filter(a => {
+            if (state.filters.status === 'upcoming') return a.status === 'Scheduled';
+            if (state.filters.status === 'completed') return a.status === 'Completed' || a.status === 'Absent';
+            if (state.filters.status === 'cancelled') return a.status === 'Cancelled';
+            return true;
+        });
+    }
+
+    if (countEl) countEl.textContent = filtered.length;
+    container.innerHTML = '';
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-16 text-gray-400">
+                <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-100">
+                    <i class="fas fa-calendar-check text-3xl text-gray-300"></i>
+                </div>
+                <p class="font-bold text-gray-500">لا توجد مواعيد تطابق الفلتر المحدد</p>
+                <p class="text-sm mt-1">جرب تغيير التاريخ أو الحالة</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort: Date Descending (Newest first)
+    const sorted = [...filtered].sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+
+    // Group by Date for better UI
+    const grouped = groupByDate(sorted);
+
+    Object.keys(grouped).forEach(dateKey => {
+        const group = grouped[dateKey];
+        
+        // Date Header
+        const dateHeader = document.createElement('div');
+        dateHeader.className = 'sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm py-2 px-2 mb-2 border-b border-gray-200/50 flex items-center gap-2';
+        
+        const isToday = new Date(dateKey).toDateString() === new Date().toDateString();
+        const dateDisplay = formatDateEnglish(dateKey); // DD/MM/YY
+        
+        dateHeader.innerHTML = `
+            <span class="text-xs font-black text-slate-400 uppercase tracking-wider bg-white px-2 py-1 rounded-lg border border-gray-100 shadow-sm font-mono">${dateDisplay}</span>
+            ${isToday ? '<span class="text-xs font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-md">اليوم</span>' : ''}
+        `;
+        container.appendChild(dateHeader);
+
+        // Cards
+        group.forEach(appt => {
+            container.appendChild(createAppointmentCard(appt));
+        });
+    });
+};
+
+const groupByDate = (list) => {
+    return list.reduce((groups, item) => {
+        const date = item.start_time.split('T')[0];
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(item);
+        return groups;
+    }, {});
+};
+
+const createAppointmentCard = (appt) => {
+    const el = document.createElement('div');
+    
+    // Status Logic
+    let statusColor = 'border-l-4 border-gray-300';
+    let statusIcon = '';
+    
+    if (appt.status === 'Scheduled') {
+        statusColor = 'border-l-4 border-secondary';
+    } else if (appt.status === 'Completed') {
+        statusColor = 'border-l-4 border-blue-500 opacity-75';
+        statusIcon = '<i class="fas fa-check-circle text-blue-500"></i>';
+    } else if (appt.status === 'Cancelled') {
+        statusColor = 'border-l-4 border-red-500 opacity-60 bg-red-50/30';
+        statusIcon = '<i class="fas fa-times-circle text-red-500"></i>';
+    }
+
+    // Time Formatting (Start - End)
+    const startTimeStr = formatTimeWithPeriod(appt.start_time); // "7:30 PM"
+    
+    // Calculate End Time
+    let endTimeStr = '';
+    const start = new Date(appt.start_time);
+    const end = appt.end_time ? new Date(appt.end_time) : null;
+    
+    if (end) {
+        endTimeStr = formatTimeWithPeriod(appt.end_time).split(' ')[0]; // Just "8:20"
+    }
+    
+    const timeRange = endTimeStr ? `${startTimeStr.split(' ')[0]} - ${endTimeStr}` : startTimeStr.split(' ')[0];
+    const period = startTimeStr.split(' ')[1] || '';
+
+    const duration = appt.end_time ? 
+        Math.round((new Date(appt.end_time) - new Date(appt.start_time)) / 60000) : 
+        0;
+
+    el.className = `bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer relative group ${statusColor}`;
+    el.onclick = () => window.openApptDetails(appt.id);
+
+    el.innerHTML = `
+        <div class="flex justify-between items-start">
+            <div class="flex items-start gap-4">
+                <!-- Time Box -->
+                <div class="flex flex-col items-center justify-center bg-gray-50 rounded-xl px-3 py-2 min-w-[80px] border border-gray-100">
+                    <span class="text-lg font-black text-slate-800 font-mono tracking-tight leading-none">${startTimeStr.split(' ')[0]}</span>
+                    ${endTimeStr ? `
+                    <div class="text-gray-300 my-1"><i class="fas fa-arrow-down text-[10px]"></i></div>
+                    <span class="text-lg font-black text-slate-800 font-mono tracking-tight leading-none">${endTimeStr}</span>
+                    ` : ''}
+                    <span class="text-[10px] text-secondary font-bold mt-1 uppercase tracking-wider bg-secondary/10 px-1.5 rounded-md">${period}</span>
+                </div>
+
+                <!-- Info -->
+                <div>
+                    <h4 class="font-bold text-slate-800 text-lg leading-tight mb-1">${appt.user_name}</h4>
+                    <div class="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                        <span class="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-bold">
+                            <i class="fas fa-cut mr-1"></i> ${appt.service_name}
+                        </span>
+                        <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">
+                            <i class="fas fa-clock mr-1"></i> ${duration} دقيقة
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-400">
+                        <i class="fas fa-user-tag"></i>
+                        <span>${appt.staff_name || 'أي موظف'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price & Status -->
+            <div class="text-left flex flex-col items-end gap-2">
+                ${statusIcon}
+                <span class="font-black text-slate-800 text-lg">${parseFloat(appt.price).toFixed(0)} <span class="text-xs font-normal text-gray-400">₪</span></span>
+            </div>
+        </div>
+        
+        <!-- Hover Action Hint -->
+        <div class="absolute inset-0 bg-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl pointer-events-none"></div>
+    `;
+
+    return el;
 };

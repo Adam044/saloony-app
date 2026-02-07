@@ -17,7 +17,8 @@ async function initializeDb() {
             password TEXT NOT NULL,
             strikes INTEGER DEFAULT 0,
             user_type TEXT DEFAULT 'user',
-            language_preference VARCHAR(10) DEFAULT 'auto'
+            language_preference VARCHAR(10) DEFAULT 'auto',
+            image_url TEXT
         )`);
 
         // Create salons table - Linked to users by user_id, no redundant email/password
