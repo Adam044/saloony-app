@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
     <script src="../../assets/js/image-optimizer.js"></script>
+    <link id="theme-style" rel="stylesheet" href="">
     <style>
         body { font-family: 'Tajawal', sans-serif; background-color: #FAFAFA; }
         
@@ -679,6 +680,25 @@
                 
                 if (data.success && data.salon) {
                     window.currentSalon = data.salon; // Store globally
+                    
+                    // Apply Template (with Preview Override)
+                    const previewTheme = urlParams.get('preview_theme');
+                    const theme = previewTheme || data.salon.template_id;
+                    
+                    if (theme) {
+                        const themeLink = document.getElementById('theme-style');
+                        if (themeLink) themeLink.href = `templates/${theme}.css`;
+                        document.body.classList.add(`theme-${theme}`);
+                        
+                        // If previewing, show a toast or indicator
+                        if (previewTheme) {
+                            const toast = document.createElement('div');
+                            toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] text-sm font-bold flex items-center gap-3 animate-slide-up';
+                            toast.innerHTML = '<i class="fas fa-eye text-purple-400"></i> وضع المعاينة';
+                            document.body.appendChild(toast);
+                        }
+                    }
+
                     renderSalonInfo(data.salon);
 
                     // Owner Restrictions - Hide Review Button

@@ -37,7 +37,7 @@ const validAdminTokens = new Set();
 const allowedOrigins = getAllowedOrigins();
 const supabase = createClient(
     process.env.SUPABASE_URL || 'your-supabase-url',
-    process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key'
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key'
 );
 
 const app = express();
@@ -1956,6 +1956,21 @@ app.post('/api/user/upload-photo', authenticateJWT, upload.single('photo'), asyn
             return res.status(400).json({ success: false, message: 'No photo provided.' });
         }
 
+        // Check for existing image to delete
+        const user = await dbGet('SELECT image_url FROM users WHERE id = $1', [userId]);
+        if (user && user.image_url && user.image_url.includes('supabase')) {
+             try {
+                 const filename = user.image_url.split('/').pop();
+                 // We only delete the main reference, though there might be variants. 
+                 // Simple deletion is often enough if we don't track variants strictly.
+                 await supabase.storage
+                     .from('user_profiles-images')
+                     .remove([filename]);
+             } catch (e) {
+                 console.warn('Failed to delete old user photo:', e);
+             }
+        }
+
         const uploadResults = await uploadUserImageToSupabase(req.file.buffer, userId, req.file.originalname);
         if (!uploadResults || uploadResults.length === 0) {
             throw new Error('Failed to upload photo.');
@@ -2111,7 +2126,7 @@ async function uploadUserImageToSupabase(buffer, userId, originalFilename) {
         
         for (const upload of uploads) {
             const { data, error } = await supabase.storage
-                .from('salon-images')
+                .from('user_profiles-images')
                 .upload(upload.path, upload.buffer, {
                     contentType: upload.format === 'webp' ? 'image/webp' : 'image/jpeg',
                     cacheControl: '31536000',
@@ -2125,7 +2140,7 @@ async function uploadUserImageToSupabase(buffer, userId, originalFilename) {
             }
             
             const { data: urlData } = supabase.storage
-                .from('salon-images')
+                .from('user_profiles-images')
                 .getPublicUrl(upload.path);
                 
             if (urlData && urlData.publicUrl) {

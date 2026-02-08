@@ -1,6 +1,7 @@
 
 import { showMessage, showActionProgress, showActionSuccess, showToast } from './ui.js';
 import { getRoleSessionToken } from './auth.js';
+import { CropperManager } from './cropper-modal.js';
 
 let currentSalonId = null;
 let currentProducts = [];
@@ -54,10 +55,43 @@ export const initProducts = async (salonId) => {
     const prodForm = document.getElementById('product-form');
     if (prodForm) prodForm.addEventListener('submit', handleProductSubmit);
 
-    // Bind Image Preview
+    // Bind Image Preview with Cropper
     const imgInput = document.getElementById('product-image-input');
     if (imgInput) {
-        imgInput.addEventListener('change', handleImagePreview);
+        imgInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    const croppedFile = await CropperManager.open(file, {
+                        aspectRatio: NaN, // Free aspect ratio for products
+                        title: 'تعديل صورة المنتج'
+                    });
+
+                    // Update File Input
+                    const dt = new DataTransfer();
+                    dt.items.add(croppedFile);
+                    imgInput.files = dt.files;
+
+                    // Update Preview
+                    const imgPreview = document.getElementById('product-preview-img');
+                    const placeholder = document.getElementById('product-img-placeholder');
+                    
+                    if (imgPreview && placeholder) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            imgPreview.src = e.target.result;
+                            imgPreview.classList.remove('hidden');
+                            placeholder.classList.add('hidden');
+                        };
+                        reader.readAsDataURL(croppedFile);
+                    }
+
+                } catch (error) {
+                    console.log('Crop cancelled or failed', error);
+                    if (!imgInput.files.length) imgInput.value = '';
+                }
+            }
+        });
     }
 
     // Bind Category Filters
@@ -201,7 +235,7 @@ const renderProducts = (products) => {
         
         card.innerHTML = `
             <div class="relative h-48 overflow-hidden bg-gray-100">
-                <img src="${imgSrc}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${p.name}">
+                <img data-src="${imgSrc}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="${p.name}">
                 <div class="absolute top-2 right-2 flex gap-2">
                     <button class="w-8 h-8 rounded-full bg-white/90 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors shadow-sm edit-product-btn" data-id="${p.id}">
                         <i class="fas fa-pen text-xs"></i>
@@ -223,6 +257,15 @@ const renderProducts = (products) => {
                 </div>
             </div>
         `;
+
+        // Optimize image
+        if (window.ImageOptimizer) {
+            const imgEl = card.querySelector('img');
+            window.ImageOptimizer.optimize(imgEl);
+        } else {
+            const imgEl = card.querySelector('img');
+            imgEl.src = imgEl.dataset.src;
+        }
 
         // Bind events
         card.querySelector('.edit-product-btn').addEventListener('click', () => openProductModal(p));

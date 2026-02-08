@@ -113,7 +113,7 @@ export const ensureServiceCardRendered = (service, priceOverride, durationOverri
           <div class="flex items-center space-x-3 space-x-reverse">
             <label class="text-lg font-bold text-primary-dark">
               ${service.icon && (service.icon.startsWith('http') || service.icon.includes('supabase')) ? 
-                `<img src="${service.icon}" alt="${service.name_ar}" class="w-5 h-5 object-contain inline ml-2 ${isAddOn ? 'opacity-75' : ''}">` :
+                `<img data-src="${service.icon}" data-optimize="true" alt="${service.name_ar}" class="w-5 h-5 object-contain inline ml-2 ${isAddOn ? 'opacity-75' : ''}">` :
                 `<i class="fas ${service.icon} ml-2 ${isAddOn ? 'text-orange-500' : 'text-secondary'}"></i>`
               } ${service.name_ar}
               ${isAddOn ? '<span class="text-sm text-orange-600 font-normal mr-2">(إضافة)</span>' : ''}
@@ -153,6 +153,16 @@ export const ensureServiceCardRendered = (service, priceOverride, durationOverri
         </div>`;
     
     card.innerHTML = header + details;
+
+    // Optimize icon if it's an image
+    const iconImg = card.querySelector('img[data-optimize="true"]');
+    if (iconImg) {
+        if (window.ImageOptimizer) {
+            window.ImageOptimizer.optimize(iconImg);
+        } else {
+            iconImg.src = iconImg.dataset.src;
+        }
+    }
 
     container.appendChild(card);
     

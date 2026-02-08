@@ -1,6 +1,7 @@
 
 import { showToast } from './ui.js';
 import { getRoleSessionToken } from './auth.js';
+import { CropperManager } from './cropper-modal.js';
 
 let currentSalonId = null;
 let currentGallery = [];
@@ -23,12 +24,47 @@ export const initGallery = async (salonId) => {
     const form = document.getElementById('add-photo-form');
     if (form) form.addEventListener('submit', handlePhotoSubmit);
 
-    // Bind Image Preview
+    // Bind Image Preview with Cropper
     const fileInput = document.getElementById('photo-file');
     const previewArea = document.getElementById('photo-preview-area');
     if (fileInput && previewArea) {
         previewArea.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', handleImagePreview);
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    const croppedFile = await CropperManager.open(file, {
+                        aspectRatio: NaN, // Free aspect ratio for gallery
+                        title: 'تعديل صورة المعرض'
+                    });
+
+                    // Update File Input
+                    const dt = new DataTransfer();
+                    dt.items.add(croppedFile);
+                    fileInput.files = dt.files;
+
+                    // Call original handleImagePreview logic manually or let it be handled if it was separate
+                    // Looking at original code: fileInput.addEventListener('change', handleImagePreview);
+                    // I replaced that listener. So I need to implement the preview logic here.
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        previewArea.innerHTML = `
+                            <img src="${e.target.result}" class="w-full h-full object-cover rounded-xl">
+                            <button type="button" class="absolute top-2 right-2 bg-white/90 p-1.5 rounded-lg shadow-sm hover:text-red-500 transition" 
+                                onclick="document.getElementById('photo-file').value = ''; document.getElementById('photo-preview-area').innerHTML = '<div class=\'text-center text-slate-400\'><i class=\'fas fa-cloud-upload-alt text-3xl mb-2\'></i><p class=\'text-sm\'>اضغط لرفع صورة</p></div>'; event.stopPropagation();">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        `;
+                    };
+                    reader.readAsDataURL(croppedFile);
+
+                } catch (error) {
+                    console.log('Crop cancelled or failed', error);
+                    if (!fileInput.files.length) fileInput.value = '';
+                }
+            }
+        });
     }
 
     // Bind Category Toggle
@@ -288,7 +324,7 @@ const renderGallery = (images) => {
         card.className = 'group relative aspect-square rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all';
         
         card.innerHTML = `
-            <img src="${img.image_url}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
+            <img data-src="${img.image_url}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
             
             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 flex flex-col justify-end min-h-[40%] transition-all duration-300">
                 <h4 class="text-white font-bold truncate text-sm mb-0.5 drop-shadow-md">${img.title || 'بدون عنوان'}</h4>
@@ -299,6 +335,15 @@ const renderGallery = (images) => {
                 <i class="fas fa-trash-alt text-sm"></i>
             </button>
         `;
+        
+        // Optimize image
+        if (window.ImageOptimizer) {
+            const imgEl = card.querySelector('img');
+            window.ImageOptimizer.optimize(imgEl);
+        } else {
+            const imgEl = card.querySelector('img');
+            imgEl.src = imgEl.dataset.src;
+        }
         
         // Bind delete
         const deleteBtn = card.querySelector('.delete-img-btn');

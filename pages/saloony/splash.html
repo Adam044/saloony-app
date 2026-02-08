@@ -6,6 +6,7 @@
     <title>صالوني - جاري التحميل...</title>
     <meta name="theme-color" content="#152026">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../assets/js/image-optimizer.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
         body {
@@ -158,7 +159,7 @@
         <div class="logo-container">
             <div class="logo-glow"></div>
             <!-- Using absolute path from server root -->
-            <img src="/assets/images/Saloony_logo.png" alt="Saloony" class="logo" onerror="this.src='/images/Saloony-app_icon.png'">
+            <img data-src="/assets/images/Saloony_logo.png" data-optimize="true" alt="Saloony" class="logo" onerror="this.src='/images/Saloony-app_icon.png'">
         </div>
     
         <div class="spinner-container">

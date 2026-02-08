@@ -86,13 +86,13 @@
         font-size: 1.5rem;
     }
     h3 { color: var(--text-main); }
-    .bg-hero { background-image: url('../../assets/images/auth.jpg'); }
     /* Optimization: Hardware acceleration for animations */
     .will-change-transform { will-change: transform; }
     /* Optimization: Improve rendering performance for off-screen content */
     section { content-visibility: auto; contain-intrinsic-size: 800px; }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="../../assets/js/image-optimizer.js"></script>
 </head>
 <body class="flex flex-col min-h-screen selection:bg-[#06C167] selection:text-white">
 
@@ -102,7 +102,7 @@
 <main class="flex-1">
 
 <!-- Hero Section -->
-<section class="relative bg-hero bg-cover bg-center min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+<section class="relative bg-cover bg-center min-h-screen flex items-center justify-center pt-20 overflow-hidden" data-optimize-bg="../../assets/images/auth.jpg">
     <!-- Overlay with gradient -->
     <div class="absolute inset-0 bg-gradient-to-b from-[#020617]/90 via-[#020617]/80 to-[#020617]/60"></div>
     
@@ -401,11 +401,25 @@
             const data = await res.json();
             if (data.success && data.url) {
                 const img = document.getElementById('partnership-banner-img');
-                img.src = data.url;
-                img.onload = () => {
-                    img.classList.remove('opacity-0');
-                    document.querySelector('#partnership-banner-container div').classList.add('hidden'); // Hide placeholder
-                };
+                const container = document.getElementById('partnership-banner-container');
+                const placeholder = container.querySelector('div');
+                
+                // Use ImageOptimizer
+                if (window.ImageOptimizer) {
+                    window.ImageOptimizer.optimize(img, data.url);
+                    // Hide placeholder when loaded (ImageOptimizer adds img-loaded class)
+                    img.addEventListener('load', () => {
+                        img.classList.remove('opacity-0');
+                        if (placeholder) placeholder.classList.add('hidden');
+                    });
+                } else {
+                    // Fallback
+                    img.src = data.url;
+                    img.onload = () => {
+                        img.classList.remove('opacity-0');
+                        if (placeholder) placeholder.classList.add('hidden');
+                    };
+                }
             }
         } catch (e) {
             console.error('Failed to load partnership image');

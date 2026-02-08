@@ -20,7 +20,7 @@ const Sidebar = {
                     <!-- Logo Section -->
                     <div class="flex flex-col items-center justify-center py-8 border-b border-gray-100 mb-4">
                         <div class="relative w-20 h-20 mb-3 rounded-2xl bg-emerald-50 flex items-center justify-center shadow-sm">
-                            <img src="/images/Saloony-app_icon.png" class="w-12 h-12 object-contain" alt="Saloony Logo" />
+                            <img data-src="/images/Saloony-app_icon.png" data-optimize="true" class="w-12 h-12 object-contain" alt="Saloony Logo" />
                         </div>
                         <span class="text-2xl font-extrabold text-slate-800 tracking-tight">Saloony Admin</span>
                         <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full mt-1">Control Panel</span>

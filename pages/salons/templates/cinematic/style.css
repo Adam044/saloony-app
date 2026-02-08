@@ -1,0 +1,130 @@
+/* Cinematic Luxury Theme - Complete Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+
+:root {
+    --cine-bg: #000000;
+    --cine-card: rgba(20, 20, 20, 0.8);
+    --cine-gold: #c5a059;
+    --cine-text: #f5f5f5;
+}
+
+body.theme-cinematic {
+    background-color: var(--cine-bg) !important;
+    color: var(--cine-text) !important;
+    font-family: 'Lato', sans-serif !important;
+}
+
+/* Typography Overrides */
+.theme-cinematic h1, 
+.theme-cinematic h2, 
+.theme-cinematic h3 {
+    font-family: 'Playfair Display', serif !important;
+    letter-spacing: -0.02em;
+}
+
+.theme-cinematic #salon-name {
+    font-size: 3.5rem !important;
+    font-weight: 900 !important;
+    text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    margin-bottom: 0.5rem !important;
+    background: linear-gradient(to right, #fff, #c5a059);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Hero Section - Full Screen Immersive */
+.theme-cinematic #hero-section {
+    height: 85vh !important;
+    min-height: 600px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.theme-cinematic #hero-section img {
+    opacity: 0.6 !important;
+    filter: contrast(1.1) saturate(1.1);
+}
+
+/* Profile Section - Transparent Overlay */
+.theme-cinematic #profile-section {
+    margin-top: -40vh !important;
+    margin-bottom: 5rem !important;
+}
+
+.theme-cinematic #profile-section > div {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding-top: 0 !important;
+}
+
+/* Logo - Cinematic Centerpiece */
+.theme-cinematic #logo-container {
+    margin-top: 0 !important;
+    margin-bottom: 2rem !important;
+}
+
+.theme-cinematic #logo-container > div {
+    width: 140px !important;
+    height: 140px !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: 2px solid var(--cine-gold) !important;
+    box-shadow: 0 0 30px rgba(197, 160, 89, 0.3) !important;
+}
+
+/* Text Colors */
+.theme-cinematic .text-gray-900,
+.theme-cinematic .text-gray-800,
+.theme-cinematic .text-gray-700,
+.theme-cinematic .text-gray-600,
+.theme-cinematic .text-gray-500 {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Cards & Sections */
+.theme-cinematic .bg-white {
+    background-color: #111 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-cinematic .service-card,
+.theme-cinematic .glass-panel {
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 4px !important;
+}
+
+.theme-cinematic .service-card:hover {
+    border-color: var(--cine-gold) !important;
+    transform: translateY(-5px) !important;
+}
+
+/* Buttons */
+.theme-cinematic button,
+.theme-cinematic .btn-primary {
+    border-radius: 0 !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 0.8rem !important;
+    transition: all 0.5s ease !important;
+}
+
+.theme-cinematic #mobile-reserve-btn {
+    background-color: var(--cine-gold) !important;
+    color: black !important;
+}
+
+/* Badges */
+.theme-cinematic #features-badges > div {
+    background: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+    border-radius: 0 !important;
+}
+
+/* Hide Decorative Blobs */
+.theme-cinematic .blur-3xl {
+    display: none !important;
+}

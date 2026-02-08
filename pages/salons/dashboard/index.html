@@ -7,10 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="/assets/images/icons/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="../../../assets/js/image-optimizer.js"></script>
     <link rel="stylesheet" href="/pages/salons/dashboard/css/style.css">
     <script>
         tailwind.config = {
@@ -63,7 +66,7 @@
         <div class="relative w-24 h-24">
             <div class="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
             <div class="absolute inset-0 border-4 border-secondary rounded-full border-t-transparent animate-spin"></div>
-            <img src="/images/Saloony_logo.png" class="absolute inset-0 w-12 h-12 m-auto object-contain animate-pulse" alt="Logo">
+            <img data-src="/images/Saloony_logo.png" data-optimize="true" class="absolute inset-0 w-12 h-12 m-auto object-contain animate-pulse" alt="Logo">
         </div>
         <p class="mt-4 text-gray-500 font-medium animate-pulse">جاري تحميل لوحة التحكم...</p>
     </div>
@@ -136,7 +139,7 @@
         <!-- Sidebar Header -->
         <div class="h-24 flex items-center justify-center border-b border-slate-800 bg-slate-950/50">
             <div class="flex items-center justify-center w-full">
-                <img src="/images/Saloony_logo.png" class="w-16 h-16 object-contain brightness-0 invert transition-transform hover:scale-110 duration-300" alt="Saloony">
+                <img data-src="/images/Saloony_logo.png" data-optimize="true" class="w-16 h-16 object-contain brightness-0 invert transition-transform hover:scale-110 duration-300" alt="Saloony">
             </div>
             <!-- Mobile Close Button -->
             <button id="close-sidebar-btn" class="md:hidden absolute left-4 text-slate-400 hover:text-white">
@@ -376,6 +379,8 @@
                                 </div>
                             </section>
 
+
+
                             <section class="glass-card p-6" id="roles-section">
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-lg font-bold text-primary-dark flex items-center gap-2">
@@ -514,27 +519,55 @@
                 <!-- Salon Overview View -->
                 <div id="salon-view" class="view-content hidden">
                     <!-- Header -->
-                    <section class="glass-card overflow-hidden mb-6 relative group">
-                        <div id="disp-salon-cover" class="h-48 bg-gradient-to-r from-slate-800 to-slate-900 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"></div>
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                        <div class="px-6 pb-6 relative">
-                            <div class="flex flex-col md:flex-row gap-6 items-end -mt-16">
-                                <div class="w-32 h-32 rounded-2xl bg-white p-1 shadow-2xl relative z-10 group/logo">
-                                    <img id="disp-profile-img" src="/images/Saloony_logo.png" class="w-full h-full rounded-xl object-cover" alt="Logo">
-                                    <!-- Upload Overlay (Optional if you implement upload logic) -->
+                    <section class="glass-card overflow-hidden mb-6 relative group border-0 shadow-xl ring-1 ring-slate-900/5">
+                        <!-- Cover Image Container -->
+                        <div class="relative h-72 md:h-80 w-full bg-slate-100 overflow-hidden">
+                            <div id="disp-salon-cover" class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 origin-center"></div>
+                            <!-- Subtle Gradient only on cover bottom for depth -->
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90"></div>
+                        </div>
+
+                        <!-- Profile Content -->
+                        <div class="px-8 pb-8 relative bg-white">
+                            <div class="flex flex-col md:flex-row gap-6 items-start">
+                                
+                                <!-- Logo (Overlapping) -->
+                                <div class="-mt-24 relative z-10 shrink-0">
+                                    <div class="w-48 h-48 rounded-full bg-white p-1 shadow-2xl ring-4 ring-white relative overflow-hidden group/logo">
+                                        <img id="disp-profile-img" src="/images/Saloony_logo.png" class="w-full h-full rounded-full object-cover bg-slate-100" alt="Logo">
+                                        
+                                        <!-- Edit Overlay Hint -->
+                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/logo:opacity-100 transition-opacity flex items-center justify-center rounded-full cursor-pointer pointer-events-none">
+                                            <i class="fas fa-camera text-white text-3xl drop-shadow-md"></i>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="flex-1 pb-2">
-                                    <div class="flex flex-col md:flex-row justify-between items-end gap-4">
-                                        <div>
-                                            <h2 id="disp-salon-name" class="text-3xl font-extrabold text-white mb-2 drop-shadow-md">اسم الصالون</h2>
-                                            <div class="flex items-center gap-3 text-white/90">
-                                                <span id="disp-gender-focus" class="px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-sm font-bold border border-white/30">...</span>
-                                                <span id="disp-city" class="flex items-center gap-1 text-sm"><i class="fas fa-map-marker-alt text-secondary"></i> ...</span>
+
+                                <!-- Info (Below Cover) -->
+                                <div class="flex-1 pt-4 md:pt-4 w-full">
+                                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                        <div class="flex-1 min-w-0">
+                                            <h2 id="disp-salon-name" class="text-3xl font-extrabold text-slate-900 mb-2 truncate leading-tight">اسم الصالون</h2>
+                                            <div class="flex flex-wrap items-center gap-3 text-slate-500">
+                                                <span id="disp-gender-focus" class="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold border border-slate-200 transition-colors hover:bg-slate-200">...</span>
+                                                <div class="h-4 w-[1px] bg-slate-300 hidden sm:block"></div>
+                                                <span id="disp-city" class="flex items-center gap-1.5 text-sm font-medium hover:text-secondary transition-colors cursor-default">
+                                                    <i class="fas fa-map-marker-alt text-secondary"></i>
+                                                    <span class="truncate">...</span>
+                                                </span>
                                             </div>
                                         </div>
-                                        <div class="flex gap-2 mb-2">
-                                            <button id="btn-edit-info" class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-xl text-sm font-bold border border-white/20 transition-all shadow-lg"><i class="fas fa-pen ml-2"></i>تعديل</button>
-                                            <a id="btn-view-page" href="#" target="_blank" class="bg-secondary hover:bg-secondary-dark text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-secondary/20"><i class="fas fa-external-link-alt ml-2"></i>عرض</a>
+                                        
+                                        <!-- Actions -->
+                                        <div class="flex items-center gap-3 shrink-0 mt-2 md:mt-0">
+                                            <button id="btn-edit-info" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md hover:border-slate-300 flex items-center gap-2">
+                                                <i class="fas fa-pen text-slate-400"></i>
+                                                <span>تعديل الملف</span>
+                                            </button>
+                                            <a id="btn-view-page" href="#" target="_blank" class="bg-secondary hover:bg-secondary-dark text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-secondary/20 hover:shadow-secondary/30 hover:-translate-y-0.5 flex items-center gap-2">
+                                                <span>عرض الصفحة</span>
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -609,6 +642,22 @@
                                         <div class="text-xs text-gray-500 mb-1">الهاتف</div>
                                         <div class="text-sm font-bold text-slate-800 dir-ltr text-right" id="disp-salon-phone">...</div>
                                     </div>
+                                </div>
+                            </section>
+
+                            <!-- Socials Section -->
+                            <section class="glass-card p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <i class="fas fa-share-alt text-purple-500"></i> التواصل الاجتماعي
+                                    </h3>
+                                    <button id="manage-socials-btn" class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors shadow-sm">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="socials-list-container" class="flex flex-wrap gap-3">
+                                    <!-- Social items injected here -->
+                                    <span class="text-sm text-gray-400 w-full text-center py-2">لا توجد حسابات مضافة</span>
                                 </div>
                             </section>
                         </div>
@@ -1381,38 +1430,6 @@
                     <textarea id="edit-about" rows="4" class="bg-white/60 focus:bg-white w-full rounded-xl border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-3" placeholder="اكتب نبذة مختصرة عن الصالون، خدماتك، وفريق العمل..."></textarea>
                 </div>
 
-                <div class="space-y-3 pt-2 border-t border-gray-100">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">وسائل التواصل الاجتماعي</label>
-                    
-                    <div class="relative">
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <i class="fab fa-facebook text-blue-600 text-lg"></i>
-                        </div>
-                        <input type="url" id="edit-social-facebook" placeholder="رابط فيسبوك" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
-                    </div>
-
-                    <div class="relative">
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <i class="fab fa-instagram text-pink-600 text-lg"></i>
-                        </div>
-                        <input type="url" id="edit-social-instagram" placeholder="رابط انستغرام" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
-                    </div>
-
-                    <div class="relative">
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <i class="fab fa-tiktok text-black text-lg"></i>
-                        </div>
-                        <input type="url" id="edit-social-tiktok" placeholder="رابط تيك توك" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
-                    </div>
-
-                    <div class="relative">
-                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <i class="fas fa-globe text-gray-500 text-lg"></i>
-                        </div>
-                        <input type="url" id="edit-social-other" placeholder="رابط موقع إلكتروني آخر" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
-                    </div>
-                </div>
-
                 <div class="pt-4 border-t border-gray-100">
                     <p class="text-xs text-orange-600 font-bold mb-3"><i class="fas fa-lock ml-1"></i> حقول غير قابلة للتعديل (لأسباب أمنية)</p>
                     <div class="grid grid-cols-1 gap-3">
@@ -1604,6 +1621,52 @@
                     <i id="save-photo-spinner" class="fas fa-circle-notch fa-spin hidden"></i>
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Manage Socials Modal -->
+    <div id="manage-socials-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="bg-white/50 p-4 border-b sticky top-0 z-10 flex justify-between items-center backdrop-blur-md">
+                <h3 class="font-bold text-lg text-primary-dark">حسابات التواصل الاجتماعي</h3>
+                <button id="close-socials-modal-btn" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <form id="manage-socials-form" class="p-6 space-y-4">
+                <div class="space-y-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fab fa-facebook text-blue-600 text-lg"></i>
+                        </div>
+                        <input type="url" id="social-facebook" placeholder="رابط فيسبوك" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fab fa-instagram text-pink-600 text-lg"></i>
+                        </div>
+                        <input type="url" id="social-instagram" placeholder="رابط انستغرام" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fab fa-tiktok text-black text-lg"></i>
+                        </div>
+                        <input type="url" id="social-tiktok" placeholder="رابط تيك توك" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fas fa-globe text-gray-500 text-lg"></i>
+                        </div>
+                        <input type="url" id="social-other" placeholder="رابط موقع إلكتروني آخر" class="bg-white/60 focus:bg-white w-full pr-10 rounded-lg border-gray-200 shadow-sm focus:ring-secondary focus:border-secondary p-2.5 text-sm dir-ltr text-right">
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="btn-action w-full py-3 shadow-lg hover:bg-primary transition-all active:scale-95">حفظ التغييرات</button>
+                </div>
+            </form>
         </div>
     </div>
 

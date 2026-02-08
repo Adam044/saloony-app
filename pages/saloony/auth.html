@@ -27,8 +27,6 @@
             justify-content: center;
             align-items: center;
             background-color: #152026; 
-            /* UPDATED PATH: images/auth.jpg */
-            background-image: url('/images/auth.jpg');
             background-size: cover;
             background-position: center;
             position: relative;
@@ -120,14 +118,15 @@
         
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="../../assets/js/image-optimizer.js"></script>
 </head>
-<body>
+<body data-optimize-bg="../../assets/images/auth.jpg">
 
 <div id="auth-main-container" class="w-full max-w-lg mx-4 p-6 form-card rounded-3xl shadow-2xl transition-all duration-500 ease-in-out">
     
     <header class="text-center mb-8 flex flex-col items-center">
         <!-- Clean Saloony Logo with transparent background -->
-        <img src="/images/Saloony_logo.png" onerror="this.onerror=null;this.src='https://placehold.co/144x144/1a434e/ffffff?text=Logo';" alt="شعار صالوني" class="w-36 h-36 mb-6 object-contain object-center transition-transform duration-300 hover:scale-[1.02]">
+        <img data-src="../../assets/images/Saloony_logo.png" data-optimize="true" alt="شعار صالوني" class="w-36 h-36 mb-6 object-contain object-center transition-transform duration-300 hover:scale-[1.02]">
         <p id="app-subtitle" class="text-gray-600 text-lg font-medium">بوابة الجمال والأناقة في فلسطين.</p>
     </header>
 

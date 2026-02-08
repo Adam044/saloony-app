@@ -7,7 +7,7 @@ const TopBar = {
                         <i class="fa-solid fa-bars text-xl"></i>
                     </button>
                     <div class="flex items-center gap-2">
-                        <img src="/images/Saloony-app_icon.png" class="w-8 h-8 rounded-lg" alt="Logo">
+                        <img data-src="/images/Saloony-app_icon.png" data-optimize="true" class="w-8 h-8 rounded-lg" alt="Logo">
                         <span class="font-bold text-slate-800 text-lg">Saloony Admin</span>
                     </div>
                 </div>

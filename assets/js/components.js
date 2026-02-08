@@ -44,8 +44,10 @@ const SaloonyComponents = {
                         accountHref = '/admin_dashboard';
                     } else if (userType === 'employee') {
                         accountHref = '/presentation';
+                    } else if (userType === 'user') {
+                        accountHref = '/pages/saloony/user_account.html';
                     }
-                    // 'user' type keeps the default user_account.html
+                    // 'user' type default handled above or by fallback, but explicit check ensures path accuracy
                 }
             } catch (e) {
                 console.error('Error parsing user data for menu link', e);

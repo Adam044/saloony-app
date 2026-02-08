@@ -835,18 +835,18 @@ module.exports = function register(app, deps) {
               .toBuffer();
           
           const { data, error } = await supabase.storage
-              .from('salon-images')
-              .upload(filename, optimizedBuffer, {
-                  contentType: 'image/webp',
-                  cacheControl: '31536000',
-                  upsert: false
-              });
-          
-          if (error) throw error;
-          
-          const { data: urlData } = supabase.storage
-              .from('salon-images')
-              .getPublicUrl(filename);
+            .from('gallery-images')
+            .upload(filename, optimizedBuffer, {
+                contentType: 'image/webp',
+                cacheControl: '31536000',
+                upsert: false
+            });
+        
+        if (error) throw error;
+        
+        const { data: urlData } = supabase.storage
+            .from('gallery-images')
+            .getPublicUrl(filename);
               
           return urlData.publicUrl;
       } catch (error) {
@@ -894,6 +894,22 @@ module.exports = function register(app, deps) {
   app.delete('/api/salon/gallery/:salon_id/:image_id', requireSalonAdminRole, async (req, res) => {
       try {
           const { salon_id, image_id } = req.params;
+          
+          // Get image URL first to delete from Supabase
+          const image = await dbGet('SELECT image_url FROM salon_gallery WHERE id = $1 AND salon_id = $2', [image_id, salon_id]);
+          
+          if (image && image.image_url && image.image_url.includes('supabase')) {
+              try {
+                  const filename = image.image_url.split('/').pop();
+                  await supabase.storage
+                      .from('gallery-images')
+                      .remove([filename]);
+              } catch (storageErr) {
+                  console.warn('Failed to delete gallery image from storage:', storageErr);
+                  // Continue to delete from DB even if storage delete fails
+              }
+          }
+
           await dbRun('DELETE FROM salon_gallery WHERE id = $1 AND salon_id = $2', [image_id, salon_id]);
           res.json({ success: true });
       } catch (e) {

@@ -72,9 +72,14 @@ export const initHeaderSalon = async (salonId) => {
             const logoUrl = data.salon.logo_url || data.salon.image_url;
             const hasValidLogo = logoUrl && !logoUrl.includes('placehold.co');
 
+            // Use ImageOptimizer for logo if available
             if (hasValidLogo) {
                 if (salonLogoEl) {
-                    salonLogoEl.src = logoUrl;
+                    if (window.ImageOptimizer) {
+                        window.ImageOptimizer.optimize(salonLogoEl, logoUrl);
+                    } else {
+                        salonLogoEl.src = logoUrl;
+                    }
                     salonLogoEl.classList.remove('hidden');
                 }
                 if (salonFallbackEl) salonFallbackEl.classList.add('hidden');

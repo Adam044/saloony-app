@@ -1,0 +1,35 @@
+/* Classic Theme - Refined Standard */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&display=swap');
+
+body.theme-classic {
+    font-family: 'Crimson Text', serif !important;
+    background-color: #fdfbf7 !important; /* Warm paper-like background */
+}
+
+/* Elegant touches */
+.theme-classic #hero-section {
+    height: 60vh !important;
+}
+
+.theme-classic #profile-section > div {
+    border-radius: 4px !important;
+    border: 1px solid #e5e5e5 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+    background-color: #fff !important;
+}
+
+.theme-classic #salon-name {
+    font-family: 'Crimson Text', serif !important;
+    letter-spacing: 1px;
+    color: #2c3e50 !important;
+}
+
+.theme-classic button {
+    border-radius: 2px !important;
+    font-family: 'Tajawal', sans-serif !important; /* Keep UI font for buttons */
+}
+
+.theme-classic .service-card {
+    border-radius: 4px !important;
+    border: 1px solid #f0f0f0 !important;
+}

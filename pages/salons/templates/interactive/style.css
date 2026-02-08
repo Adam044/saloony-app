@@ -1,0 +1,88 @@
+/* Modern Interactive Theme - Complete Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;500;700&display=swap');
+
+:root {
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --neon-accent: #00f3ff;
+}
+
+body.theme-interactive {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+    font-family: 'Exo 2', sans-serif !important;
+    background-image: 
+        linear-gradient(to right, #1e293b 1px, transparent 1px),
+        linear-gradient(to bottom, #1e293b 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+/* Glassmorphism Overhaul */
+.theme-interactive .bg-white,
+.theme-interactive .glass-panel,
+.theme-interactive #about-section,
+.theme-interactive .service-card {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 24px !important;
+    color: #fff !important;
+}
+
+.theme-interactive .text-gray-900,
+.theme-interactive .text-gray-800,
+.theme-interactive .text-gray-700 {
+    color: #fff !important;
+}
+
+.theme-interactive .text-gray-600,
+.theme-interactive .text-gray-500 {
+    color: #94a3b8 !important;
+}
+
+/* Neon Glows */
+.theme-interactive #logo-container > div {
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.3) !important;
+    border: 2px solid var(--neon-accent) !important;
+    background: rgba(0,0,0,0.5) !important;
+}
+
+.theme-interactive .service-card:hover {
+    border-color: var(--neon-accent) !important;
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.2) !important;
+}
+
+/* Buttons */
+.theme-interactive button {
+    background: rgba(0, 243, 255, 0.1) !important;
+    border: 1px solid var(--neon-accent) !important;
+    color: var(--neon-accent) !important;
+    text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.1) !important;
+}
+
+.theme-interactive button:hover {
+    background: var(--neon-accent) !important;
+    color: #000 !important;
+}
+
+/* Layout Tweaks */
+.theme-interactive #hero-section {
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+}
+
+.theme-interactive #profile-section > div {
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: 1px solid rgba(0, 243, 255, 0.2) !important;
+}
+
+/* Hide Standard Badges backgrounds */
+.theme-interactive .bg-gray-50, 
+.theme-interactive .bg-green-50 {
+    background: rgba(255,255,255,0.05) !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: #fff !important;
+}

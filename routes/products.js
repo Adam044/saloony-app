@@ -131,6 +131,18 @@ module.exports = function registerProductsRoutes(app, deps) {
             if (req.file) {
                 // Upload new image
                 imageUrl = await uploadProductImage(req.file.buffer, req.body.salon_id);
+                
+                // Delete old image if exists
+                if (existing.image_url && existing.image_url.includes('supabase')) {
+                    try {
+                        const filename = existing.image_url.split('/').pop();
+                        await supabase.storage
+                            .from('product-images')
+                            .remove([filename]);
+                    } catch (e) {
+                        console.warn('Failed to delete old product image:', e);
+                    }
+                }
             }
 
             const result = await dbGet(
@@ -161,7 +173,20 @@ module.exports = function registerProductsRoutes(app, deps) {
     app.delete('/api/products/:salon_id/:id', requireSalonAdminRole, async (req, res) => {
         try {
             const id = req.params.id;
-            // Note: Should ideally delete image from storage too
+            
+            // Delete image from storage
+            const product = await dbGet('SELECT image_url FROM products WHERE id = $1', [id]);
+            if (product && product.image_url && product.image_url.includes('supabase')) {
+                try {
+                    const filename = product.image_url.split('/').pop();
+                    await supabase.storage
+                        .from('product-images')
+                        .remove([filename]);
+                } catch (e) {
+                    console.warn('Failed to delete product image:', e);
+                }
+            }
+
             await dbRun('DELETE FROM products WHERE id = $1', [id]);
             res.json({ success: true });
         } catch (error) {

@@ -1,0 +1,94 @@
+/* Trendy & Playful Theme - Complete Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
+
+:root {
+    --trendy-bg: #fff5f5;
+    --trendy-primary: #ff4757;
+    --trendy-secondary: #2f3542;
+}
+
+body.theme-trendy {
+    background-color: var(--trendy-bg) !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    background-image: radial-gradient(#ff4757 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Neo-Brutalist Layout */
+.theme-trendy #hero-section {
+    height: 40vh !important;
+    border-bottom: 4px solid #000 !important;
+}
+
+.theme-trendy #profile-section > div {
+    background: #fff !important;
+    border: 4px solid #000 !important;
+    box-shadow: 8px 8px 0px #000 !important;
+    border-radius: 20px !important;
+    backdrop-filter: none !important;
+}
+
+.theme-trendy #logo-container > div {
+    border: 4px solid #000 !important;
+    box-shadow: 4px 4px 0px var(--trendy-primary) !important;
+    padding: 5px !important;
+}
+
+/* Cards with hard shadows */
+.theme-trendy .glass-panel,
+.theme-trendy .service-card,
+.theme-trendy #about-section {
+    background: #fff !important;
+    border: 3px solid #000 !important;
+    box-shadow: 6px 6px 0px #000 !important;
+    border-radius: 16px !important;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.theme-trendy .glass-panel:hover,
+.theme-trendy .service-card:hover {
+    transform: translate(-2px, -2px) !important;
+    box-shadow: 10px 10px 0px var(--trendy-primary) !important;
+}
+
+.theme-trendy .glass-panel:active,
+.theme-trendy .service-card:active {
+    transform: translate(2px, 2px) !important;
+    box-shadow: 2px 2px 0px #000 !important;
+}
+
+/* Typography */
+.theme-trendy h1, 
+.theme-trendy h2, 
+.theme-trendy h3 {
+    text-transform: uppercase;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em;
+}
+
+/* Buttons */
+.theme-trendy button {
+    border: 3px solid #000 !important;
+    background: var(--trendy-primary) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0px #000 !important;
+    border-radius: 50px !important;
+}
+
+.theme-trendy button:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px #000 !important;
+}
+
+.theme-trendy #mobile-reserve-btn {
+    background: #000 !important;
+    color: #fff !important;
+    box-shadow: 4px 4px 0px var(--trendy-primary) !important;
+}
+
+/* Hide subtle gradients */
+.theme-trendy .blur-3xl {
+    opacity: 0 !important;
+}

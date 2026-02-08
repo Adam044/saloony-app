@@ -147,6 +147,11 @@
         }
     };
     setupLogout();
+
+    // 6. Initialize Image Optimizer
+    if (window.ImageOptimizer) {
+        window.ImageOptimizer.init();
+    }
   };
 
   const init = async () => {
@@ -156,7 +161,8 @@
     // Dependencies
     const dependencies = [
         '/admin_saloony/components/Sidebar.js',
-        '/admin_saloony/components/TopBar.js'
+        '/admin_saloony/components/TopBar.js',
+        '/assets/js/image-optimizer.js'
     ];
 
     if (document.readyState === 'loading') {

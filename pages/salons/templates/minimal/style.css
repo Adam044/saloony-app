@@ -1,0 +1,119 @@
+/* Minimal & Clean Theme - Complete Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+    --min-bg: #ffffff;
+    --min-text: #000000;
+}
+
+body.theme-minimal {
+    background-color: #fff !important;
+    font-family: 'Inter', sans-serif !important;
+    color: #000 !important;
+}
+
+/* Layout Shifts */
+.theme-minimal #hero-section {
+    height: 120px !important;
+    min-height: auto !important;
+    background: #fff !important;
+}
+
+.theme-minimal #hero-section img {
+    display: none !important; /* No Hero Image */
+}
+
+.theme-minimal #hero-section .absolute {
+    display: none !important; /* No Gradient */
+}
+
+/* Profile Re-layout */
+.theme-minimal #profile-section {
+    margin-top: 0 !important;
+    padding-top: 2rem !important;
+}
+
+.theme-minimal #profile-section > div {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    text-align: left !important; /* Left Align Everything */
+    padding: 0 !important;
+    max-width: 100% !important;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.theme-minimal #logo-container {
+    margin-top: 0 !important;
+    margin-bottom: 1.5rem !important;
+    order: -1;
+}
+
+.theme-minimal #logo-container > div {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 0 !important; /* Square Logo */
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+.theme-minimal #logo-container .rounded-full {
+    border-radius: 0 !important;
+}
+
+.theme-minimal #salon-name {
+    font-size: 2.5rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.03em;
+    color: #000 !important;
+}
+
+.theme-minimal #salon-tagline {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    text-align: left !important;
+}
+
+/* Centered badges need to be left aligned now */
+.theme-minimal #profile-section .flex-wrap {
+    justify-content: flex-start !important;
+}
+
+/* Components */
+.theme-minimal .bg-white {
+    background-color: #fff !important;
+    border: 1px solid #eee !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+.theme-minimal .glass-panel {
+    background: #f9f9f9 !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+
+.theme-minimal .service-card {
+    border: 1px solid #f0f0f0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+}
+
+.theme-minimal button {
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    font-weight: 500 !important;
+}
+
+.theme-minimal #mobile-reserve-btn {
+    background: #000 !important;
+    color: #fff !important;
+    border-radius: 0 !important;
+}
+
+/* Typography */
+.theme-minimal .text-gray-900 { color: #000 !important; }
+.theme-minimal .text-gray-500 { color: #666 !important; }

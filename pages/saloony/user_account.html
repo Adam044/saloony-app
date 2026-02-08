@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <script src="../../assets/js/components.js"></script>
+    <script src="../../assets/js/image-optimizer.js"></script>
     <style>
         body { font-family: 'Tajawal', sans-serif; background-color: #F8FAFC; -webkit-tap-highlight-color: transparent; }
         
@@ -381,7 +382,11 @@
                 if (data.success) {
                     // Update UI
                     const avatar = document.getElementById('user-avatar');
-                    avatar.src = data.image_url;
+                    if (window.ImageOptimizer) {
+                        window.ImageOptimizer.optimize(avatar, data.image_url);
+                    } else {
+                        avatar.src = data.image_url;
+                    }
                     avatar.classList.remove('hidden');
                     document.getElementById('user-initials').classList.add('hidden');
                     
@@ -430,8 +435,13 @@
                     document.getElementById('user-initials').textContent = user.name.charAt(0).toUpperCase();
                     
                     if (user.image_url) {
-                        document.getElementById('user-avatar').src = user.image_url;
-                        document.getElementById('user-avatar').classList.remove('hidden');
+                        const avatar = document.getElementById('user-avatar');
+                        if (window.ImageOptimizer) {
+                            window.ImageOptimizer.optimize(avatar, user.image_url);
+                        } else {
+                            avatar.src = user.image_url;
+                        }
+                        avatar.classList.remove('hidden');
                         document.getElementById('user-initials').classList.add('hidden');
                     }
 
@@ -463,7 +473,7 @@
                     
                     container.innerHTML = data.salons.map(salon => {
                         const imgContent = salon.logo_url 
-                            ? `<img src="${salon.logo_url}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">`
+                            ? `<img data-src="${salon.logo_url}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 optimize-me-recent">`
                             : `<div class="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400"><i class="fas fa-store text-2xl"></i></div>`;
                             
                         return `
@@ -478,6 +488,19 @@
                             <p class="text-xs font-bold text-center truncate px-1 text-slate-700">${salon.name}</p>
                         </div>
                     `}).join('');
+
+                    // Optimize images
+                    if (window.ImageOptimizer) {
+                        container.querySelectorAll('.optimize-me-recent').forEach(img => {
+                            window.ImageOptimizer.optimize(img, img.dataset.src);
+                            img.classList.remove('optimize-me-recent');
+                        });
+                    } else {
+                        container.querySelectorAll('.optimize-me-recent').forEach(img => {
+                            img.src = img.dataset.src;
+                            img.classList.remove('optimize-me-recent');
+                        });
+                    }
                 }
             } catch (e) {
                 console.error('Failed to load recent salons', e);
@@ -567,7 +590,7 @@
                 // Image Logic: Logo -> Image -> Placeholder Icon
                 const imgSource = appt.logo_url || appt.image_url;
                 const imgContent = imgSource 
-                    ? `<img src="${imgSource}" class="w-full h-full object-cover">`
+                    ? `<img data-src="${imgSource}" class="w-full h-full object-cover optimize-me-appt">`
                     : `<div class="w-full h-full flex items-center justify-center bg-slate-50 text-slate-300"><i class="fas fa-store text-xl"></i></div>`;
 
                 return `
@@ -608,6 +631,19 @@
                 </div>
                 `;
             }).join('');
+
+            // Optimize images
+            if (window.ImageOptimizer) {
+                container.querySelectorAll('.optimize-me-appt').forEach(img => {
+                    window.ImageOptimizer.optimize(img, img.dataset.src);
+                    img.classList.remove('optimize-me-appt');
+                });
+            } else {
+                container.querySelectorAll('.optimize-me-appt').forEach(img => {
+                    img.src = img.dataset.src;
+                    img.classList.remove('optimize-me-appt');
+                });
+            }
         }
 
         function getStatusConfig(status) {
@@ -753,7 +789,11 @@
             
             const coverSrc = appt.image_url || appt.logo_url;
             if (coverSrc) {
-                coverImg.src = coverSrc;
+                if (window.ImageOptimizer) {
+                    window.ImageOptimizer.optimize(coverImg, coverSrc);
+                } else {
+                    coverImg.src = coverSrc;
+                }
                 coverImg.classList.remove('hidden');
                 // Ensure parent has no fallback background if image is present
                 coverImg.parentElement.classList.remove('bg-slate-300'); 
@@ -764,7 +804,11 @@
 
             const logoSrc = appt.logo_url;
             if (logoSrc) {
-                logoImg.src = logoSrc;
+                if (window.ImageOptimizer) {
+                    window.ImageOptimizer.optimize(logoImg, logoSrc);
+                } else {
+                    logoImg.src = logoSrc;
+                }
                 logoImg.classList.remove('hidden');
                 // Hide placeholder if exists (we might need to add one in HTML if we want perfect fallback)
             } else {
