@@ -1,174 +1,212 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <script src="../../assets/offline-detect.js"></script>
-  <script src="../../assets/app-mode.js"></script>
-  <script src="../../assets/js/components.js"></script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>الصالونات المنضمة إلى صالوني</title>
-  <link rel="icon" href="../../assets/images/Saloony-app_icon.png" type="image/png">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="../../assets/css/theme.css">
-  <style>
-    .salon-card { 
-        background: #FFFFFF; 
-        border: 1px solid #E2E8F0; 
-        border-radius: 1.25rem; 
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-    .salon-card:hover { 
-        transform: translateY(-5px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-        border-color: var(--primary);
-    }
-    .salon-chip { 
-        background: rgba(6, 193, 103, 0.1); 
-        color: #06C167; 
-        border: 1px solid rgba(6, 193, 103, 0.2);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>الصالونات المنضمة - صالوني</title>
+    <link rel="icon" type="image/x-icon" href="../../assets/images/favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../../assets/css/theme.css">
+    <script src="../../assets/js/components.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        .salon-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .salon-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
-<body class="flex flex-col min-h-screen selection:bg-[#06C167] selection:text-white">
+<body class="bg-slate-50 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
 
-<!-- Global Header Container -->
-<div id="global-header"></div>
+    <!-- Global Header -->
+    <div id="global-header" class="sticky top-0 z-50"></div>
 
-<main class="flex-1 pt-28 pb-12">
-  <section class="max-w-7xl mx-auto px-6">
-    <div class="text-center mb-16">
-      <div class="inline-flex items-center px-4 py-2 rounded-full bg-slate-100 border border-slate-200 mb-6">
-        <span class="text-sm font-medium text-slate-700">شركاء النجاح</span>
-      </div>
-      <h1 class="text-4xl sm:text-5xl font-black mb-6 text-slate-900">
-        صالونات تثق في <span class="text-gradient-primary">صالوني</span>
-      </h1>
-      <p class="text-lg text-slate-600 max-w-2xl mx-auto font-light">
-        نخبة من الصالونات التي اختارت التحول الرقمي وتقديم تجربة حجز استثنائية لعملائها.
-      </p>
-    </div>
-
-    <!-- Dynamic Container -->
-    <div id="salons-container" class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        <!-- Loading State -->
-        <div class="col-span-full text-center py-20">
-            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-[#06C167]"></div>
-            <p class="mt-4 text-slate-500">جاري تحميل القائمة...</p>
+    <main class="flex-1 container mx-auto px-4 pt-32 pb-12 md:pt-40 md:pb-20">
+        <!-- Hero Section -->
+        <div class="text-center mb-16 max-w-3xl mx-auto">
+            <div class="inline-flex items-center px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 mb-6">
+                <i class="fas fa-star text-sm ml-2"></i>
+                <span class="text-sm font-bold">شركاء النجاح</span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                صالونات تثق في <span class="text-emerald-500">صالوني</span>
+            </h1>
+            <p class="text-lg text-slate-600 font-medium">
+                نخبة من أفضل الصالونات التي اختارت تقديم تجربة حجز عصرية ومميزة لعملائها.
+            </p>
         </div>
-    </div>
 
-    <div class="mt-20 text-center">
-      <div class="glass-card p-8 rounded-3xl max-w-2xl mx-auto text-center border border-slate-200">
-          <p class="text-lg text-slate-900 mb-6 font-medium">
-            هل تريد أن يكون صالونك ضمن هذه القائمة المميزة؟
-          </p>
-          <a href="contact.html" class="inline-flex items-center justify-center px-8 py-3 rounded-full btn-primary text-base shadow-lg transition transform hover:scale-105">
-            انضم إلينا الآن
-          </a>
-      </div>
-    </div>
-  </section>
-</main>
+        <!-- Salons Grid -->
+        <div id="salons-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+            <!-- Salons will be loaded here -->
+        </div>
 
-<div id="global-footer"></div>
+        <!-- Loading State -->
+        <div id="loading-spinner" class="hidden py-12 text-center">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-emerald-500"></div>
+        </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
-<script>
-    // Initialize Global Components
-    document.addEventListener('DOMContentLoaded', () => {
-        SaloonyComponents.renderHeader('global-header', { activePage: 'salons', basePath: '../../' });
-        SaloonyComponents.renderFooter('global-footer', { basePath: '../../' });
-        loadRegisteredSalons();
-    });
+        <!-- Load More Button -->
+        <div id="load-more-container" class="mt-16 text-center hidden">
+            <button id="load-more-btn" class="bg-white hover:bg-slate-50 text-slate-900 font-bold py-3 px-8 rounded-full border border-slate-200 shadow-sm hover:shadow transition-all flex items-center gap-2 mx-auto">
+                <span>عرض المزيد من الصالونات</span>
+                <i class="fas fa-chevron-down text-sm"></i>
+            </button>
+        </div>
 
-    async function loadRegisteredSalons() {
-        const container = document.getElementById('salons-container');
-        try {
-            // Try to fetch from API first
-            let salons = [];
-            try {
-                const response = await fetch('/api/salons/registered');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.salons) {
-                        salons = data.salons;
-                    }
-                } else {
-                    throw new Error('API not available');
+        <!-- Join CTA -->
+        <div class="mt-24 max-w-4xl mx-auto">
+            <div class="bg-slate-900 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                <div class="relative z-10">
+                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">هل تمتلك صالوناً؟</h2>
+                    <p class="text-slate-400 mb-8 text-lg">انضم إلى شبكة صالوني اليوم وابدأ في تنظيم حجوزاتك بشكل احترافي.</p>
+                    <a href="contact.html" class="inline-flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-full transition-all transform hover:scale-105 shadow-lg shadow-emerald-500/30">
+                        انضم إلينا الآن
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Global Footer -->
+    <div id="global-footer"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <script>
+        let currentPage = 1;
+        const limit = 10;
+        let isLoading = false;
+        let hasMore = true;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            SaloonyComponents.renderHeader('global-header', { activePage: 'salons', basePath: '../../' });
+            SaloonyComponents.renderFooter('global-footer', { basePath: '../../' });
+            
+            loadSalons();
+
+            document.getElementById('load-more-btn').addEventListener('click', () => {
+                if (!isLoading && hasMore) {
+                    currentPage++;
+                    loadSalons();
                 }
-            } catch (e) {
-                console.log('API fetch failed, falling back to mock data for preview', e);
-                // Mock data for preview/local mode
-                salons = [
-                    {
-                        id: 1,
-                        name: "صالون لمسات",
-                        image: "../../assets/images/mock1.png", // Ensure these exist or use placeholders
-                        city: "رام الله"
-                    },
-                    {
-                        id: 2,
-                        name: "بيوتي سنتر",
-                        image: "../../assets/images/mock2.png",
-                        city: "نابلس"
-                    },
-                    {
-                        id: 3,
-                        name: "صالون الملكة",
-                        image: "../../assets/images/mock3.png",
-                        city: "الخليل"
-                    }
-                ];
-            }
+            });
+        });
 
-            if (salons.length > 0) {
-                container.innerHTML = salons.map(salon => `
-                    <article class="salon-card group cursor-pointer overflow-hidden flex flex-col h-full" onclick="window.location.href='/salons/salon.html?id=${salon.id}'">
-                        <div class="relative aspect-video overflow-hidden">
-                            <img src="${salon.image}" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=${encodeURIComponent(salon.name)}'" alt="${salon.name}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110">
-                            <div class="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/50 to-transparent opacity-90"></div>
-                            <div class="absolute bottom-4 right-4 text-white z-10">
-                                <h2 class="text-xl font-bold drop-shadow-xl">${salon.name}</h2>
-                                <p class="text-sm text-slate-200 flex items-center gap-1 mt-1 font-medium drop-shadow-md">
-                                    <i class="fa-solid fa-location-dot text-[#06C167] text-xs"></i>
-                                    ${salon.city}
-                                </p>
+        async function loadSalons() {
+            if (isLoading) return;
+            isLoading = true;
+
+            const container = document.getElementById('salons-container');
+            const spinner = document.getElementById('loading-spinner');
+            const loadMoreContainer = document.getElementById('load-more-container');
+            const loadMoreBtn = document.getElementById('load-more-btn');
+
+            spinner.classList.remove('hidden');
+            loadMoreContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/salons/registered?page=${currentPage}&limit=${limit}`);
+                
+                if (!response.ok) throw new Error('Failed to fetch salons');
+                
+                const data = await response.json();
+                const salons = data.salons || [];
+                hasMore = data.pagination?.has_more || false;
+
+                if (currentPage === 1 && salons.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-span-full text-center py-20">
+                            <div class="inline-flex items-center justify-center w-20 h-20 bg-slate-100 rounded-full mb-6">
+                                <i class="fas fa-store-slash text-3xl text-slate-400"></i>
                             </div>
+                            <h3 class="text-xl font-bold text-slate-900 mb-2">لا توجد صالونات مسجلة</h3>
+                            <p class="text-slate-500">كن أول المنضمين إلينا!</p>
                         </div>
-                        <div class="p-6 flex-1 flex flex-col justify-between">
-                            <div class="space-y-3 mb-4">
-                                <div class="flex flex-wrap gap-2">
-                                    <span class="salon-chip px-2 py-1 rounded-md text-xs font-medium">قص شعر</span>
-                                    <span class="salon-chip px-2 py-1 rounded-md text-xs font-medium">مكياج</span>
-                                </div>
-                            </div>
-                            
-                            <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
-                                <span class="text-slate-900 font-medium text-sm group-hover:text-[#06C167] transition">عرض الصفحة</span>
-                                <i class="fa-solid fa-arrow-left text-slate-400 group-hover:translate-x-[-5px] transition-transform"></i>
-                            </div>
+                    `;
+                    return;
+                }
+
+                salons.forEach(salon => {
+                    container.appendChild(createSalonCard(salon));
+                });
+
+                if (hasMore) {
+                    loadMoreContainer.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Error loading salons:', error);
+                if (currentPage === 1) {
+                    container.innerHTML = `
+                        <div class="col-span-full text-center py-12 text-red-500 bg-red-50 rounded-2xl border border-red-100">
+                            <p>حدث خطأ أثناء تحميل القائمة. يرجى المحاولة لاحقاً.</p>
                         </div>
-                    </article>
-                `).join('');
+                    `;
+                }
+            } finally {
+                isLoading = false;
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function createSalonCard(salon) {
+            const article = document.createElement('article');
+            article.className = 'salon-card bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm flex flex-col h-full cursor-pointer group';
+            article.onclick = () => window.location.href = `../../salon.html?id=${salon.id}`;
+
+            const hasImage = salon.image;
+
+            // Image Section
+            let imageContent;
+            if (hasImage) {
+                imageContent = `<img src="${salon.image}" alt="${salon.name}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-slate-100 flex items-center justify-center\'><i class=\'fas fa-store text-4xl text-slate-300\'></i></div>'">`;
             } else {
-                container.innerHTML = `
-                    <div class="col-span-full text-center py-12 text-slate-500">
-                        <i class="fa-regular fa-folder-open text-4xl mb-4 opacity-50"></i>
-                        <p>لا توجد صالونات مسجلة حالياً.</p>
+                imageContent = `
+                    <div class="w-full h-full bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-store text-4xl text-slate-300"></i>
                     </div>
                 `;
             }
-        } catch (error) {
-            console.error('Error loading salons:', error);
-            container.innerHTML = `
-                <div class="col-span-full text-center py-12 text-red-400">
-                    <p>حدث خطأ أثناء تحميل القائمة. يرجى المحاولة لاحقاً.</p>
+
+            article.innerHTML = `
+                <div class="relative aspect-[4/3] overflow-hidden">
+                    ${imageContent}
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    <div class="absolute top-4 left-4">
+                        <span class="bg-white/90 backdrop-blur-sm text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1 dir-ltr">
+                            <i class="fas fa-star text-amber-400 text-[10px]"></i>
+                            ${salon.rating}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="p-6 flex-1 flex flex-col">
+                    <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-600 transition-colors">${salon.name}</h3>
+                    
+                    <div class="flex items-center gap-2 text-slate-500 text-sm mb-4">
+                        <i class="fas fa-map-marker-alt text-emerald-500"></i>
+                        <span>${salon.city}</span>
+                    </div>
+
+                    <p class="text-slate-600 text-sm line-clamp-2 mb-6 flex-1">${salon.description}</p>
+
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                        <span class="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                            انضم ${salon.joinedYear}
+                        </span>
+                        <span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                            <i class="fas fa-arrow-left text-sm"></i>
+                        </span>
+                    </div>
                 </div>
             `;
+            return article;
         }
-    }
-</script>
+    </script>
 </body>
 </html>

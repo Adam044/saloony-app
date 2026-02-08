@@ -979,19 +979,17 @@ app.get('/registred_salons.html', (req, res) => {
     // Get registered salons for showcase page
     app.get('/api/salons/registered', async (req, res) => {
         try {
-            // Fetch top 9 salons, preferably those with images and ratings
-            // This is a showcase, so we want the "best" looking ones
-            // Assuming we want active salons
-            
-            // Note: In a real scenario, we might have an 'is_featured' flag or similar.
-            // For now, we'll pick salons that have a name and image, ordered by rating or recency.
-            
+            const limit = parseInt(req.query.limit) || 10;
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+
             let query = `
                 SELECT 
                     s.id, 
                     s.salon_name, 
                     s.city, 
                     s.image_url, 
+                    s.logo_url,
                     (SELECT COUNT(*) FROM reviews WHERE salon_id = s.id) as review_count,
                     (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE salon_id = s.id) as rating,
                     NULL as description,
@@ -1001,24 +999,37 @@ app.get('/registred_salons.html', (req, res) => {
                 WHERE s.salon_name IS NOT NULL 
                 AND s.salon_name != ''
                 ORDER BY s.created_at DESC
-                LIMIT 50
+                LIMIT $1 OFFSET $2
             `;
             
-            const salons = await db.query(query);
+            const salons = await db.query(query, [limit, offset]);
             
             // Format for frontend
             const formattedSalons = (Array.isArray(salons) ? salons : []).map(salon => ({
                 id: salon.id,
                 name: salon.salon_name,
                 city: salon.city || 'غير محدد',
-                image: salon.image_url || '/images/salon.png',
+                image: salon.image_url || salon.logo_url, // Use image_url or logo_url
                 rating: salon.rating ? parseFloat(salon.rating).toFixed(1) : 'جديد',
                 reviewCount: salon.review_count || 0,
                 description: salon.description || salon.tagline || 'يقدم خدمات تجميل مميزة.',
-                joinedYear: salon.created_at ? new Date(salon.created_at).getFullYear() : '2024'
+                joinedYear: salon.created_at ? new Date(salon.created_at).getFullYear() : new Date().getFullYear()
             }));
             
-            res.json({ success: true, salons: formattedSalons });
+            // Get total count for pagination metadata
+            const countResult = await db.query("SELECT COUNT(*) as count FROM salons WHERE salon_name IS NOT NULL AND salon_name != ''");
+            const totalCount = countResult[0]?.count || 0;
+
+            res.json({ 
+                success: true, 
+                salons: formattedSalons,
+                pagination: {
+                    current_page: page,
+                    total_pages: Math.ceil(totalCount / limit),
+                    total_items: totalCount,
+                    has_more: (page * limit) < totalCount
+                }
+            });
         } catch (error) {
             console.error('Error fetching registered salons:', error);
             res.status(500).json({ success: false, message: 'Database error' });
