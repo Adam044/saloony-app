@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
-    <script src="../../assets/js/image-optimizer.js"></script>
+    <script src="/assets/js/image-optimizer.js"></script>
     <style>
         body { font-family: 'Tajawal', sans-serif; background-color: #FAFAFA; }
         
@@ -611,14 +611,29 @@
     <script>
         // --- Core Variables ---
         const urlParams = new URLSearchParams(window.location.search);
-        let salonId = urlParams.get('id') || urlParams.get('salon_id');
+        // We use 'initialIdentifier' to hold either the numeric ID or the slug string
+        let initialIdentifier = urlParams.get('id') || urlParams.get('salon_id');
+        let salonId = null; // Will be resolved to numeric ID after fetching info
 
-        if (!salonId) {
+        if (!initialIdentifier) {
             try {
                 const path = window.location.pathname || '';
-                const parts = path.split('/').filter(Boolean);
-                if (parts[0] === 'salon' && parts[1]) salonId = parts[1];
+                // Handle clean slug URL (e.g. /my-salon)
+                // If path doesn't end in .html and isn't in /pages/ or /api/, assume it's a slug
+                if (path.length > 1 && !path.includes('.html') && !path.includes('/pages/') && !path.includes('/api/')) {
+                    initialIdentifier = path.substring(1); // Remove leading slash
+                } 
+                // Handle legacy /salon/:id
+                else {
+                    const parts = path.split('/').filter(Boolean);
+                    if (parts[0] === 'salon' && parts[1]) initialIdentifier = parts[1];
+                }
             } catch (_) {}
+        }
+        
+        // If initialIdentifier is numeric, we can set salonId immediately (optimistic)
+        if (initialIdentifier && !isNaN(initialIdentifier)) {
+            salonId = parseInt(initialIdentifier);
         }
 
         // --- Booking Variables ---
@@ -667,18 +682,24 @@
 
         // --- Data Loading ---
         async function loadSalonData() {
-            if (!salonId) { alert('Salon ID missing'); return; }
+            if (!initialIdentifier) { 
+                document.body.innerHTML = '<div class="h-screen flex items-center justify-center text-gray-500">رابط الصالون غير صحيح</div>';
+                loadingOverlay.style.display = 'none';
+                return; 
+            }
             
-            // Record visit in background
-            recordVisit();
-
             try {
-                const res = await fetch(`/api/salon/info/${salonId}`);
+                const res = await fetch(`/api/salon/info/${initialIdentifier}`);
                 if (!res.ok) throw new Error('Failed to fetch');
                 const data = await res.json();
                 
                 if (data.success && data.salon) {
+                    salonId = data.salon.id; // Ensure numeric ID is set
                     window.currentSalon = data.salon; // Store globally
+                    
+                    // Record visit now that we have the ID
+                    recordVisit();
+
                     renderSalonInfo(data.salon);
 
                     // Owner Restrictions - Hide Review Button

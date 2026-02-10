@@ -158,6 +158,38 @@ async function alignSchema() {
                 await db.run(`ALTER TABLE salons ADD COLUMN roles_enabled BOOLEAN DEFAULT FALSE`);
             }
 
+            // 7) Ensure slug column exists and backfill
+            if (!columnSet.has('slug')) {
+                console.log('AlignSchema: Adding slug column to salons (PostgreSQL)...');
+                await db.run(`ALTER TABLE salons ADD COLUMN slug TEXT UNIQUE`);
+            }
+            
+            // Always ensure slugs are populated (PostgreSQL)
+        const slugCheck = await db.query(`SELECT COUNT(*) as cnt FROM salons WHERE slug IS NULL OR slug = ''`);
+        if (slugCheck[0].cnt > 0) {
+             console.log('AlignSchema: Backfilling missing slugs (PostgreSQL)...');
+             await db.run(`
+                UPDATE salons 
+                SET slug = 
+                  CASE 
+                    WHEN LENGTH(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRIM(salon_name), '[^a-zA-Z0-9]+', '-', 'g'))) = 0 THEN 'salon-' || id
+                    ELSE LOWER(TRIM(BOTH '-' FROM REGEXP_REPLACE(TRIM(salon_name), '[^a-zA-Z0-9]+', '-', 'g'))) || '-' || id
+                  END
+                WHERE slug IS NULL OR slug = ''
+            `);
+        }
+
+        // Fix malformed slugs (e.g. starting with --)
+        const badSlugs = await db.query(`SELECT COUNT(*) as cnt FROM salons WHERE slug LIKE '--%'`);
+        if (badSlugs[0].cnt > 0) {
+            console.log('AlignSchema: Fixing malformed slugs (PostgreSQL)...');
+            await db.run(`
+                UPDATE salons 
+                SET slug = 'salon-' || id
+                WHERE slug LIKE '--%'
+            `);
+        }
+
             // 6) Ensure roles_enabled column exists
             if (!columnSet.has('roles_enabled')) {
                 console.log('AlignSchema: Adding roles_enabled column to salons (PostgreSQL)...');
@@ -324,6 +356,37 @@ async function alignSchema() {
                     // Non-destructive tweaks: add status if missing
                     if (!hasStatus) {
                         await db.run(`ALTER TABLE salons ADD COLUMN status TEXT DEFAULT 'pending'`);
+                    }
+                    
+                    // Add slug column if missing
+                    if (!columnSet.has('slug')) {
+                        console.log('AlignSchema: Adding slug to salons (SQLite)...');
+                        try {
+                            await db.run(`ALTER TABLE salons ADD COLUMN slug TEXT`);
+                            // Create unique index (SQLite ALTER TABLE ADD COLUMN UNIQUE not always supported directly or robust)
+                            await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_salons_slug ON salons(slug)`);
+                        } catch (e) {
+                            console.warn('AlignSchema: Error adding slug column (SQLite):', e.message);
+                        }
+                    }
+
+                    // Always ensure slugs are populated (SQLite)
+                    try {
+                        const salonsNoSlug = await db.query("SELECT id, salon_name FROM salons WHERE slug IS NULL OR slug = ''");
+                        if (salonsNoSlug && salonsNoSlug.length > 0) {
+                            console.log(`AlignSchema: Backfilling ${salonsNoSlug.length} missing slugs (SQLite)...`);
+                            for (const s of salonsNoSlug) {
+                                // Basic slugify
+                                let slug = (s.salon_name || 'salon').toLowerCase()
+                                    .replace(/[^a-z0-9]+/g, '-')
+                                    .replace(/^-+|-+$/g, '');
+                                if (!slug) slug = 'salon';
+                                slug = `${slug}-${s.id}`; // Ensure uniqueness by appending ID
+                                await db.run("UPDATE salons SET slug = $1 WHERE id = $2", [slug, s.id]);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('AlignSchema: Error backfilling slugs (SQLite):', e.message);
                     }
                     // Removed plan columns; unified pricing eliminates plan variants
                     // Add created_at column if missing
@@ -1113,6 +1176,32 @@ app.get('/admin/payments.html', (req, res) => {
     res.redirect('/admin_dashboard');
 });
 
+// Dynamic Slug Route for Salons
+// This catch-all must be placed AFTER all specific routes (api, admin, pages, etc.)
+// but BEFORE any final 404 handler if one existed.
+// It excludes paths starting with common prefixes to avoid conflicts.
+app.get('/:slug', async (req, res, next) => {
+    const slug = req.params.slug;
+    
+    // Ignore common file extensions or API paths if they slipped through
+    if (slug.includes('.') || slug.startsWith('api') || slug.startsWith('assets') || slug.startsWith('pages')) {
+        return next();
+    }
+
+    // Check if slug exists in DB
+    try {
+        const salon = await dbGet('SELECT id FROM salons WHERE slug = $1', [slug]);
+        if (salon) {
+            return res.sendFile(path.join(__dirname, 'pages', 'salons', 'salon.html'));
+        }
+    } catch (e) {
+        console.error('Slug lookup error:', e);
+    }
+    
+    // If not found, proceed to next handler (likely 404)
+    next();
+});
+
 // ===============================
 // Push Notification Endpoints
 // ===============================
@@ -1332,6 +1421,15 @@ app.post('/api/auth/register', async (req, res) => {
             }
         }
         
+        // Auto-generate password for Salons if not provided
+        let generatedPassword = null;
+        if (user_type === 'salon' && (!password || password.trim() === '')) {
+             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+             generatedPassword = 'Salon';
+             for (let i = 0; i < 7; i++) generatedPassword += chars[Math.floor(Math.random() * chars.length)];
+             password = generatedPassword;
+        }
+        
         console.log('=== REGISTER REQUEST ===');
         console.log('User type:', user_type);
         console.log('Email:', email);
@@ -1496,6 +1594,7 @@ app.post('/api/auth/register', async (req, res) => {
                         success: true, 
                         message: 'تم إنشاء حساب الصالون بنجاح.', 
                         token: accessToken,
+                        generated_password: generatedPassword,
                         user: { 
                             userId: userId, 
                             salonId: salonId, // IMPORTANT: Return salonId for business ops
@@ -3589,6 +3688,22 @@ server.listen(PORT, async () => {
         console.error("Database initialization error:", error.message);
     }
 });
+
+// Clean URL for salons (slug support) - serves salon.html for /some-salon-slug
+app.get('/:slug', (req, res, next) => {
+    const slug = req.params.slug;
+    // Avoid conflicting with existing routes or files
+    // Common reserved prefixes: api, admin, auth, join, etc.
+    // Also ignore anything with a dot (files)
+    const reserved = ['api', 'admin', 'auth.html', 'join.html', 'offline.html', 'home_salon.html', 'dashboard', 'login', 'register', 'assets', 'pages', 'security', 'favicon.ico'];
+    if (reserved.includes(slug) || slug.includes('.')) {
+        return next();
+    }
+    
+    // Serve salon.html
+    res.sendFile(path.join(__dirname, 'pages', 'salons', 'salon.html'));
+});
+
 // Image proxy to mitigate HTTP/3/QUIC issues with some CDNs (restricted to Pexels)
 app.get('/api/proxy/image', async (req, res) => {
   try {

@@ -59,7 +59,16 @@ export const initHeaderSalon = async (salonId) => {
     if (!salonId) return;
 
     // Set link immediately
-    const publicUrl = `${window.location.origin}/pages/salons/salon.html?id=${salonId}`;
+    let publicUrl = `${window.location.origin}/pages/salons/salon.html?id=${salonId}`;
+    
+    // Try to get slug from local storage first for immediate update
+    try {
+        const cached = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+        if (cached && cached.id == salonId && cached.slug) {
+            publicUrl = `${window.location.origin}/${cached.slug}`;
+        }
+    } catch (_) {}
+
     if (salonLinkEl) salonLinkEl.href = publicUrl;
 
     try {
@@ -67,6 +76,11 @@ export const initHeaderSalon = async (salonId) => {
         const data = await res.json();
 
         if (data.success && data.salon) {
+            if (data.salon.slug) {
+                publicUrl = `${window.location.origin}/${data.salon.slug}`;
+                if (salonLinkEl) salonLinkEl.href = publicUrl;
+            }
+            
             if (salonNameEl) salonNameEl.textContent = data.salon.name_ar || data.salon.name_en || 'الصالون';
             
             const logoUrl = data.salon.logo_url || data.salon.image_url;
@@ -183,25 +197,7 @@ const initNavigation = (currentUser) => {
         });
     }
 
-    const shareBtn = document.getElementById('share-salon-btn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', () => {
-            const salonId = currentUser?.salonId || currentUser?.salon_id;
-            const shareUrl = salonId ? `${window.location.origin}/pages/salons/salon.html?id=${salonId}` : window.location.origin;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: 'صالوني',
-                    text: 'احجز موعدك الآن عبر صالوني',
-                    url: shareUrl
-                }).catch(console.error);
-            } else {
-                navigator.clipboard.writeText(shareUrl)
-                    .then(() => showToast('تم نسخ رابط الصالون بنجاح'))
-                    .catch(() => showToast('فشل نسخ الرابط', false));
-            }
-        });
-    }
+
 };
 
 export const showActionSuccess = (message) => {

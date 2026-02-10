@@ -44,8 +44,14 @@
                     </h1>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button onclick="resetSalonPassword()" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm">
+                        <i class="fas fa-key mr-2 text-amber-500"></i> Reset Password
+                    </button>
                     <button onclick="window.open(`/salon.html?id=${salonId}`, '_blank')" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition shadow-sm">
                         <i class="fas fa-external-link-alt mr-2"></i> View Public Page
+                    </button>
+                    <button onclick="deleteSalon()" class="px-4 py-2 bg-red-50 border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-100 transition shadow-sm">
+                        <i class="fas fa-trash-alt mr-2"></i> Delete Salon
                     </button>
                 </div>
             </div>
@@ -287,6 +293,30 @@
         let currentSubscriptionId = null;
         let currentActionMonth = null;
         let currentActionYear = null;
+
+        async function resetSalonPassword() {
+            // Use custom modal if available, otherwise fallback to confirm
+            // We'll use simple confirm/alert for now as requested
+            if (!confirm('Are you sure you want to reset the password for this salon owner?')) return;
+            
+            try {
+                const res = await fetch(`/api/admin/salons/${salonId}/reset_password`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Show a custom modal or alert with the new password
+                    // Using prompt to make it easy to copy
+                    prompt('Password Reset Successfully! Copy the new password below:', data.temp_password);
+                } else {
+                    alert('Failed to reset password: ' + (data.message || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error resetting password');
+            }
+        }
 
         // Render functions needed by fetchSalonData
         function renderHeader(salon) {
@@ -825,6 +855,29 @@
             }
         }
         
+        window.deleteSalon = async function() {
+            if (!confirm('WARNING: Are you sure you want to delete this salon?')) return;
+            if (!confirm('This action cannot be undone. All salon data (images, services, appointments, user account) will be permanently deleted. Confirm?')) return;
+            
+            try {
+                const res = await fetch(`/api/admin/salons/${salonId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${adminToken}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Salon deleted successfully');
+                    window.location.href = '/admin_saloony/dashboard/salons.html';
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Connection error');
+            }
+        };
+
         // Start
         fetchSalonData();
 

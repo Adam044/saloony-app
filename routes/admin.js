@@ -131,6 +131,98 @@ module.exports = function register(app, deps) {
     }
   });
 
+  // Admin: Reset Salon Password
+  app.post('/api/admin/salons/:id/reset_password', requireAdmin, async (req, res) => {
+    try {
+      const salonId = Number(req.params.id);
+      // Get user_id from salon
+      const salon = await db.query('SELECT user_id FROM salons WHERE id = $1', [salonId]);
+      const user_id = salon && salon[0] ? salon[0].user_id : null;
+      
+      if (!user_id) return res.status(404).json({ success: false, message: 'Salon user not found' });
+
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+      let temp = 'Salon';
+      for (let i = 0; i < 7; i++) temp += chars[Math.floor(Math.random() * chars.length)];
+      
+      const hashed = await hashPassword(temp);
+      await db.run('UPDATE users SET password = $1 WHERE id = $2', [hashed, user_id]);
+      
+      res.json({ success: true, temp_password: temp });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ success: false, message: 'Failed to reset password' });
+    }
+  });
+
+  // Admin: Delete Salon (and all related data)
+  app.delete('/api/admin/salons/:id', requireAdmin, async (req, res) => {
+    try {
+      const salonId = Number(req.params.id);
+      
+      // Get user_id to delete the user account later
+      const salon = await db.query('SELECT user_id FROM salons WHERE id = $1', [salonId]);
+      const userId = salon && salon[0] ? salon[0].user_id : null;
+
+      if (!userId) {
+          return res.status(404).json({ success: false, message: 'Salon not found' });
+      }
+
+      // Manual cleanup for tables without ON DELETE CASCADE
+      // 1. Reviews & Favorites
+      await db.run('DELETE FROM reviews WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM favorites WHERE salon_id = $1', [salonId]);
+      
+      // 2. Services & Schedules
+      await db.run('DELETE FROM salon_services WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM schedule_modifications WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM schedules WHERE salon_id = $1', [salonId]);
+
+      // 3. Appointments (and related items)
+      // Delete child records manually to be safe against missing cascades
+      await db.run('DELETE FROM appointment_services WHERE appointment_id IN (SELECT id FROM appointments WHERE salon_id = $1)', [salonId]);
+      await db.run('DELETE FROM reminders_sent WHERE appointment_id IN (SELECT id FROM appointments WHERE salon_id = $1)', [salonId]);
+      await db.run('DELETE FROM appointments WHERE salon_id = $1', [salonId]);
+
+      // 4. Staff (and related)
+      // breaks refs salon_id and staff_id.
+      await db.run('DELETE FROM breaks WHERE salon_id = $1', [salonId]);
+      // role_sessions refs salon_id and staff_role_id
+      await db.run('DELETE FROM role_sessions WHERE salon_id = $1', [salonId]);
+      // staff_roles refs salon_id and staff_id.
+      await db.run('DELETE FROM staff_roles WHERE salon_id = $1', [salonId]);
+      // If we delete staff, staff_roles should be deleted (if cascade works), but we did it manually above.
+      await db.run('DELETE FROM staff WHERE salon_id = $1', [salonId]);
+
+      // 4.5. Financials & Subscriptions (Manually delete to prevent FK violations)
+      await db.run('DELETE FROM payments WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM subscriptions WHERE salon_id = $1', [salonId]);
+      
+      // 4.6. Other potential non-cascading tables
+      await db.run('DELETE FROM products WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM salon_gallery WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM salon_images WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM social_links WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM salon_roles WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM salon_locations WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM salon_visits WHERE salon_id = $1', [salonId]);
+      await db.run('DELETE FROM push_subscriptions WHERE salon_id = $1', [salonId]);
+
+      // 5. Delete Salon (Triggers cascade for remaining items)
+      await db.run('DELETE FROM salons WHERE id = $1', [salonId]);
+
+      // 6. Delete User Account
+      if (userId) {
+          await db.run('DELETE FROM users WHERE id = $1', [userId]);
+      }
+
+      res.json({ success: true, message: 'Salon deleted successfully' });
+    } catch (e) {
+      console.error('Delete salon error:', e);
+      res.status(500).json({ success: false, message: 'Failed to delete salon' });
+    }
+  });
+
   app.delete('/api/admin/employees/:id', requireAdmin, async (req, res) => {
     try {
       const id = Number(req.params.id);

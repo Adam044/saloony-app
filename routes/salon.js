@@ -121,16 +121,33 @@ module.exports = function register(app, deps) {
     }
   });
 
-  app.get('/api/salon/info/:salon_id', async (req, res) => {
-    const salonId = req.params.salon_id;
-    if (!salonId || salonId === 'undefined' || isNaN(parseInt(salonId))) {
-      return res.status(400).json({ success: false, message: 'Salon ID is required and must be valid.' });
+  app.get('/api/salon/info/:identifier', async (req, res) => {
+    let identifier = req.params.identifier;
+    if (!identifier || identifier === 'undefined') {
+      return res.status(400).json({ success: false, message: 'Salon identifier is required.' });
     }
+
+    let salonId = null;
+    if (!isNaN(parseInt(identifier))) {
+      salonId = parseInt(identifier);
+    } else {
+      try {
+        const slugRow = await dbGet('SELECT id FROM salons WHERE slug = $1', [identifier]);
+        if (slugRow) {
+          salonId = slugRow.id;
+        } else {
+          return res.status(404).json({ success: false, message: 'Salon not found.' });
+        }
+      } catch (e) {
+        return res.status(500).json({ success: false, message: 'Database error resolving slug.' });
+      }
+    }
+
     try {
       const row = await dbGet(
         `SELECT s.id, s.salon_name, s.address, s.city, s.gender_focus, s.image_url, s.logo_url, s.salon_phone, s.owner_name, s.owner_phone, s.user_id, s.about, 
                 u.email, u.user_type as role,
-                sl.latitude, sl.longitude
+                sl.latitude, sl.longitude, s.slug
          FROM salons s 
          JOIN users u ON s.user_id = u.id 
          LEFT JOIN salon_locations sl ON s.id = sl.salon_id

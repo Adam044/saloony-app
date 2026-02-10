@@ -313,7 +313,8 @@ export const loadProfile = async (salonId) => {
             // Set view page link
             const viewBtn = document.getElementById('btn-view-page');
             if (viewBtn) {
-                viewBtn.href = `/pages/salons/salon.html?id=${salonId}`;
+                const url = data.salon.slug ? `/${data.salon.slug}` : `/pages/salons/salon.html?id=${salonId}`;
+                viewBtn.href = url;
             }
 
             // Load visits

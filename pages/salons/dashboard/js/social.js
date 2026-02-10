@@ -76,7 +76,16 @@ const initShareModal = () => {
             content.classList.remove('opacity-0', 'scale-95');
             
             // Generate Link & QR
-            const salonUrl = `${window.location.origin}/pages/salons/salon.html?id=${currentSalonId}`;
+            let salonUrl = `${window.location.origin}/pages/salons/salon.html?id=${currentSalonId}`;
+            
+            // Try to use slug
+            try {
+                const cached = JSON.parse(localStorage.getItem('saloony_user') || '{}');
+                if (cached && (cached.id == currentSalonId || cached.salon_id == currentSalonId) && cached.slug) {
+                    salonUrl = `${window.location.origin}/${cached.slug}`;
+                }
+            } catch (_) {}
+
             inputLink.value = salonUrl;
             
             // Load QR
