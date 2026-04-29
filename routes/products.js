@@ -79,9 +79,10 @@ module.exports = function registerProductsRoutes(app, deps) {
     // Create a new product
     app.post('/api/products/:salon_id', requireSalonAdminRole, upload.single('image'), async (req, res) => {
         try {
-            const { salon_id, category, name, description, price, currency } = req.body;
+            const salonId = Number(req.params.salon_id);
+            const { category, name, description, price, currency } = req.body;
             
-            if (!salon_id || !name || !price) {
+            if (!salonId || !name || !price) {
                 return res.status(400).json({ success: false, message: 'Missing required fields' });
             }
 
@@ -90,15 +91,15 @@ module.exports = function registerProductsRoutes(app, deps) {
                 return res.status(400).json({ success: false, message: 'Image is required for new products' });
             }
 
-            let imageUrl = await uploadProductImage(req.file.buffer, salon_id);
+            let imageUrl = await uploadProductImage(req.file.buffer, salonId);
 
             const result = await dbGet(
                 `INSERT INTO products 
                 (salon_id, category, name, description, price, currency, image_url) 
                 VALUES ($1, $2, $3, $4, $5, $6, $7) 
-                RETURNING *`,
+                RETURNING id, salon_id, category, name, description, price, currency, image_url, is_active, created_at`,
                 [
-                    salon_id, 
+                    salonId, 
                     category || 'other', 
                     name, 
                     description, 
@@ -111,7 +112,7 @@ module.exports = function registerProductsRoutes(app, deps) {
             res.json({ success: true, product: result });
         } catch (error) {
             console.error('Create product error:', error);
-            res.status(500).json({ success: false, message: 'Database error' });
+            res.status(500).json({ success: false, message: 'Database error', details: error.message });
         }
     });
 
@@ -149,7 +150,7 @@ module.exports = function registerProductsRoutes(app, deps) {
                 `UPDATE products 
                 SET category = $1, name = $2, description = $3, price = $4, currency = $5, image_url = $6, is_active = $7, updated_at = CURRENT_TIMESTAMP
                 WHERE id = $8
-                RETURNING *`,
+                RETURNING id, salon_id, category, name, description, price, currency, image_url, is_active, updated_at`,
                 [
                     category || 'other',
                     name,

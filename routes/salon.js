@@ -886,7 +886,7 @@ module.exports = function register(app, deps) {
   // Add Gallery Image
   app.post('/api/salon/gallery/:salon_id', requireSalonAdminRole, upload.single('image'), async (req, res) => {
       try {
-          const salonId = req.params.salon_id;
+          const salonId = Number(req.params.salon_id);
           const { category, title } = req.body;
           
           if (!req.file) {
@@ -896,14 +896,14 @@ module.exports = function register(app, deps) {
           const imageUrl = await uploadGalleryImage(req.file.buffer, salonId);
           
           const result = await dbGet(
-              'INSERT INTO salon_gallery (salon_id, image_url, category, title) VALUES ($1, $2, $3, $4) RETURNING *',
+              'INSERT INTO salon_gallery (salon_id, image_url, category, title) VALUES ($1, $2, $3, $4) RETURNING id, salon_id, image_url, category, title, created_at',
               [salonId, imageUrl, category || null, title || null]
           );
           
           res.json({ success: true, image: result });
       } catch (e) {
           console.error('Gallery add error:', e);
-          res.status(500).json({ success: false, message: 'Server error' });
+          res.status(500).json({ success: false, message: 'Server error', details: e.message });
       }
   });
 
