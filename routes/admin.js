@@ -1,5 +1,5 @@
 module.exports = function register(app, deps) {
-  const { db, requireAdmin, requireDebugEnabled, hashPassword, supabase } = deps;
+  const { db, requireAdmin, requireDebugEnabled, hashPassword } = deps;
 
   app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
@@ -8,22 +8,16 @@ module.exports = function register(app, deps) {
       const womenSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['women']);
       const menSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE gender_focus = $1', ['men']);
       const activeSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['accepted']);
-      const pendingSalonsResult = await db.query('SELECT COUNT(*) as count FROM salons WHERE status = $1', ['pending']);
-      const totalAppointmentsResult = await db.query('SELECT COUNT(*) as count FROM appointments');
-      res.json({
-        success: true,
-        totals: {
-          users: totalUsersResult[0]?.count,
-          salons: totalSalonsResult[0]?.count,
-          womenSalons: womenSalonsResult[0]?.count,
-          menSalons: menSalonsResult[0]?.count,
-          activeSalons: activeSalonsResult[0]?.count,
-          pendingSalons: pendingSalonsResult[0]?.count,
-          totalAppointments: totalAppointmentsResult[0]?.count
-        }
-      });
+      const stats = {
+        totalUsers: totalUsersResult[0]?.count,
+        totalSalons: totalSalonsResult[0]?.count,
+        womenSalons: womenSalonsResult[0]?.count,
+        menSalons: menSalonsResult[0]?.count,
+        activeSalons: activeSalonsResult[0]?.count
+      };
+      res.json({ success: true, stats });
     } catch (e) {
-      res.status(500).json({ success: false, message: 'Admin stats failed' });
+      res.status(500).json({ success: false });
     }
   });
 
@@ -153,49 +147,6 @@ module.exports = function register(app, deps) {
       console.error(e);
       res.status(500).json({ success: false, message: 'Failed to reset password' });
     }
-  });
-
-  app.get('/api/admin/system-check', requireAdmin, async (req, res) => {
-    const results = {
-      db: 'unknown',
-      supabase: 'unknown',
-      buckets: {},
-      sharp: 'unknown'
-    };
-
-    // 1. Check DB
-    try {
-      await db.query('SELECT 1');
-      results.db = 'connected';
-    } catch (e) {
-      results.db = `error: ${e.message}`;
-    }
-
-    // 2. Check Sharp
-    try {
-      const sharp = require('sharp');
-      results.sharp = 'available';
-    } catch (e) {
-      results.sharp = `error: ${e.message}`;
-    }
-
-    // 3. Check Supabase & Buckets
-    try {
-      const { data: buckets, error } = await supabase.storage.listBuckets();
-      if (error) {
-        results.supabase = `error: ${error.message}`;
-      } else {
-        results.supabase = 'connected';
-        const expected = ['gallery-images', 'product-images', 'salon-images'];
-        expected.forEach(b => {
-          results.buckets[b] = buckets.some(bucket => bucket.name === b) ? 'exists' : 'missing';
-        });
-      }
-    } catch (e) {
-      results.supabase = `error: ${e.message}`;
-    }
-
-    res.json(results);
   });
 
   // Admin: Delete Salon (and all related data)

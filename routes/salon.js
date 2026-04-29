@@ -912,7 +912,7 @@ module.exports = function register(app, deps) {
           res.json({ success: true, image: result });
       } catch (e) {
           console.error('Gallery add error:', e);
-          res.status(500).json({ success: false, message: 'Server error', details: e.message });
+          res.status(500).json({ success: false, message: 'Server error' });
       }
   });
 

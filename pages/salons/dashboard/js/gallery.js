@@ -232,8 +232,7 @@ const handlePhotoSubmit = async (e) => {
             closeAddPhotoModal();
             await loadGallery();
         } else {
-            const errorMsg = data.details ? `${data.message}: ${data.details}` : (data.message || 'Failed to upload');
-            throw new Error(errorMsg);
+            throw new Error(data.message || 'Failed to upload');
         }
 
     } catch (error) {

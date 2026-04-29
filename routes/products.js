@@ -118,7 +118,7 @@ module.exports = function registerProductsRoutes(app, deps) {
             res.json({ success: true, product: result });
         } catch (error) {
             console.error('Create product error:', error);
-            res.status(500).json({ success: false, message: 'Database error', details: error.message });
+            res.status(500).json({ success: false, message: 'Database error' });
         }
     });
 
