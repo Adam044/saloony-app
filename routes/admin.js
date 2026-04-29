@@ -1,5 +1,5 @@
 module.exports = function register(app, deps) {
-  const { db, requireAdmin, requireDebugEnabled, hashPassword } = deps;
+  const { db, requireAdmin, requireDebugEnabled, hashPassword, supabase } = deps;
 
   app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
@@ -153,6 +153,49 @@ module.exports = function register(app, deps) {
       console.error(e);
       res.status(500).json({ success: false, message: 'Failed to reset password' });
     }
+  });
+
+  app.get('/api/admin/system-check', requireAdmin, async (req, res) => {
+    const results = {
+      db: 'unknown',
+      supabase: 'unknown',
+      buckets: {},
+      sharp: 'unknown'
+    };
+
+    // 1. Check DB
+    try {
+      await db.query('SELECT 1');
+      results.db = 'connected';
+    } catch (e) {
+      results.db = `error: ${e.message}`;
+    }
+
+    // 2. Check Sharp
+    try {
+      const sharp = require('sharp');
+      results.sharp = 'available';
+    } catch (e) {
+      results.sharp = `error: ${e.message}`;
+    }
+
+    // 3. Check Supabase & Buckets
+    try {
+      const { data: buckets, error } = await supabase.storage.listBuckets();
+      if (error) {
+        results.supabase = `error: ${error.message}`;
+      } else {
+        results.supabase = 'connected';
+        const expected = ['gallery-images', 'product-images', 'salon-images'];
+        expected.forEach(b => {
+          results.buckets[b] = buckets.some(bucket => bucket.name === b) ? 'exists' : 'missing';
+        });
+      }
+    } catch (e) {
+      results.supabase = `error: ${e.message}`;
+    }
+
+    res.json(results);
   });
 
   // Admin: Delete Salon (and all related data)

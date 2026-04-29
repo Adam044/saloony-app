@@ -823,7 +823,7 @@ const registerSubscriptionsRoutes = require('./routes/subscriptions');
 const registerProductsRoutes = require('./routes/products');
 
 registerReviewsRoutes(app, { dbAll, dbGet, dbRun, requireAuth, upload, supabase, crypto, sharp });
-registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled, hashPassword });
+registerAdminRoutes(app, { db, requireAdmin, requireDebugEnabled, hashPassword, supabase });
 registerSubscriptionsRoutes(app, { db, dbAll, dbGet, dbRun, requireAdmin, requireAuth });
 registerSalonRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, addSalonClient, removeSalonClient, sendSalonEvent, hashPin, verifyPin, crypto, upload, sharp, supabase });
 registerProductsRoutes(app, { db, dbAll, dbGet, dbRun, requireSalonAdminRole, upload, sharp, supabase, crypto });

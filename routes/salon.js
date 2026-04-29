@@ -846,10 +846,16 @@ module.exports = function register(app, deps) {
           const randomId = crypto.randomBytes(6).toString('hex');
           const filename = `gallery_${salonId}_${timestamp}_${randomId}.webp`;
           
-          const optimizedBuffer = await sharp(buffer)
-              .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-              .webp({ quality: 80 })
-              .toBuffer();
+          let optimizedBuffer;
+          try {
+              optimizedBuffer = await sharp(buffer)
+                  .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+                  .webp({ quality: 80 })
+                  .toBuffer();
+          } catch (sharpErr) {
+              console.error('Sharp optimization error:', sharpErr);
+              throw new Error(`Image processing failed: ${sharpErr.message}`);
+          }
           
           const { data, error } = await supabase.storage
             .from('gallery-images')
@@ -859,7 +865,10 @@ module.exports = function register(app, deps) {
                 upsert: false
             });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase upload error details:', error);
+            throw new Error(`Storage upload failed: ${error.message || 'Unknown storage error'}`);
+        }
         
         const { data: urlData } = supabase.storage
             .from('gallery-images')
@@ -867,7 +876,7 @@ module.exports = function register(app, deps) {
               
           return urlData.publicUrl;
       } catch (error) {
-          console.error('Gallery upload error:', error);
+          console.error('Gallery upload helper error:', error);
           throw error;
       }
   }

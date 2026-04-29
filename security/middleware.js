@@ -86,7 +86,7 @@ async function requireSalonAdminRole(req, res, next) {
                 
                 // If Salon Owner, verify ownership
                 if (payload.role === 'salon') {
-                    const salon = await db.get('SELECT id FROM salons WHERE id = $1 AND user_id = $2', [salonId, payload.sub]);
+                    const salon = await db.get('SELECT id FROM salons WHERE id = $1 AND user_id = $2', [Number(salonId), payload.sub]);
                     if (salon) return next();
                 }
             }

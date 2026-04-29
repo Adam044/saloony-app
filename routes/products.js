@@ -13,10 +13,16 @@ module.exports = function registerProductsRoutes(app, deps) {
             const filename = `product_${salonId}_${timestamp}_${randomId}.webp`;
             
             // Resize and convert to WebP
-            const optimizedBuffer = await sharp(buffer)
-                .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-                .webp({ quality: 80 })
-                .toBuffer();
+            let optimizedBuffer;
+            try {
+                optimizedBuffer = await sharp(buffer)
+                    .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+                    .webp({ quality: 80 })
+                    .toBuffer();
+            } catch (sharpErr) {
+                console.error('Sharp product optimization error:', sharpErr);
+                throw new Error(`Product image processing failed: ${sharpErr.message}`);
+            }
             
             const { data, error } = await supabase.storage
                 .from('product-images')
@@ -27,8 +33,8 @@ module.exports = function registerProductsRoutes(app, deps) {
                 });
             
             if (error) {
-                console.error('Supabase upload error:', error);
-                throw error;
+                console.error('Supabase product upload error:', error);
+                throw new Error(`Product storage upload failed: ${error.message || 'Unknown storage error'}`);
             }
             
             const { data: urlData } = supabase.storage

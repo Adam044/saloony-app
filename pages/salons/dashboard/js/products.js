@@ -411,7 +411,8 @@ const handleProductSubmit = async (e) => {
             const activeCatId = activeBtn ? activeBtn.dataset.id : 'all';
             loadProducts(activeCatId);
         } else {
-            showMessage('خطأ', data.message || 'حدث خطأ أثناء حفظ المنتج', false);
+            const errorMsg = data.details ? `${data.message}: ${data.details}` : (data.message || 'حدث خطأ أثناء حفظ المنتج');
+            showMessage('خطأ', errorMsg, false);
         }
     } catch (error) {
         console.error('Save product error', error);
