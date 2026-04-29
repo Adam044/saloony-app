@@ -21,7 +21,7 @@ async function initializeDb() {
             image_url TEXT
         )`);
 
-        // Create salons table - Linked to users by user_id, no redundant email/password
+        // Crreate salons table - Linked to users by user_id, no redundant email/password
         await db.run(`CREATE TABLE IF NOT EXISTS salons (
             id SERIAL PRIMARY KEY,
             user_id INTEGER UNIQUE NOT NULL, 
