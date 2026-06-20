@@ -3,13 +3,30 @@
   function ensureAuth() {
     try {
       const token = localStorage.getItem('adminToken');
-      const secondsLeft = tokenSecondsLeft(token);
-      if (!token || secondsLeft <= 60) {
-        attemptRefresh().then((newToken) => {
-          if (!newToken) location.replace('/auth.html');
-        }).catch(() => location.replace('/auth.html'));
+      if (!token) {
+        // If no token at all, redirect to login
+        location.replace('/auth.html');
+        return;
       }
-    } catch (_) {}
+
+      const secondsLeft = tokenSecondsLeft(token);
+      // Only try to refresh if token is actually expired or very close to it
+      if (secondsLeft <= 0) {
+        attemptRefresh().then((newToken) => {
+          if (!newToken) {
+            console.warn('Token expired and refresh failed, redirecting...');
+            localStorage.removeItem('adminToken'); // Clear expired token to prevent loops
+            location.replace('/auth.html');
+          }
+        }).catch(() => {
+          localStorage.removeItem('adminToken'); // Clear on error too
+          location.replace('/auth.html');
+        });
+      }
+    } catch (_) {
+      // In case of parsing errors, don't loop, just let it be or redirect safely
+      console.error('Auth check failed:', _);
+    }
   }
 
   function parseJwt(token) {

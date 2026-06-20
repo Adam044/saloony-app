@@ -329,9 +329,24 @@ class AuthManager {
     }
 
     checkAuth() {
+        const parseJwt = (token) => {
+            try {
+                const base64Url = (token || '').split('.')[1];
+                const base64 = (base64Url || '').replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (_) { return null; }
+        };
+
+        const isTokenValid = (token) => {
+            const payload = parseJwt(token);
+            if (!payload || !payload.exp) return false;
+            return payload.exp > (Date.now() / 1000);
+        };
+
         // 1. Check for Admin Token first
         const adminToken = localStorage.getItem('adminToken');
-        if (adminToken) {
+        if (adminToken && isTokenValid(adminToken)) {
             window.location.href = '/admin_dashboard';
             return;
         }
@@ -340,7 +355,7 @@ class AuthManager {
         const token = localStorage.getItem('saloony_token');
         const userStr = localStorage.getItem('saloony_user');
 
-        if (token && userStr) {
+        if (token && userStr && isTokenValid(token)) {
             try {
                 const user = JSON.parse(userStr);
                 const userType = String(user.user_type || '').toLowerCase().trim();
@@ -519,34 +534,34 @@ class AuthManager {
 
             if (response.ok) {
                 this.showToast('تم تسجيل الدخول بنجاح!', 'success');
-                if (result.userType === 'admin') {
+                
+                // For all user types, we set the primary token
+                localStorage.setItem('saloony_token', result.token);
+                if (result.refresh_token) localStorage.setItem('saloony_refresh_token', result.refresh_token);
+                localStorage.setItem('saloony_user', JSON.stringify(result.user));
+
+                // If user is admin (system-level or by user object), set adminToken for dashboard
+                const userType = String(result.userType || result.user?.user_type || '').toLowerCase().trim();
+                if (userType === 'admin' || userType === 'administrator') {
                     localStorage.setItem('adminToken', result.token);
+                }
+
+                // Check for redirect param
+                const params = new URLSearchParams(window.location.search);
+                const redirectUrl = params.get('redirect');
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                    return;
+                }
+
+                if (userType === 'salon' || userType === 'salon_owner') {
+                    window.location.href = '/admin_salon';
+                } else if (userType === 'user') {
+                    window.location.href = '/pages/saloony/user_account.html';
+                } else if (userType === 'employee') {
+                    window.location.href = '/presentation';
+                } else if (userType === 'admin' || userType === 'administrator') {
                     window.location.href = '/admin_dashboard';
-                } else {
-                    localStorage.setItem('saloony_token', result.token);
-                    if (result.refresh_token) localStorage.setItem('saloony_refresh_token', result.refresh_token);
-                    localStorage.setItem('saloony_user', JSON.stringify(result.user));
-                    
-                    // Check for redirect param
-                    const params = new URLSearchParams(window.location.search);
-                    const redirectUrl = params.get('redirect');
-                    if (redirectUrl) {
-                        window.location.href = redirectUrl;
-                        return;
-                    }
-
-                    const userType = String(result.user.user_type || '').toLowerCase().trim();
-
-                    if (userType === 'salon' || userType === 'salon_owner') {
-                        window.location.href = '/admin_salon';
-                    } else if (userType === 'user') {
-                        // Regular user - Redirect to User Dashboard
-                        window.location.href = '/pages/saloony/user_account.html';
-                    } else if (userType === 'employee') {
-                        window.location.href = '/presentation';
-                    } else if (userType === 'admin' || userType === 'administrator') {
-                        window.location.href = '/admin_dashboard';
-                    }
                 }
             } else {
                 if (result && result.require_selection && Array.isArray(result.accounts)) {
@@ -587,28 +602,30 @@ class AuthManager {
             const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             const result = await res.json();
             if (res.ok) {
-                if (result.userType === 'admin') {
-                    localStorage.setItem('adminToken', result.token);
-                    window.location.href = '/admin_dashboard';
-                } else {
-                    localStorage.setItem('saloony_token', result.token);
-                    if (result.refresh_token) localStorage.setItem('saloony_refresh_token', result.refresh_token);
-                    localStorage.setItem('saloony_user', JSON.stringify(result.user));
-                    
-                    // Check for redirect param
-                    const params = new URLSearchParams(window.location.search);
-                    const redirectUrl = params.get('redirect');
-                    if (redirectUrl) {
-                        window.location.href = redirectUrl;
-                        return;
-                    }
+                // Set basic auth data
+                localStorage.setItem('saloony_token', result.token);
+                if (result.refresh_token) localStorage.setItem('saloony_refresh_token', result.refresh_token);
+                localStorage.setItem('saloony_user', JSON.stringify(result.user));
 
-                    const userType = String(result.user.user_type || '').toLowerCase().trim();
-                    if (userType === 'salon' || userType === 'salon_owner') window.location.href = '/admin_salon';
-                    else if (userType === 'user') window.location.href = '/pages/saloony/user_account.html';
-                    else if (userType === 'employee') window.location.href = '/presentation';
-                    else if (userType === 'admin' || userType === 'administrator') window.location.href = '/admin_dashboard';
+                // Set admin token if applicable
+                const userType = String(result.userType || result.user?.user_type || '').toLowerCase().trim();
+                if (userType === 'admin' || userType === 'administrator') {
+                    localStorage.setItem('adminToken', result.token);
                 }
+
+                // Redirect logic
+                const params = new URLSearchParams(window.location.search);
+                const redirectUrl = params.get('redirect');
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                    return;
+                }
+
+                if (userType === 'salon' || userType === 'salon_owner') window.location.href = '/admin_salon';
+                else if (userType === 'user') window.location.href = '/pages/saloony/user_account.html';
+                else if (userType === 'employee') window.location.href = '/presentation';
+                else if (userType === 'admin' || userType === 'administrator') window.location.href = '/admin_dashboard';
+                else window.location.href = '/';
             } else {
                 this.showToast(result.message || 'خطأ في تسجيل الدخول', 'error');
             }
